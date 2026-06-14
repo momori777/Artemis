@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ATRI - yatoli</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; background:transparent; }
+body:not(.embed) { background: #1a1a2e; }
+#l2d { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+canvas { display:block; }
+#status { position:fixed; top:4px; left:4px; color:#666; font:10px monospace; z-index:10; pointer-events:none; }
+</style>
+</head>
+<body>
+<div id="l2d"></div>
+<div id="status">loading...</div>
+
+<script src="/pixi.min.js"></script>
+<script>
+(function(g){
+  g.AMotion=function(){this._fadeIn=0;this._fadeOut=0;this._weight=1;this._offsetSeconds=0};
+  g.AMotion.prototype={updateParam:function(){},update:function(){},setFadeIn:function(t){this._fadeIn=t},setFadeOut:function(t){this._fadeOut=t},getFadeIn:function(){return this._fadeIn},getFadeOut:function(){return this._fadeOut},setWeight:function(w){this._weight=w},getWeight:function(){return this._weight},getDurationMSec:function(){return-1},getLoopDurationMSec:function(){return-1},setOffsetSeconds:function(s){this._offsetSeconds=s},setFinishedMotionHandler:function(h){this._onFinishHandler=h},isFinished:function(){return true},updateParamExe:function(){}};
+  g.Live2D={};g.Live2DModelWebGL=function(){};g.Live2DMotion=function(){};g.Live2DMotion.prototype=new g.AMotion();
+  g.Live2DPhysics=function(){};g.Live2DEyeBlink=function(){};g.Live2DPoser=function(){};
+  g.PhysicsHair=function(){};g.PhysicsHair.prototype={setup:function(a,b,c){},update:function(){}};
+  g.PhysicsHair.Src={SRC_TO_X:0,SRC_TO_Y:1,SRC_TO_G_ANGLE:2};
+  g.PhysicsHair.Target={TARGET_FROM_ANGLE:0,TARGET_FROM_ANGLE_V:1};
+  if(!g.Float32Array)g.Float32Array=Float32Array;
+})(window);
+</script>
+<script src="/live2dcubismcore.min.js"></script>
+<script src="/plid-v5-bundle.js"></script>
+<script>
+var MODEL='/model/atri/atri.model3.json';
+var st=document.getElementById('status'),ws,app,model,lipActive=false;
+function log(s){st.textContent=s;console.log(s)}
+function connectWS(){
+  ws=new WebSocket('ws://'+location.hostname+':19201');
+  ws.onopen=()=>log('ws ok');
+  ws.onmessage=e=>{try{var d=JSON.parse(e.data);if((d.type==='motion'||d.type==='expression')&&model)try{var mm=model.internalModel.motionManager;var em=mm?mm.expressionManager:null;if(d.name&&em&&em.setExpression)em.setExpression(d.name).catch(function(){});else if(d.name&&mm&&mm.startRandomMotion)mm.startRandomMotion(d.name,0)}catch(_){};if(d.type==='speak_start')lipActive=true;if(d.type==='speak_end')lipActive=false;if(d.type==='speak')lipActive=(d.action==='start')}catch(_){}}
+  ws.onclose=()=>setTimeout(connectWS,3000)
+}
+function init(){
+  var L2D=window.PIXI&&window.PIXI.live2d&&window.PIXI.live2d.Live2DModel;
+  if(!L2D){log('wait plid...');setTimeout(init,500);return}
+  log('SDK ok');
+  var c=document.getElementById('l2d'),W=c.clientWidth||640,H=c.clientHeight||640;
+  app=new PIXI.Application({width:W,height:H,backgroundAlpha:0,antialias:true,resolution:window.devicePixelRatio||1,autoDensity:true});
+  c.appendChild(app.view);
+  log('loading model...');
+  L2D.from(MODEL,{autoInteract:true}).then(function(m){
+    model=m;window.__model=m;
+    // Upper body only: zoom to fill width, push model down so only head+shoulders visible
+    var s=W/model.width*1.05;
+    model.scale.set(s);
+    model.x=W/2;
+    model.y=H*1.45;  // push down, show upper body
+    model.anchor.set(0.5);
+    app.stage.addChild(model);
+    log('loaded!')
+  }).catch(function(e){log('ERR: '+(e&&e.message||e))});
+  setInterval(function(){if(!model||!model.internalModel)return;try{model.internalModel.coreModel.setParameterValueById('ParamMouthOpenY',lipActive?0.2+Math.random()*0.8:0)}catch(_){}},60);
+  connectWS();
+}
+if(new URLSearchParams(location.search).get('embed')==='1')document.body.classList.add('embed');
+init();
+window.addEventListener('resize',()=>{if(app){var c=document.getElementById('l2d');app.renderer.resize(c.clientWidth,c.clientHeight)}});
+</script>
+</body>
+</html>

@@ -1,0 +1,596 @@
+{
+  "Version": 3,
+  "Type": 0,
+  "FileReferences": {
+    "Moc": "shiki_natsume.moc3",
+    "Textures": [
+      "textures/tex_00.png",
+      "textures/tex_01.png",
+      "textures/tex_02.png",
+      "textures/tex_03.png",
+      "textures/tex_04.png",
+      "textures/tex_05.png",
+      "textures/tex_06.png",
+      "textures/tex_07.png",
+      "textures/tex_08.png",
+      "textures/tex_09.png",
+      "textures/tex_10.png",
+      "textures/tex_11.png",
+      "textures/tex_12.png",
+      "textures/tex_13.png"
+    ],
+    "Physics": "shiki_natsume.physics3.json",
+    "PhysicsV2": {
+      "File": "f43707710a22bd801f3015d75955c5d3.bin3"
+    },
+    "Motions": {
+      "Tap外框": [
+        {
+          "Name": "外框1",
+          "File": "motions/Tap外框_00.motion3.json",
+          "Sound": "sounds/Tap外框_00.wav",
+          "Text": "······装傻充愣",
+          "Priority": 2,
+          "Interruptable": true,
+          "Weight": 2
+        },
+        {
+          "Name": "外框2",
+          "File": "motions/Tap外框_01.motion3.json",
+          "Sound": "sounds/Tap外框_01.wav",
+          "Text": "干嘛",
+          "Priority": 2,
+          "Interruptable": true,
+          "Weight": 2
+        },
+        {
+          "Name": "外框3",
+          "File": "motions/Tap外框_02.motion3.json",
+          "Sound": "sounds/Tap外框_02.wav",
+          "Text": "这我可不负责任",
+          "Priority": 2,
+          "Interruptable": true,
+          "Weight": 2
+        },
+        {
+          "Name": "外框4",
+          "File": "motions/Tap外框_03.motion3.json",
+          "Sound": "sounds/Tap外框_03.wav",
+          "Text": "辛苦了",
+          "Priority": 2,
+          "Interruptable": true,
+          "Weight": 2
+        },
+        {
+          "Name": "外框5",
+          "File": "motions/Tap外框_04.motion3.json",
+          "Sound": "sounds/Tap外框_04.wav",
+          "Text": "你看，又开始发出怪叫了·····",
+          "Priority": 2,
+          "Interruptable": true,
+          "Intimacy": {
+            "Equal": 100,
+            "Bonus": 5
+          },
+          "Weight": 2
+        },
+        {
+          "Name": "外框6",
+          "File": "motions/Tap外框_05.motion3.json",
+          "Sound": "sounds/Tap外框_05.wav",
+          "Text": "我爱你",
+          "Priority": 2,
+          "Interruptable": true,
+          "Intimacy": {
+            "Equal": 100
+          },
+          "Weight": 2
+        },
+        {
+          "Name": "外框7",
+          "File": "motions/Tap外框_06.motion3.json",
+          "Sound": "sounds/Tap外框_06.wav",
+          "Text": "今后我们也要永远在一起",
+          "Priority": 2,
+          "Intimacy": {
+            "Equal": 100
+          }
+        }
+      ],
+      "Tap摸腿": [
+        {
+          "Name": "摸腿1",
+          "File": "motions/Tap摸腿_00.motion3.json",
+          "Sound": "sounds/Tap摸腿_00.wav",
+          "Text": "男生嘛，都是这样的",
+          "Priority": 2,
+          "Interruptable": true
+        },
+        {
+          "Name": "摸腿2",
+          "Sound": "sounds/Tap摸腿_01.wav",
+          "Text": "哇·····变态",
+          "Priority": 2,
+          "Interruptable": true
+        },
+        {
+          "Name": "摸腿3",
+          "File": "motions/Tap摸腿_02.motion3.json",
+          "Sound": "sounds/Tap摸腿_02.wav",
+          "Text": "能不能不要盯着看来看去，很羞人的",
+          "Priority": 2,
+          "Interruptable": true
+        },
+        {
+          "Name": "摸腿4",
+          "File": "motions/Tap摸腿_03.motion3.json",
+          "Sound": "sounds/Tap摸腿_03.wav",
+          "Text": "总觉得，有一股很色的视线在盯着我",
+          "Priority": 2,
+          "Interruptable": true,
+          "Intimacy": {
+            "Equal": 100
+          }
+        }
+      ],
+      "Idle": [
+        {
+          "Name": "站立",
+          "File": "motions/Idle_00.motion3.json",
+          "Priority": 2,
+          "Interruptable": true,
+          "Weight": 400
+        },
+        {
+          "Name": "待机1",
+          "File": "motions/Idle_01.motion3.json",
+          "Priority": 2,
+          "Interruptable": true,
+          "Weight": 200
+        },
+        {
+          "Name": "待机2",
+          "File": "motions/Idle_02.motion3.json",
+          "Priority": 2,
+          "Interruptable": true,
+          "Weight": 10
+        },
+        {
+          "Name": "待机3",
+          "File": "motions/Idle_03.motion3.json",
+          "Priority": 2,
+          "Interruptable": true,
+          "Weight": 10
+        },
+        {
+          "Name": "待机4",
+          "File": "motions/Idle_04.motion3.json",
+          "Priority": 2,
+          "Interruptable": true,
+          "Weight": 10
+        },
+        {
+          "Name": "待机5",
+          "File": "motions/Idle_05.motion3.json",
+          "Priority": 2,
+          "Interruptable": true,
+          "Weight": 10
+        },
+        {
+          "Name": "待机6",
+          "File": "motions/Idle_06.motion3.json",
+          "Text": "咚·咚·咚·钝器~",
+          "Priority": 2,
+          "Interruptable": true,
+          "Weight": 10
+        }
+      ],
+      "Start": [
+        {
+          "Name": "登场1",
+          "File": "motions/Start_00.motion3.json",
+          "Sound": "sounds/Start_00.wav",
+          "Text": "早安",
+          "Priority": 2
+        },
+        {
+          "Name": "登场2",
+          "File": "motions/Start_01.motion3.json",
+          "Sound": "sounds/Start_01.wav",
+          "Text": "嗯？啊，你好",
+          "Priority": 2
+        },
+        {
+          "Name": "登场3",
+          "File": "motions/Start_02.motion3.json",
+          "Sound": "sounds/Start_02.wav",
+          "Text": "欢、欢迎光临",
+          "Priority": 2
+        },
+        {
+          "Name": "登场4",
+          "File": "motions/Start_03.motion3.json",
+          "Sound": "sounds/Start_03.wav",
+          "Text": "你回来啦，主人",
+          "Priority": 2
+        },
+        {
+          "Name": "登场5",
+          "File": "motions/Start_04.motion3.json",
+          "Sound": "sounds/Start_04.wav",
+          "Text": "高岭，欢迎光临",
+          "Priority": 2,
+          "Weight": 3
+        }
+      ],
+      "Tap摸头": [
+        {
+          "Name": "摸头1",
+          "File": "motions/Tap摸头_00.motion3.json",
+          "Sound": "sounds/Tap摸头_00.wav",
+          "Text": "需要我帮您拧一下脸吗？主人",
+          "Priority": 2,
+          "Interruptable": true,
+          "Intimacy": {
+            "Bonus": 5
+          }
+        },
+        {
+          "Name": "摸头2",
+          "File": "motions/Tap摸头_01.motion3.json",
+          "Sound": "sounds/Tap摸头_01.wav",
+          "Text": "您满意了吗？主人",
+          "Priority": 2,
+          "Interruptable": true,
+          "Intimacy": {
+            "Bonus": 5
+          }
+        },
+        {
+          "Name": "摸头3",
+          "File": "motions/Tap摸头_02.motion3.json",
+          "Sound": "sounds/Tap摸头_02.wav",
+          "Text": "无路赛",
+          "Priority": 2,
+          "Interruptable": true,
+          "Intimacy": {
+            "Bonus": 5
+          }
+        },
+        {
+          "Name": "摸头4",
+          "File": "motions/Tap摸头_03.motion3.json",
+          "Sound": "sounds/Tap摸头_03.wav",
+          "Text": "噗，你这个大傻瓜",
+          "Priority": 2,
+          "Interruptable": true,
+          "Intimacy": {
+            "Bonus": 5
+          }
+        },
+        {
+          "Name": "摸头5",
+          "File": "motions/Tap摸头_04.motion3.json",
+          "Sound": "sounds/Tap摸头_04.wav",
+          "Text": "请主人和我一起来施展萌萌的魔法吧，来，跟我一起--萌萌Q",
+          "Priority": 2,
+          "Intimacy": {
+            "Equal": 100
+          }
+        }
+      ],
+      "Tap摸手": [
+        {
+          "Name": "摸手1",
+          "File": "motions/Tap摸手_00.motion3.json",
+          "Sound": "sounds/Tap摸手_00.wav",
+          "Text": "要来我的房间坐坐吗？一起·····喝杯茶",
+          "Priority": 2,
+          "Interruptable": true,
+          "Intimacy": {
+            "Equal": 100
+          }
+        },
+        {
+          "Name": "摸手2",
+          "File": "motions/Tap摸手_01.motion3.json",
+          "Sound": "sounds/Tap摸手_01.wav",
+          "Text": "嗯·····",
+          "Priority": 2,
+          "Interruptable": true,
+          "Intimacy": {
+            "Bonus": 5
+          }
+        }
+      ],
+      "Tap摸胸": [
+        {
+          "Name": "摸胸",
+          "File": "motions/Tap摸胸_00.motion3.json",
+          "Sound": "sounds/Tap摸胸_00.wav",
+          "Text": "是嘛？激动得心脏都快跳到嗓子眼了？你可真敢想啊",
+          "Priority": 2,
+          "Interruptable": true
+        },
+        {
+          "Name": "摸胸2",
+          "File": "motions/Tap摸胸_01.motion3.json",
+          "Sound": "sounds/Tap摸胸_01.wav",
+          "Text": "等下，上、上来就摸这里",
+          "Priority": 2,
+          "Interruptable": true,
+          "Intimacy": {
+            "Equal": 100
+          }
+        },
+        {
+          "Name": "摸胸3",
+          "File": "motions/Tap摸胸_02.motion3.json",
+          "Sound": "sounds/Tap摸胸_02.wav",
+          "Text": "我的胸·····不是很大······",
+          "Priority": 2,
+          "Interruptable": true,
+          "Intimacy": {
+            "Equal": 100
+          }
+        },
+        {
+          "Name": "摸胸4",
+          "File": "motions/Tap摸胸_03.motion3.json",
+          "Sound": "sounds/Tap摸胸_03.wav",
+          "Text": "很舒服吧",
+          "Priority": 2,
+          "Intimacy": {
+            "Equal": 100
+          }
+        }
+      ],
+      "Tap摸脚": [
+        {
+          "Name": "摸脚1",
+          "File": "motions/Tap摸脚_00.motion3.json",
+          "Sound": "sounds/Tap摸脚_00.wav",
+          "Text": "原来你是变态啊？",
+          "Priority": 2,
+          "Intimacy": {
+            "Equal": 100
+          }
+        },
+        {
+          "Name": "摸脚2",
+          "File": "motions/Tap摸脚_01.motion3.json",
+          "Text": "被踩着就让你这么兴奋吗？",
+          "Priority": 2,
+          "Intimacy": {
+            "Equal": 100
+          },
+          "Sound": "sounds/Tap摸脚_01.wav"
+        }
+      ],
+      "Tap摸裙子": [
+        {
+          "Name": "摸裙子1",
+          "File": "motions/Tap摸裙子_00.motion3.json",
+          "Text": "·····啊？",
+          "Priority": 2,
+          "Interruptable": true,
+          "Sound": "sounds/Tap摸裙子_00.wav"
+        },
+        {
+          "Name": "摸裙子2",
+          "File": "motions/Tap摸裙子_01.motion3.json",
+          "Text": "真是大胆的偷窥方式啊",
+          "Priority": 2,
+          "Interruptable": true,
+          "Sound": "sounds/Tap摸裙子_01.wav"
+        },
+        {
+          "Name": "摸裙子3",
+          "File": "motions/Tap摸裙子_02.motion3.json",
+          "Text": "是不是做了个好梦？那我马上送你去真正的天堂",
+          "Priority": 2,
+          "Interruptable": true,
+          "Sound": "sounds/Tap摸裙子_02.wav"
+        },
+        {
+          "Name": "摸裙子4",
+          "File": "motions/Tap摸裙子_03.motion3.json",
+          "Text": "八嘎",
+          "Priority": 2,
+          "Interruptable": true,
+          "Sound": "sounds/Tap摸裙子_03.wav"
+        },
+        {
+          "Name": "摸裙子5",
+          "File": "motions/Tap摸裙子_04.motion3.json",
+          "Text": "······你兴奋了？",
+          "Priority": 2,
+          "Sound": "sounds/Tap摸裙子_04.wav"
+        }
+      ],
+      "Leave300_900_1800": [
+        {
+          "Name": "待机最终",
+          "File": "motions/Leave300_900_1800_00.motion3.json",
+          "Priority": 9
+        }
+      ]
+    }
+  },
+  "Controllers": {
+    "ParamHit": {},
+    "ParamLoop": {},
+    "KeyTrigger": {},
+    "ParamTrigger": {},
+    "AreaTrigger": {},
+    "HandTrigger": {},
+    "EyeBlink": {
+      "MinInterval": 500,
+      "MaxInterval": 6000,
+      "Items": [
+        {
+          "Id": "ParamEyeLOpen",
+          "Min": 0,
+          "Max": 1,
+          "BlendMode": 2,
+          "Input": 0
+        },
+        {
+          "Id": "ParamEyeLOpen2",
+          "Min": 0,
+          "Max": 1,
+          "BlendMode": 2,
+          "Input": 0
+        }
+      ]
+    },
+    "LipSync": {
+      "Gain": 5
+    },
+    "MouseTracking": {
+      "SmoothTime": 0.15,
+      "Items": [
+        {
+          "Id": "ParamAngleX",
+          "Min": -30,
+          "Max": 30,
+          "DefaultValue": 0,
+          "BlendMode": 1,
+          "Input": 0
+        },
+        {
+          "Id": "ParamAngleY",
+          "Min": -30,
+          "Max": 30,
+          "DefaultValue": 0,
+          "BlendMode": 1,
+          "Axis": 1,
+          "Input": 0
+        },
+        {
+          "Id": "ParamAngleZ",
+          "Min": -30,
+          "Max": 30,
+          "DefaultValue": 0,
+          "BlendMode": 1,
+          "Input": 0
+        },
+        {
+          "Id": "ParamEyeBallX",
+          "Min": -1,
+          "Max": 1,
+          "DefaultValue": 0,
+          "BlendMode": 1,
+          "Input": 0
+        },
+        {
+          "Id": "ParamEyeBallY",
+          "Min": -1,
+          "Max": 1,
+          "DefaultValue": 0,
+          "BlendMode": 1,
+          "Axis": 1,
+          "Input": 0
+        },
+        {
+          "Id": "ParamBodyAngleZ2",
+          "Min": -10,
+          "Max": 10,
+          "DefaultValue": 0,
+          "BlendMode": 1,
+          "Input": 0
+        },
+        {
+          "Id": "ParamBodyAngleX",
+          "Min": -10,
+          "Max": 10,
+          "DefaultValue": 0,
+          "BlendMode": 1,
+          "Input": 0
+        },
+        {
+          "Id": "ParamBodyAngleY",
+          "Min": -10,
+          "Max": 10,
+          "DefaultValue": 0,
+          "BlendMode": 1,
+          "Axis": 1,
+          "Input": 0
+        }
+      ],
+      "Enabled": true
+    },
+    "AutoBreath": {
+      "Enabled": true
+    },
+    "ExtraMotion": {
+      "Enabled": true
+    },
+    "Accelerometer": {},
+    "Microphone": {},
+    "Transform": {},
+    "FaceTracking": {
+      "Enabled": true
+    },
+    "HandTracking": {},
+    "ParamValue": {},
+    "PartOpacity": {
+      "Yanjing_L": 1,
+      "Yanjing_R": 1
+    },
+    "ArtmeshOpacity": {},
+    "ArtmeshColor": {},
+    "ArtmeshCulling": {
+      "DefaultMode": 0
+    },
+    "IntimacySystem": {
+      "InitValue": 5,
+      "MaxValue": 100,
+      "BonusActive": 5,
+      "BonusInactive": -1,
+      "BonusLimit": 99999,
+      "Enabled": true
+    }
+  },
+  "HitAreas": [
+    {
+      "Name": "外框",
+      "Id": "ArtMesh63"
+    },
+    {
+      "Name": "摸腿",
+      "Id": "ArtMesh61",
+      "Order": 1
+    },
+    {
+      "Name": "摸头",
+      "Id": "Houfa_buchong",
+      "Order": 1
+    },
+    {
+      "Name": "摸手",
+      "Id": "ArtMesh5",
+      "Order": 2
+    },
+    {
+      "Name": "摸胸",
+      "Id": "ArtMesh62",
+      "Order": 1
+    },
+    {
+      "Name": "摸脚",
+      "Id": "ArtMesh60",
+      "Order": 1
+    },
+    {
+      "Name": "摸裙子",
+      "Id": "ArtMesh11",
+      "Order": 1
+    }
+  ],
+  "Options": {
+    "TexFixed": true,
+    "TexType": 0
+  },
+  "Groups": []
+}

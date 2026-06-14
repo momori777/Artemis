@@ -72,12 +72,64 @@ function init(){
   app=new PIXI.Application({width:W,height:H,backgroundAlpha:0,antialias:true,resolution:window.devicePixelRatio||1,autoDensity:true});
   c.appendChild(app.view);
   log('loading model...');
-  L2D.from(MODEL,{autoInteract:true}).then(function(m){
-    model=m;var s=Math.min(W/model.width,H/model.height)*0.8;
-    model.scale.set(s);model.x=W/2;model.y=H*0.45;model.anchor.set(0.5);
-    app.stage.addChild(model);log('loaded!')
+  L2D.from(MODEL,{autoInteract:true,autoUpdate:true,autoHitTest:true}).then(function(m){
+    // Disable ExtraMotion to prevent random param changes (eyebrow opacity drift)
+    try{m.internalModel.settings.extraMotionEnabled=false}catch(_){}
+    model=m;var s=Math.min(W/model.width,H/model.height)*1.25;
+    model.scale.set(s);model.x=W/2;model.y=H*0.66;model.anchor.set(0.5);
+    app.stage.addChild(model);
+    // Reset eye params
+    var core=model.internalModel.coreModel;
+    if(core){
+      core.setParameterValueById('ParamEyeLOpen',1);
+      core.setParameterValueById('ParamEyeLOpen2',1);
+      core.setParameterValueById('Guodongyan1',0);
+      core.setParameterValueById('Guodongyan2',0);
+      // Let built-in EyeBlink work - Guodongyan locked per-frame, no more conflict
+      // Cache drawable indices for debugging
+      window._gaoguangL=3; window._gaoguangR=12;
+      window._meimaoL=0; window._meimaoR=8;
+      // Force Yanjing Part (32,33) opacity=1 to prevent fade
+      var im=model.internalModel;
+      if(im.partOpacities){im.partOpacities.setValue(32,1);im.partOpacities.setValue(33,1);}
+      console.log('Eye fix cached: Gaoguang',window._gaoguangL,window._gaoguangR,'Meimao',window._meimaoL,window._meimaoR);
+    }
+    log('loaded!')
   }).catch(function(e){log('ERR: '+(e&&e.message||e))});
-  setInterval(function(){if(!model||!model.internalModel)return;try{model.internalModel.coreModel.setParameterValueById('ParamMouthOpenY',lipActive?0.2+Math.random()*0.8:0)}catch(_){}},60);
+    // === MOTION CLEANUP + REPORTING ===\n  // NOTE: Ghosting (double-layer eye highlight) during certain motions (wink/disgust)\n  // is a plid-v5-bundle rendering bug for this Cubism 4 model. Param23/13/14/25 hit\n  // extreme values (+21~+30) during motion, causing Gaoguang (drawables 3/12) desync.\n  // Workaround: snapshot before motion, restore dirty params after each motion ends.\n  // Awaiting upstream plid-bundle fix for proper Cubism 4 drawable parameter sync.
+  var eyeBlinkPaused=false, paramSnapBefore=null;
+  setInterval(function(){if(!model||!model.internalModel)return;try{var cm=model.internalModel.coreModel;
+    cm.setParameterValueById('ParamMouthOpenY',lipActive?0.2+Math.random()*0.8:0);
+    cm.setParameterValueById('Guodongyan1',0);cm.setParameterValueById('Guodongyan2',0);
+    var mm=model.internalModel.motionManager;
+    var inMotion=mm&&!mm.isFinished();
+    if(inMotion&&!eyeBlinkPaused){
+      try{model.internalModel.eyeBlink.setEyeBlinkIds([])}catch(e){}
+      eyeBlinkPaused=true;
+      paramSnapBefore={};
+      var mh=cm._model||cm._cubismModel||cm;
+      if(mh.parameters)for(var pi=0;pi<mh.parameters.count;pi++){var pid=mh.parameters.ids[pi];if(pid)paramSnapBefore[pid]=cm.getParameterValueById(pid)}
+    }
+    if(!inMotion&&eyeBlinkPaused){
+      eyeBlinkPaused=false;
+      var skipSet=new Set(['ParamAngleX','ParamAngleY','ParamAngleZ','ParamBodyAngleX','ParamBodyAngleY','ParamBodyAngleZ','ParamMouthOpenY','ParamBreath']);
+      if(paramSnapBefore){
+        var mh2=cm._model||cm._cubismModel||cm;
+        if(mh2.parameters)for(var pi=0;pi<mh2.parameters.count;pi++){
+          var pid=mh2.parameters.ids[pi];if(!pid||skipSet.has(pid))continue;
+          var cur=cm.getParameterValueById(pid);var prev=paramSnapBefore[pid];
+          if(prev!==undefined&&Math.abs(cur-prev)>0.01){cm.setParameterValueById(pid,prev)}
+        }
+      }
+      cm.setParameterValueById('ParamEyeLOpen',1);cm.setParameterValueById('ParamEyeLOpen2',1);
+      try{model.internalModel.eyeBlink.setEyeBlinkIds(['ParamEyeLOpen','ParamEyeLOpen2'])}catch(e){}
+      paramSnapBefore=null;
+    }
+    if(!inMotion){
+      var el=cm.getParameterValueById('ParamEyeLOpen');
+      if(el>1.05||el<-0.05){cm.setParameterValueById('ParamEyeLOpen',1);cm.setParameterValueById('ParamEyeLOpen2',1)}
+    }
+  }catch(_){}},60);
   connectWS()
 }
 if(new URLSearchParams(location.search).get('embed')==='1')document.body.classList.add('embed');
