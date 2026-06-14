@@ -1,0 +1,156 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ATRI - yatoli</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; background:transparent; }
+body:not(.embed) { background: #1a1a2e; }
+#l2d { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+canvas { display:block; }
+#status { position:fixed; top:4px; left:4px; color:#666; font:10px monospace; z-index:10; pointer-events:none; }
+</style>
+</head>
+<body>
+<div id="l2d"></div>
+<div id="status">loading...</div>
+<div id="debug-panel" style="position:fixed;top:30px;right:8px;z-index:99;display:flex;flex-direction:column;gap:4px;font:11px monospace;">
+<button onclick="testExpr('expression1.exp3')" style="padding:2px 6px;">expr1 blush</button>
+<button onclick="testExpr('expression2.exp3')" style="padding:2px 6px;">expr2 smile</button>
+<button onclick="testExpr('expression3.exp3')" style="padding:2px 6px;">expr3 sad</button>
+<button onclick="testExpr('expression4.exp3')" style="padding:2px 6px;">expr4 angry</button>
+<button onclick="testExpr('expression5.exp3')" style="padding:2px 6px;">expr5 surprise</button>
+<button onclick="resetExpr()" style="padding:2px 6px;">reset</button>
+<div id="expr-log" style="color:#0f0;background:#111;padding:4px;max-width:160px;max-height:80px;overflow-y:auto;"></div>
+</div>
+<script>
+function testExpr(name){
+  if(!window.__model){document.getElementById('expr-log').textContent='no model yet';return}
+  var mm=window.__model.internalModel.motionManager;
+  if(!mm){document.getElementById('expr-log').textContent='no motionManager';return}
+  var em=mm.expressionManager||mm;
+  document.getElementById('expr-log').textContent='calling: '+name+'\nem:'+(!!em)+' defs:'+(em.definitions?em.definitions.length:'n/a');
+  var r = em.setExpression ? em.setExpression(name) : mm.setExpression(name);
+  Promise.resolve(r).then(function(ok){
+    document.getElementById('expr-log').textContent=name+': '+(ok?'OK':'FAIL')+'\ndefs:'+(em.definitions?em.definitions.length:'n/a')
+  }).catch(function(e){
+    document.getElementById('expr-log').textContent='ERR: '+e.message
+  })
+}
+function resetExpr(){
+  if(!window.__model)return
+  var mm=window.__model.internalModel.motionManager;
+  if(mm&&mm.expressionManager)mm.expressionManager.resetExpression();
+  else if(mm&&mm.resetExpression)mm.resetExpression();
+  document.getElementById('expr-log').textContent='reset'
+}
+</script>
+
+<script src="/pixi.min.js"></script>
+
+<!-- Only TWO truly missing classes: AMotion, PhysicsHair -->
+<script>
+(function(g){
+  // AMotion 鈥?Cubism 2 SDK, used by pixi-live2d-display internal 'extends AMotion'
+  g.AMotion=function(){this._fadeIn=0;this._fadeOut=0;this._weight=1;this._offsetSeconds=0};
+  g.AMotion.prototype={
+    updateParam:function(){},update:function(){},
+    setFadeIn:function(t){this._fadeIn=t},setFadeOut:function(t){this._fadeOut=t},
+    getFadeIn:function(){return this._fadeIn},getFadeOut:function(){return this._fadeOut},
+    setWeight:function(w){this._weight=w},getWeight:function(){return this._weight},
+    getDurationMSec:function(){return-1},getLoopDurationMSec:function(){return-1},
+    setOffsetSeconds:function(s){this._offsetSeconds=s},
+    setFinishedMotionHandler:function(h){this._onFinishHandler=h},
+    isFinished:function(){return true},updateParamExe:function(){}
+  };
+
+  // Live2D namespace 鈥?bundle checks window.Live2D for Cubism 2 runtime detection
+  g.Live2D={}; g.Live2DModelWebGL=function(){}; g.Live2DMotion=function(){}; g.Live2DMotion.prototype=new g.AMotion();
+  g.Live2DPhysics=function(){}; g.Live2DEyeBlink=function(){}; g.Live2DPoser=function(){};
+
+  // PhysicsHair 鈥?Cubism SDK 5 Framework, used as 'new PhysicsHair()' in cubism4 plugin
+  g.PhysicsHair=function(){};
+  g.PhysicsHair.prototype={setup:function(a,b,c){},update:function(){}};
+  g.PhysicsHair.Src={SRC_TO_X:0,SRC_TO_Y:1,SRC_TO_G_ANGLE:2};
+  g.PhysicsHair.Target={TARGET_FROM_ANGLE:0,TARGET_FROM_ANGLE_V:1};
+
+  // Float32Array 鈥?typo in Cubism SDK for Float32Array
+  if(!g.Float32Array)g.Float32Array=Float32Array;
+})(window);
+</script>
+
+<script src="/live2dcubismcore.min.js"></script>
+<script src="/plid-v5-bundle.js"></script>
+
+<script>
+var MODEL='/model/atri/atri.model3.json';
+var st=document.getElementById('status'), ws, app, model, lipActive=false;
+
+function log(s){st.textContent=s;console.log(s)}
+function connectWS(){
+  ws=new WebSocket('ws://'+location.hostname+':19201');
+  ws.onopen=()=>log('ws ok');
+  ws.onmessage=e=>{try{var d=JSON.parse(e.data);
+if((d.type==='motion'||d.type==='expression')&&model)try{
+  var name=d.name||'';
+  var mm=model.internalModel.motionManager;
+  var em=mm?mm.expressionManager:null;
+  if(name&&em&&em.setExpression){
+    em.setExpression(name).catch(function(){});
+  }else if(name&&mm&&mm.startRandomMotion){
+    mm.startRandomMotion(name,0);
+  }
+}catch(_){console.error('motion/expr err:',_)};
+if(d.type==='speak_start')lipActive=true;if(d.type==='speak_end')lipActive=false;if(d.type==='speak')lipActive=(d.action==='start')}catch(_){console.error('ws err:',_)}}
+  ws.onclose=()=>setTimeout(connectWS,3000)
+}
+function init(){
+  var L2D=window.PIXI&&window.PIXI.live2d&&window.PIXI.live2d.Live2DModel;
+  if(!L2D){log('wait plid...');setTimeout(init,500);return}
+  log('SDK ok');var ver=Live2DCubismCore.Version.csmGetVersion();log('Core v'+((ver>>>24)&0xFF)+'.'+((ver>>>16)&0xFF)+'.'+(ver&0xFFFF)+' hex=0x'+ver.toString(16));
+  var c=document.getElementById('l2d'),W=c.clientWidth||640,H=c.clientHeight||640;
+  app=new PIXI.Application({width:W,height:H,backgroundAlpha:0,antialias:true,resolution:window.devicePixelRatio||1,autoDensity:true});
+  c.appendChild(app.view);
+  log('loading model...');
+  L2D.from(MODEL,{autoInteract:true}).then(function(m){
+    model=m;window.__model=m;var s=Math.min(W/model.width,H/model.height)*0.8;
+    model.scale.set(s);model.x=W/2;model.y=H*0.45;model.anchor.set(0.5);
+    app.stage.addChild(model);
+    // Add friendly expression names for ATRI
+    var mm=model.internalModel.motionManager;
+    var em=mm?mm.expressionManager:null;
+    if(em&&em.definitions){
+      var aliases={
+        blush:'expression1',smile:'expression2',happy:'expression2',
+        sad:'expression3',angry:'expression4',surprised:'expression5',
+        worried:'expression7',serious:'expression9',pout:'expression11',
+        sleepy:'expression13',neutral:''
+      };
+      var baseMap={};
+      em.definitions.forEach(function(d,i){if(d&&d.name)baseMap[d.name]=d});
+      Object.keys(aliases).forEach(function(k){
+        if(aliases[k]&&baseMap[aliases[k]+'.exp3']){
+          var clone={};
+          Object.keys(baseMap[aliases[k]+'.exp3']).forEach(function(kk){clone[kk]=baseMap[aliases[k]+'.exp3'][kk]});
+          clone.name=k;
+          em.definitions.push(clone);
+        }
+      });
+      log('expr: '+em.definitions.length+' definitions')
+    }else{log('no expressionManager on ATRI model')}
+    log('loaded!')
+  }).catch(function(e){log('ERR: '+(e&&e.message||e))});
+  setInterval(function(){if(!model||!model.internalModel)return;try{model.internalModel.coreModel.setParameterValueById('ParamMouthOpenY',lipActive?0.2+Math.random()*0.8:0)}catch(_){}},60);
+  connectWS()
+}
+if(new URLSearchParams(location.search).get('embed')==='1')document.body.classList.add('embed');
+init();
+window.addEventListener('resize',()=>{if(app){var c=document.getElementById('l2d');app.renderer.resize(c.clientWidth,c.clientHeight)}});
+</script>
+</body>
+</html>
+
+
+
