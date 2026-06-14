@@ -1,3 +1,4 @@
+以防有人懒得读完，我把度盘模型链接放第一行 https://pan.baidu.com/s/1sLeSyVp76yzWcR3Q4pX0kA?pwd=0721
 # AI Girlfriend
 
 **100% Local · Fully Private · Zero API Dependencies**
