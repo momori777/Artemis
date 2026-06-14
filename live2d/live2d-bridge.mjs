@@ -62,7 +62,7 @@ function broadcast(data) {
 // ========== HTTP Server (static + API) ==========
 const httpServer = http.createServer((req, res) => {
   const url = new URL(req.url, `http://localhost:${HTTP_PORT}`);
-  const pathname = url.pathname;
+  const pathname = decodeURIComponent(url.pathname);
 
   // ---- API Routes ----
   if (pathname === '/api/status') {
@@ -141,6 +141,13 @@ const httpServer = http.createServer((req, res) => {
   // Debug: log pathname for all requests
   console.log(`📄 ${req.method} ${pathname}`);
 
+    // Silently ignore favicon requests
+  if (pathname === "/favicon.ico") {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
   // Check node_modules aliases first
   if (NODE_MODULES_ALIASES[pathname]) {
     filePath = path.join(NODE_MODULES, NODE_MODULES_ALIASES[pathname]);
@@ -156,8 +163,11 @@ const httpServer = http.createServer((req, res) => {
   filePath = pathname === '/' ? '/index.html' : pathname;
   filePath = path.join(STATIC_DIR, filePath);
 
-  // Security: prevent traversal
-  if (!filePath.startsWith(STATIC_DIR)) {
+  // Security: prevent traversal (use resolved path to avoid encoding issues)
+  const resolvedPath = path.resolve(filePath);
+  const resolvedRoot = path.resolve(STATIC_DIR);
+  if (!resolvedPath.startsWith(resolvedRoot + path.sep) && resolvedPath !== resolvedRoot) {
+    console.log(`🚫 Blocked traversal: ${filePath}`);
     res.writeHead(403);
     res.end('Forbidden');
     return;
@@ -171,7 +181,7 @@ const httpServer = http.createServer((req, res) => {
 
   const ext = path.extname(filePath);
   const contentType = MIME[ext] || 'application/octet-stream';
-  res.writeHead(200, { 'Content-Type': contentType });
+  res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-store' });
   fs.createReadStream(filePath).pipe(res);
 });
 
