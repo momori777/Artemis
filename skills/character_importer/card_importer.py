@@ -32,6 +32,7 @@ WORKSPACE_ROOT = Path(__file__).resolve().parents[2]  # repo root (dev or runtim
 OPENCLAW_WS = Path.home() / ".openclaw" / "workspace"  # runtime workspace
 
 HAREM_DIR = WORKSPACE_ROOT / "skills" / "harem"
+TOOL_DIR = WORKSPACE_ROOT / "skills" / "tool"
 CARDS_DIR = WORKSPACE_ROOT / "skills" / "character_importer" / "cards"
 ROLE_MEMORY_DIR = OPENCLAW_WS / "memory" / "role_play"
 
@@ -359,23 +360,48 @@ def do_switch_harem(name: str):
     old_key = save_current_to_harem()
 
     # Copy from harem to root
-    for fname in ROOT_FILES:
-        sf = src / fname
-        if sf.exists():
-            shutil.copy2(sf, WORKSPACE_ROOT / fname)
+    _copy_role_files(src)
 
     # Sync to workspace
     if OPENCLAW_WS.exists():
-        for fname in ROOT_FILES:
-            sf = src / fname
-            if sf.exists():
-                shutil.copy2(sf, OPENCLAW_WS / fname)
+        _copy_role_files(src, OPENCLAW_WS)
 
     # 切换 TTS 权重
     _switch_tts_weights(safe)
 
     print(f"\n[OK] Switched to '{name}' from harem!")
     print(f"     Previous '{old_key}' saved.")
+    print(f"     Run /reset to reload.")
+
+
+def _copy_role_files(src: Path, dest: Path = WORKSPACE_ROOT):
+    """Copy role files (SOUL.md, IDENTITY.md) from src to dest."""
+    for fname in ROOT_FILES:
+        sf = src / fname
+        if sf.exists():
+            shutil.copy2(sf, dest / fname)
+
+
+def do_switch_tool():
+    """Switch to tool mode (no character roleplay, pure utility agent)."""
+    src = TOOL_DIR
+    if not src.exists() or not (src / "SOUL.md").exists():
+        print(f"[X] Tool mode not found at {src}")
+        return
+
+    # Save current
+    old_key = save_current_to_harem()
+
+    # Copy tool mode files to root
+    _copy_role_files(src)
+
+    # Sync to workspace
+    if OPENCLAW_WS.exists():
+        _copy_role_files(src, OPENCLAW_WS)
+
+    print(f"\n[OK] Switched to Tool Mode!")
+    print(f"     Previous '{old_key}' saved to harem.")
+    print(f"     No roleplay, no memory loading, pure utility.")
     print(f"     Run /reset to reload.")
 
 
@@ -482,6 +508,15 @@ def cmd_switch_harem(args):
         print(f"  '{args.name}' is already active.")
         return
     do_switch_harem(args.name)
+
+
+def cmd_switch_tool(args=None):
+    """Switch to tool mode."""
+    active = get_active_character()
+    if active and active == "tool":
+        print("  Already in tool mode.")
+        return
+    do_switch_tool()
 
 
 def _print_parsed(parsed: dict):
@@ -679,6 +714,8 @@ def main():
     p_sh = sub.add_parser("switch-harem", help="Switch to an existing harem member")
     p_sh.add_argument("name")
 
+    p_st = sub.add_parser("switch-tool", help="Switch to tool mode (no roleplay, pure utility)")
+
     p_lc = sub.add_parser("list-chats", help="List ST chat logs")
     p_lc.add_argument("--chats-dir", default=str(ST_CHATS_DIR) if ST_CHATS_DIR else None)
     p_lc.add_argument("--character", "-c")
@@ -699,6 +736,8 @@ def main():
         cmd_switch(args)
     elif args.command == "switch-harem":
         cmd_switch_harem(args)
+    elif args.command == "switch-tool":
+        cmd_switch_tool()
     elif args.command == "list-chats":
         cmd_list_chats(args)
     elif args.command == "import-chat":
