@@ -81,6 +81,8 @@ ren_pro_jp/node_modules/
 live2d/live2dcubismcore.min.js
 # 模型文件（大文件，托管HF/网盘）
 live2d/model/
+!live2d/model/atri/
+!live2d/model/shiki_natsume/
 # 第三方 JS 包（从 npm 安装或 CDN 加载）
 live2d/plid-v5-bundle.js
 live2d/pixi.min.js
