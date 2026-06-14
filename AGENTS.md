@@ -157,6 +157,8 @@ ComfyUI 和 TTS 都会停 llama-server。不能同时 spawn 两个。
 
 ## 角色切换
 
+### 切换角色
+
 用户可以用 SillyTavern 角色卡切换女友角色：
 
 ```powershell
@@ -179,6 +181,26 @@ python skills\character_importer\card_importer.py switch-harem enola
 4. 自动切换 TTS 权重 `weight.json`（如果 `weight_<角色名>.json` 存在）
 5. TTS ref_wavs 自动按角色名选择（`ref_wavs_<角色名>/` 优先）
 6. 不影响 AGENTS.md（能力中枢常驻）
+
+### 工具人模式
+
+与 harem 并列的模式：不读任何角色扮演，纯工具人 agent。
+
+```powershell
+python skills\character_importer\card_importer.py switch-tool
+```
+
+切换后 /reset 重载，Agent 会以纯事务模式运行：
+- 不加载 role_play 记忆
+- 不使用角色语气
+- 不寒暄、不撒娇
+- 直接高效回复
+
+从工具人切回角色：
+
+```powershell
+python skills\character_importer\card_importer.py switch-harem natsume
+```
 
 ### 附：Live2D 模型切换
 
