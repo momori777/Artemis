@@ -18,7 +18,7 @@ const { chromium } = require('playwright');
 
   await page.waitForTimeout(8000);
 
-  await page.screenshot({ path: 'D:\\AI_Girlfriend\\index_test.png', fullPage: true });
+  await page.screenshot({ path: './index_test.png', fullPage: true });
   console.log('Screenshot saved');
 
   const canvasCount = await page.locator('canvas').count();

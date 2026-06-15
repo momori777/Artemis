@@ -4,12 +4,18 @@
 
 ## 串行规则
 
-TTS 和 ComfyUI 都停 llama-server（端口 8080）。不能同时 spawn。
-必须等前一个 DONE: 后才 spawn 下一个。全部用 sessions_spawn(mode="run")。
+TTS/ComfyUI 停 llama-server，ASR 不杀 llama（Whisper 独立显存 ~1.5GB）。
+TTS 和 ComfyUI 不能同时 spawn，ASR 可随时 spawn。全部用 sessions_spawn(mode="run")。
+必须等前一个 DONE: 后才 spawn 下一个停 llama 的 skill。
 
 ## ComfyUI 画图
 
 读 `skills/comfyui/prompt_template.md` -> 写 prompt -> spawn 子 session 跑 PS 脚本。
+
+## ASR 语音识别
+
+用户发语音消息 → spawn 子 session 跑 `skills/asr/run_asr.ps1` → 收到文本后当对话输入。
+不杀 llama，Faster-Whisper small ~1.5GB VRAM，8GB 卡共存。
 
 ## TTS 语音
 
@@ -18,11 +24,8 @@ TTS 和 ComfyUI 都停 llama-server（端口 8080）。不能同时 spawn。
 
 ## Live2D
 
-不杀 llama，直接 exec HTTP:
-- `localhost:19200/api/motion?name=...`
-- `localhost:19200/api/emotion?motion=...&text=...`
-- `localhost:19200/api/message?text=...`
-Motions: Idle, Tap外框, Tap摸头, Tap摸手, Start, Leave300_900_1800
+不杀 llama，直接 exec HTTP。详细 motion 表见 `skills/live2d/SKILL.md`
+速查: Idle(日常) | Tap摸头(害羞) | Tap外框(傲娇) | Tap摸手(深情) | Start(登场) | Leave(退场)
 
 ## 角色记忆
 

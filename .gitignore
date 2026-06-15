@@ -46,6 +46,7 @@ __pycache__/
 # 临时音频（但保留参考音频）
 *.wav
 !skills/tts/ref_wavs/*.wav
+!skills/tts/ref_wavs_atri/*.wav
 
 # 压缩包
 *.rar

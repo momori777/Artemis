@@ -1,3 +1,6 @@
+以防有人懒得读完，我把度盘模型链接放第一行 
+https://pan.baidu.com/s/1sLeSyVp76yzWcR3Q4pX0kA?pwd=0721
+
 # AI 女友
 
 **100% 本地 · 完全隐私 · 零 API 依赖**
@@ -67,12 +70,16 @@
 - 🔄 **多角色热切换** — 一键切换 AI 女友（夏目 ⇄ 亚托莉）；SOUL/IDENTITY/TTS 权重/Live2D 模型全部自动切换，记忆按角色隔离
 - 🃏 **SillyTavern 角色卡导入** — 自动检测导入 PNG/JSON 角色卡，导入后 agent 自动切换角色
 - 💬 **聊天记录导入** — 导入 SillyTavern JSONL 对话记录到 `memory/role_play/<角色>/`，切换角色时 agent 恢复上下文
+- 🔄 **多角色热切换** — 一键切换 AI 女友（夏目 ⇄ 亚托莉）；SOUL/IDENTITY/TTS 权重/Live2D 模型全部自动切换，记忆按角色隔离
+- 🃏 **SillyTavern 角色卡导入** — 自动检测导入 PNG/JSON 角色卡，导入后 agent 自动切换角色
+- 💬 **聊天记录导入** — 导入 SillyTavern JSONL 对话记录到 `memory/role_play/<角色>/`，切换角色时 agent 恢复上下文
 - 💬 **QQ + Telegram 双通道** — 通过 OpenClaw Gateway 接入 QQ Bot 和 Telegram Bot
 - 🎤 **TTS 语音合成** — 本地 GPT-SoVITS 推理，日语语音（根据对话自动匹配情绪）
+- 🎤 **ASR 语音识别** — 本地 Faster-Whisper small 模型 (~1.5GB 显存)，可与 llama 共存；支持 99 种语言
 - 🎨 **AI 画图** — 本地 ComfyUI 推理，SDXL/Illustrious 模型
 - 🖥️ **Sakura 桌宠** — PySide6 桌面伴侣，主动关心、屏幕观察 & 本地 LLM 感知
 - 🎭 **Live2D 角色模型** — 实时 Live2D 渲染，10 个动作组，情绪驱动表情，对话气泡
-- 🧠 **显存调度器** — 8 GB 显存上自动调度 llama-server ↔ TTS/ComfyUI
+- 🧠 **显存调度器** — 8 GB 显存上自动调度 llama-server ↔ TTS/ComfyUI；ASR 可共存
 - 💾 **角色扮演记忆** — 对话摘要持久化到 `memory/role_play/`
 
 ## 模型
@@ -194,15 +201,17 @@ AI_Girlfriend/                        # OpenClaw 工作区根目录
 ├── README_CN.md                      # 中文读我
 ├── .gitignore
 ├── live2d/                           # Live2D 角色模型 (Cubism 4 Core)
-│   ├── index.html                    # 浏览器前端（独立窗口）
-│   ├── embed.html                    # 嵌入式版本
+│   ├── index.html                    # 默认（四季夏目）
+│   ├── index_atri.html               # 亚托莉版本
+│   ├── index_upper.html              # 夏目半身版本
+│   ├── index_atri_upper.html         # 亚托莉半身版本
 │   ├── live2dcubismcore.min.js       # Cubism Core 4 (207 KB)
 │   ├── plid-v5-bundle.js             # pixi-live2d-display v0.5.0 打包版
 │   ├── live2d-bridge.mjs             # HTTP (19200) + WebSocket (19201) 桥接
+│   ├── switch_model.ps1              # 模型切换（夏目 / 亚托莉）
 │   ├── pixi.min.js, pixi-shim.js     # PIXI.js v7 渲染
-│   ├── model/shiki_natsume/          # 四季夏目模型文件
-│   ├── media/                        # 生成的截图
-│   └── _archive/                     # 调试存档
+│   ├── model/shiki_natsume/          # 夏目模型（14纹理, 42动作, 41音频）
+│   └── model/atri/                   # 亚托莉模型（2纹理, 620语音mp3, 8动作）
 ├── ren_pro_jp/                       # Ren'Py 对话引擎（规划中）
 ├── memory/                           # [.gitignore] 运行时记忆
 │   └── role_play/                    # 角色扮演对话日志
@@ -214,8 +223,8 @@ AI_Girlfriend/                        # OpenClaw 工作区根目录
 │   ├── telegram-setup.md             # Telegram Bot 搭建指南
 │   └── qqbot-setup.md                # QQ Bot 搭建指南
 └── skills/
-    ├── live2d/                       # 🆕 Live2D 控制技能
-    │   ├── SKILL.md                  # Live2D API 调用指南
+    ├── live2d/                       # Live2D 控制技能
+    │   ├── SKILL.md                  # 动作/表情速查 + API 调用指南
     │   ├── scripts/start-live2d.ps1  # Live2D 启动脚本
     │   └── media/                    # 共享媒体输出
     ├── tts/
@@ -229,6 +238,9 @@ AI_Girlfriend/                        # OpenClaw 工作区根目录
     │   ├── comfyui_call.py           # ComfyUI 推理
     │   ├── prompt_template.md        # 角色提示词模板
     │   └── custom_prompt.txt         # 自定义额外提示词
+    ├── asr/                          # 语音识别技能
+    │   ├── run_asr.ps1               # Faster-Whisper 启动器 (~1.5GB 显存)
+    │   └── asr_call.py               # Whisper small 模型推理
     ├── sakura/                       # Sakura 桌宠 (PySide6 GUI)
     │   ├── SKILL.md                  # Sakura 技能文档
     │   ├── main.py                   # 程序入口
@@ -248,6 +260,7 @@ AI_Girlfriend/                        # OpenClaw 工作区根目录
 | **Live2D** | HTTP exec | ❌ 否 | 直接 HTTP 调 `localhost:19200` 桥 |
 | **TTS** | sessions_spawn | ✅ 是 | 杀 llama → GPT-SoVITS → 重启 llama |
 | **ComfyUI** | sessions_spawn | ✅ 是 | 杀 llama → 画图 → 重启 llama |
+| **ASR** | sessions_spawn | ❌ 否 | Faster-Whisper small (~1.5GB 显存，与 llama 共存) |
 | **Sakura** | 共享 llama-client | ❌ 否 | 检测 llama 掉线 → 等待 → 自动恢复 |
 
 ## 环境依赖
@@ -397,6 +410,7 @@ OpenClaw Gateway              Live2D Bridge (:19200)
   │  Main session（角色扮演）          │
   │  TTS（杀 llama → GPU → 重启）     │
   │  ComfyUI（杀 llama → GPU → 重启） │
+  │  ASR（Whisper → 不杀 llama）      │
   │  Live2D（HTTP → 不杀 llama）      │
   └───────────────────────────────────┘
 ```
@@ -434,6 +448,7 @@ OpenClaw Gateway              Live2D Bridge (:19200)
 | **Live2D** | `skills/live2d/` | 仅 HTTP API——完全不动 llama |
 | **TTS** | `skills/tts/` | 杀 llama → GPT-SoVITS → 重启 + 等待 /health |
 | **ComfyUI** | `skills/comfyui/` | 杀 llama → 画图 → 重启 + 等待 /health |
+| **ASR** | `skills/asr/` | Faster-Whisper small——与 llama 在 8GB 显存上共存 |
 | **Sakura** | `skills/sakura/` | 共享 llama-client；检测掉线 → 自动恢复 |
 | **角色导入手** | `skills/character_importer/` | Agent 层面——不需要 GPU；写入 SOUL/IDENTITY + 记忆目录 |
 
