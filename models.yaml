@@ -105,3 +105,22 @@ models:
       解压到 live2d/model/shiki_natsume/
       网盘备用: (待上传)
       不提交到 GitHub (见 .gitignore)
+
+  # =========================================================================
+  # Faster-Whisper — 语音识别 (ASR)
+  # =========================================================================
+  - name: whisper-small
+    type: CTranslate2 (faster-whisper, 461 MB, ~1.5GB VRAM GPU)
+    repo: automatically downloaded on first use
+    repo_path: N/A (auto-cached to ~/.cache/asr_models/)
+    local_path: ${ASR_MODEL_CACHE_DIR:-~/.cache/asr_models/}
+    download: |
+      First run auto-downloads from HuggingFace Hub
+      (no manual download needed with --local_files_only=false)
+    upstream: https://huggingface.co/Systran/faster-whisper-small
+    license: MIT
+    note: |
+      Whisper small model (74M params, 461MB), optimized for CTranslate2
+      GPU inference ~1.5GB VRAM, compatible with llama on 8GB cards
+      Supports 99 languages, VAD filtering for silence removal
+      See skills/asr/ for usage
