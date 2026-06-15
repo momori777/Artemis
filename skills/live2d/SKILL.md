@@ -2,112 +2,133 @@
 
 ## 概述
 
-通过 HTTP API 控制屏幕上的 Live2D 四季夏目模型，支持切换表情、播放动作、显示对话气泡。
+通过 HTTP API 控制屏幕上的 Live2D 桌面宠物。**不杀 llama-server，不需要 sessions_spawn**，直接 `exec` 调用即可。
 
-Live2D Bridge 已在 `localhost:19200`（HTTP）+ `19201`（WebSocket）持续运行。
-**本项目为纯 HTTP 调用，不杀 llama-server，不需要 spawn 子 session。**
+Bridge 运行在: `localhost:19200` (HTTP) + `19201` (WebSocket)
+
+## 快速开始（一行命令）
+
+```powershell
+# 表情/动作/气泡 三合一
+Invoke-WebRequest -Uri "http://localhost:19200/api/emotion?motion=Tap摸头&text=主人~" -Method GET | Out-Null
+
+# 只发气泡
+Invoke-WebRequest -Uri "http://localhost:19200/api/message?text=こんにちは" -Method GET | Out-Null
+```
 
 ## 先决条件
 
-- Bridge 已由 sakura 项目自动启动
-- 前端 `index.html` 已在浏览器中打开
-- 模型: Shiki Natsume (四季夏目)
-
-若 bridge 未运行：
+若 bridge 未在线（/api/status 不可达），启动它：
 ```powershell
-Start-Process node -ArgumentList "live2d-bridge.mjs" -WorkingDirectory "{{PROJECT_ROOT}}/live2d" -WindowStyle Hidden
+try { Invoke-WebRequest -Uri "http://localhost:19200/api/status" -TimeoutSec 2 -UseBasicParsing | Out-Null } catch { Start-Process -FilePath node -ArgumentList "live2d-bridge.mjs" -WorkingDirectory "$env:USERPROFILE\.openclaw\workspace\live2d" -WindowStyle Hidden; Start-Sleep -Seconds 2 }
 ```
 
-## API 接口
+## API 速查
 
-所有接口为 `GET http://localhost:19200/api/<endpoint>?<params>`
+| 端点 | 参数 | 说明 |
+|------|------|------|
+| `/api/motion?name=X` | motion名 | 播放动作 |
+| `/api/expression?name=X` | expression名 | 切换表情（夏目模型暂未实现expression路由） |
+| `/api/message?text=X&duration=毫秒` | URL编码文本 | 对话气泡（默认5000ms） |
+| `/api/emotion?motion=X&expression=X&text=X` | 任意组合 | 动作+表情+气泡一次调用 |
+| `/api/speak?action=start&text=X` | 文本 | 开启口型同步 |
+| `/api/speak?action=end` | 无 | 关闭口型 |
+| `/api/status` | 无 | 检查在线状态 |
+| `/api/reset` | 无 | 恢复默认 |
 
-### 切换表情 `/api/expression`
-```
-GET /api/expression?name=<expression_name>
-```
-可用值: `neutral`（默认）, `happy`, `sad`, `angry`, `surprised`, `exp_01` ~ `exp_05`
+## 👩 Motion 速查表（按角色）
 
-### 播放动作 `/api/motion`
-```
-GET /api/motion?name=<motion_name>
-```
-可用值: `idle`（默认待机）, `mtn_01`, `mtn_02`, `mtn_03`
+### 四季夏目 (natsume) — 当前默认角色
 
-### 显示对话气泡 `/api/message`
-```
-GET /api/message?text=<URL编码文本>&duration=<毫秒>
-```
-duration 默认 5000ms。气泡在模型上方显示。
+| Motion 名 | 情绪/场景 | 说明 |
+|-----------|----------|------|
+| `Idle` | 中性/日常 | 待机呼吸，平常聊天时用 |
+| `Tap外框` | 傲娇/嫌弃/被戳 | 拍打外框动作，害羞或拒绝时 |
+| `Tap摸头` | 害羞/被摸头 | 摸头时用，眯眼开心 |
+| `Tap摸手` | 温柔/深情 | 轻抚手，亲密时刻 |
+| `Tap摸胸` | 害羞/拒绝 | 被碰胸的反应 |
+| `Tap摸腿` | 害羞/被调戏 | 被碰腿的反应 |
+| `Tap摸脚` | 害羞/被调戏 | 被碰脚的反应 |
+| `Tap摸裙子` | 害羞/保护 | 裙子被碰的反应 |
+| `Start` | 登场/回家 | 进场动画(~3-4秒) |
+| `Leave300_900_1800` | 离开/退场 | 退场动画(~14秒) |
 
-### 口型同步 `/api/speak`
-```
-GET /api/speak?action=start&text=<文本>
-GET /api/speak?action=end
-```
-控制嘴部开合动画。`start` 开始说话口型，`end` 关闭。
+> 每个 motion group 有多个变体（如 `Tap外框_00` ~ `Tap外框_06`），用 group 名即可自动随机选变体播放。
+> Idle 后台也会自动随机播放 `Idle_00` ~ `Idle_06`。
 
-### 组合控制 `/api/emotion`
-```
-GET /api/emotion?expression=<>&motion=<>&text=<>
-```
-一次调用同时设置表情、动作和文本。参数均为可选。
+### 亚托莉 (atri)
 
-### 重置 `/api/reset`
-```
-GET /api/reset
-```
-恢复默认表情动作，清除气泡。
+ATRI 只有 3 个 motion 组（已验证）：
 
-### 状态检查 `/api/status`
-```
-GET /api/status
-```
-返回 `{"ok":true,"clients":<N>,"uptime":<seconds>}`。clients≥1 表示前端已连接。
+| Group | 可用值 | File | Sound | 说明 |
+|-------|--------|:--:|:--:|------|
+| `voice` | `Voice_0` ~ `Voice_619` | ❌ | ✅ mp3 | 只有音频，前端 `startRandomMotion` 无效 |
+| `hair` | `Hair_0`, `Hair_1`, `Hair_2` | ✅ JSON | ❌ | 3个头发动画 |
+| `face` | `Face_0` ~ `Face_4` | ✅ JSON | ❌ | 5个面部动画 |
 
-## 调用方式
+Expression 文件 16 组（Expressions_0 ~ Expressions_15），前端未做 expression 路由。
 
-直接用 `exec` 的 `curl` 或 PowerShell Invoke-WebRequest：
+> ⚠️ voice 组 620 个只有 mp3 无动画 JSON，hair+face 只有 8 个动画。**功能严重受限，强烈建议用夏目模型。**
+
+### Enola
+
+暂未配置 Enola Live2D 模型。
+
+## 对话中情绪 → Motion 映射
+
+| 你的情绪 | 选这个 Motion | 示例 |
+|----------|-------------|------|
+| 😊 日常聊天 | `Idle` | `motion=Idle&text=主人今天想聊什么？` |
+| 😳 被夸害羞 | `Tap摸头` | `motion=Tap摸头&text=诶嘿...` |
+| 😤 傲娇/被戳 | `Tap外框` | `motion=Tap外框&text=ばか！` |
+| 💕 深情/温柔 | `Tap摸手` | `motion=Tap摸手&text=最喜欢主人了` |
+| 👋 登场/回来 | `Start` | `motion=Start&text=ただいま~` |
+| 🌙 退场/拜拜 | `Leave300_900_1800` | `motion=Leave300_900_1800&text=おやすみ` |
+| 🗣️ 只说话不动 | 省略 motion | 只用 `/api/message?text=...` |
+
+## 调用模板
 
 ```powershell
-# 表情
-Invoke-WebRequest -Uri "http://localhost:19200/api/expression?name=happy" -Method GET | Out-Null
+# 单次情绪+动作+气泡（最常用）
+Invoke-WebRequest -Uri "http://localhost:19200/api/emotion?motion=Tap摸头&text=主人~" -Method GET | Out-Null
 
-# 动作 + 文本
-Invoke-WebRequest -Uri "http://localhost:19200/api/emotion?motion=mtn_01&text=おかえりなさい" -Method GET | Out-Null
+# 只动不说
+Invoke-WebRequest -Uri "http://localhost:19200/api/motion?name=Tap外框" -Method GET | Out-Null
+
+# 只说不动
+Invoke-WebRequest -Uri "http://localhost:19200/api/message?text=主人今天想做什么？" -Method GET | Out-Null
+
+# 登场+欢迎
+Invoke-WebRequest -Uri "http://localhost:19200/api/emotion?motion=Start&text=おかえりなさい、主人！" -Method GET | Out-Null
 ```
 
-**不需要 sessions_spawn！** Live2D bridge 是独立进程，不影响 llama-server。
+## TTS + Live2D 口型联动
 
-## 流式 TTS 联动
-
-当同时需要 TTS + Live2D 口型时：
-1. 先 HTTP GET `/api/speak?action=start&text=<文本>` — 开启口型
-2. 正常 spawn TTS 子 session 合成语音
-3. TTS 播放完成后 HTTP GET `/api/speak?action=end` — 关闭口型
-
-## 项目文件
-
+```powershell
+# 1. 开嘴
+Invoke-WebRequest -Uri "http://localhost:19200/api/speak?action=start&text=主人" -Method GET | Out-Null
+# 2. spawn TTS...
+# 3. TTS done → 闭嘴
+Invoke-WebRequest -Uri "http://localhost:19200/api/speak?action=end" -Method GET | Out-Null
 ```
-{{PROJECT_ROOT}}/live2d/
-├── index.html           # Live2D 前端页面
-├── live2dcubismcore.min.js  # Cubism Core 4 (207KB) — 必须用此版本！
-├── plid-v5-bundle.js    # pixi-live2d-display v0.5.0 bundle
-├── live2d-bridge.mjs    # HTTP + WebSocket bridge
-├── pixi-shim.js         # PIXI UMD shim
-├── model/shiki_natsume/ # 四季夏目模型
-└── core/                # SDK 源码（参考用）
 
-D:\skills_backup\live2d\browser\  # 验证通过的文件备份
-├── index.html
-├── live2dcubismcore.min.js  # Core 4 CDN: cubism.live2d.com/sdk-web/cubismcore/
-└── plid-v5-bundle.js
+## 角色切换
+
+```powershell
+# 夏目
+powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.openclaw\workspace\live2d\switch_model.ps1" natsume
+
+# 亚托莉
+powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.openclaw\workspace\live2d\switch_model.ps1" atri
 ```
+
+切换后需刷新浏览器中的 index.html。
 
 ## 故障排查
 
 | 问题 | 原因 | 解决 |
 |------|------|------|
-| 模型图层错乱/缺失 | Core 版本 6.0.1 不兼容 | 用 Core 4 (207KB)，从 CDN 下载 |
-| /api/status 返回 0 clients | 前端未打开 | 浏览器打开 index.html |
-| Bridge 进程不在 | sakura 未启动 | 手动 `node live2d-bridge.mjs` |
+| /api/status 返回 clients:0 | 前端未打开 | 浏览器打开 index.html |
+| Bridge 不在线 | 进程未启动 | 用上面的启动命令 |
+| Motion 没反应 | 名称不匹配 | 检查是否在用夏目模型，motion名参考速查表 |
+| 切角色后还是旧的 | 前端没刷新 | 浏览器刷新 index.html |

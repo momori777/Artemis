@@ -1,3 +1,6 @@
+以防有人懒得读完，我把度盘模型链接放第一行 
+https://pan.baidu.com/s/1sLeSyVp76yzWcR3Q4pX0kA?pwd=0721
+
 # AI Girlfriend
 
 **100% Local · Fully Private · Zero API Dependencies**
@@ -66,10 +69,11 @@ From *ATRI -My Dear Moments-*. Petite, innocent, endlessly curious — a bright-
 
 - 💬 **QQ + Telegram Dual Channel** — QQ Bot + Telegram Bot integration via OpenClaw Gateway
 - 🎤 **TTS Voice Synthesis** — Local GPT-SoVITS inference, Japanese voice (emotion-matched per dialogue)
+- 🎤 **ASR Speech Recognition** — Local Faster-Whisper small model (~1.5GB VRAM), coexists with llama; 99-language support
 - 🎨 **AI Image Generation** — Local ComfyUI inference, SDXL/Illustrious models
 - 🖥️ **Sakura Desktop Pet** — PySide6 desktop companion with proactive care, screen observation & local LLM awareness
 - 🎭 **Live2D Character Model** — Real-time Live2D rendering with 10 motion groups, emotion-driven expressions, and speech bubbles
-- 🧠 **VRAM Scheduler** — Automatic llama-server ↔ TTS/ComfyUI orchestration on 8 GB VRAM
+- 🧠 **VRAM Scheduler** — Automatic llama-server ↔ TTS/ComfyUI orchestration on 8 GB VRAM; ASR coexists
 - 💾 **Roleplay Memory** — Conversation summaries persisted to `memory/role_play/`
 - 🔄 **Multi-Character Hot-Swap** — Switch between AI girlfriends (Natsume ⇄ ATRI) with one command; SOUL/IDENTITY/TTS weights/Live2D model all switch automatically, memories isolated per character
 - 🃏 **Character Card Import** — Auto-detect SillyTavern character cards via `skills/character_importer/`, import → agent auto-switches role
@@ -191,15 +195,17 @@ AI_Girlfriend/                        # OpenClaw workspace root
 ├── README.md                         # This file
 ├── .gitignore
 ├── live2d/                           # Live2D character model (Cubism 4 Core)
-│   ├── index.html                    # Browser frontend (standalone window)
-│   ├── embed.html                    # Embeddable version
+│   ├── index.html                    # Default (Shiki Natsume)
+│   ├── index_atri.html               # ATRI variant
+│   ├── index_upper.html              # Natsume upper-body variant
+│   ├── index_atri_upper.html         # ATRI upper-body variant
 │   ├── live2dcubismcore.min.js       # Cubism Core 4 (207 KB)
 │   ├── plid-v5-bundle.js             # pixi-live2d-display v0.5.0 bundle
 │   ├── live2d-bridge.mjs             # HTTP (19200) + WebSocket (19201) bridge
+│   ├── switch_model.ps1              # Model switcher (natsume / atri)
 │   ├── pixi.min.js, pixi-shim.js     # PIXI.js v7 rendering
-│   ├── model/shiki_natsume/          # Shiki Natsume model files
-│   ├── media/                        # Generated screenshots
-│   └── _archive/                     # Debug artifacts
+│   ├── model/shiki_natsume/          # Natsume model (14 textures, 42 motions, 41 sounds)
+│   └── model/atri/                   # ATRI model (2 textures, 620 voice mp3, 8 motions)
 ├── ren_pro_jp/                       # Ren'Py dialog engine (planned)
 ├── memory/                           # [.gitignore] Runtime memory
 │   └── role_play/                    # Roleplay conversation logs
@@ -211,8 +217,8 @@ AI_Girlfriend/                        # OpenClaw workspace root
 │   ├── telegram-setup.md             # Telegram Bot setup guide
 │   └── qqbot-setup.md                # QQ Bot setup guide
 └── skills/
-    ├── live2d/                       # 🆕 Live2D control skill
-    │   ├── SKILL.md                  # Live2D API invocation guide
+    ├── live2d/                       # Live2D control skill
+    │   ├── SKILL.md                  # Motion/expression reference + API guide
     │   ├── scripts/start-live2d.ps1  # Live2D launcher
     │   └── media/                    # Shared media output
     ├── tts/
@@ -226,6 +232,9 @@ AI_Girlfriend/                        # OpenClaw workspace root
     │   ├── comfyui_call.py           # ComfyUI inference
     │   ├── prompt_template.md        # Character prompt template
     │   └── custom_prompt.txt         # Custom extra prompt
+    ├── asr/                          # Speech recognition skill
+    │   ├── run_asr.ps1               # Faster-Whisper launcher (~1.5GB VRAM)
+    │   └── asr_call.py               # Whisper small model inference
     ├── sakura/                       # Sakura Desktop Pet (PySide6 GUI)
     │   ├── SKILL.md                  # Sakura skill documentation
     │   ├── main.py                   # Application entry point
@@ -245,6 +254,7 @@ AI_Girlfriend/                        # OpenClaw workspace root
 | **Live2D** | HTTP exec | ❌ No | Direct HTTP calls to `localhost:19200` bridge |
 | **TTS** | sessions_spawn | ✅ Yes | Kill → GPT-SoVITS → restart llama |
 | **ComfyUI** | sessions_spawn | ✅ Yes | Kill → image gen → restart llama |
+| **ASR** | sessions_spawn | ❌ No | Faster-Whisper small (~1.5GB VRAM, coexists with llama) |
 | **Sakura** | Shared llama-client | ❌ No | Detects llama down → waits → auto-resumes |
 
 ## Prerequisites
@@ -392,6 +402,7 @@ OpenClaw Gateway              Live2D Bridge (:19200)
   │  Main session (roleplay)          │
   │  TTS (kill → GPU → restart)       │
   │  ComfyUI (kill → GPU → restart)   │
+  │  ASR (Whisper → no kill needed)   │
   │  Live2D (HTTP → no kill needed)   │
   └───────────────────────────────────┘
 ```
@@ -429,6 +440,7 @@ OpenClaw Gateway              Live2D Bridge (:19200)
 | **Live2D** | `skills/live2d/` | HTTP API only — never touches llama |
 | **TTS** | `skills/tts/` | Kill llama → GPT-SoVITS → restart + wait /health |
 | **ComfyUI** | `skills/comfyui/` | Kill llama → image gen → restart + wait /health |
+| **ASR** | `skills/asr/` | Faster-Whisper small — coexists with llama on 8GB |
 | **Sakura** | `skills/sakura/` | Shared llama-client; detects down → auto-resume |
 | **Character Importer** | `skills/character_importer/` | Agent-level — no GPU needed; writes SOUL/IDENTITY + memory dir |
 

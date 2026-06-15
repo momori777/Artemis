@@ -109,9 +109,9 @@ exec 完毕后：
 
 ## 能力 3: Live2D 桌面宠物
 
-**Live2D 不杀 llama-server，直接 HTTP exec 调用，不需要 sessions_spawn！**
+> 📖 完整文档: `skills/live2d/SKILL.md`（含分角色 motion 表、情绪映射、TTS 联动）
 
-通过 `localhost:19200` bridge API 控制。
+**Live2D 不杀 llama-server，直接 HTTP exec 调用，不需要 sessions_spawn！**
 
 ### Bridge 不在线时先启动（不杀 llama，直接 exec）
 
@@ -122,36 +122,66 @@ try { Invoke-WebRequest -Uri "http://localhost:19200/api/status" -TimeoutSec 2 -
 ### 调用
 
 ```powershell
-# 表情/动作
+# 动作 + 对话气泡（最常用）
+Invoke-WebRequest -Uri "http://localhost:19200/api/emotion?motion=Tap摸头&text=主人~" -Method GET | Out-Null
+
+# 只动不说
 Invoke-WebRequest -Uri "http://localhost:19200/api/motion?name=Tap外框" -Method GET | Out-Null
 
-# 动作 + 对话气泡
-Invoke-WebRequest -Uri "http://localhost:19200/api/emotion?motion=Tap摸头&text=バカ" -Method GET | Out-Null
-```
-
-### Motion 可用值
-
-| 情绪 | Motion | 说明 |
-|------|--------|------|
-| 中性/日常 | `Idle` | 待机呼吸 |
-| 傲娇/嫌弃 | `Tap外框` | 拍打外框 |
-| 害羞/困惑 | `Tap摸头` | 摸头动作 |
-| 温柔/深情 | `Tap摸手` | 轻抚手 |
-| 启动 | `Start` | 进场动画 |
-| 离开 | `Leave300_900_1800` | 退场动画 |
-
-### 对话气泡
-
-```powershell
+# 只说不动
 Invoke-WebRequest -Uri "http://localhost:19200/api/message?text=<URL编码>" -Method GET | Out-Null
 ```
+
+### Motion 速查（夏目模型）
+Idle(日常) | Tap摸头(害羞/被摸) | Tap外框(傲娇/被戳) | Tap摸手(深情) | Start(登场) | Leave300_900_1800(退场)
+
+> 更多: Tap摸胸/摸腿/摸脚/摸裙子 + 完整情绪→motion映射 → 见 `skills/live2d/SKILL.md`
+
+---
+
+## 能力 4: ASR 语音识别
+
+⚠️ ASR 不停 llama！和 TTS/ComfyUI 不同，Whisper small 只占 ~1.5GB VRAM。
+
+### STEP 1: 确认收到语音附件
+
+用户发语音消息时，OpenClaw 会把音频文件路径放在上下文里。
+找到音频文件的完整路径（.wav / .ogg / .mp3）。
+
+### STEP 2: ⚠️ 先 spawn 再说话！
+
+```javascript
+sessions_spawn({
+  task: `你的任务：只做一件事——用 exec 工具运行下面这条命令。
+
+exec 时一定要加 yieldMs: 180000（首次运行会下载模型~461MB）
+
+命令（复制粘贴，一个字都不许改）：
+
+powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.openclaw\workspace\skills\asr\run_asr.ps1" -audio "$audioPath"
+
+exec 完毕后：
+- 如果 exec 输出包含 "DONE: " 后面是识别文本 → 输出那一行
+- 如果失败（包含 FAILED）→ 输出"FAILED"
+- 不要做任何其他操作！`,
+  taskName: "asr",
+  mode: "run",
+  model: "local/qwen3.6-35b",
+  runTimeoutSeconds: 300
+})
+```
+
+### STEP 3+4: 收到 announce 后
+
+announce 包含 "DONE: <识别文本>" → 把文本当作用户说的话，正常用 LLM 回复。
 
 ---
 
 ## 串行规则
 
-ComfyUI 和 TTS 都会停 llama-server。不能同时 spawn 两个。
-必须等前一个 announce 完成（收到 "DONE:"）后再 spawn 下一个。
+ComfyUI 和 TTS 会停 llama-server，ASR 不会（Whisper 不抢显存）。
+TTS 和 ComfyUI 不能同时 spawn，必须等前一个 announce 完成（收到 "DONE:"）后再 spawn 下一个。
+ASR 可以在 llama 运行状态下随时 spawn（独立 GPU 显存架构）。
 
 ---
 
