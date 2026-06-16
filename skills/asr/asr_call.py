@@ -28,6 +28,11 @@ import time
 import traceback
 import subprocess
 
+# ---- 国内用户 HF mirror ----
+# 如果 HF 官方被墙，设置此环境变量自动走镜像
+if not os.environ.get("HF_ENDPOINT"):
+    os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+
 # ---- 路径设置 ----
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SKILLS_DIR = os.path.dirname(SCRIPT_DIR)  # skills/
