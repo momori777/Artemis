@@ -393,5 +393,5 @@ echo ""
 
 echo -e "  ${GRAY}文档: https://docs.openclaw.ai/zh-CN${NC}"
 echo -e "  ${GRAY}项目: https://github.com/momori777/openclaw_based_ai_girlfriend${NC}"
-echo -e "  ${GRAY}模型: https://huggingface.co/TAOTAO777/ai-girlfriend-natsume${NC}"
+echo -e "  ${GRAY}模型: https://hf-mirror.com/TAOTAO777/ai-girlfriend-natsume${NC}"
 echo ""

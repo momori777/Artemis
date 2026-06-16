@@ -344,5 +344,5 @@ Write-Host ""
 
 Write-Host "  文档: https://docs.openclaw.ai/zh-CN" -ForegroundColor DarkGray
 Write-Host "  项目: https://github.com/momori777/openclaw_based_ai_girlfriend" -ForegroundColor DarkGray
-Write-Host "  模型: https://huggingface.co/TAOTAO777/ai-girlfriend-natsume" -ForegroundColor DarkGray
+Write-Host "  模型: https://hf-mirror.com/TAOTAO777/ai-girlfriend-natsume" -ForegroundColor DarkGray
 Write-Host ""

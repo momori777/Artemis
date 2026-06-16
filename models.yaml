@@ -1,11 +1,10 @@
 # 模型清单 — AI Girlfriend 四季夏目
 #
-# 所有模型托管在 HuggingFace:
-#   https://huggingface.co/TAOTAO777/ai-girlfriend-natsume
-#
-# 下载方式:
-#   huggingface-cli download TAOTAO777/ai-girlfriend-natsume <repo_path> --local-dir <你的目录>
-#   或直接在 HF 网页下载单个文件
+# 国内用户必读:
+#   HuggingFace 官方域被墙，下载前先设置环境变量:
+#     Windows:  set HF_ENDPOINT=https://hf-mirror.com
+#     Linux:    export HF_ENDPOINT=https://hf-mirror.com
+#   然后正常使用 huggingface-cli / hf download / hf upload 即可，自动走镜像
 #
 # 路径配置: 首次 clone 后运行 quick_setup.ps1 一键填写 config.yaml
 # 模型下载后更新此文件的 local_path 指向你本地的实际目录
@@ -26,7 +25,8 @@ models:
     repo_path: llm/Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf
     local_path: ${LLAMA_MODEL_DIR:-models/}
     download: |
-      huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf --local-dir models
+      set HF_ENDPOINT=https://hf-mirror.com
+      hf download TAOTAO777/ai-girlfriend-natsume llm/Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf --local-dir models
     upstream: https://huggingface.co/mudler/Qwen3.6-35B-A3B-uncensored-heretic-APEX-GGUF
     license: Apache 2.0 (Qwen upstream)
 
@@ -39,7 +39,8 @@ models:
     repo_path: comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors
     local_path: ${COMFYUI_CHECKPOINTS_DIR:-checkpoints/}
     download: |
-      huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors --local-dir checkpoints
+      set HF_ENDPOINT=https://hf-mirror.com
+      hf download TAOTAO777/ai-girlfriend-natsume comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors --local-dir checkpoints
     upstream: https://civitai.com/models/1185480/wai-nsfw-illustrious
     note: 二次元角色生成默认模型
 
@@ -49,7 +50,8 @@ models:
     repo_path: comfyui-checkpoints/miaomiaoHarem_v20.safetensors
     local_path: ${COMFYUI_CHECKPOINTS_DIR:-checkpoints/}
     download: |
-      huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui-checkpoints/miaomiaoHarem_v20.safetensors --local-dir checkpoints
+      set HF_ENDPOINT=https://hf-mirror.com
+      hf download TAOTAO777/ai-girlfriend-natsume comfyui-checkpoints/miaomiaoHarem_v20.safetensors --local-dir checkpoints
     upstream: https://civitai.com/models/1033365/miaomiaoharem
     note: 备用模型，动漫后宫风格
 
@@ -67,7 +69,8 @@ models:
         local_path: ${SOVITS_ROOT:-GPT-SoVITS}/SoVITS_weights_v2Pro/
         note: GPT 权重（配对使用）
     download: |
-      huggingface-cli download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/ --local-dir gpt-sovits-weights --include "*.ckpt" "*.pth"
+      set HF_ENDPOINT=https://hf-mirror.com
+      hf download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/ --local-dir gpt-sovits-weights --include "*.ckpt" "*.pth"
     note: 自训练声优模型，需两个文件配对使用。用你自己的声优数据训练替代
 
   # =========================================================================
@@ -79,15 +82,14 @@ models:
     repo_path: N/A (自动下载到 HF cache)
     local_path: ${HF_HOME:-skills/sakura/runtime/hf-cache/}
     download: |
-      首启自动下载: python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+      set HF_ENDPOINT=https://hf-mirror.com
+      python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
     upstream: https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2
-    mirror: TOATAO777/ai-girlfriend-natsume/embedding/all-MiniLM-L6-v2
     license: Apache 2.0
     note: |
       为 OpenClaw memory_search 和 Sakura mem0 提供本地语义向量化，384 维
       服务: skills/shared/embedding_server.py (端口 9999)
       CPU 推理，毫秒级延迟，不占 VRAM
-      自行备份至 TAOTAO777/ai-girlfriend-natsume
 
   # =========================================================================
   # Live2D 角色模型 — 四季夏目 (Shiki Natsume)
@@ -98,12 +100,12 @@ models:
     repo_path: live2d-model/shiki_natsume.tar.gz
     local_path: ${PROJECT_ROOT:-live2d/}/model/shiki_natsume/
     download: |
-      huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/shiki_natsume.tar.gz --local-dir live2d-model
+      set HF_ENDPOINT=https://hf-mirror.com
+      hf download TAOTAO777/ai-girlfriend-natsume live2d-model/shiki_natsume.tar.gz --local-dir live2d-model
       tar -xzf live2d-model/shiki_natsume.tar.gz -C live2d/model/
     note: |
       四季夏目 Live2D 角色模型 (Cubism 3 moc3 + 14 textures + 41 motions)
       解压到 live2d/model/shiki_natsume/
-      网盘备用: (待上传)
       不提交到 GitHub (见 .gitignore)
 
   # =========================================================================
@@ -115,9 +117,8 @@ models:
     repo_path: N/A (auto-cached to ~/.cache/asr_models/)
     local_path: ${ASR_MODEL_CACHE_DIR:-~/.cache/asr_models/}
     download: |
-      # 国内用户设置 mirror 环境变量:
-      #   set HF_ENDPOINT=https://hf-mirror.com
       # 首次运行 ASR 自动下载，后续从缓存加载
+      # asr_call.py 已内置 HF_ENDPOINT=https://hf-mirror.com
     upstream: https://huggingface.co/Systran/faster-whisper-small
     mirror: https://hf-mirror.com/Systran/faster-whisper-small
     license: MIT
@@ -125,5 +126,5 @@ models:
       Whisper small model (74M params, 461MB), optimized for CTranslate2
       GPU inference ~1.5GB VRAM, compatible with llama on 8GB cards
       Supports 99 languages, VAD filter for silence removal
-      国内用户: export HF_ENDPOINT=https://hf-mirror.com
+      国内用户: asr_call.py 自动设置 HF_ENDPOINT=https://hf-mirror.com
       See skills/asr/ for usage
