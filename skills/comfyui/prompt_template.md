@@ -202,3 +202,44 @@ python comfyui_call.py "正prompt" "负prompt" [seed] [宽] [高] [步数] [CFG]
 ```
 
 所有参数按位置顺序，想跳过的中间参数可以省略（会走默认值），只有prompt是必填。
+
+---
+
+## 夜乃桜 (Yono Sakura)
+
+### 角色特征
+
+- **发色**: 银白色长发，发尾淡粉色渐变，柔软蓬松带自然卷曲
+- **瞳色**: 浅蓝色眼睛
+- **气质**: 冷静孤高、克制、责任感强、守护者气质
+- **体型**: 少女体型
+- **着装偏好**: 白色学园制服，黑色外套边饰，蓝色装饰，青蓝色裙摆，黄色领带，头上有黑白发饰与红色细带装饰
+
+### 正向 Prompt 模板
+
+```
+masterpiece, best quality, (yono sakura:1.2), 1girl, solo,
+long silver hair, pink-tipped hair, wavy hair, (light blue eyes:1.1), (serious expression:0.5),
+white and black school uniform, blue skirt, yellow necktie, black and white hair accessory, red ribbon,
+[场景描述], [着装描述],
+detailed face, detailed eyes, cinematic lighting, beautiful detailed background,
+(atmosphere:0.8)
+```
+
+### 常用场景组合
+
+1. **月下夜空**
+   - 场景: night sky, full moon, moonlight, quiet rooftop, starry sky, wind blowing hair
+   - 着装: white school uniform, blue skirt, standing on rooftop
+2. **教室窗口**
+   - 场景: classroom, window light, after school, sunset glow, quiet atmosphere
+   - 着装: school uniform, looking out window
+3. **樱花树下**
+   - 场景: cherry blossoms, spring, petals falling, gentle breeze, school courtyard
+   - 着装: school uniform, holding cherry blossom petal
+4. **雨中守护**
+   - 场景: rain, street, umbrella, reflections on wet ground, dim streetlight
+   - 着装: white uniform, holding umbrella, looking back
+5. **战斗后片刻**
+   - 场景: ruins, aftermath, sunrise breaking through clouds, slight dust in air
+   - 着装: uniform slightly battle-worn, determined expression

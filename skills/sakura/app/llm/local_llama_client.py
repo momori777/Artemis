@@ -31,7 +31,7 @@ from app.core.debug_log import debug_log
 # ── llama 生命周期感知工具 ──
 # 统一使用 shared 层的权威副本（与 TTS/ComfyUI 共用，签名同步）
 import sys as _sys, os as _os
-_shared_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
+_shared_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))))
 if _shared_root not in _sys.path:
     _sys.path.insert(0, _shared_root)
 from skills.shared.llama_utils import (

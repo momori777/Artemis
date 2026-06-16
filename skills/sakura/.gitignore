@@ -38,6 +38,10 @@ tts/
 data/config/api.yaml
 data/config/characters.yaml
 data/config/system_config.yaml
+# AI_Girlfriend project: these are tracked, override sakura's default ignore
+!data/config/api.yaml
+!data/config/characters.yaml
+!data/config/system_config.yaml
 task.md
 log.txt
 
