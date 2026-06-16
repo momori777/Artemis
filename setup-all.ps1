@@ -53,7 +53,7 @@ if ($disk) {
     info "磁盘剩余: $freeGB GB"
     if ($freeGB -lt 50) { warn "磁盘空间不足50GB！模型+工具需要~35GB" }
 }
-try { Test-Connection huggingface.co -Count 1 -Quiet -Timeout 5 | Out-Null; wok "网络 OK" } catch { warn "网络不通 huggingface.co" }
+try { Test-Connection hf-mirror.com -Count 1 -Quiet -Timeout 5 | Out-Null; wok "网络 OK (hf-mirror)" } catch { try { Test-Connection huggingface.co -Count 1 -Quiet -Timeout 5 | Out-Null; wok "网络 OK (HF直连)" } catch { warn "网络不通 huggingface.co 及 hf-mirror.com" } }
 if (Get-Command git -ErrorAction SilentlyContinue) { wok "git: $(git --version 2>&1)" } else { warn "未安装 git" }
 if (Get-Command python -ErrorAction SilentlyContinue) { wok "python: $(python --version 2>&1)" } else { warn "未安装 Python" }
 Write-Host ""
