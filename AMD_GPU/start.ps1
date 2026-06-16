@@ -1,0 +1,202 @@
+# start.ps1 — 一键启停全部 Shiki 服务 (AMD GPU / Vulkan 版本)
+# Usage:
+#   .\start.ps1       启动全部服务
+#   .\start.ps1 -Stop  停止全部服务（等价于 shutdown_all.py）
+#
+# 启动顺序:
+#   1. llama-server (Vulkan 后端, 从 config.yaml 读取路径)
+#   2. Live2D Bridge (localhost:19200)
+#   3. OpenClaw Gateway
+#
+# ⚠️ 与 NVIDIA 版的区别:
+#   - 去掉 --flash-attn on (Vulkan 不支持)
+#   - 去掉 -ctk q8_0 / -ctv q8_0 (CUDA 专属 KV cache 量化)
+#   - ngl 改为 99 (Vulkan 可以把全部层 offload 到 GPU)
+#   - --no-mmap 保留（避免大模型吃满内存）
+
+param([switch]$Stop)
+
+$ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+
+$scriptRoot = $PSScriptRoot
+
+# ========== Stop mode: delegate to shutdown_all.py ==========
+if ($Stop) {
+    $shutdownScript = Join-Path $scriptRoot "shutdown_all.py"
+    if (Test-Path $shutdownScript) {
+        & python $shutdownScript
+    } else {
+        Write-Host "ERROR: shutdown_all.py not found at $shutdownScript" -ForegroundColor Red
+        exit 1
+    }
+    exit $LASTEXITCODE
+}
+
+# ========== 读取 config.yaml ==========
+$configPath = Join-Path $scriptRoot "config.yaml"
+if (-not (Test-Path $configPath)) {
+    Write-Host "ERROR: config.yaml not found at $configPath" -ForegroundColor Red
+    Write-Host "Run quick_setup.ps1 first, or copy config.example.yaml → config.yaml" -ForegroundColor Yellow
+    exit 1
+}
+$configRaw = Get-Content $configPath -Raw -Encoding UTF8
+
+function Get-YamlValue($raw, $key) {
+    $pattern = "(?m)^\s*${key}\s*:\s*`"?(.+?)`"?\s*$"
+    $m = [regex]::Match($raw, $pattern)
+    if ($m.Success) { return $m.Groups[1].Value.Trim('"').Trim() }
+    return $null
+}
+
+$llamaExe   = Get-YamlValue $configRaw 'llama_exe'
+$llamaModel = Get-YamlValue $configRaw 'llama_model'
+$llamaPort  = Get-YamlValue $configRaw 'llama_port'
+if (-not $llamaPort) { $llamaPort = 8080 }
+$llamaLogDir = Get-YamlValue $configRaw 'llama_log_dir'
+$workspace  = Get-YamlValue $configRaw 'workspace'
+
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host "  四季夏目 — Shiki Natsume Startup (Vulkan)" -ForegroundColor Cyan
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host ""
+
+# ========== 1. Llama Server (Vulkan) ==========
+Write-Host "[1/3] llama-server (Vulkan)" -ForegroundColor Yellow
+
+function Test-Online($port, $label) {
+    try {
+        $null = Invoke-WebRequest -Uri "http://127.0.0.1:${port}/health" -TimeoutSec 2 -UseBasicParsing
+        Write-Host "  ${label} already online (port ${port})" -ForegroundColor Green
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+if (Test-Online $llamaPort "llama-server") {
+    # already up — skip
+} else {
+    # Validate paths
+    if (-not (Test-Path $llamaExe)) {
+        Write-Host "  ERROR: llama-server.exe not found: $llamaExe" -ForegroundColor Red
+        Write-Host "  Check config.yaml → llama_exe" -ForegroundColor Yellow
+        Write-Host "  AMD 用户需要下载 Vulkan 版: https://github.com/ggml-org/llama.cpp/releases" -ForegroundColor Yellow
+        Write-Host "  找 llama-bXXXX-bin-win-vulkan-x64.zip" -ForegroundColor Yellow
+        exit 1
+    }
+    if (-not (Test-Path $llamaModel)) {
+        Write-Host "  ERROR: Model not found: $llamaModel" -ForegroundColor Red
+        Write-Host "  Check config.yaml → llama_model" -ForegroundColor Yellow
+        exit 1
+    }
+
+    Write-Host "  Starting llama-server (Vulkan backend, ngl=99)..."
+
+    # Kill stale processes
+    Get-Process llama-server -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 1
+
+    # Vulkan 参数：
+    # - ngl 99: 全部层 offload 到 GPU（Vulkan 统一内存，比 CUDA 宽松）
+    # - 没有 --flash-attn: Vulkan 后端不支持
+    # - 没有 -ctk/-ctv: CUDA 专属 KV cache 量化
+    # - --no-mmap: 保留，避免 16GB 模型吃满系统 RAM
+    $llamaArgs = @(
+        '-m', $llamaModel,
+        '-c', '120000',
+        '-ngl', '99',
+        '--cpu-moe',
+        '--batch-size', '2048',
+        '--ubatch-size', '1024',
+        '--threads', '24',
+        '--api-key', '***',
+        '-rea', 'off',
+        '--jinja',
+        '--cache-ram', '5000',
+        '--parallel', '1',
+        '--kv-unified',
+        '--no-mmap',
+        '--port', $llamaPort
+    )
+
+    $null = Start-Process -FilePath $llamaExe -ArgumentList $llamaArgs -WindowStyle Hidden
+
+    # Wait for ready
+    Write-Host "  Waiting for llama-server to load model..."
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    $maxWait = 300
+    $ready = $false
+    while ($sw.Elapsed.TotalSeconds -lt $maxWait) {
+        try {
+            $r = Invoke-WebRequest -Uri "http://127.0.0.1:${llamaPort}/health" -TimeoutSec 3 -UseBasicParsing
+            if ($r.StatusCode -eq 200) {
+                $took = [math]::Round($sw.Elapsed.TotalSeconds, 1)
+                Write-Host "  llama-server ready! (${took}s)" -ForegroundColor Green
+                $ready = $true
+                break
+            }
+        } catch {}
+        Start-Sleep -Seconds 2
+    }
+    if (-not $ready) {
+        Write-Host "  WARNING: llama-server not responding after ${maxWait}s — continuing anyway" -ForegroundColor Yellow
+    }
+}
+
+# ========== 2. Live2D Bridge ==========
+Write-Host "[2/3] Live2D Bridge" -ForegroundColor Yellow
+
+if (Test-Online 19200 "Live2D Bridge") {
+    # already up — skip
+} else {
+    $live2dDir = Join-Path $scriptRoot "live2d"
+    if (-not (Test-Path (Join-Path $live2dDir "live2d-bridge.mjs"))) {
+        Write-Host "  WARNING: live2d-bridge.mjs not found in $live2dDir" -ForegroundColor Yellow
+    } else {
+        Write-Host "  Starting Live2D Bridge..."
+        $null = Start-Process -FilePath node -ArgumentList "live2d-bridge.mjs" -WorkingDirectory $live2dDir -WindowStyle Hidden
+        Start-Sleep -Seconds 2
+
+        $sw2 = [Diagnostics.Stopwatch]::StartNew()
+        $ready2 = $false
+        while ($sw2.Elapsed.TotalSeconds -lt 10) {
+            try {
+                $null = Invoke-WebRequest -Uri "http://localhost:19200/api/status" -TimeoutSec 2 -UseBasicParsing
+                Write-Host "  Live2D Bridge ready! (port 19200)" -ForegroundColor Green
+                $ready2 = $true
+                break
+            } catch {}
+            Start-Sleep -Seconds 1
+        }
+        if (-not $ready2) {
+            Write-Host "  WARNING: Bridge not responding after 10s" -ForegroundColor Yellow
+        }
+    }
+}
+
+# ========== 3. OpenClaw Gateway ==========
+Write-Host "[3/3] OpenClaw Gateway" -ForegroundColor Yellow
+
+try {
+    $gwStatus = openclaw gateway status 2>&1
+    if ($gwStatus -match 'running') {
+        Write-Host "  Gateway already running" -ForegroundColor Green
+    } else {
+        Write-Host "  Starting gateway..."
+        openclaw gateway start
+        Start-Sleep -Seconds 2
+        Write-Host "  Gateway started" -ForegroundColor Green
+    }
+} catch {
+    Write-Host "  WARNING: Could not check/start gateway: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
+# ========== Done ==========
+Write-Host ""
+Write-Host "============================================" -ForegroundColor Green
+Write-Host "  All services ready! (Vulkan)" -ForegroundColor Green
+Write-Host "  llama-server : http://127.0.0.1:${llamaPort}" -ForegroundColor Green
+Write-Host "  Live2D Bridge: http://localhost:19200" -ForegroundColor Green
+Write-Host "  Gateway      : http://127.0.0.1:18789" -ForegroundColor Green
+Write-Host "============================================" -ForegroundColor Green
