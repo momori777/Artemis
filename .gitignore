@@ -121,3 +121,12 @@ package-lock.json
 
 # 后宫角色卡 - 保持版本控制
 !skills/harem/
+
+# Sakura 桌宠 - 运行时缓存
+skills/sakura/runtime/
+skills/sakura/__pycache__/
+skills/sakura/app/**/__pycache__/
+skills/sakura/third_party/mem0_broken/
+# Sakura 运行时生成
+skills/sakura/data/memory_curation_state.json
+skills/sakura/playwright_browser/

@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 chcp 65001 > nul
 set "PRJ_ROOT=%~dp0"
 set "SAKURA_PRJ_ROOT=%PRJ_ROOT%"
@@ -14,18 +15,32 @@ if errorlevel 1 (
 )
 
 REM ============================================================
-REM 检测 Python：优先使用 runtime/python.exe，其次系统 Python
+REM 检测 Python：runtime > Python 3.10 > Python 3.11 > Python 3.12 > 系统Python
+REM PySide6 对 Python 3.13+ 兼容性不佳，优先使用 3.10-3.12
 REM ============================================================
 if exist "%PRJ_ROOT%\runtime\python.exe" (
     set "PYTHON_EXE=%PRJ_ROOT%\runtime\python.exe"
+    echo [OK] 使用 runtime\python.exe
 ) else (
-    where python > nul 2>&1
-    if errorlevel 1 (
-        echo [错误] 未检测到 Python，请先运行 install.bat 安装依赖
-        pause
-        exit /b 1
+    set "PYTHON_EXE="
+    set "PYTHON_310=!LOCALAPPDATA!\Programs\Python\Python310\python.exe"
+    set "PYTHON_311=!LOCALAPPDATA!\Programs\Python\Python311\python.exe"
+    set "PYTHON_312=!LOCALAPPDATA!\Programs\Python\Python312\python.exe"
+    if exist "!PYTHON_310!" set "PYTHON_EXE=!PYTHON_310!"
+    if exist "!PYTHON_311!" if "!PYTHON_EXE!"=="" set "PYTHON_EXE=!PYTHON_311!"
+    if exist "!PYTHON_312!" if "!PYTHON_EXE!"=="" set "PYTHON_EXE=!PYTHON_312!"
+    if not "!PYTHON_EXE!"=="" (
+        echo [OK] 使用 !PYTHON_EXE!
+    ) else (
+        where python > nul 2>&1
+        if errorlevel 1 (
+            echo [错误] 未检测到 Python 3.10-3.12，请先运行 install.bat 安装依赖
+            pause
+            exit /b 1
+        )
+        set "PYTHON_EXE=python"
+        echo [OK] 使用 PATH 中的 Python
     )
-    set "PYTHON_EXE=python"
 )
 
 REM ============================================================

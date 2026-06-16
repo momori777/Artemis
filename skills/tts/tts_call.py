@@ -111,6 +111,31 @@ def _resolve_ref_dir():
 
 REF_DIR = _resolve_ref_dir()
 
+# ========== 角色 → 模型权重映射 ==========
+def _resolve_weight_paths():
+    """根据活跃角色解析 SoVITS 模型权重，支持环境变量覆盖。
+    Sakura 角色: 切换到 Sakura 专用权重
+    其他: 使用 weight.json 默认值（夏目）
+    环境变量 gpt_path / sovits_path 可覆盖
+    """
+    chara = _detect_character()
+    # 如果环境变量已设置，优先使用
+    if os.environ.get("gpt_path") and os.environ.get("sovits_path"):
+        return
+    if chara and chara == "sakura":
+        gpt_name = "Sakura-e15.ckpt"
+        sovits_name = "Sakura_e8_s7176.pth"
+        gpt_dir = os.path.join(_cfg['sovits_root'], 'GPT_weights_v2Pro')
+        sovits_dir = os.path.join(_cfg['sovits_root'], 'SoVITS_weights_v2Pro')
+        gpt_path = os.path.join(gpt_dir, gpt_name)
+        sovits_path = os.path.join(sovits_dir, sovits_name)
+        if os.path.exists(gpt_path) and os.path.exists(sovits_path):
+            os.environ["gpt_path"] = gpt_path
+            os.environ["sovits_path"] = sovits_path
+            print(f"[WEIGHTS] Sakura: {gpt_name} + {sovits_name}", file=sys.stderr)
+
+_resolve_weight_paths()
+
 
 def _load_ref_waves(ref_dir):
     """扫描参考音频目录，按文件名约定归类。

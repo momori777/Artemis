@@ -256,13 +256,13 @@ class AgentRuntime:
                         visible_browser_mode=visible_browser_guard_active,
                     )
                 )
+                resolved_temperature, resolved_extra = self._resolve_dialogue_params()
                 turn = self.api_client.complete_with_tools(
                     system_prompt,
                     working_messages,
                     tools=tool_defs,
                     tool_choice="auto",
-                    resolved_temperature, resolved_extra = self._resolve_dialogue_params()
-                temperature=resolved_temperature,
+                    temperature=resolved_temperature,
                     structured_response=True,
                     **(resolved_extra),
                 )
