@@ -58,7 +58,7 @@ models:
   # =========================================================================
   # GPT-SoVITS v2 Pro — 声优权重（自训练）
   # =========================================================================
-  - name: GPT-SoVITS 声优权重
+  - name: GPT-SoVITS 声优权重 (夏目)
     type: SoVITS ckpt + GPT pth (共约 303 MB)
     repo: TAOTAO777/ai-girlfriend-natsume
     files:
@@ -72,6 +72,21 @@ models:
       set HF_ENDPOINT=https://hf-mirror.com
       hf download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/ --local-dir gpt-sovits-weights --include "*.ckpt" "*.pth"
     note: 自训练声优模型，需两个文件配对使用。用你自己的声优数据训练替代
+
+  - name: GPT-SoVITS 声优权重 (夜乃桜 Sakura)
+    type: SoVITS ckpt + GPT pth (共约 313 MB)
+    repo: TAOTAO777/ai-girlfriend-natsume
+    files:
+      - repo_path: gpt-sovits-weights/sakura/Sakura-e15.ckpt
+        local_path: ${SOVITS_SAKURA_DIR:-skills/tts/sovits_models/sakura/}
+        note: SoVITS 权重
+      - repo_path: gpt-sovits-weights/sakura/Sakura_e8_s7176.pth
+        local_path: ${SOVITS_SAKURA_DIR:-skills/tts/sovits_models/sakura/}
+        note: GPT 权重（配对使用）
+    download: |
+      set HF_ENDPOINT=https://hf-mirror.com
+      hf download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/sakura/ --local-dir skills/tts/sovits_models/sakura
+    note: 夜乃桜音声模型，与夏目共用 GPT-SoVITS 推理服务（API）
 
   # =========================================================================
   # 本地 Embedding 模型 — 语义记忆向量化

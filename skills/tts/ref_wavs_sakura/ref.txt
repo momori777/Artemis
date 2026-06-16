@@ -1,0 +1,5 @@
+voice/refs/tone_refs/00_中性_VO01_2785.ogg|JA|でも私、初めて君に会った時、 思ったよ|中性
+voice/refs/tone_refs/01_不满_VO01_3365.ogg|JA|……何で君は、私のこと、 幸せにするのがそんなに上手なの|不满
+voice/refs/tone_refs/03_害羞_VO01_3976.ogg|JA|……み、皆がいるとこで、 あんまり言わないで。そういうこと|害羞
+voice/refs/tone_refs/05_请求_VO01_1215.wav|JA|お願いね。私は皆の分の 生徒会の仕事を片付けておくから|请求
+voice/refs/tone_refs/07_惊讶_VO01_2659.wav|JA|え、すごい。音、聞こえるの？|惊讶
