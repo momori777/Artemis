@@ -120,13 +120,15 @@ elif [[ "$(uname)" == "Darwin" ]]; then
     info "RAM: ${mem_gb} GB"
 fi
 
-# Network
+# Network — 国内优先走 hf-mirror
+export HF_ENDPOINT="https://hf-mirror.com"
 if command -v curl &>/dev/null; then
-    if curl -s --connect-timeout 5 https://huggingface.co >/dev/null 2>&1; then
-        ok "Network: huggingface.co reachable"
+    if curl -s --connect-timeout 5 https://hf-mirror.com >/dev/null 2>&1; then
+        ok "Network: hf-mirror.com reachable"
+    elif curl -s --connect-timeout 5 https://huggingface.co >/dev/null 2>&1; then
+        ok "Network: huggingface.co reachable (direct)"
     else
-        warn "Cannot reach huggingface.co — model download may fail"
-        info "  Tip: export HF_ENDPOINT=https://hf-mirror.com"
+        warn "Cannot reach hf-mirror.com or huggingface.co"
     fi
 fi
 

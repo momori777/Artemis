@@ -20,6 +20,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# 国内用户通过 hf-mirror.com 加速下载
+$env:HF_ENDPOINT = "https://hf-mirror.com"
+
 if ($Live2DOnly) {
     Write-Host "Live2D-only mode" -ForegroundColor Cyan
     $Models = @()

@@ -15,6 +15,9 @@
 
 set -euo pipefail
 
+# 国内用户通过 hf-mirror.com 加速下载
+export HF_ENDPOINT="https://hf-mirror.com"
+
 HF_REPO="TAOTAO777/ai-girlfriend-natsume"
 BASE_DIR="${1:-.}"
 BASE_DIR="$(cd "$BASE_DIR" && pwd)"

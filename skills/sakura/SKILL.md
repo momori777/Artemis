@@ -353,7 +353,7 @@ notepad data\config\api.yaml
 2. **Python 环境：** `start.bat` 会优先使用 `runtime\python.exe`，不存在时使用系统 Python。Release 完整包自带 `runtime/`。
 3. **模型要求：** 必须使用多模态模型（如 Gemini Flash）。DeepSeek 系列不支持视觉，会导致屏幕观察等功能失效。
 4. **HF 缓存：** `start.bat` 设置 `HF_HOME` 和 `SENTENCE_TRANSFORMERS_HOME` 到 `runtime/hf-cache/`，避免重复下载嵌入模型。
-5. **角色包：** 需要从 GitHub Releases 或百度网盘下载角色包（含立绘和声线权重），通过设置页导入。
+5. **角色包：** 需要从 GitHub Releases 下载角色包（含立绘和声线权重），通过设置页导入。
 6. **Git 子模块：** 本项目是 `sakura` 源码的完整克隆（非 git submodule），放在 `{{PROJECT_ROOT}}/skills/sakura/` 下。
 7. **授权状态：** 作者 Rvosy 已在 Issue #38 中同意引用（"可以的，这段时间太忙没时间加开源协议，之后会给项目加一个相对宽松一点的开源协议"）。
 
@@ -366,7 +366,7 @@ notepad data\config\api.yaml
 
 - 项目主页：https://github.com/Rvosy/Sakura
 - Releases 下载：https://github.com/Rvosy/Sakura/releases
-- 角色包网盘：https://pan.baidu.com/s/5ZXvAi6n6i7-OJAYeWDpprg
+
 - API 中转站推荐：https://api.gemai.cc/register?aff=rwbQ
 - Issue #38（授权记录）：https://github.com/Rvosy/Sakura/issues/38
 - AI_Girlfriend 项目：https://github.com/momori777/openclaw_based_ai_girlfriend
