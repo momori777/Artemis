@@ -106,13 +106,27 @@ def load_model(model_size=MODEL_SIZE):
     except Exception:
         print("[ASR] torch 不可用，使用 CPU 推理", file=sys.stderr, flush=True)
 
-    model = WhisperModel(
-        model_size,
-        device=device,
-        compute_type=compute_type,
-        download_root=MODEL_CACHE_DIR,
-        local_files_only=False,
-    )
+    # 网络不通时尝试从缓存加载
+    try:
+        model = WhisperModel(
+            model_size,
+            device=device,
+            compute_type=compute_type,
+            download_root=MODEL_CACHE_DIR,
+            local_files_only=False,
+        )
+    except Exception as e:
+        if "ConnectTimeout" in str(e) or "LocalEntryNotFoundError" in str(e):
+            print(f"[ASR] 网络不通，尝试从缓存加载...", file=sys.stderr, flush=True)
+            model = WhisperModel(
+                model_size,
+                device=device,
+                compute_type=compute_type,
+                download_root=MODEL_CACHE_DIR,
+                local_files_only=True,
+            )
+        else:
+            raise
 
     print(f"[ASR] 模型就绪 (device={device}, compute_type={compute_type})",
           file=sys.stderr, flush=True)
@@ -153,7 +167,7 @@ def transcribe(model, audio_path):
         "language_probability": f"{info.language_probability:.4f}",
         "duration_seconds": f"{info.duration:.1f}",
         "text": text,
-        "device": model.model.device.type if hasattr(model.model, 'device') else "unknown",
+        "device": model.model.device if isinstance(model.model.device, str) else (model.model.device.type if hasattr(model.model, 'device') else "unknown"),
     }
 
     meta_path = os.path.join(OUTPUT_DIR, os.path.splitext(os.path.basename(audio_path))[0] + ".json")
