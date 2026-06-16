@@ -491,6 +491,5 @@ OpenClaw Gateway ──── Sakura Desktop Pet (PySide6)
 ## 🙏 Credits
 
 - [@Rvosy](https://github.com/Rvosy) — Creator of [Sakura Desktop Pet](https://github.com/Rvosy/Sakura), authorized for inclusion (Issue #38)
-- [@momori777](https://github.com/momori777) — Creator of [Artemis](https://github.com/momori777/Artemis), character card source for Yono Sakura
 - [@guansss](https://github.com/guansss) — Creator of [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display)
 - [Live2D Inc.](https://www.live2d.com) — Cubism SDK (non-commercial use)
