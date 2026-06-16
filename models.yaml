@@ -111,16 +111,19 @@ models:
   # =========================================================================
   - name: whisper-small
     type: CTranslate2 (faster-whisper, 461 MB, ~1.5GB VRAM GPU)
-    repo: TAOTAO777/ai-girlfriend-natsume
-    repo_path: asr/faster-whisper-small/
+    repo: Systran/faster-whisper-small
+    repo_path: N/A (auto-cached to ~/.cache/asr_models/)
     local_path: ${ASR_MODEL_CACHE_DIR:-~/.cache/asr_models/}
     download: |
-      hf download TAOTAO777/ai-girlfriend-natsume asr/faster-whisper-small/ --local-dir ~/.cache/asr_models/models--Systran--faster-whisper-small
+      # 国内用户设置 mirror 环境变量:
+      #   set HF_ENDPOINT=https://hf-mirror.com
+      # 首次运行 ASR 自动下载，后续从缓存加载
     upstream: https://huggingface.co/Systran/faster-whisper-small
+    mirror: https://hf-mirror.com/Systran/faster-whisper-small
     license: MIT
     note: |
       Whisper small model (74M params, 461MB), optimized for CTranslate2
       GPU inference ~1.5GB VRAM, compatible with llama on 8GB cards
       Supports 99 languages, VAD filter for silence removal
-      Auto-download from upstream on first use; mirror on TAOTAO777 for China access
+      国内用户: export HF_ENDPOINT=https://hf-mirror.com
       See skills/asr/ for usage
