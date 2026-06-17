@@ -3,7 +3,7 @@
 ## 1. Start
 
 ```powershell
-.\start.ps1
+.\start.ps1 or cmd shiki
 ```
 
 Launches in order: llama-server → Live2D Bridge → Sakura Desktop Pet → OpenClaw Gateway.
@@ -12,7 +12,7 @@ First-timers: run `quick_setup.ps1` to generate `config.yaml` with your local pa
 ## 2. Stop
 
 ```powershell
-.\start.ps1 -Stop
+.\start.ps1 -Stop or cmd shiki -Stop
 ```
 
 Or just tell Natsume "goodbye" in WebChat / QQ / Telegram — she shuts everything down herself.
