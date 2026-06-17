@@ -498,6 +498,5 @@ OpenClaw Gateway ──── Sakura 桌宠 (PySide6)
 ## 🙏 致谢
 
 - [@Rvosy](https://github.com/Rvosy) — [Sakura Desktop Pet](https://github.com/Rvosy/Sakura) 作者，已授权收录（Issue #38）
-- [@momori777](https://github.com/momori777) — [Artemis](https://github.com/momori777/Artemis) 作者，夜乃桜角色卡来源
 - [@guansss](https://github.com/guansss) — [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display) 作者
 - [Live2D Inc.](https://www.live2d.com) — Cubism SDK（非商业用途）
