@@ -1,43 +1,42 @@
-# AI Girlfriend 四季夏目 - 路径配置模板
-# 
-# 使用方法: 运行 quick_setup.ps1 交互式填写，或复制此文件为 config.yaml 手动编辑
-# config.yaml 已被 .gitignore 忽略，不会提交到 GitHub
+# AI Girlfriend - 路径配置文件 (模板)
+# 每个人环境和盘符不同，clone后复制此文件为 config.yaml 并修改路径
+#
+# 自动配置方式: 运行 quick_setup.ps1 交互式填写
+# 手动配置方式: 复制此文件为 config.yaml，修改下面各路径
 
 # ============================================================
 # OpenClaw workspace (agent 工作区)
-# 例: C:\\Users\\你的用户名\\.openclaw\\workspace
 # ============================================================
-workspace: "{{OPENCLAW_WORKSPACE}}"
+workspace: "填写 OpenClaw workspace 路径，例如 C:\\Users\\用户名\\.openclaw\\workspace"
 
 # ============================================================
-# 媒体输出目录 (qqbot channel 的发文件目录)
-# 例: C:\\Users\\你的用户名\\.openclaw\\media\\qqbot
+# 媒体输出目录 (用于 qqbot channel 等发送文件)
 # ============================================================
-media_qqbot_audio: "{{MEDIA_AUDIO_DIR}}"
-media_qqbot_images: "{{MEDIA_IMAGES_DIR}}"
+media_qqbot_audio: "填写音频输出路径"
+media_qqbot_images: "填写图片输出路径"
 
 # ============================================================
-# ComfyUI 文生图 (秋叶整合包或原版)
+# ComfyUI 文生图
 # ============================================================
-comfyui_root: "{{COMFYUI_ROOT}}"
-comfyui_python: "{{COMFYUI_PYTHON}}"
-comfyui_checkpoints_dir: "{{COMFYUI_CHECKPOINTS}}"
-# ComfyUI 推理过程中的临时输出; PS脚本会将成品 copy 到 media_qqbot_images
-comfyui_temp_output_dir: "{{COMFYUI_TEMP_OUTPUT}}"
+comfyui_root: "填写 ComfyUI 根目录，例如 E:\\comfyui\\ComfyUI-aki-v3\\ComfyUI"
+comfyui_python: "填写 ComfyUI 使用的 python.exe 路径"
+comfyui_checkpoints_dir: "填写 checkpoints 模型目录"
+# ComfyUI 推理过程中的临时输出; PS 脚本会将成品 copy 到 media_qqbot_images
+comfyui_temp_output_dir: "填写临时输出目录"
 
 # ============================================================
 # GPT-SoVITS v2 Pro (TTS)
 # ============================================================
-sovits_root: "{{SOVITS_ROOT}}"
-sovits_python: "{{SOVITS_PYTHON}}"
-# TTS 输出 wav 后, PS脚本会将成品 copy 到 media_qqbot_audio
-tts_temp_output_dir: "{{TTS_TEMP_OUTPUT}}"
+sovits_root: "填写 GPT-SoVITS 根目录"
+sovits_python: "填写 GPT-SoVITS 使用的 python.exe 路径"
+# TTS 输出 wav 后, PS 脚本会将成品 copy 到 media_qqbot_audio
+tts_temp_output_dir: "填写 TTS 临时输出目录"
 
 # ============================================================
 # llama.cpp (本地 LLM)
 # ============================================================
-llama_exe: "{{LLAMA_EXE}}"
-llama_model: "{{LLAMA_MODEL_PATH}}"
-llama_log_dir: "{{LLAMA_LOG_DIR}}"
-restart_script: "{{RESTART_SCRIPT}}"
+llama_exe: "填写 llama-server.exe 路径"
+llama_model: "填写 GGUF 模型文件路径"
+llama_log_dir: "填写 llama 日志输出目录"
+restart_script: "填写 llama 重启脚本路径"
 llama_port: 8080
