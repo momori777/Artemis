@@ -92,6 +92,7 @@
 - 🎭 **Live2D 角色模型** — 实时 Live2D 渲染，情绪驱动表情 & 对话气泡（夏目 / 亚托莉 L2D；夜乃桜立绘模式）
 - 🧠 **显存调度器** — 8 GB 显存上自动调度 llama-server ↔ TTS/ComfyUI；ASR 可共存
 - 💾 **角色扮演记忆** — 对话摘要持久化到 `memory/role_play/`
+- 🧠 **长期记忆 (mem0)** — LLM 驱动的 ADD-Only 事实提取；语义向量 + BM25 关键词 + 实体链接三路混合检索；基于 Qdrant；按角色隔离记忆；自动同步到 markdown 供 OpenClaw 索引
 
 ## 模型
 
@@ -107,6 +108,7 @@
 | **GPT-SoVITS 语音权重** | TTS 语音合成 | ~303 MB |
 | **夜乃桜 SoVITS 语音权重** | TTS 语音合成（桜声线） | ~313 MB |
 | **all-MiniLM-L6-v2** | 语义 Embedding（mem0 记忆） | ~80 MB |
+|  | → 路径：`embedding/all-MiniLM-L6-v2/`（HF 仓库） | |
 | **四季夏目 Live2D 模型** | Live2D 角色渲染 | ~180 MB (压缩包) |
 
 ### 一键下载
@@ -254,6 +256,12 @@ AI_Girlfriend/                        # OpenClaw 工作区根目录
     ├── asr/                          # 语音识别技能
     │   ├── run_asr.ps1               # Faster-Whisper 启动器 (~1.5GB 显存)
     │   └── asr_call.py               # Whisper small 模型推理
+    ├── shared/                       # 共享基础设施
+    │   ├── embedding_server.py       # OpenAI 兼容的嵌入 API（端口 9999）
+    │   ├── mem0_bridge.py            # mem0 Qdrant ↔ OpenClaw 记忆桥接
+    │   ├── start_embedding_server.ps1 # 自动启动嵌入服务
+    │   ├── llama_lifecycle.py        # Llama 启动/停止管理
+    │   └── llama_utils.py            # Llama 工具函数
     ├── sakura/                       # Sakura 桌宠 (PySide6 GUI)
     │   ├── SKILL.md                  # Sakura 技能文档
     │   ├── main.py                   # 程序入口
@@ -270,6 +278,7 @@ AI_Girlfriend/                        # OpenClaw 工作区根目录
 
 | 技能 | 类型 | 杀 Llama？ | 机制 |
 |-------|------|-------------|-----------|
+| **Embedding** | 后台进程 | ❌ 否 | all-MiniLM-L6-v2 (CPU, 384维) 端口 9999 — OpenClaw 记忆搜索 + mem0 桥接 |
 | **Live2D** | HTTP exec | ❌ 否 | 直接 HTTP 调 `localhost:19200` 桥 |
 | **TTS** | sessions_spawn | ✅ 是 | 杀 llama → GPT-SoVITS → 重启 llama |
 | **ComfyUI** | sessions_spawn | ✅ 是 | 杀 llama → 画图 → 重启 llama |
@@ -379,9 +388,20 @@ powershell -File quick_setup.ps1
 ### 4. 快速启动
 
 ```powershell
-# 一键启动所有服务（llama + Live2D + Gateway）
+# 一键启动所有服务（llama + Embedding + Live2D + Gateway）
 powershell -File start.ps1
 ```
+
+启动顺序：
+```
+[1/5] llama-server        (8080, Qwen3.6-35B, ngl=41)
+[2/5] Embedding Server    (9999, all-MiniLM-L6-v2, CPU, ~100MB 内存)
+[3/5] Live2D Bridge       (19200, pixi-live2d-display)
+[4/5] OpenClaw Gateway    (18789)
+[5/5] llama-watchdog      （崩溃自动重启）
+```
+
+**关闭：`shiki.cmd -Stop`** — 优雅关闭所有服务（llama → live2d → sakura → embedding → comfyui → gateway → cleanup）。
 
 ### 5. 单独启动 Live2D
 
@@ -420,11 +440,11 @@ OpenClaw Gateway ──── Sakura 桌宠 (PySide6)
   │                     (共享 llama-client)
   │                          │
   ▼                          ▼
-  ┌───── llama-server :8080 ─────┐
-  │         (Qwen3.6-35B)        │
-  ├──────────────────────────────┤
-  │  Main session（角色扮演）     │
-  │  TTS（杀 llama → GPU → 重启） │
+  ┌───── llama-server :8080 ─────┐    ┌── Embedding :9999 (all-MiniLM-L6-v2, CPU) ──┐
+  │         (Qwen3.6-35B)        │    │  ├── OpenClaw 混合记忆搜索                   │
+  ├──────────────────────────────┤    │  ├── mem0 Qdrant（多角色向量存储）           │
+  │  Main session（角色扮演）     │    │  └── mem0 桥接 → memory/_mem0_auto.md       │
+  │  TTS（杀 llama → GPU → 重启） │    └─────────────────────────────────────────────┘
   │  ComfyUI（杀 llama → GPU → 重启）│
   │  ASR（Whisper → 不杀）        │
   │  Sakura 桌宠（共享，不杀）     │
@@ -466,12 +486,14 @@ OpenClaw Gateway ──── Sakura 桌宠 (PySide6)
 
 | 技能 | 位置 | Llama 交互 |
 |-------|----------|-------------------|
+| **Embedding** | `skills/shared/` | all-MiniLM-L6-v2（CPU，约 100MB 内存）端口 9999——不碰 GPU |
 | **Live2D** | `skills/live2d/` | 仅 HTTP API——完全不动 llama |
 | **TTS** | `skills/tts/` | 杀 llama → GPT-SoVITS → 重启 + 等待 /health |
 | **ComfyUI** | `skills/comfyui/` | 杀 llama → 画图 → 重启 + 等待 /health |
 | **ASR** | `skills/asr/` | Faster-Whisper small——与 llama 在 8GB 显存上共存 |
-| **Sakura** | `skills/sakura/` | 共享 llama-client；检测掉线 → 自动恢复 |
-| **角色导入手** | `skills/character_importer/` | Agent 层面——不需要 GPU；写入 SOUL/IDENTITY + 记忆目录 |
+| **Sakura** | `skills/sakura/` | 共享 llama-client；检测掉线 → 自动恢复；内置 mem0 记忆 |
+| **Memory Bridge** | `skills/shared/` | 每 30 分钟同步 mem0 Qdrant → `memory/role_play/<角色>/_mem0_auto.md` |
+| **角色导入** | `skills/character_importer/` | Agent 层面——不需要 GPU；写入 SOUL/IDENTITY + 记忆目录 |
 
 **显存调度流程**：
 1. 主 session 收到用户请求 → 组装指令
