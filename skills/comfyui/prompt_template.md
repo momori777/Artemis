@@ -42,6 +42,9 @@ detailed face, detailed eyes, cinematic lighting, beautiful detailed background,
 6. **水手服日常**
    - 场景: classroom, sunny afternoon, chalkboard, desk
    - 着装: sailor school uniform, navy blue seifuku, white collar, red necktie, pleated skirt
+7. **赛车女郎 Cosplay**
+   - 场景: indoor studio, soft lighting, checkered flag backdrop, racing stripes
+   - 着装: tight red and white racing suit, low-cut, zipper front, short skirt, thigh-high white boots, racing helmet under arm, glossy skin, garter belt hint
 
 ---
 

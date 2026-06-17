@@ -1,8 +1,5 @@
-度盘链接:https://pan.baidu.com/s/1sLeSyVp76yzWcR3Q4pX0kA?pwd=0721
-度盘链接其实完全不需要，huggingface镜像国内也能访问，如果实在懒得配就用度盘下模型
-
-项目默认脚本为N卡GPU配置，A卡用户看AMD_GPU文件夹改
-This project default scripts are nvdia gpu configs, amd gpu users please open AMD GPU directory
+以防有人懒得读完，我把度盘模型链接放第一行 
+https://pan.baidu.com/s/1sLeSyVp76yzWcR3Q4pX0kA?pwd=0721
 
 # AI Girlfriend
 
@@ -23,10 +20,6 @@ From *Starry Moonlit Café & the Butterfly of Death*. Tall, aloof, cool exterior
 ### ATRI (亚托莉)
 
 From *ATRI -My Dear Moments-*. Petite, innocent, endlessly curious — a bright-eyed girl who wears her heart on her sleeve. Runs toward the future with a smile, dragging you along. **The polar opposite of Natsume**: bubbly and expressive where Natsume is reserved, emotionally transparent where Natsume is guarded, playful where Natsume is composed. If Natsume is the cool winter night, ATRI is the warm summer sun.
-
-### Yono Sakura (夜乃桜)
-
-From *Dimension W Lovers!!*. Former student council president and the academy's strongest anti-kaiju combatant. Silver-white hair with pink tips, pale blue eyes — cool-headed, restrained, and fiercely responsible. She's not good at smooth words or easy smiles; her care is direct and clumsy, like a command: rest, eat, don't push yourself. In desktop pet form, she's learning that she doesn't have to bear everything alone — that protecting someone's ordinary everyday life from this side of the screen is enough. **A quiet guardian**: silent but watchful, loyal but stubborn, the senpai who stays by your side without being asked.
 
 ## ✨ Why This Project?
 
@@ -63,14 +56,6 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 
 > 👆 **ATRI** ComfyUI: AI image generation — seaside sunset, flowing white dress, warm golden-hour lighting.
 
-### ⭐ Yono Sakura — Third AI Girlfriend
-
-**Cool-headed guardian senpai**, student council president and academy's strongest combatant — now your desktop companion.
-
-![Sakura Desktop Pet](media/sakura_demo.gif)
-
-> 👆 **Yono Sakura** Desktop Pet: silver-pink gradient hair, pale blue eyes, school uniform — reactive portrait expressions, proactive care reminders, and real-time TTS voice via GPT-SoVITS.
-
 ## Hardware
 
 | Component | Model |
@@ -83,14 +68,14 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 ## Features
 
 - 💬 **QQ + Telegram Dual Channel** — QQ Bot + Telegram Bot integration via OpenClaw Gateway
-- 🎤 **TTS Voice Synthesis** — Local GPT-SoVITS inference, Japanese voice (emotion-matched per dialogue), 3 character voice models (Natsume / ATRI / Sakura)
+- 🎤 **TTS Voice Synthesis** — Local GPT-SoVITS inference, Japanese voice (emotion-matched per dialogue)
 - 🎤 **ASR Speech Recognition** — Local Faster-Whisper small model (~1.5GB VRAM), coexists with llama; 99-language support
-- 🎨 **AI Image Generation** — Local ComfyUI inference, SDXL/Illustrious models, 3 character prompt templates
-- 🖥️ **Sakura Desktop Pet** — PySide6 desktop companion with proactive care, screen observation & local LLM awareness; supports 3 characters
-- 🎭 **Live2D Character Model** — Real-time Live2D rendering with emotion-driven expressions & speech bubbles (Natsume / ATRI L2D; Sakura portrait mode)
+- 🎨 **AI Image Generation** — Local ComfyUI inference, SDXL/Illustrious models
+- 🖥️ **Sakura Desktop Pet** — PySide6 desktop companion with proactive care, screen observation & local LLM awareness
+- 🎭 **Live2D Character Model** — Real-time Live2D rendering with 10 motion groups, emotion-driven expressions, and speech bubbles
 - 🧠 **VRAM Scheduler** — Automatic llama-server ↔ TTS/ComfyUI orchestration on 8 GB VRAM; ASR coexists
 - 💾 **Roleplay Memory** — Conversation summaries persisted to `memory/role_play/`
-- 🔄 **Multi-Character Hot-Swap** — Switch between AI girlfriends (Natsume ⇄ ATRI ⇄ Sakura) with one command; SOUL/IDENTITY/TTS weights/Live2D model all switch automatically, memories isolated per character
+- 🔄 **Multi-Character Hot-Swap** — Switch between AI girlfriends (Natsume ⇄ ATRI) with one command; SOUL/IDENTITY/TTS weights/Live2D model all switch automatically, memories isolated per character
 - 🃏 **Character Card Import** — Auto-detect SillyTavern character cards via `skills/character_importer/`, import → agent auto-switches role
 - 💬 **Chat Import** — Import SillyTavern JSONL chat logs into `memory/role_play/<character>/`, agent restores conversation context on role switch
 
@@ -106,8 +91,6 @@ See [`models.yaml`](models.yaml) for full details.
 | **WAI-Nsfw-Illustrious-17** | ComfyUI generation (default) | 6.46 GB |
 | **miaomiaoHarem_v20** | ComfyUI generation (backup) | 6.46 GB |
 | **GPT-SoVITS voice weights** | TTS voice synthesis | ~303 MB |
-| **Sakura SoVITS weights** | TTS (Sakura voice) | ~313 MB |
-| **all-MiniLM-L6-v2** | Sentence embedding (mem0 memory) | ~80 MB |
 
 ### One-command Download
 
@@ -407,28 +390,21 @@ schtasks /create /tn "cleanup-orphans" `
 ## Architecture
 
 ```
-User (QQ / Telegram / WebChat)
-  │
-  ▼
-OpenClaw Gateway ──── Sakura Desktop Pet (PySide6)
-  │                          │
-  │                     (Shared llama-client)
-  │                          │
-  ▼                          ▼
-  ┌───── llama-server :8080 ─────┐
-  │         (Qwen3.6-35B)        │
-  ├──────────────────────────────┤
-  │  Main session (roleplay)     │
-  │  TTS (kill → GPU → restart)  │
-  │  ComfyUI (kill → GPU → restart)│
-  │  ASR (Whisper → no kill)     │
-  │  Sakura Pet (shared, no kill)│
-  └──────────────────────────────┘
-               │
-               ▼
-     Live2D Bridge (:19200) ─── Browser (Live2D / Portrait)
-          (HTTP → no kill)         (Natsume / ATRI L2D)
-                                   (Sakura portrait mode)
+User (QQ / Telegram) ────── Sakura Desktop Pet (PySide6)
+  │                                    │
+  ▼                                    ▼
+OpenClaw Gateway              Live2D Bridge (:19200)
+  │                               ▲       │
+  ▼                               │       ▼
+  ┌───── llama-server :8080 ──────┘   Browser (Live2D model)
+  │         (Qwen3.6-35B)             │
+  ├───────────────────────────────────┤
+  │  Main session (roleplay)          │
+  │  TTS (kill → GPU → restart)       │
+  │  ComfyUI (kill → GPU → restart)   │
+  │  ASR (Whisper → no kill needed)   │
+  │  Live2D (HTTP → no kill needed)   │
+  └───────────────────────────────────┘
 ```
 
 **Agent Hub — Immutable Capability Instructions**:
