@@ -1,7 +1,5 @@
-度盘链接:https://pan.baidu.com/s/1sLeSyVp76yzWcR3Q4pX0kA?pwd=0721
-度盘链接其实完全不需要，huggingface镜像国内也能访问，如果实在懒得配就用度盘下模型
-
-项目默认脚本为N卡GPU配置，A卡用户看AMD_GPU文件夹改
+以防有人懒得读完，我把度盘模型链接放第一行 
+https://pan.baidu.com/s/1sLeSyVp76yzWcR3Q4pX0kA?pwd=0721
 
 # AI 女友
 
@@ -22,10 +20,6 @@
 ### 亚托莉（ATRI）
 
 出自《ATRI -My Dear Moments-》。娇小，天真烂漫，好奇心旺盛——拥有一双红宝石般清澈大眼睛的少女。总是带着笑容奔向明天，顺手拽上你。**性格与夏目完全相反**：一个热情开朗一个冷傲内敛，一个喜怒哀乐全写在脸上一个深藏不露，一个活泼好动一个沉静矜持。若说夏目是冬夜的冷月，亚托莉便是夏日的暖阳。
-
-### 夜乃桜（Yono Sakura）
-
-出自《ディメンション凸ラバース！！》。前任生徒会长，「学园」最强级别的对怪兽战力。银白色长发发尾带淡粉色渐变，浅蓝色眼瞳——冷静、克己、责任感极强。她不擅长圆滑的安慰和漂亮话；她的关心直接而笨拙，像命令一样：休息、吃饭、别逞强。桌宠形态下，她正在学习不必一个人承担一切——在屏幕这一侧守护一个普通而重要的日常就足够了。**安静的守护者**：沉默但注视，固执但忠诚，是不请自来的学姐。
 
 ## ✨ 为什么选这个项目？
 
@@ -62,14 +56,6 @@
 
 > 👆 **亚托莉** ComfyUI：AI 画图——海边夕阳，白色连衣裙飘扬，金色时分的温暖光线。
 
-### ⭐ 夜乃桜 — 第三 AI 女友
-
-**冷静的守护者学姐**，前任生徒会长、「学园」最强战力——现在成了你的桌面伴侣。
-
-![Sakura Desktop Pet](media/sakura_demo.gif)
-
-> 👆 **夜乃桜** 桌宠：银粉渐变色长发，浅蓝色眼瞳，白色学园制服——立绘表情联动、主动关怀提醒、GPT-SoVITS 实时语音。
-
 ## 硬件配置
 
 | 组件 | 型号 |
@@ -81,17 +67,18 @@
 
 ## 功能特性
 
-- 🔄 **多角色热切换** — 一键切换 AI 女友（夏目 ⇄ 亚托莉 ⇄ 夜乃樜）；SOUL/IDENTITY/TTS 权重/Live2D 模型全部自动切换，记忆按角色隔离
+- 🔄 **多角色热切换** — 一键切换 AI 女友（夏目 ⇄ 亚托莉）；SOUL/IDENTITY/TTS 权重/Live2D 模型全部自动切换，记忆按角色隔离
 - 🃏 **SillyTavern 角色卡导入** — 自动检测导入 PNG/JSON 角色卡，导入后 agent 自动切换角色
 - 💬 **聊天记录导入** — 导入 SillyTavern JSONL 对话记录到 `memory/role_play/<角色>/`，切换角色时 agent 恢复上下文
+- 🔄 **多角色热切换** — 一键切换 AI 女友（夏目 ⇄ 亚托莉）；SOUL/IDENTITY/TTS 权重/Live2D 模型全部自动切换，记忆按角色隔离
 - 🃏 **SillyTavern 角色卡导入** — 自动检测导入 PNG/JSON 角色卡，导入后 agent 自动切换角色
 - 💬 **聊天记录导入** — 导入 SillyTavern JSONL 对话记录到 `memory/role_play/<角色>/`，切换角色时 agent 恢复上下文
 - 💬 **QQ + Telegram 双通道** — 通过 OpenClaw Gateway 接入 QQ Bot 和 Telegram Bot
-- 🎤 **TTS 语音合成** — 本地 GPT-SoVITS 推理，日语语音（根据对话自动匹配情绪），3 套角色声线（夏目 / 亚托莉 / 夜乃桜）
+- 🎤 **TTS 语音合成** — 本地 GPT-SoVITS 推理，日语语音（根据对话自动匹配情绪）
 - 🎤 **ASR 语音识别** — 本地 Faster-Whisper small 模型 (~1.5GB 显存)，可与 llama 共存；支持 99 种语言
-- 🎨 **AI 画图** — 本地 ComfyUI 推理，SDXL/Illustrious 模型，3 套角色 prompt 模板
-- 🖥️ **Sakura 桌宠** — PySide6 桌面伴侣，主动关心、屏幕观察 & 本地 LLM 感知；支持 3 角色切换
-- 🎭 **Live2D 角色模型** — 实时 Live2D 渲染，情绪驱动表情 & 对话气泡（夏目 / 亚托莉 L2D；夜乃桜立绘模式）
+- 🎨 **AI 画图** — 本地 ComfyUI 推理，SDXL/Illustrious 模型
+- 🖥️ **Sakura 桌宠** — PySide6 桌面伴侣，主动关心、屏幕观察 & 本地 LLM 感知
+- 🎭 **Live2D 角色模型** — 实时 Live2D 渲染，10 个动作组，情绪驱动表情，对话气泡
 - 🧠 **显存调度器** — 8 GB 显存上自动调度 llama-server ↔ TTS/ComfyUI；ASR 可共存
 - 💾 **角色扮演记忆** — 对话摘要持久化到 `memory/role_play/`
 
@@ -107,8 +94,6 @@
 | **WAI-Nsfw-Illustrious-17** | ComfyUI 画图（默认） | 6.46 GB |
 | **miaomiaoHarem_v20** | ComfyUI 画图（备用） | 6.46 GB |
 | **GPT-SoVITS 语音权重** | TTS 语音合成 | ~303 MB |
-| **夜乃桜 SoVITS 语音权重** | TTS 语音合成（桜声线） | ~313 MB |
-| **all-MiniLM-L6-v2** | 语义 Embedding（mem0 记忆） | ~80 MB |
 | **四季夏目 Live2D 模型** | Live2D 角色渲染 | ~180 MB (压缩包) |
 
 ### 一键下载
@@ -353,8 +338,7 @@ bash download-models.sh
 
 从 HuggingFace 下载全部 5 个模型文件（约 31.7 GB），含进度显示和断点续传。
 
-> 国内用户用 hf-mirror.com 镜像下载，无需梯子：
-> `set HF_ENDPOINT=https://hf-mirror.com` 然后正常 hf download
+> 如果 HuggingFace 被墙，可以去度盘下载：https://pan.baidu.com/s/1sLeSyVp76yzWcR3Q4pX0kA?pwd=0721 提取码:0721
 
 ### 2. 配置 llama.cpp
 
@@ -414,28 +398,21 @@ schtasks /create /tn "cleanup-orphans" `
 ## 架构
 
 ```
-用户（QQ / Telegram / WebChat）
-  │
-  ▼
-OpenClaw Gateway ──── Sakura 桌宠 (PySide6)
-  │                          │
-  │                     (共享 llama-client)
-  │                          │
-  ▼                          ▼
-  ┌───── llama-server :8080 ─────┐
-  │         (Qwen3.6-35B)        │
-  ├──────────────────────────────┤
-  │  Main session（角色扮演）     │
-  │  TTS（杀 llama → GPU → 重启） │
-  │  ComfyUI（杀 llama → GPU → 重启）│
-  │  ASR（Whisper → 不杀）        │
-  │  Sakura 桌宠（共享，不杀）     │
-  └──────────────────────────────┘
-               │
-               ▼
-     Live2D Bridge (:19200) ─── Browser (Live2D / 立绘)
-          (HTTP → 不杀)          (夏目 / 亚托莉 L2D)
-                                  (夜乃桜 立绘模式)
+用户（QQ / Telegram）────── Sakura 桌宠 (PySide6)
+  │                                    │
+  ▼                                    ▼
+OpenClaw Gateway              Live2D Bridge (:19200)
+  │                               ▲       │
+  ▼                               │       ▼
+  ┌───── llama-server :8080 ──────┘   Browser (Live2D 模型)
+  │         (Qwen3.6-35B)             │
+  ├───────────────────────────────────┤
+  │  Main session（角色扮演）          │
+  │  TTS（杀 llama → GPU → 重启）     │
+  │  ComfyUI（杀 llama → GPU → 重启） │
+  │  ASR（Whisper → 不杀 llama）      │
+  │  Live2D（HTTP → 不杀 llama）      │
+  └───────────────────────────────────┘
 ```
 
 **Agent 中枢 — 角色切换不改的能力指令**：

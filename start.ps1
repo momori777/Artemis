@@ -7,6 +7,11 @@
 #   1. llama-server (从 config.yaml 读取路径, ngl=41 batch=1024/512)
 #   2. Live2D Bridge (localhost:19200)
 #   3. OpenClaw Gateway
+#   4. 启用 llama-watchdog 计划任务（崩溃自动重启守护）
+#
+# Stop 模式:
+#   1. 禁用 llama-watchdog（防止自动重启）
+#   2. 调用 shutdown_all.py 停止所有进程
 
 param([switch]$Stop)
 
@@ -15,15 +20,65 @@ $ErrorActionPreference = "Stop"
 
 $scriptRoot = $PSScriptRoot
 
-# ========== Stop mode: delegate to shutdown_all.py ==========
+# ========== Watchdog 计划任务管理 ==========
+$watchdogTaskName = "AI_Girlfriend_llama_watchdog"
+
+function Enable-Watchdog {
+    try {
+        $task = schtasks /query /tn $watchdogTaskName 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            $state = schtasks /query /tn $watchdogTaskName /fo CSV | Select-Object -Skip 1 | ConvertFrom-Csv
+            if ($state.Status -eq "Ready") {
+                Write-Host "  llama-watchdog task already enabled" -ForegroundColor Green
+                return
+            }
+            schtasks /change /tn $watchdogTaskName /enable | Out-Null
+            Write-Host "  llama-watchdog task re-enabled" -ForegroundColor Green
+        } else {
+            Write-Host "  WARNING: llama-watchdog task not found ($watchdogTaskName)" -ForegroundColor Yellow
+            Write-Host "  Create it with: schtasks /create /tn $watchdogTaskName /tr ... /sc minute /mo 10" -ForegroundColor Yellow
+        }
+    } catch {
+        Write-Host "  WARNING: Could not manage watchdog task: $_" -ForegroundColor Yellow
+    }
+}
+
+function Disable-Watchdog {
+    try {
+        $task = schtasks /query /tn $watchdogTaskName 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            schtasks /change /tn $watchdogTaskName /disable | Out-Null
+            Write-Host "  llama-watchdog task disabled (won't auto-restart)" -ForegroundColor Cyan
+        }
+    } catch {
+        # silently ignore — task might not exist
+    }
+}
+
+# ========== Stop mode ==========
 if ($Stop) {
+    Write-Host "============================================" -ForegroundColor Cyan
+    Write-Host "  四季夏目 — Shutdown" -ForegroundColor Cyan
+    Write-Host "============================================" -ForegroundColor Cyan
+    Write-Host ""
+    
+    Write-Host "[1/2] Disabling llama-watchdog..." -ForegroundColor Yellow
+    Disable-Watchdog
+    
+    Write-Host "[2/2] Stopping all processes..." -ForegroundColor Yellow
     $shutdownScript = Join-Path $scriptRoot "shutdown_all.py"
-    if (Test-Path $shutdownScript) {
-        & python $shutdownScript
-    } else {
+    if (-not (Test-Path $shutdownScript)) {
         Write-Host "ERROR: shutdown_all.py not found at $shutdownScript" -ForegroundColor Red
         exit 1
     }
+    # Resolve python exe (avoid file-association popup if 'python' missing from PATH)
+    $pyExe = (Get-Command python -ErrorAction SilentlyContinue).Source
+    if (-not $pyExe) { $pyExe = (Get-Command py -ErrorAction SilentlyContinue).Source }
+    if (-not $pyExe) {
+        Write-Host "ERROR: python not found in PATH" -ForegroundColor Red
+        exit 1
+    }
+    & $pyExe $shutdownScript
     exit $LASTEXITCODE
 }
 
@@ -56,7 +111,7 @@ Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
 # ========== 1. Llama Server ==========
-Write-Host "[1/3] llama-server" -ForegroundColor Yellow
+Write-Host "[1/4] llama-server" -ForegroundColor Yellow
 
 function Test-Online($port, $label) {
     try {
@@ -97,8 +152,8 @@ if (Test-Online $llamaPort "llama-server") {
         '-ctv', 'q8_0',
         '-ngl', '41',
         '--cpu-moe',
-        '--batch-size', '1024',
-        '--ubatch-size', '512',
+        '--batch-size', '2048',
+        '--ubatch-size', '1024',
         '--threads', '24',
         '--api-key', '***',
         '-rea', 'off',
@@ -135,7 +190,7 @@ if (Test-Online $llamaPort "llama-server") {
 }
 
 # ========== 2. Live2D Bridge ==========
-Write-Host "[2/3] Live2D Bridge" -ForegroundColor Yellow
+Write-Host "[2/4] Live2D Bridge" -ForegroundColor Yellow
 
 if (Test-Online 19200 "Live2D Bridge") {
     # already up — skip
@@ -166,7 +221,7 @@ if (Test-Online 19200 "Live2D Bridge") {
 }
 
 # ========== 3. OpenClaw Gateway ==========
-Write-Host "[3/3] OpenClaw Gateway" -ForegroundColor Yellow
+Write-Host "[3/4] OpenClaw Gateway" -ForegroundColor Yellow
 
 try {
     $gwStatus = openclaw gateway status 2>&1
@@ -182,6 +237,10 @@ try {
     Write-Host "  WARNING: Could not check/start gateway: $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
+# ========== 4. Enable Watchdog ==========
+Write-Host "[4/4] llama-watchdog" -ForegroundColor Yellow
+Enable-Watchdog
+
 # ========== Done ==========
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Green
@@ -189,4 +248,5 @@ Write-Host "  All services ready!" -ForegroundColor Green
 Write-Host "  llama-server : http://127.0.0.1:${llamaPort}" -ForegroundColor Green
 Write-Host "  Live2D Bridge: http://localhost:19200" -ForegroundColor Green
 Write-Host "  Gateway      : http://127.0.0.1:18789" -ForegroundColor Green
+Write-Host "  Watchdog     : enabled (auto-restart if crash)" -ForegroundColor Green
 Write-Host "============================================" -ForegroundColor Green
