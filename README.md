@@ -90,6 +90,7 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 - 🎭 **Live2D Character Model** — Real-time Live2D rendering with emotion-driven expressions & speech bubbles (Natsume / ATRI L2D; Sakura portrait mode)
 - 🧠 **VRAM Scheduler** — Automatic llama-server ↔ TTS/ComfyUI orchestration on 8 GB VRAM; ASR coexists
 - 💾 **Roleplay Memory** — Conversation summaries persisted to `memory/role_play/`
+- 🧠 **Long-term Memory (mem0)** — LLM-powered ADD-Only fact extraction from chat; semantic vector + BM25 keyword + entity-link hybrid search via Qdrant; per-character memory isolation; auto-synced to markdown for OpenClaw indexing
 - 🔄 **Multi-Character Hot-Swap** — Switch between AI girlfriends (Natsume ⇄ ATRI ⇄ Sakura) with one command; SOUL/IDENTITY/TTS weights/Live2D model all switch automatically, memories isolated per character
 - 🃏 **Character Card Import** — Auto-detect SillyTavern character cards via `skills/character_importer/`, import → agent auto-switches role
 - 💬 **Chat Import** — Import SillyTavern JSONL chat logs into `memory/role_play/<character>/`, agent restores conversation context on role switch
@@ -108,6 +109,7 @@ See [`models.yaml`](models.yaml) for full details.
 | **GPT-SoVITS voice weights** | TTS voice synthesis | ~303 MB |
 | **Sakura SoVITS weights** | TTS (Sakura voice) | ~313 MB |
 | **all-MiniLM-L6-v2** | Sentence embedding (mem0 memory) | ~80 MB |
+|  | → Path: `embedding/all-MiniLM-L6-v2/` (HF repo) | |
 
 ### One-command Download
 
@@ -252,6 +254,12 @@ AI_Girlfriend/                        # OpenClaw workspace root
     ├── asr/                          # Speech recognition skill
     │   ├── run_asr.ps1               # Faster-Whisper launcher (~1.5GB VRAM)
     │   └── asr_call.py               # Whisper small model inference
+    ├── shared/                       # Shared infrastructure
+    │   ├── embedding_server.py       # OpenAI-compatible embedding API (port 9999)
+    │   ├── mem0_bridge.py            # mem0 Qdrant ↔ OpenClaw memory bridge
+    │   ├── start_embedding_server.ps1 # Auto-start embedding server
+    │   ├── llama_lifecycle.py        # Llama start/stop management
+    │   └── llama_utils.py            # Llama utility functions
     ├── sakura/                       # Sakura Desktop Pet (PySide6 GUI)
     │   ├── SKILL.md                  # Sakura skill documentation
     │   ├── main.py                   # Application entry point
@@ -268,6 +276,7 @@ AI_Girlfriend/                        # OpenClaw workspace root
 
 | Skill | Type | Llama Kill? | Mechanism |
 |-------|------|-------------|-----------|
+| **Embedding** | Background process | ❌ No | all-MiniLM-L6-v2 (CPU, 384-dim) on port 9999 — OpenClaw memory search + mem0 bridge |
 | **Live2D** | HTTP exec | ❌ No | Direct HTTP calls to `localhost:19200` bridge |
 | **TTS** | sessions_spawn | ✅ Yes | Kill → GPT-SoVITS → restart llama |
 | **ComfyUI** | sessions_spawn | ✅ Yes | Kill → image gen → restart llama |
@@ -374,9 +383,20 @@ Interactive wizard — enter your local paths once, all scripts are updated auto
 ### 4. Quick Launch
 
 ```powershell
-# One-click start all services (llama + Live2D + Gateway)
+# One-click start all services (llama + Embedding + Live2D + Gateway)
 powershell -File start.ps1
 ```
+
+Startup sequence:
+```
+[1/5] llama-server        (8080, Qwen3.6-35B, ngl=41)
+[2/5] Embedding Server    (9999, all-MiniLM-L6-v2, CPU, ~100MB RAM)
+[3/5] Live2D Bridge       (19200, pixi-live2d-display)
+[4/5] OpenClaw Gateway    (18789)
+[5/5] llama-watchdog      (crash auto-restart)
+```
+
+**Shutdown: `shiki.cmd -Stop`** — gracefully stops all services (llama → live2d → sakura → embedding → comfyui → gateway → cleanup).
 
 ### 5. Start Live2D Individually
 
@@ -415,11 +435,11 @@ OpenClaw Gateway ──── Sakura Desktop Pet (PySide6)
   │                     (Shared llama-client)
   │                          │
   ▼                          ▼
-  ┌───── llama-server :8080 ─────┐
-  │         (Qwen3.6-35B)        │
-  ├──────────────────────────────┤
-  │  Main session (roleplay)     │
-  │  TTS (kill → GPU → restart)  │
+  ┌───── llama-server :8080 ─────┐    ┌── Embedding :9999 (all-MiniLM-L6-v2, CPU) ──┐
+  │         (Qwen3.6-35B)        │    │  ├── OpenClaw memory search (hybrid)        │
+  ├──────────────────────────────┤    │  ├── mem0 Qdrant (multi-character vector)   │
+  │  Main session (roleplay)     │    │  └── mem0 bridge → memory/_mem0_auto.md     │
+  │  TTS (kill → GPU → restart)  │    └─────────────────────────────────────────────┘
   │  ComfyUI (kill → GPU → restart)│
   │  ASR (Whisper → no kill)     │
   │  Sakura Pet (shared, no kill)│
@@ -461,11 +481,13 @@ OpenClaw Gateway ──── Sakura Desktop Pet (PySide6)
 
 | Skill | Location | Llama Interaction |
 |-------|----------|-------------------|
+| **Embedding** | `skills/shared/` | all-MiniLM-L6-v2 (CPU, ~100MB RAM) on port 9999 — never touches GPU |
 | **Live2D** | `skills/live2d/` | HTTP API only — never touches llama |
 | **TTS** | `skills/tts/` | Kill llama → GPT-SoVITS → restart + wait /health |
 | **ComfyUI** | `skills/comfyui/` | Kill llama → image gen → restart + wait /health |
 | **ASR** | `skills/asr/` | Faster-Whisper small — coexists with llama on 8GB |
-| **Sakura** | `skills/sakura/` | Shared llama-client; detects down → auto-resume |
+| **Sakura** | `skills/sakura/` | Shared llama-client; detects down → auto-resume; built-in mem0 memory |
+| **Memory Bridge** | `skills/shared/` | syncs mem0 Qdrant → `memory/role_play/<char>/_mem0_auto.md` every 30 min |
 | **Character Importer** | `skills/character_importer/` | Agent-level — no GPU needed; writes SOUL/IDENTITY + memory dir |
 
 **VRAM Orchestration Flow**:
@@ -491,6 +513,5 @@ OpenClaw Gateway ──── Sakura Desktop Pet (PySide6)
 ## 🙏 Credits
 
 - [@Rvosy](https://github.com/Rvosy) — Creator of [Sakura Desktop Pet](https://github.com/Rvosy/Sakura), authorized for inclusion (Issue #38)
-- [@momori777](https://github.com/momori777) — Creator of [Artemis](https://github.com/momori777/Artemis), character card source for Yono Sakura
 - [@guansss](https://github.com/guansss) — Creator of [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display)
 - [Live2D Inc.](https://www.live2d.com) — Cubism SDK (non-commercial use)
