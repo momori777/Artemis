@@ -3,7 +3,8 @@
 Artemis Graceful Shutdown
 =======================
 Closes ALL project processes: llama-server, Live2D bridge, ComfyUI,
-and runs cleanup_orphans.ps1 to kill stuck child processes + stale locks.
+OpenClaw Gateway, and runs cleanup_orphans.ps1 to kill stuck child
+processes + stale locks.
 
 Usage:
     python shutdown_all.py
@@ -19,6 +20,11 @@ import subprocess
 import socket
 import time
 import argparse
+
+# Force UTF-8 on Windows to avoid CJK garbled output in console
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 WORKSPACE = os.path.dirname(os.path.abspath(__file__))
 
@@ -159,6 +165,65 @@ def kill_comfyui():
     return False
 
 
+def _find_openclaw():
+    """Return full path to openclaw CLI, or None."""
+    candidates = [
+        os.path.expandvars(r"%APPDATA%\npm\openclaw.cmd"),
+        os.path.expandvars(r"%ProgramFiles%\nodejs\openclaw.cmd"),
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    # Try 'where' as last resort
+    try:
+        r = subprocess.run(["where", "openclaw"], capture_output=True, text=True, timeout=5)
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout.strip().splitlines()[0]
+    except Exception:
+        pass
+    return None
+
+
+def kill_gateway():
+    """Stop OpenClaw Gateway."""
+    cli = _find_openclaw()
+    if cli:
+        try:
+            result = subprocess.run(
+                [cli, "gateway", "stop"],
+                capture_output=True, text=True, timeout=30
+            )
+            out = (result.stdout.strip() + " " + result.stderr.strip()).strip()
+            if out:
+                print(f"[shutdown] gateway: {out}")
+            else:
+                print("[shutdown] gateway: stopped")
+            return True
+        except subprocess.TimeoutExpired:
+            print("[shutdown] gateway: TIMEOUT")
+            return False
+        except Exception as e:
+            print(f"[shutdown] gateway: error: {e}")
+            return False
+    else:
+        print("[shutdown] gateway: CLI not found, trying process kill...")
+
+    # Fallback: kill node openclaw gateway process directly
+    try:
+        subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "Get-Process node -ErrorAction SilentlyContinue | "
+             "Where-Object { $_.CommandLine -match 'gateway' } | "
+             "Stop-Process -Force"],
+            capture_output=True, timeout=10
+        )
+        print("[shutdown] gateway: force killed")
+        return True
+    except Exception as e:
+        print(f"[shutdown] gateway: error: {e}")
+        return False
+
+
 def run_cleanup():
     """Run cleanup_orphans.ps1 to kill stuck children and clean locks."""
     ps1 = os.path.join(WORKSPACE, "skills", "cleanup_orphans.ps1")
@@ -193,6 +258,48 @@ def run_cleanup():
 
 
 # ---- Main ----
+
+def kill_embedding_server():
+    """Stop embedding server on port 9999."""
+    if not port_open("127.0.0.1", 9999):
+        print("[shutdown] embedding server: not running")
+        return True
+
+    print("[shutdown] embedding server: stopping...")
+    try:
+        subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | "
+             "Where-Object { $_.CommandLine -match 'embedding_server\\.py' } | "
+             "Select-Object -ExpandProperty ProcessId"],
+            capture_output=True, text=True, timeout=10
+        )
+    except Exception:
+        pass
+
+    for i in range(10):
+        time.sleep(0.3)
+        if not port_open("127.0.0.1", 9999):
+            print(f"[shutdown] embedding server: stopped ({i*0.3:.0f}s)")
+            return True
+
+    try:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "$conn = Get-NetTCPConnection -LocalPort 9999 -ErrorAction SilentlyContinue; "
+             "if ($conn) { $conn | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } }"],
+            capture_output=True, text=True, timeout=10
+        )
+    except Exception:
+        pass
+    time.sleep(1)
+    ok = not port_open("127.0.0.1", 9999)
+    if ok:
+        print("[shutdown] embedding server: force killed")
+    else:
+        print("[shutdown] embedding server: STILL RUNNING — manual kill needed")
+    return ok
+
 
 def kill_sakura():
     """Stop Sakura Desktop Pet (PySide6 GUI)."""
@@ -260,7 +367,9 @@ def main():
     results["llama"] = kill_llama()
     results["live2d"] = kill_live2d()
     results["sakura"] = kill_sakura()
+    results["embedding"] = kill_embedding_server()
     results["comfyui"] = kill_comfyui()
+    results["gateway"] = kill_gateway()
     results["cleanup"] = run_cleanup()
 
     print()

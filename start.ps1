@@ -155,7 +155,7 @@ if (Test-Online $llamaPort "llama-server") {
         '--batch-size', '2048',
         '--ubatch-size', '1024',
         '--threads', '24',
-        '--api-key', '***',
+        '--api-key', '123456',
         '-rea', 'off',
         '--jinja',
         '--cache-ram', '5000',
@@ -165,7 +165,11 @@ if (Test-Online $llamaPort "llama-server") {
         '--port', $llamaPort
     )
 
-    $null = Start-Process -FilePath $llamaExe -ArgumentList $llamaArgs -WindowStyle Hidden
+    # Redirect stderr to llama_log_dir for the Get-Content -Tail -Wait command
+    $llamaErrLog = Join-Path $llamaLogDir "llama-err.log"
+    $null = New-Item -ItemType Directory -Force -Path $llamaLogDir -ErrorAction SilentlyContinue
+    $null = Start-Process -FilePath $llamaExe -ArgumentList $llamaArgs -WindowStyle Hidden `
+        -RedirectStandardError $llamaErrLog
 
     # Wait for ready
     Write-Host "  Waiting for llama-server to load model..."
@@ -189,8 +193,47 @@ if (Test-Online $llamaPort "llama-server") {
     }
 }
 
-# ========== 2. Live2D Bridge ==========
-Write-Host "[2/4] Live2D Bridge" -ForegroundColor Yellow
+# ========== 2. Embedding Server (OpenClaw memory search) ==========
+Write-Host "[2/5] Embedding Server" -ForegroundColor Yellow
+
+$embedPort = 9999
+$embedScript = Join-Path $scriptRoot "skills" "shared" "embedding_server.py"
+
+if (Test-Online $embedPort "Embedding Server") {
+    # already up
+} else {
+    if (-not (Test-Path $embedScript)) {
+        Write-Host "  WARNING: embedding_server.py not found at $embedScript" -ForegroundColor Yellow
+    } else {
+        Write-Host "  Starting embedding server (all-MiniLM-L6-v2 on port ${embedPort})..."
+        $pyExe = (Get-Command python -ErrorAction SilentlyContinue).Source
+        if (-not $pyExe) { $pyExe = (Get-Command py -ErrorAction SilentlyContinue).Source }
+        if (-not $pyExe) {
+            Write-Host "  WARNING: python not found — skip embedding server" -ForegroundColor Yellow
+        } else {
+            $null = Start-Process -FilePath $pyExe -ArgumentList $embedScript -WindowStyle Hidden
+            Start-Sleep -Seconds 3
+
+            $swEmb = [Diagnostics.Stopwatch]::StartNew()
+            $readyEmb = $false
+            while ($swEmb.Elapsed.TotalSeconds -lt 45) {
+                try {
+                    $null = Invoke-WebRequest -Uri "http://127.0.0.1:${embedPort}/health" -TimeoutSec 3 -UseBasicParsing
+                    Write-Host "  Embedding server ready! (port ${embedPort})" -ForegroundColor Green
+                    $readyEmb = $true
+                    break
+                } catch {}
+                Start-Sleep -Seconds 2
+            }
+            if (-not $readyEmb) {
+                Write-Host "  WARNING: Embedding server not responding after 45s" -ForegroundColor Yellow
+            }
+        }
+    }
+}
+
+# ========== 3. Live2D Bridge ==========
+Write-Host "[3/5] Live2D Bridge" -ForegroundColor Yellow
 
 if (Test-Online 19200 "Live2D Bridge") {
     # already up — skip
@@ -220,8 +263,8 @@ if (Test-Online 19200 "Live2D Bridge") {
     }
 }
 
-# ========== 3. OpenClaw Gateway ==========
-Write-Host "[3/4] OpenClaw Gateway" -ForegroundColor Yellow
+# ========== 4. OpenClaw Gateway ==========
+Write-Host "[4/5] OpenClaw Gateway" -ForegroundColor Yellow
 
 try {
     $gwStatus = openclaw gateway status 2>&1
@@ -237,8 +280,8 @@ try {
     Write-Host "  WARNING: Could not check/start gateway: $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
-# ========== 4. Enable Watchdog ==========
-Write-Host "[4/4] llama-watchdog" -ForegroundColor Yellow
+# ========== 5. Enable Watchdog ==========
+Write-Host "[5/5] llama-watchdog" -ForegroundColor Yellow
 Enable-Watchdog
 
 # ========== Done ==========
