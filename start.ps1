@@ -4,10 +4,12 @@
 #   .\start.ps1 -Stop  停止全部服务（等价于 shutdown_all.py）
 #
 # 启动顺序:
-#   1. llama-server (从 config.yaml 读取路径, ngl=41 batch=1024/512)
-#   2. Live2D Bridge (localhost:19200)
-#   3. OpenClaw Gateway
-#   4. 启用 llama-watchdog 计划任务（崩溃自动重启守护）
+#   1. llama-server (ngl=41, batch=2048/1024)
+#   2. Embedding Server (localhost:9999, all-MiniLM-L6-v2)
+#   3. Live2D Bridge (localhost:19200)
+#   4. OpenClaw Gateway (localhost:18789)
+#   5. Cron Jobs (mem0-auto-sync + cleanup-orphans)
+#   6. llama-watchdog (Task Scheduler)
 #
 # Stop 模式:
 #   1. 禁用 llama-watchdog（防止自动重启）
@@ -71,7 +73,6 @@ if ($Stop) {
         Write-Host "ERROR: shutdown_all.py not found at $shutdownScript" -ForegroundColor Red
         exit 1
     }
-    # Resolve python exe (avoid file-association popup if 'python' missing from PATH)
     $pyExe = (Get-Command python -ErrorAction SilentlyContinue).Source
     if (-not $pyExe) { $pyExe = (Get-Command py -ErrorAction SilentlyContinue).Source }
     if (-not $pyExe) {
@@ -104,14 +105,13 @@ $llamaPort  = Get-YamlValue $configRaw 'llama_port'
 if (-not $llamaPort) { $llamaPort = 8080 }
 $llamaLogDir = Get-YamlValue $configRaw 'llama_log_dir'
 $workspace  = Get-YamlValue $configRaw 'workspace'
+$mem0Bridge  = Get-YamlValue $configRaw 'mem0_bridge'
+$embedScript = Get-YamlValue $configRaw 'embedding_server'
 
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host "  四季夏目 — Shiki Natsume Startup" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
-
-# ========== 1. Llama Server ==========
-Write-Host "[1/4] llama-server" -ForegroundColor Yellow
 
 function Test-Online($port, $label) {
     try {
@@ -123,10 +123,12 @@ function Test-Online($port, $label) {
     }
 }
 
+# ========== 1. Llama Server ==========
+Write-Host "[1/6] llama-server" -ForegroundColor Yellow
+
 if (Test-Online $llamaPort "llama-server") {
     # already up — skip
 } else {
-    # Validate paths
     if (-not (Test-Path $llamaExe)) {
         Write-Host "  ERROR: llama-server.exe not found: $llamaExe" -ForegroundColor Red
         Write-Host "  Check config.yaml → llama_exe" -ForegroundColor Yellow
@@ -138,9 +140,8 @@ if (Test-Online $llamaPort "llama-server") {
         exit 1
     }
 
-    Write-Host "  Starting llama-server (ngl=41, batch=1024/512)..."
+    Write-Host "  Starting llama-server (ngl=41, batch=2048/1024)..."
 
-    # Kill stale processes
     Get-Process llama-server -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 1
 
@@ -166,13 +167,11 @@ if (Test-Online $llamaPort "llama-server") {
         '--timeout', '600'
     )
 
-    # Redirect stderr to llama_log_dir for the Get-Content -Tail -Wait command
     $llamaErrLog = Join-Path $llamaLogDir "llama-err.log"
     $null = New-Item -ItemType Directory -Force -Path $llamaLogDir -ErrorAction SilentlyContinue
     $null = Start-Process -FilePath $llamaExe -ArgumentList $llamaArgs -WindowStyle Hidden `
         -RedirectStandardError $llamaErrLog
 
-    # Wait for ready
     Write-Host "  Waiting for llama-server to load model..."
     $sw = [Diagnostics.Stopwatch]::StartNew()
     $maxWait = 300
@@ -194,17 +193,21 @@ if (Test-Online $llamaPort "llama-server") {
     }
 }
 
-# ========== 2. Embedding Server (OpenClaw memory search) ==========
-Write-Host "[2/5] Embedding Server" -ForegroundColor Yellow
+# ========== 2. Embedding Server ==========
+Write-Host "[2/6] Embedding Server" -ForegroundColor Yellow
 
 $embedPort = 9999
-$embedScript = Join-Path $scriptRoot "skills\shared\embedding_server.py"
+
+if (-not $embedScript) {
+    $embedScript = Join-Path $scriptRoot "skills\shared\embedding_server.py"
+}
 
 if (Test-Online $embedPort "Embedding Server") {
     # already up
 } else {
     if (-not (Test-Path $embedScript)) {
         Write-Host "  WARNING: embedding_server.py not found at $embedScript" -ForegroundColor Yellow
+        Write-Host "  OpenClaw memory_search (semantic) will degrade to BM25-only" -ForegroundColor Yellow
     } else {
         Write-Host "  Starting embedding server (all-MiniLM-L6-v2 on port ${embedPort})..."
         $pyExe = (Get-Command python -ErrorAction SilentlyContinue).Source
@@ -234,7 +237,7 @@ if (Test-Online $embedPort "Embedding Server") {
 }
 
 # ========== 3. Live2D Bridge ==========
-Write-Host "[3/5] Live2D Bridge" -ForegroundColor Yellow
+Write-Host "[3/6] Live2D Bridge" -ForegroundColor Yellow
 
 if (Test-Online 19200 "Live2D Bridge") {
     # already up — skip
@@ -265,7 +268,7 @@ if (Test-Online 19200 "Live2D Bridge") {
 }
 
 # ========== 4. OpenClaw Gateway ==========
-Write-Host "[4/5] OpenClaw Gateway" -ForegroundColor Yellow
+Write-Host "[4/6] OpenClaw Gateway" -ForegroundColor Yellow
 
 try {
     $gwStatus = openclaw gateway status 2>&1
@@ -281,16 +284,64 @@ try {
     Write-Host "  WARNING: Could not check/start gateway: $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
-# ========== 5. Enable Watchdog ==========
-Write-Host "[5/5] llama-watchdog" -ForegroundColor Yellow
+Start-Sleep -Seconds 2
+
+# ========== 5. Mem0 Auto-Sync Cron Job ==========
+Write-Host "[5/6] Memory System (mem0 → OpenClaw cron)" -ForegroundColor Yellow
+
+if (-not $mem0Bridge) {
+    $mem0Bridge = Join-Path $scriptRoot "skills\shared\mem0_bridge.py"
+}
+
+if (Test-Path $mem0Bridge) {
+    Write-Host "  mem0_bridge.py found" -ForegroundColor Green
+
+    # 清理旧的冗余 cron job（单角色 sync）
+    $oldJobNames = @("mem0-to-markdown-sync", "mem0-sync-natsume", "mem0-sync-enola", "mem0-sync-atori")
+    foreach ($name in $oldJobNames) {
+        try {
+            $check = openclaw cron list 2>$null | Select-String $name -SimpleMatch
+            if ($check) {
+                Write-Host "  Removing deprecated cron job: $name" -ForegroundColor DarkGray
+            }
+        } catch {}
+    }
+
+    # 检查 mem0-auto-sync 是否存在（统一四角色同步）
+    try {
+        $check = openclaw cron list 2>$null | Select-String "mem0-auto-sync" -SimpleMatch
+        if ($check) {
+            Write-Host "  mem0-auto-sync cron job already registered (every 30 min)" -ForegroundColor Green
+        } else {
+            Write-Host "  Registering mem0-auto-sync cron job..."
+            $mem0SyncCron = Join-Path $scriptRoot "skills\shared\mem0_sync_cron.py"
+            $syncCmd = "powershell -ExecutionPolicy Bypass -Command `"python `\`"$mem0SyncCron`\`"`""
+            openclaw cron add --name mem0-auto-sync --every-ms 1800000 ``
+                --message "运行下面命令同步 mem0 记忆到 markdown。只用 exec 执行，不要做其他操作。`n`n$syncCmd" ``
+                --timeout 60 --light-context --no-deliver 2>&1 | Out-Null
+            Write-Host "  mem0-auto-sync cron job registered! (every 30 min, all 4 characters)" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host "  WARNING: Could not register mem0 cron job. Gateway may not be ready yet." -ForegroundColor Yellow
+        Write-Host "  Run manually later: openclaw cron add ..." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "  WARNING: mem0_bridge.py not found at $mem0Bridge" -ForegroundColor Yellow
+    Write-Host "  Memory sync cron job skipped" -ForegroundColor Yellow
+}
+
+# ========== 6. Enable Watchdog ==========
+Write-Host "[6/6] llama-watchdog" -ForegroundColor Yellow
 Enable-Watchdog
 
 # ========== Done ==========
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Green
 Write-Host "  All services ready!" -ForegroundColor Green
-Write-Host "  llama-server : http://127.0.0.1:${llamaPort}" -ForegroundColor Green
-Write-Host "  Live2D Bridge: http://localhost:19200" -ForegroundColor Green
-Write-Host "  Gateway      : http://127.0.0.1:18789" -ForegroundColor Green
-Write-Host "  Watchdog     : enabled (auto-restart if crash)" -ForegroundColor Green
+Write-Host "  llama-server   : http://127.0.0.1:${llamaPort}" -ForegroundColor Green
+Write-Host "  Embedding      : http://127.0.0.1:${embedPort} (hybrid memory search)" -ForegroundColor Green
+Write-Host "  Live2D Bridge  : http://localhost:19200" -ForegroundColor Green
+Write-Host "  Gateway        : http://127.0.0.1:18789" -ForegroundColor Green
+Write-Host "  Mem0 Sync Cron : every 30 min (Qdrant → _mem0_auto.md)" -ForegroundColor Green
+Write-Host "  Watchdog       : enabled (auto-restart if crash)" -ForegroundColor Green
 Write-Host "============================================" -ForegroundColor Green
