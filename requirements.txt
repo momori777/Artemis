@@ -1,0 +1,35 @@
+# Artemis Python Dependencies
+# =============================
+# Install with: pip install -r requirements.txt
+#
+# Covers:
+#   - Root scripts (shutdown_all.py, etc.)
+#   - ASR skill (faster-whisper)
+#   - Character card importer
+#   - Shared utilities
+#   - ComfyUI / GPT-SoVITS have their own requirements
+#   - Sakura desktop pet: see skills/sakura/requirements.txt
+#
+# For Chinese users, add mirror:
+#   pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
+
+# --- Core: Root scripts ---
+psutil>=5.9
+
+# --- ASR (Speech-to-Text) ---
+faster-whisper>=1.0.0
+
+# --- Character Card Importer ---
+PyYAML>=6.0
+
+# --- Shared utilities (character archive, memory tools) ---
+qdrant-client>=1.12.0
+sentence-transformers>=5.0.0
+numpy>=1.24
+scipy>=1.10
+
+# --- OpenClaw Gateway + mem0 (installed by setup-openclaw.ps1) ---
+# openai, pydantic, sqlalchemy, etc. — use setup-openclaw.ps1
+
+# --- Sakura Desktop Pet (optional) ---
+# See skills/sakura/requirements.txt for PySide6, mcp, playwright, etc.
