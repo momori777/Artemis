@@ -1,4 +1,5 @@
 > ⚠️ This project default scripts are NVIDIA GPU configs. AMD GPU users please open the AMD_GPU directory.
+fourth girlfriend is voting,please vote at issue
 
 # Artemis
 
