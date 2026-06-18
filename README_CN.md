@@ -91,8 +91,14 @@
 - 🖥️ **Sakura 桌宠** — PySide6 桌面伴侣，主动关心、屏幕观察 & 本地 LLM 感知；支持 3 角色切换
 - 🎭 **Live2D 角色模型** — 实时 Live2D 渲染，情绪驱动表情 & 对话气泡（夏目 / 亚托莉 L2D；夜乃桜立绘模式）
 - 🧠 **显存调度器** — 8 GB 显存上自动调度 llama-server ↔ TTS/ComfyUI；ASR 可共存
-- 💾 **角色扮演记忆** — 对话摘要持久化到 `memory/role_play/`
-- 🧠 **长期记忆 (mem0)** — LLM 驱动的 ADD-Only 事实提取；语义向量 + BM25 关键词 + 实体链接三路混合检索；基于 Qdrant；按角色隔离记忆；自动同步到 markdown 供 OpenClaw 索引
+- 💾 **角色扮演记忆** — 每日对话摘要按角色存储于 `memory/role_play/`
+- 🧠 **长期记忆系统** — 灵感源自 [headroom](https://github.com/chopratejas/headroom)（SmartCrusher + CCR）和 [mem0](https://github.com/mem0ai/mem0)（Qdrant 向量数据库）：
+  - **SmartCrusher 文本压缩** — 每次 LLM 请求硬截断至 24 条消息 / 40K 字符
+  - **CCR（整理-合并-检索）** — 后台线程每 8 轮对话提取持久记忆，写入 mem0 Qdrant
+  - **向量 + BM25 混合搜索** — 语义相似度 + 关键词匹配，基于 Qdrant + all-MiniLM-L6-v2
+  - **自动同步桥接** — Cron job 每 30 分钟同步 Qdrant → `_mem0_auto.md`，使向量记忆可被 OpenClaw 原生 `memory_search` 检索
+  - **角色隔离** — Qdrant 内通过 `user_id` 划分 4 个独立记忆空间（sakura / natsume / enola / atori）
+  - **召回优先级** — 向量长期记忆 > 手写日记 > SOUL 基础人设
 
 ## 模型
 
@@ -440,23 +446,36 @@ OpenClaw Gateway ──── Sakura 桌宠 (PySide6)
   │                     (共享 llama-client)
   │                          │
   ▼                          ▼
-  ┌───── llama-server :8080 ─────┐    ┌── Embedding :9999 (all-MiniLM-L6-v2, CPU) ──┐
-  │         (Qwen3.6-35B)        │    │  ├── OpenClaw 混合记忆搜索                   │
-  ├──────────────────────────────┤    │  ├── mem0 Qdrant（多角色向量存储）           │
-  │  Main session（角色扮演）     │    │  └── mem0 桥接 → memory/_mem0_auto.md       │
-  │  TTS（杀 llama → GPU → 重启） │    └─────────────────────────────────────────────┘
-  │  ComfyUI（杀 llama → GPU → 重启）│
-  │  ASR（Whisper → 不杀）        │
-  │  Sakura 桌宠（共享，不杀）     │
-  └──────────────────────────────┘
-               │
-               ▼
-     Live2D Bridge (:19200) ─── Browser (Live2D / 立绘)
-          (HTTP → 不杀)          (夏目 / 亚托莉 L2D)
-                                  (夜乃桜 立绘模式)
+  ┌───── llama-server :8080 ─────┐    ┌────── 记忆系统 ────────────────────────────┐
+  │         (Qwen3.6-35B)        │    │                                               │
+  ├──────────────────────────────┤    │  ┌─ Embedding :9999 ──────────────────────┐  │
+  │  Main session（角色扮演）     │    │  │  all-MiniLM-L6-v2 (CPU, ~100MB RAM)   │  │
+  │  TTS（杀 llama → GPU → 重启） │    │  │  ├─ OpenClaw memory_search（混合）   │  │
+  │  ComfyUI（杀 llama → GPU → 重启）│ │  └─ mem0_bridge.py (搜索/添加/同步)   │  │
+  │  ASR（Whisper → 不杀）        │    │  └─────────────────────────────────────┘  │
+  │  Sakura 桌宠（共享，不杀）     │    │                                               │
+  └──────────────────────────────┘    │  ┌─ Qdrant 向量库 ───────────────────────┐  │
+               │                      │  │  collection: sakura_memories          │  │
+               │                      │  │  ├─ user_id=sakura   (夜乃桜)         │  │
+               ▼                      │  │  ├─ user_id=natsume  (夏目)           │  │
+     Live2D Bridge (:19200) ─── Browser│  │  ├─ user_id=enola    (Enola)          │  │
+          (HTTP → 不杀)          (L2D/ │  │  └─ user_id=atori    (Atori)          │  │
+                                  立绘) │  └─────────────────────────────────────┘  │
+                                        │                                               │
+                                        │  ┌─ CCR（整理-合并-检索）────────────────┐  │
+                                        │  │  每 8 轮 → 提取记忆                   │  │
+                                        │  │  → mem0 Qdrant（长期向量）            │  │
+                                        │  │  → _mem0_auto.md（markdown，可搜索）   │  │
+                                        │  └─────────────────────────────────────┘  │
+                                        │                                               │
+                                        │  ┌─ SmartCrusher ────────────────────────┐  │
+                                        │  │  24 条消息 / 40K 字符硬截断           │  │
+                                        │  │  context_trimming.py（所有角色共用）   │  │
+                                        │  └─────────────────────────────────────┘  │
+                                        └───────────────────────────────────────────────┘
 ```
 
-**Agent 中枢 — 角色切换不改的能力指令**：
+**Agent 中枢 — 角色切换不改的能力指令 + 记忆层**：
 
 ```
          ┌─────────────┐
@@ -467,22 +486,30 @@ OpenClaw Gateway ──── Sakura 桌宠 (PySide6)
          │  USER.md     │  ← 用户设定
          └──────┬───────┘
                 │
-    ┌───────────┴────────────┐
-    ▼                        ▼
- ┌──────────────┐   ┌──────────────────────┐
- │ skills/harem/ │   │ memory/role_play/    │
- │   (后宫存档)  │   │   <角色>/ (独立记忆)   │
- │ ├─ natsume/   │   │ ├─ natsume/*.md      │
- │ └─ enola/     │   │ └─ enola/*.md        │
- └──────────────┘   └──────────────────────┘
+    ┌───────────┴────────────┬─────────────────────────┐
+    ▼                        ▼                         ▼
+ ┌──────────────┐   ┌──────────────────────┐   ┌─────────────────┐
+ │ skills/harem/ │   │ memory/role_play/    │   │ Qdrant 向量库   │
+ │   (后宫存档)  │   │   <角色>/ (独立记忆)   │   │ (长期向量记忆)   │
+ │ ├─ natsume/   │   │ ├─ natsume/          │   │ user_id=natsume │
+ │ ├─ enola/     │   │ │  ├─ YYYY-MM-DD.md  │   │ user_id=enola   │
+ │ ├─ sakura/    │   │ │  └─ _mem0_auto.md  │   │ user_id=sakura  │
+ │ └─ atori/     │   │ ├─ enola/...         │   │ user_id=atori   │
+ │   (角色卡存档)  │   │ ├─ sakura/...        │   └─────────────────┘
+ └──────────────┘   │ └─ atori/...          │         ↑
+                    └──────────────────────┘   CCR + mem0_bridge
+                          ↑                    (定时同步 30min)
+                    OpenClaw memory_search
+                    (混合: 向量 + BM25)
 ```
 
-- `AGENTS.md` 在角色切换时保持不变——ComfyUI / TTS / Live2D 指令常驻
+- `AGENTS.md` 在角色切换时保持不变——ComfyUI / TTS / Live2D + 记忆指令常驻
 - `SOUL.md` + `IDENTITY.md` 在切换时覆盖写入；harem/ 后宫目录是归档真相来源
 - 每个角色记忆隔离在 `memory/role_play/<角色名>/`——永不交叉污染
+- 长期向量记忆在 Qdrant 中按 `user_id` 隔离
 - SillyTavern 角色卡通过 PNG tEXt 块解析导入 → agent 自动切换角色
 
-**五大技能，一个大脑**：
+**六大技能，一套记忆系统**：
 
 | 技能 | 位置 | Llama 交互 |
 |-------|----------|-------------------|
@@ -491,8 +518,11 @@ OpenClaw Gateway ──── Sakura 桌宠 (PySide6)
 | **TTS** | `skills/tts/` | 杀 llama → GPT-SoVITS → 重启 + 等待 /health |
 | **ComfyUI** | `skills/comfyui/` | 杀 llama → 画图 → 重启 + 等待 /health |
 | **ASR** | `skills/asr/` | Faster-Whisper small——与 llama 在 8GB 显存上共存 |
-| **Sakura** | `skills/sakura/` | 共享 llama-client；检测掉线 → 自动恢复；内置 mem0 记忆 |
-| **Memory Bridge** | `skills/shared/` | 每 30 分钟同步 mem0 Qdrant → `memory/role_play/<角色>/_mem0_auto.md` |
+| **Sakura** | `skills/sakura/` | 共享 llama-client；检测掉线 → 自动恢复；内置 CCR + mem0 |
+| **SmartCrusher** | `skills/shared/context_trimming.py` | 24 条消息 / 40K 字符硬截断——所有角色共用 |
+| **CCR** | `skills/sakura/app/agent/memory_curator.py` | 后台：每 8 轮提取事实 → Qdrant |
+| **mem0 Bridge** | `skills/shared/mem0_bridge.py` | CLI：搜索 / 添加 / 列出 / 同步 按角色 |
+| **自动同步** | `skills/shared/mem0_sync_cron.py` | 每 30 分钟 Cron job：Qdrant → `_mem0_auto.md` |
 | **角色导入** | `skills/character_importer/` | Agent 层面——不需要 GPU；写入 SOUL/IDENTITY + 记忆目录 |
 
 **显存调度流程**：
@@ -504,6 +534,8 @@ OpenClaw Gateway ──── Sakura 桌宠 (PySide6)
 6. 整个过程中 Live2D 保持运行——桥接不碰 GPU
 7. 子 session 写入 `.task_flags` → 通知回主 session
 8. 主 session 读取媒体文件 → 通过 `<qqmedia>` / `MEDIA:` 发送
+9. 后台：CCR 每约 8 轮运行一次，提取长期记忆写入 Qdrant
+10. Cron job 每 30 分钟同步 Qdrant → `_mem0_auto.md` 供原生 `memory_search` 检索
 
 ## ⚠️ 重要说明
 
@@ -520,3 +552,5 @@ OpenClaw Gateway ──── Sakura 桌宠 (PySide6)
 - [@Rvosy](https://github.com/Rvosy) — [Sakura Desktop Pet](https://github.com/Rvosy/Sakura) 作者，已授权收录（Issue #38）
 - [@guansss](https://github.com/guansss) — [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display) 作者
 - [Live2D Inc.](https://www.live2d.com) — Cubism SDK（非商业用途）
+- [headroom](https://github.com/chopratejas/headroom) — SmartCrusher 上下文压缩 + CCR（整理-合并-检索）记忆管线灵感来源
+- [mem0](https://github.com/mem0ai/mem0) — Qdrant 向量记忆架构 + 混合搜索设计灵感来源

@@ -6,7 +6,7 @@ Artemis 省流版使用手册
     首次用先跑 quick_setup.ps1 配好路径
 
 二、关闭
-    .\start.ps1 -Stop 或则cmd 输入shiki -Stop
+    .\start.ps1 -Stop 或cmd 输入shiki -Stop
     或对夏目说"拜拜"，她自己关
 
 三、调试（四层，从下往上查）
