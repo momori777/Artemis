@@ -169,7 +169,39 @@ if (-not $llamaExe) {
 }
 
 # ============================================================
-# 5. 生成 config.yaml
+# 5. Memory & Embedding（自动检测 + 手动补填）
+# ============================================================
+Write-Host ""
+Write-Host "--- Memory & Embedding ---" -ForegroundColor Green
+
+# 角色记忆目录
+$roleMemoryDir = Join-Path $workspace "memory\role_play"
+if (-not (Test-Path $roleMemoryDir)) { New-Item -ItemType Directory -Force -Path $roleMemoryDir -ErrorAction SilentlyContinue | Out-Null }
+
+# Mem0 Qdrant 向量库
+$mem0QdrantDir = Join-Path $workspace "skills\sakura\data\memory\qdrant"
+
+# mem0 bridge 脚本
+$mem0Bridge = Join-Path $workspace "skills\shared\mem0_bridge.py"
+$mem0SyncCron = Join-Path $workspace "skills\shared\mem0_sync_cron.py"
+
+# Embedding Server 路径
+$embeddingDir = Find-Dir "all-MiniLM-L6-v2" $searchRoots
+if (-not $embeddingDir) {
+    $embeddingDir = Find-Dir "all-MiniLM-L6-v2" @("$workspace\models", "$ScriptDir\models", "$desktop\vllm\models")
+}
+$embeddingServer = Find-Exe "start_embedding_server.ps1" @($workspace, "$workspace\skills\shared")
+if (-not $embeddingServer) { $embeddingServer = Join-Path $workspace "skills\shared\start_embedding_server.ps1" }
+
+Write-Host "  role_memory:   $roleMemoryDir" -ForegroundColor $(if (Test-Path $roleMemoryDir) { 'Green' } else { 'Yellow' })
+Write-Host "  mem0_qdrant:   $mem0QdrantDir" -ForegroundColor $(if (Test-Path $mem0QdrantDir) { 'Green' } else { 'Yellow' })
+Write-Host "  mem0_bridge:   $mem0Bridge" -ForegroundColor $(if (Test-Path $mem0Bridge) { 'Green' } else { 'Yellow' })
+Write-Host "  mem0_sync:     $mem0SyncCron" -ForegroundColor $(if (Test-Path $mem0SyncCron) { 'Green' } else { 'Yellow' })
+Write-Host "  embedding_dir: $embeddingDir" -ForegroundColor $(if ($embeddingDir -and (Test-Path $embeddingDir)) { 'Green' } else { 'DarkGray' })
+Write-Host "  embed_server:  $embeddingServer" -ForegroundColor $(if (Test-Path $embeddingServer) { 'Green' } else { 'DarkGray' })
+
+# ============================================================
+# 6. 生成 config.yaml
 # ============================================================
 Write-Host ""
 Write-Host "生成 config.yaml..." -ForegroundColor Cyan
@@ -217,6 +249,31 @@ llama_model: "$(& $esc $llamaModel)"
 llama_log_dir: "$(& $esc $llamaLogDir)"
 restart_script: "$(& $esc $restartScript)"
 llama_port: 8080
+
+# ============================================================
+# Memory & Embedding（长期记忆 + 向量库 + 文本压缩）
+# ============================================================
+role_memory_dir: "$(& $esc $roleMemoryDir)"
+mem0_qdrant_dir: "$(& $esc $mem0QdrantDir)"
+mem0_bridge: "$(& $esc $mem0Bridge)"
+mem0_sync_cron: "$(& $esc $mem0SyncCron)"
+embedding_dir: "$(& $esc $embeddingDir)"
+embedding_server: "$(& $esc $embeddingServer)"
+
+# ============================================================
+# Headroom SmartCrusher + CCR 配置（长期记忆整理参数）
+# ============================================================
+headroom:
+  smart_crusher:
+    min_tokens_to_crush: 150
+    max_items_after_crush: 10
+    first_fraction: 0.3
+    last_fraction: 0.1
+    variance_threshold: 2.0
+    preserve_change_points: true
+  ccr:
+    max_entries: 500
+    ttl_seconds: 300
 "@
 
 $configPath = Join-Path $scriptDir "config.yaml"
@@ -243,7 +300,13 @@ $checks = @(
     @{Label="workspace";       Path=$workspace},
     @{Label="media audio";     Path=$mediaAudio},
     @{Label="media images";    Path=$mediaImages},
-    @{Label="llama log dir";   Path=$llamaLogDir}
+    @{Label="llama log dir";   Path=$llamaLogDir},
+    @{Label="role memory";     Path=$roleMemoryDir},
+    @{Label="mem0 qdrant";     Path=$mem0QdrantDir},
+    @{Label="mem0 bridge";     Path=$mem0Bridge},
+    @{Label="mem0 sync cron";  Path=$mem0SyncCron},
+    @{Label="embedding dir";   Path=$embeddingDir},
+    @{Label="embed server";    Path=$embeddingServer}
 )
 
 $ok = 0
