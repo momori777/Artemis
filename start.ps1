@@ -158,7 +158,7 @@ if (Test-Online $llamaPort "llama-server") {
         '--api-key', '123456',
         '-rea', 'off',
         '--jinja',
-        '--cache-ram', '5000',
+        '--cache-ram', '3000',
         '--parallel', '1',
         '--kv-unified',
         '--no-mmap',

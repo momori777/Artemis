@@ -29,6 +29,25 @@ from pathlib import Path
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
+# ── Headroom SmartCrusher + CCR ──────────────────────────────
+HEADROOM_MODULE = Path(__file__).parent.parent / "headroom"
+if str(HEADROOM_MODULE.parent) not in sys.path:
+    sys.path.insert(0, str(HEADROOM_MODULE.parent))
+from skills.headroom import SmartCrusher, CCRStore, estimate_tokens
+
+# 全局 CCR 缓存（进程内 LRU，TTL=300s）
+_global_ccr = CCRStore(max_entries=500, ttl_seconds=300)
+
+# 压缩配置
+CRUSH_CONFIG = {
+    "min_tokens_to_crush": 150,       # 少于 150 tokens 不压缩
+    "max_items_after_crush": 10,      # 压缩后最多保留 10 条
+    "first_fraction": 0.3,            # 保留开头 30%
+    "last_fraction": 0.1,             # 保留结尾 10%
+    "variance_threshold": 2.0,
+    "preserve_change_points": True,
+}
+
 # ── Paths ──────────────────────────────────────────────────
 WORKSPACE = Path(os.environ.get(
     "OPENCLAW_WORKSPACE",
@@ -241,6 +260,81 @@ def sync_mem0_to_markdown(character: str) -> dict:
     return {"file": str(out_path), "count": len(memories), "character": character}
 
 
+# ── SmartCrusher + CCR 压缩注入 ──────────────────────────
+
+def compress_search_results(search_results: list[dict], query: str) -> tuple[list[dict], dict]:
+    """
+    压缩搜索结果的 memory 字段（文本），用 SmartCrusher 提取高信息量部分。
+    
+    Args:
+        search_results: Qdrant 搜索结果列表
+        query: 用户查询
+    
+    Returns:
+        (压缩后的结果列表, 压缩统计)
+    """
+    if not search_results:
+        return search_results, {"status": "empty"}
+    
+    crusher = SmartCrusher(CRUSH_CONFIG)
+    total_before = 0
+    total_after = 0
+    compressed_items = []
+    
+    for result in search_results:
+        mem_text = result.get("memory", "")
+        if not mem_text:
+            compressed_items.append(result)
+            continue
+        
+        total_before += estimate_tokens(mem_text)
+        
+        # SmartCrusher 压缩文本
+        crush_result = crusher._compress_plain(mem_text, query)
+        total_after += estimate_tokens(crush_result.compressed)
+        
+        # 存入 CCR
+        _global_ccr.put(crush_result.original_hash, mem_text, {
+            "source": "mem0_qdrant",
+            "character": "unknown",
+            "timestamp": datetime.now().isoformat(),
+        })
+        
+        # 构建压缩后的结果
+        entry = dict(result)
+        entry["memory"] = crush_result.compressed
+        entry["_crushed"] = True  # 标记已压缩
+        entry["_original_hash"] = crush_result.original_hash
+        compressed_items.append(entry)
+    
+    stats = {
+        "status": "compressed",
+        "items": len(compressed_items),
+        "tokens_before": total_before,
+        "tokens_after": total_after,
+        "savings_pct": round((1 - total_after / max(1, total_before)) * 100, 1),
+        "ccr_cache_size": _global_ccr.stats()["size"],
+    }
+    
+    return compressed_items, stats
+
+
+def retrieve_from_ccr(original_hash: str) -> tuple[bool, str]:
+    """
+    从 CCR 缓存取回原文。
+    
+    Args:
+        original_hash: SmartCrusher 生成的缓存 hash
+    
+    Returns:
+        (是否成功, 原文/错误信息)
+    """
+    text = _global_ccr.get(original_hash)
+    if text:
+        return True, text
+    return False, "原文不在缓存中 (已过期或超出容量)"
+
+
 # ── CLI ────────────────────────────────────────────────────
 if __name__ == "__main__":
     import argparse
@@ -267,6 +361,16 @@ if __name__ == "__main__":
     init_parser = sub.add_parser("init", help="初始化角色的 Qdrant 存储（创建 collection）")
     init_parser.add_argument("character", help="角色名")
     
+    # Headroom 压缩测试
+    crush_parser = sub.add_parser("crush", help="测试 SmartCrusher 压缩搜索结果")
+    crush_parser.add_argument("character", help="角色名")
+    crush_parser.add_argument("query", help="搜索查询")
+    crush_parser.add_argument("--limit", type=int, default=10)
+    
+    # CCR 取回
+    retrieve_parser = sub.add_parser("retrieve", help="从 CCR 缓存取回原文")
+    retrieve_parser.add_argument("hash", help="原文 hash")
+    
     args = parser.parse_args()
     
     if args.command == "sync":
@@ -284,5 +388,23 @@ if __name__ == "__main__":
     elif args.command == "init":
         _get_qdrant_client()  # 确保 collection 存在
         print(json.dumps({"status": "ok", "character": args.character, "message": f"Collection 已就绪"}, ensure_ascii=False))
+    elif args.command == "crush":
+        # 搜索 + 压缩
+        raw_results = search_mem0_qdrant(args.character, args.query, args.limit)
+        compressed, stats = compress_search_results(raw_results, args.query)
+        print(json.dumps({
+            "raw_count": len(raw_results),
+            "compressed_count": len(compressed),
+            "stats": stats,
+            "compressed_results": compressed,
+        }, ensure_ascii=False, indent=2))
+    elif args.command == "retrieve":
+        ok, text = retrieve_from_ccr(args.hash)
+        print(json.dumps({
+            "success": ok,
+            "hash": args.hash,
+            "text": text if ok else None,
+            "error": None if ok else text,
+        }, ensure_ascii=False, indent=2))
     else:
         parser.print_help()
