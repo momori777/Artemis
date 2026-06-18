@@ -1,3 +1,5 @@
+四号女友投票中,请在issue里完成投票 fourth girlfriend is voting,please vote at issue
+
 度盘链接:https://pan.baidu.com/s/1sLeSyVp76yzWcR3Q4pX0kA?pwd=0721
 度盘链接其实完全不需要，huggingface镜像国内也能访问，如果实在懒得配就用度盘下模型
 
