@@ -162,7 +162,8 @@ if (Test-Online $llamaPort "llama-server") {
         '--parallel', '1',
         '--kv-unified',
         '--no-mmap',
-        '--port', $llamaPort
+        '--port', $llamaPort,
+        '--timeout', '600'
     )
 
     # Redirect stderr to llama_log_dir for the Get-Content -Tail -Wait command
@@ -197,7 +198,7 @@ if (Test-Online $llamaPort "llama-server") {
 Write-Host "[2/5] Embedding Server" -ForegroundColor Yellow
 
 $embedPort = 9999
-$embedScript = Join-Path $scriptRoot "skills" "shared" "embedding_server.py"
+$embedScript = Join-Path $scriptRoot "skills\shared\embedding_server.py"
 
 if (Test-Online $embedPort "Embedding Server") {
     # already up
