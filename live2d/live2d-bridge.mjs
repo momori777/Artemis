@@ -11,6 +11,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
 import { WebSocketServer } from 'ws';
 import { fileURLToPath } from 'node:url';
 
@@ -30,6 +31,116 @@ const NODE_MODULES_ALIASES = {
 // ========== CLIENTS ==========
 /** @type {Set<import('ws').WebSocket>} */
 const clients = new Set();
+
+// ========== GPT-SoVITS 常驻管理 ==========
+let sovitsProcess = null;
+let sovitsRunning = false;
+const SOVITS_PORT = 9880;
+
+async function probeSovits(timeout = 2) {
+  try {
+    const { stdout } = await execFile('powershell', [
+      '-NoProfile', '-Command',
+      `(New-Object Net.WebClient).DownloadString('http://127.0.0.1:${SOVITS_PORT}/')` ,
+    ], { timeout: timeout * 1000 });
+    return true;
+  } catch { return false; }
+}
+
+async function startSovits() {
+  if (sovitsRunning) return { ok: true, message: 'GPT-SoVITS 已在运行' };
+
+  // 读取 config.yaml 获取路径
+  const configPath = path.join(__dirname, '..', 'config.yaml');
+  if (!fs.existsSync(configPath)) {
+    return { ok: false, message: '找不到 config.yaml' };
+  }
+
+  const configContent = fs.readFileSync(configPath, 'utf-8');
+  const sovitsPythonMatch = configContent.match(/sovits_python:\s*["']?([^"'\r\n]+)/);
+  const sovitsRootMatch = configContent.match(/sovits_root:\s*["']?([^"'\r\n]+)/);
+
+  if (!sovitsPythonMatch || !sovitsRootMatch) {
+    return { ok: false, message: 'config.yaml 中缺少 sovits_python 或 sovits_root' };
+  }
+
+  const sovitsPy = sovitsPythonMatch[1].trim().replace(/"/g, '');
+  const sovitsRoot = sovitsRootMatch[1].trim().replace(/"/g, '');
+
+  // 查找 inference_webui.py
+  let webuiPath = null;
+  const dirsToCheck = [sovitsRoot, path.join(sovitsRoot, 'runtime')];
+  for (const base of dirsToCheck) {
+    const candidate = path.join(base, 'inference_webui.py');
+    if (fs.existsSync(candidate)) { webuiPath = candidate; break; }
+    // 递归查找
+    const findWebui = (dir) => {
+      if (!fs.existsSync(dir)) return null;
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const e of entries) {
+        const full = path.join(dir, e.name);
+        if (e.isFile() && e.name === 'inference_webui.py') return full;
+        if (e.isDirectory()) { const r = findWebui(full); if (r) return r; }
+      }
+      return null;
+    };
+    if (!webuiPath) webuiPath = findWebui(base);
+    if (webuiPath) break;
+  }
+
+  if (!webuiPath) {
+    return { ok: false, message: '找不到 inference_webui.py' };
+  }
+
+  const cmd = [sovitsPy, webuiPath, '--port', String(SOVITS_PORT)];
+  console.log(`[SOVITS] 启动: ${cmd.join(' ')}`);
+
+  sovitsProcess = execFile(sovitsPy, [webuiPath, '--port', String(SOVITS_PORT)], {
+    cwd: sovitsRoot,
+    env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+    windowsHide: true,
+  });
+
+  // 等待服务就绪
+  let attempts = 0;
+  while (attempts < 30) {
+    await new Promise(r => setTimeout(r, 2000));
+    if (await probeSovits(1)) {
+      sovitsRunning = true;
+      console.log('[SOVITS] HTTP 服务启动成功 (端口 9880)');
+      broadcast({ type: 'sovits_state', running: true });
+      return { ok: true, message: 'GPT-SoVITS 已启动，端口 9880' };
+    }
+    attempts++;
+  }
+
+  sovitsRunning = false;
+  return { ok: false, message: 'GPT-SoVITS 启动超时' };
+}
+
+async function stopSovits() {
+  if (!sovitsRunning && !await probeSovits(1)) {
+    return { ok: true, message: 'GPT-SoVITS 未在运行' };
+  }
+
+  if (sovitsProcess) {
+    try { sovitsProcess.kill('SIGTERM'); } catch {}
+    sovitsProcess = null;
+  }
+
+  // Windows: 杀 9880 端口进程
+  try {
+    await execFile('powershell', ['-NoProfile', '-Command',
+      `$procs = Get-NetTCPConnection -LocalPort ${SOVITS_PORT} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; ` +
+      `foreach ($pid in $procs) { if ($pid) { Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue } }`,
+    ], { timeout: 5000 });
+  } catch {}
+
+  sovitsRunning = false;
+  console.log('[SOVITS] 已停止');
+  broadcast({ type: 'sovits_state', running: false });
+  return { ok: true, message: 'GPT-SoVITS 已停止' };
+}
 
 // ========== MIME types ==========
 const MIME = {
@@ -60,7 +171,7 @@ function broadcast(data) {
 }
 
 // ========== HTTP Server (static + API) ==========
-const httpServer = http.createServer((req, res) => {
+const httpServer = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${HTTP_PORT}`);
   const pathname = decodeURIComponent(url.pathname);
 
@@ -132,6 +243,25 @@ const httpServer = http.createServer((req, res) => {
     broadcast({ type: 'reset' });
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true, type: 'reset' }));
+    return;
+  }
+
+  if (pathname === '/api/sovits') {
+    const action = url.searchParams.get('action') || 'status';
+    if (action === 'start') {
+      const result = await startSovits();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    } else if (action === 'stop') {
+      const result = await stopSovits();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    } else {
+      // status
+      const isRunning = sovitsRunning || await probeSovits(1);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, running: isRunning, port: SOVITS_PORT }));
+    }
     return;
   }
 
@@ -228,5 +358,6 @@ httpServer.listen(HTTP_PORT, () => {
   console.log(`   GET /api/emotion?expression=<>&motion=<>&text=<>&duration=<>`);
   console.log(`   GET /api/reset`);
   console.log(`   GET /api/status`);
+  console.log(`   GET /api/sovits?action=start|stop|status`);
   console.log('');
 });
