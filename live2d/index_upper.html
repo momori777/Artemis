@@ -11,11 +11,21 @@ body:not(.embed) { background: #1a1a2e; }
 #l2d { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
 canvas { display:block; }
 #status { position:fixed; top:4px; left:4px; color:#666; font:10px monospace; z-index:10; pointer-events:none; }
+#sovits-btn {
+  position:fixed; top:4px; right:8px; z-index:10;
+  background:rgba(0,0,0,0.6); color:#aaa; border:1px solid #333;
+  border-radius:6px; padding:4px 10px; font:11px monospace;
+  cursor:pointer; user-select:none; transition:all 0.3s;
+}
+#sovits-btn:hover { background:rgba(0,0,0,0.8); color:#fff; }
+#sovits-btn.on { color:#0f0; border-color:#0f0; }
+#sovits-btn.loading { color:#ff0; border-color:#ff0; }
 </style>
 </head>
 <body>
 <div id="l2d"></div>
 <div id="status">loading...</div>
+<button id="sovits-btn" title="点击开关 GPT-SoVITS 常驻模式">🔇 TTS</button>
 <script src="/pixi.min.js"></script>
 <script>
 (function(g){
@@ -38,8 +48,25 @@ function log(s){st.textContent=s;console.log(s)}
 function connectWS(){
   ws=new WebSocket('ws://'+location.hostname+':19201');
   ws.onopen=()=>log('ws ok');
-  ws.onmessage=e=>{try{var d=JSON.parse(e.data);if(d.type==='motion'&&model)try{model.internalModel.motionManager.startRandomMotion(d.name||'',0)}catch(_){};if(d.type==='speak_start')lipActive=true;if(d.type==='speak_end')lipActive=false;if(d.type==='speak')lipActive=(d.action==='start')}catch(_){}}
+  ws.onmessage=e=>{try{var d=JSON.parse(e.data);if(d.type==='motion'&&model)try{model.internalModel.motionManager.startRandomMotion(d.name||'',0)}catch(_){};if(d.type==='speak_start')lipActive=true;if(d.type==='speak_end')lipActive=false;if(d.type==='speak')lipActive=(d.action==='start');if(d.type==='sovits_state'){var b=document.getElementById('sovits-btn');if(b){if(d.running){b.textContent='🔊 TTS';b.classList.add('on')}else{b.textContent='🔇 TTS';b.classList.remove('on')}}}}catch(_){}}
   ws.onclose=()=>setTimeout(connectWS,3000)
+}
+function toggleSovits(){
+  var btn=document.getElementById('sovits-btn');
+  var isOn=btn&&btn.classList.contains('on');
+  var action=isOn?'stop':'start';
+  btn.classList.add('loading');
+  btn.textContent=isOn?'停止中...':'启动中...';
+  fetch('/api/sovits?action='+action).then(function(r){return r.json()}).then(function(j){
+    btn.classList.remove('loading');
+    if(j.ok){
+      if(action==='start'){btn.textContent='🔊 TTS';btn.classList.add('on')}else{btn.textContent='🔇 TTS';btn.classList.remove('on')}
+      log((action==='start'?'✅ ':'❌ ')+'GPT-SoVITS: '+j.message);
+    } else {
+      btn.textContent='🔇 TTS';
+      log('❌ '+j.message);
+    }
+  }).catch(function(e){btn.classList.remove('loading');btn.textContent='🔇 TTS';log('请求失败')});
 }
 function init(){
   var L2D=window.PIXI&&window.PIXI.live2d&&window.PIXI.live2d.Live2DModel;
@@ -60,6 +87,13 @@ function init(){
     model.anchor.set(0.5);
     app.stage.addChild(model);
     log('loaded!')
+    var btn=document.getElementById('sovits-btn');
+    if(btn){btn.addEventListener('click',toggleSovits);
+      fetch('/api/sovits?action=status').then(function(r){return r.json()}).then(function(j){
+        if(j&&j.running){btn.textContent='🔊 TTS';btn.classList.add('on')}
+        else{btn.textContent='🔇 TTS';btn.classList.remove('on')}
+      }).catch(function(){btn.textContent='🔇 TTS'});
+    }
   }).catch(function(e){log('ERR: '+(e&&e.message||e))});
   connectWS();
 }
