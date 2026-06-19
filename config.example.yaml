@@ -5,6 +5,21 @@
 # 手动配置方式: 复制此文件为 config.yaml，修改下面各路径
 
 # ============================================================
+# Headroom SmartCrusher + CCR 上下文压缩
+# ============================================================
+headroom:
+  smart_crusher:
+    min_tokens_to_crush: 150
+    max_items_after_crush: 10
+    first_fraction: 0.3
+    last_fraction: 0.1
+    variance_threshold: 2.0
+    preserve_change_points: true
+  ccr:
+    max_entries: 500
+    ttl_seconds: 300
+
+# ============================================================
 # OpenClaw workspace (agent 工作区)
 # ============================================================
 workspace: "填写 OpenClaw workspace 路径，例如 C:\\Users\\用户名\\.openclaw\\workspace"
@@ -40,3 +55,19 @@ llama_model: "填写 GGUF 模型文件路径"
 llama_log_dir: "填写 llama 日志输出目录"
 restart_script: "填写 llama 重启脚本路径"
 llama_port: 8080
+
+# ============================================================
+# Memory & Embedding（长期记忆 + 向量数据库 + 文本压缩）
+# ============================================================
+# 角色记忆存储目录
+role_memory_dir: "填写 memory/role_play 路径"
+# Qdrant 向量数据库（本地文件模式，存 mem0 记忆向量）
+mem0_qdrant_dir: "填写 Qdrant 数据目录"
+# mem0 桥接脚本路径
+mem0_bridge: "填写 mem0_bridge.py 路径"
+# mem0 定时同步脚本路径
+mem0_sync_cron: "填写 mem0_sync_cron.py 路径"
+# Embedding 模型缓存目录（首次运行自动下载 all-MiniLM-L6-v2）
+embedding_dir: "填写 embedding 模型缓存路径"
+# Embedding 服务器启动脚本（可选，缺省会使用仓库内的 embedding_server.py）
+embedding_server: ""
