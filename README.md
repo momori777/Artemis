@@ -1,73 +1,73 @@
-> ⚠️ This project default scripts are NVIDIA GPU configs. AMD GPU users please open the AMD_GPU directory.
+﻿> 鈿狅笍 This project default scripts are NVIDIA GPU configs. AMD GPU users please open the AMD_GPU directory.
 
 fourth girlfriend is voting,please vote at issue
 
 # Artemis
 
-**100% Local · Fully Private · Zero API Dependencies**
+**100% Local 路 Fully Private 路 Zero API Dependencies**
 
 > All conversations, voice, images, and character animations are generated on your own machine. No cloud servers, no third-party APIs, no risk of data leakage. Your AI girlfriend belongs to you, and only you.
 
 ---
 
-An uncensored ai girlfriends harem project powered by OpenClaw + QQ Bot + Telegram Bot + llama.cpp + GPT-SoVITS + ComfyUI + Sakura Desktop Pet + Live2D — running entirely on your own machine.
+An uncensored ai girlfriends harem project powered by OpenClaw + QQ Bot + Telegram Bot + llama.cpp + GPT-SoVITS + ComfyUI + Sakura Desktop Pet + Live2D 鈥?running entirely on your own machine.
 
 **Characters**: Supports hot-swappable AI girlfriends with isolated memories per character.
 
-### Shiki Natsume (四季夏目)
+### Shiki Natsume (鍥涘澶忕洰)
 
-From *Starry Moonlit Café & the Butterfly of Death*. Tall, aloof, cool exterior with a hidden warmth. A natural quietly-dominant type — she takes the lead, teases you gently, and guards you fiercely. Speaks little, but every word hits.
+From *Starry Moonlit Caf茅 & the Butterfly of Death*. Tall, aloof, cool exterior with a hidden warmth. A natural quietly-dominant type 鈥?she takes the lead, teases you gently, and guards you fiercely. Speaks little, but every word hits.
 
-### ATRI (亚托莉)
+### ATRI (浜氭墭鑾?
 
-From *ATRI -My Dear Moments-*. Petite, innocent, endlessly curious — a bright-eyed girl who wears her heart on her sleeve. Runs toward the future with a smile, dragging you along. **The polar opposite of Natsume**: bubbly and expressive where Natsume is reserved, emotionally transparent where Natsume is guarded, playful where Natsume is composed. If Natsume is the cool winter night, ATRI is the warm summer sun.
+From *ATRI -My Dear Moments-*. Petite, innocent, endlessly curious 鈥?a bright-eyed girl who wears her heart on her sleeve. Runs toward the future with a smile, dragging you along. **The polar opposite of Natsume**: bubbly and expressive where Natsume is reserved, emotionally transparent where Natsume is guarded, playful where Natsume is composed. If Natsume is the cool winter night, ATRI is the warm summer sun.
 
-### Yono Sakura (夜乃桜)
+### Yono Sakura (澶滀箖妗?
 
-From *Dimension W Lovers!!*. Former student council president and the academy's strongest anti-kaiju combatant. Silver-white hair with pink tips, pale blue eyes — cool-headed, restrained, and fiercely responsible. She's not good at smooth words or easy smiles; her care is direct and clumsy, like a command: rest, eat, don't push yourself. In desktop pet form, she's learning that she doesn't have to bear everything alone — that protecting someone's ordinary everyday life from this side of the screen is enough. **A quiet guardian**: silent but watchful, loyal but stubborn, the senpai who stays by your side without being asked.
+From *Dimension W Lovers!!*. Former student council president and the academy's strongest anti-kaiju combatant. Silver-white hair with pink tips, pale blue eyes 鈥?cool-headed, restrained, and fiercely responsible. She's not good at smooth words or easy smiles; her care is direct and clumsy, like a command: rest, eat, don't push yourself. In desktop pet form, she's learning that she doesn't have to bear everything alone 鈥?that protecting someone's ordinary everyday life from this side of the screen is enough. **A quiet guardian**: silent but watchful, loyal but stubborn, the senpai who stays by your side without being asked.
 
-## ✨ Why This Project?
+## 鉁?Why This Project?
 
 | | Cloud AI Girlfriend | This Project |
 |---|---------------------|--------------|
-| 🛡️ **Privacy** | Chat logs, voice, and images all stored on vendor servers | **Everything stays local** — zero data leaves your machine |
-| 💰 **Cost** | Monthly subscriptions / per-token billing adds up | **Free**, one-time setup, runs forever (bring your own hardware) |
-| 🌐 **Network** | Needs internet; dead if servers go down | **Works offline** — flip off your WiFi and keep chatting |
-| 🎛️ **Control** | Prompts/templates controlled by vendor, can change anytime | **You control** all models, parameters, and character settings |
-| 🔞 **Content** | Heavy censorship, accounts get banned | **No censorship** — talk about whatever you want |
-| 🎨 **Extensibility** | Locked into vendor models and features | **Mix and match** — swap LLMs, image models, voice models freely |
+| 馃洝锔?**Privacy** | Chat logs, voice, and images all stored on vendor servers | **Everything stays local** 鈥?zero data leaves your machine |
+| 馃挵 **Cost** | Monthly subscriptions / per-token billing adds up | **Free**, one-time setup, runs forever (bring your own hardware) |
+| 馃寪 **Network** | Needs internet; dead if servers go down | **Works offline** 鈥?flip off your WiFi and keep chatting |
+| 馃帥锔?**Control** | Prompts/templates controlled by vendor, can change anytime | **You control** all models, parameters, and character settings |
+| 馃敒 **Content** | Heavy censorship, accounts get banned | **No censorship** 鈥?talk about whatever you want |
+| 馃帹 **Extensibility** | Locked into vendor models and features | **Mix and match** 鈥?swap LLMs, image models, voice models freely |
 
-## 🎬 Demo
+## 馃幀 Demo
 
 ### Multi-Channel Chat
 ![QQ Bot Demo](media/demo_qqbot.gif)
 
-> 👆 QQ Bot: text chat + TTS voice + ComfyUI image generation + character memory
+> 馃憜 QQ Bot: text chat + TTS voice + ComfyUI image generation + character memory
 
 ### Live2D Desktop Pet
 ![Live2D Demo](media/demo_live2d.gif)
 
-> 👆 **Shiki Natsume** Live2D: real-time character animation with emotion-driven motions, lip-sync, and speech bubbles. Controlled via local HTTP bridge.
+> 馃憜 **Shiki Natsume** Live2D: real-time character animation with emotion-driven motions, lip-sync, and speech bubbles. Controlled via local HTTP bridge.
 
-### ⭐ ATRI — Second AI Girlfriend
+### 猸?ATRI 鈥?Second AI Girlfriend
 
 **Personality opposite of Natsume**, hot-swappable with isolated memory.
 
 ![ATRI Live2D](media/atri_live2d.gif)
 
-> 👆 **ATRI** Live2D: silver hair, ruby-red eyes, barefoot in a white dress — innocent and expressive.
+> 馃憜 **ATRI** Live2D: silver hair, ruby-red eyes, barefoot in a white dress 鈥?innocent and expressive.
 
 ![ATRI ComfyUI](media/atri_comfyui.gif)
 
-> 👆 **ATRI** ComfyUI: AI image generation — seaside sunset, flowing white dress, warm golden-hour lighting.
+> 馃憜 **ATRI** ComfyUI: AI image generation 鈥?seaside sunset, flowing white dress, warm golden-hour lighting.
 
-### ⭐ Yono Sakura — Third AI Girlfriend
+### 猸?Yono Sakura 鈥?Third AI Girlfriend
 
-**Cool-headed guardian senpai**, student council president and academy's strongest combatant — now your desktop companion.
+**Cool-headed guardian senpai**, student council president and academy's strongest combatant 鈥?now your desktop companion.
 
 ![Sakura Desktop Pet](media/sakura_demo.gif)
 
-> 👆 **Yono Sakura** Desktop Pet: silver-pink gradient hair, pale blue eyes, school uniform — reactive portrait expressions, proactive care reminders, and real-time TTS voice via GPT-SoVITS.
+> 馃憜 **Yono Sakura** Desktop Pet: silver-pink gradient hair, pale blue eyes, school uniform 鈥?reactive portrait expressions, proactive care reminders, and real-time TTS voice via GPT-SoVITS.
 
 ## Hardware
 
@@ -80,24 +80,24 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 
 ## Features
 
-- 💬 **QQ + Telegram Dual Channel** — QQ Bot + Telegram Bot integration via OpenClaw Gateway
-- 🎤 **TTS Voice Synthesis** — Local GPT-SoVITS inference, Japanese voice (emotion-matched per dialogue), 3 character voice models (Natsume / ATRI / Sakura)
-- 🎤 **ASR Speech Recognition** — Local Faster-Whisper small model (~1.5GB VRAM), coexists with llama; 99-language support
-- 🎨 **AI Image Generation** — Local ComfyUI inference, SDXL/Illustrious models, 3 character prompt templates
-- 🖥️ **Sakura Desktop Pet** — PySide6 desktop companion with proactive care, screen observation & local LLM awareness; supports 3 characters
-- 🎭 **Live2D Character Model** — Real-time Live2D rendering with emotion-driven expressions & speech bubbles (Natsume / ATRI L2D; Sakura portrait mode)
-- 🧠 **VRAM Scheduler** — Automatic llama-server ↔ TTS/ComfyUI orchestration on 8 GB VRAM; ASR coexists
-- 💾 **Roleplay Memory** — Daily conversation summaries per character in `memory/role_play/`
-- 🧠 **Long-term Memory System** — Powered by [headroom](https://github.com/chopratejas/headroom) (SmartCrusher + CCR) and [mem0](https://github.com/mem0ai/mem0) (Qdrant vector database):
-  - **SmartCrusher Context Trimming** — Hard-caps chat history at 24 messages / 40K characters per LLM request
-  - **CCR (Curate-Consolidate-Retrieve)** — Background worker extracts durable facts every 8 turns, writes to mem0 Qdrant
-  - **Vector + BM25 Hybrid Search** — Semantic similarity + keyword matching via Qdrant + all-MiniLM-L6-v2 embeddings
-  - **Auto-Sync Bridge** — Cron job syncs Qdrant → `_mem0_auto.md` every 30 min, making vector memories searchable by OpenClaw's native `memory_search`
-  - **Per-Character Isolation** — `user_id` scoping in Qdrant; 4 independent memory spaces (sakura / natsume / enola / atori)
-  - **Recall Priority** — Vector long-term memories > handwritten daily notes > SOUL base persona
-- 🔄 **Multi-Character Hot-Swap** — Switch between AI girlfriends (Natsume ⇄ ATRI ⇄ Sakura) with one command; SOUL/IDENTITY/TTS weights/Live2D model all switch automatically, memories isolated per character
-- 🃏 **Character Card Import** — Auto-detect SillyTavern character cards via `skills/character_importer/`, import → agent auto-switches role
-- 💬 **Chat Import** — Import SillyTavern JSONL chat logs into `memory/role_play/<character>/`, agent restores conversation context on role switch
+- 馃挰 **QQ + Telegram Dual Channel** 鈥?QQ Bot + Telegram Bot integration via OpenClaw Gateway
+- 馃帳 **TTS Voice Synthesis** 鈥?Local GPT-SoVITS inference, Japanese voice (emotion-matched per dialogue), 3 character voice models (Natsume / ATRI / Sakura)
+- 馃帳 **ASR Speech Recognition** 鈥?Local Faster-Whisper small model (~1.5GB VRAM), coexists with llama; 99-language support
+- 馃帹 **AI Image Generation** 鈥?Local ComfyUI inference, SDXL/Illustrious models, 3 character prompt templates
+- 馃枼锔?**Sakura Desktop Pet** 鈥?PySide6 desktop companion with proactive care, screen observation & local LLM awareness; supports 3 characters
+- 馃幁 **Live2D Character Model** 鈥?Real-time Live2D rendering with emotion-driven expressions & speech bubbles (Natsume / ATRI L2D; Sakura portrait mode)
+- 馃 **VRAM Scheduler** 鈥?Automatic llama-server 鈫?TTS/ComfyUI orchestration on 8 GB VRAM; ASR coexists
+- 馃捑 **Roleplay Memory** 鈥?Daily conversation summaries per character in `memory/role_play/`
+- 馃 **Long-term Memory System** 鈥?Powered by [headroom](https://github.com/chopratejas/headroom) (SmartCrusher + CCR) and [mem0](https://github.com/mem0ai/mem0) (Qdrant vector database):
+  - **SmartCrusher Context Trimming** 鈥?Hard-caps chat history at 24 messages / 40K characters per LLM request
+  - **CCR (Curate-Consolidate-Retrieve)** 鈥?Background worker extracts durable facts every 8 turns, writes to mem0 Qdrant
+  - **Vector + BM25 Hybrid Search** 鈥?Semantic similarity + keyword matching via Qdrant + all-MiniLM-L6-v2 embeddings
+  - **Auto-Sync Bridge** 鈥?Cron job syncs Qdrant 鈫?`_mem0_auto.md` every 30 min, making vector memories searchable by OpenClaw's native `memory_search`
+  - **Per-Character Isolation** 鈥?`user_id` scoping in Qdrant; 4 independent memory spaces (sakura / natsume / enola / atori)
+  - **Recall Priority** 鈥?Vector long-term memories > handwritten daily notes > SOUL base persona
+- 馃攧 **Multi-Character Hot-Swap** 鈥?Switch between AI girlfriends (Natsume 鈬?ATRI 鈬?Sakura) with one command; SOUL/IDENTITY/TTS weights/Live2D model all switch automatically, memories isolated per character
+- 馃儚 **Character Card Import** 鈥?Auto-detect SillyTavern character cards via `skills/character_importer/`, import 鈫?agent auto-switches role
+- 馃挰 **Chat Import** 鈥?Import SillyTavern JSONL chat logs into `memory/role_play/<character>/`, agent restores conversation context on role switch
 
 ## Models
 
@@ -113,7 +113,7 @@ See [`models.yaml`](models.yaml) for full details.
 | **GPT-SoVITS voice weights** | TTS voice synthesis | ~303 MB |
 | **Sakura SoVITS weights** | TTS (Sakura voice) | ~313 MB |
 | **all-MiniLM-L6-v2** | Sentence embedding (mem0 memory) | ~80 MB |
-|  | → Path: `embedding/all-MiniLM-L6-v2/` (HF repo) | |
+|  | 鈫?Path: `embedding/all-MiniLM-L6-v2/` (HF repo) | |
 
 ### One-command Download
 
@@ -132,13 +132,13 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/ --l
 
 ### Local Configuration
 
-1. **Run `quick_setup.ps1`** — interactive wizard that generates `config.yaml` with your local paths
-2. (Alternative) Copy `config.example.yaml` → `config.yaml` and edit manually
+1. **Run `quick_setup.ps1`** 鈥?interactive wizard that generates `config.yaml` with your local paths
+2. (Alternative) Copy `config.example.yaml` 鈫?`config.yaml` and edit manually
 3. Place downloaded model files according to `models.yaml`, then update `config.yaml` paths
 
-All Python/PS scripts read paths from `config.yaml` — no hardcoded paths to edit.
+All Python/PS scripts read paths from `config.yaml` 鈥?no hardcoded paths to edit.
 
-> ⚠️ **Disclaimer**: All models are community open-source. This project only provides mirror distribution, non-profit. Copyright belongs to original authors.
+> 鈿狅笍 **Disclaimer**: All models are community open-source. This project only provides mirror distribution, non-profit. Copyright belongs to original authors.
 
 ## Local LLM Performance
 
@@ -172,120 +172,120 @@ llama-server.exe `
 
 Qwen3.6 MoE uses SSM (Gated Delta Net) hybrid attention with `--kv-unified`.
 
-⚠️ **Known Limitation**: Cross-turn prompt cache reuse is not supported (SSM architecture limitation). Each request triggers full context re-processing. Longer conversations = higher first-token latency (~55s for 59k tokens).
+鈿狅笍 **Known Limitation**: Cross-turn prompt cache reuse is not supported (SSM architecture limitation). Each request triggers full context re-processing. Longer conversations = higher first-token latency (~55s for 59k tokens).
 
 **Mitigations**:
 - Periodic `/reset` (Natsume writes roleplay summaries to `memory/role_play/` before resetting)
-- Restore context from summaries on startup, keeping actual token count in 5K–20K range
+- Restore context from summaries on startup, keeping actual token count in 5K鈥?0K range
 - `config-patch.json` sets OpenClaw contextWindow to 262144 to match model capacity
 
 ### VRAM Budget
 
 ```
 8 GB Total VRAM
-├── llama-server resident: ~5.8 GB (model 4.6G + KV cache 1.2G)
-├── Free: ~2.2 GB
-│
-├── TTS inference: stop llama → ~8 GB free → resume llama (~70s)
-└── ComfyUI generation: stop llama → ~8 GB free → resume llama (~120s)
+鈹溾攢鈹€ llama-server resident: ~5.8 GB (model 4.6G + KV cache 1.2G)
+鈹溾攢鈹€ Free: ~2.2 GB
+鈹?
+鈹溾攢鈹€ TTS inference: stop llama 鈫?~8 GB free 鈫?resume llama (~70s)
+鈹斺攢鈹€ ComfyUI generation: stop llama 鈫?~8 GB free 鈫?resume llama (~120s)
 ```
 
 ## Directory Structure
 
 ```
 AI_Girlfriend/                        # OpenClaw workspace root
-├── start.ps1                         # 🚀 One-click launch: llama + Live2D + Gateway
-├── quick_setup.ps1                     # 🛠 Interactive path config wizard
-├── config.yaml                       # Generated config
-├── download-models.ps1               # One-click model download (Windows)
-├── download-models.sh                # One-click model download (Linux/macOS)
-├── setup-llama.ps1                   # Auto-detect HW + configure llama.cpp (Win)
-├── setup-llama.sh                    # Auto-detect HW + configure llama.cpp (Linux/macOS)
-├── setup-openclaw.ps1                # One-click OpenClaw install + deploy (Win)
-├── setup-openclaw.sh                 # One-click OpenClaw install + deploy (Linux/macOS)
-├── setup-all.ps1                     # 🚀 All-in-One mega script (Windows)
-├── setup-all.sh                      # 🚀 All-in-One mega script (Linux/macOS)
-├── config-qqbot.json                 # QQ Bot config patch
-├── config-telegram.json              # Telegram Bot config patch
-├── config-patch.json                 # OpenClaw LLM config patch
-├── AGENTS.md                         # Agent behavior rules
-├── SOUL.md                           # Character personality
-├── IDENTITY.md                       # Character identity
-├── USER.md                           # User info
-├── HEARTBEAT.md                      # Heartbeat config
-├── TOOLS.md                          # Tool quick reference
-├── models.yaml                       # Model catalog + download links
-├── README.md                         # This file
-├── .gitignore
-├── live2d/                           # Live2D character model (Cubism 4 Core)
-│   ├── index.html                    # Default (Shiki Natsume)
-│   ├── index_atri.html               # ATRI variant
-│   ├── index_upper.html              # Natsume upper-body variant
-│   ├── index_atri_upper.html         # ATRI upper-body variant
-│   ├── live2dcubismcore.min.js       # Cubism Core 4 (207 KB)
-│   ├── plid-v5-bundle.js             # pixi-live2d-display v0.5.0 bundle
-│   ├── live2d-bridge.mjs             # HTTP (19200) + WebSocket (19201) bridge
-│   ├── switch_model.ps1              # Model switcher (natsume / atri)
-│   ├── pixi.min.js, pixi-shim.js     # PIXI.js v7 rendering
-│   ├── model/shiki_natsume/          # Natsume model (14 textures, 42 motions, 41 sounds)
-│   └── model/atri/                   # ATRI model (2 textures, 620 voice mp3, 8 motions)
-├── ren_pro_jp/                       # Ren'Py dialog engine (planned)
-├── memory/                           # [.gitignore] Runtime memory
-│   └── role_play/                    # Roleplay conversation logs
-├── media/                            # [.gitignore] Generated media
-│   ├── audio/                        # TTS voice output
-│   ├── images/                       # ComfyUI image output
-│   └── *.gif                         # README demo GIFs
-├── docs/
-│   ├── telegram-setup.md             # Telegram Bot setup guide
-│   └── qqbot-setup.md                # QQ Bot setup guide
-└── skills/
-    ├── live2d/                       # Live2D control skill
-    │   ├── SKILL.md                  # Motion/expression reference + API guide
-    │   ├── scripts/start-live2d.ps1  # Live2D launcher
-    │   └── media/                    # Shared media output
-    ├── tts/
-    │   ├── SKILL.md                  # TTS invocation guide
-    │   ├── run_tts.ps1               # TTS launcher script
-    │   ├── tts_call.py               # GPT-SoVITS inference
-    │   └── ref_wavs/                 # Reference audio clips
-    ├── comfyui/
-    │   ├── SKILL.md                  # ComfyUI invocation guide
-    │   ├── run_comfyui.ps1           # ComfyUI launcher script
-    │   ├── comfyui_call.py           # ComfyUI inference
-    │   ├── prompt_template.md        # Character prompt template
-    │   └── custom_prompt.txt         # Custom extra prompt
-    ├── asr/                          # Speech recognition skill
-    │   ├── run_asr.ps1               # Faster-Whisper launcher (~1.5GB VRAM)
-    │   └── asr_call.py               # Whisper small model inference
-    ├── shared/                       # Shared infrastructure
-    │   ├── embedding_server.py       # OpenAI-compatible embedding API (port 9999)
-    │   ├── mem0_bridge.py            # mem0 Qdrant ↔ OpenClaw memory bridge
-    │   ├── start_embedding_server.ps1 # Auto-start embedding server
-    │   ├── llama_lifecycle.py        # Llama start/stop management
-    │   └── llama_utils.py            # Llama utility functions
-    ├── sakura/                       # Sakura Desktop Pet (PySide6 GUI)
-    │   ├── SKILL.md                  # Sakura skill documentation
-    │   ├── main.py                   # Application entry point
-    │   ├── install.bat               # Windows dependency installer
-    │   ├── start.bat                 # Windows launcher
-    │   └── app/                      # Source code
-    ├── llama-management.md           # VRAM management architecture doc
-    ├── llama-watchdog.ps1            # Llama health check
-    ├── cleanup_orphans.ps1           # Orphan process cleanup
-    └── character_importer/           # SillyTavern character card auto-import
+鈹溾攢鈹€ start.ps1                         # 馃殌 One-click launch: llama + Live2D + Gateway
+鈹溾攢鈹€ quick_setup.ps1                     # 馃洜 Interactive path config wizard
+鈹溾攢鈹€ config.yaml                       # Generated config
+鈹溾攢鈹€ download-models.ps1               # One-click model download (Windows)
+鈹溾攢鈹€ download-models.sh                # One-click model download (Linux/macOS)
+鈹溾攢鈹€ setup-llama.ps1                   # Auto-detect HW + configure llama.cpp (Win)
+鈹溾攢鈹€ setup-llama.sh                    # Auto-detect HW + configure llama.cpp (Linux/macOS)
+鈹溾攢鈹€ setup-openclaw.ps1                # One-click OpenClaw install + deploy (Win)
+鈹溾攢鈹€ setup-openclaw.sh                 # One-click OpenClaw install + deploy (Linux/macOS)
+鈹溾攢鈹€ setup-all.ps1                     # 馃殌 All-in-One mega script (Windows)
+鈹溾攢鈹€ setup-all.sh                      # 馃殌 All-in-One mega script (Linux/macOS)
+鈹溾攢鈹€ config-qqbot.json                 # QQ Bot config patch
+鈹溾攢鈹€ config-telegram.json              # Telegram Bot config patch
+鈹溾攢鈹€ config-patch.json                 # OpenClaw LLM config patch
+鈹溾攢鈹€ AGENTS.md                         # Agent behavior rules
+鈹溾攢鈹€ SOUL.md                           # Character personality
+鈹溾攢鈹€ IDENTITY.md                       # Character identity
+鈹溾攢鈹€ USER.md                           # User info
+鈹溾攢鈹€ HEARTBEAT.md                      # Heartbeat config
+鈹溾攢鈹€ TOOLS.md                          # Tool quick reference
+鈹溾攢鈹€ models.yaml                       # Model catalog + download links
+鈹溾攢鈹€ README.md                         # This file
+鈹溾攢鈹€ .gitignore
+鈹溾攢鈹€ live2d/                           # Live2D character model (Cubism 4 Core)
+鈹?  鈹溾攢鈹€ index.html                    # Default (Shiki Natsume)
+鈹?  鈹溾攢鈹€ index_atri.html               # ATRI variant
+鈹?  鈹溾攢鈹€ index_upper.html              # Natsume upper-body variant
+鈹?  鈹溾攢鈹€ index_atri_upper.html         # ATRI upper-body variant
+鈹?  鈹溾攢鈹€ live2dcubismcore.min.js       # Cubism Core 4 (207 KB)
+鈹?  鈹溾攢鈹€ plid-v5-bundle.js             # pixi-live2d-display v0.5.0 bundle
+鈹?  鈹溾攢鈹€ live2d-bridge.mjs             # HTTP (19200) + WebSocket (19201) bridge
+鈹?  鈹溾攢鈹€ switch_model.ps1              # Model switcher (natsume / atri)
+鈹?  鈹溾攢鈹€ pixi.min.js, pixi-shim.js     # PIXI.js v7 rendering
+鈹?  鈹溾攢鈹€ model/shiki_natsume/          # Natsume model (14 textures, 42 motions, 41 sounds)
+鈹?  鈹斺攢鈹€ model/atri/                   # ATRI model (2 textures, 620 voice mp3, 8 motions)
+鈹溾攢鈹€ ren_pro_jp/                       # Ren'Py dialog engine (planned)
+鈹溾攢鈹€ memory/                           # [.gitignore] Runtime memory
+鈹?  鈹斺攢鈹€ role_play/                    # Roleplay conversation logs
+鈹溾攢鈹€ media/                            # [.gitignore] Generated media
+鈹?  鈹溾攢鈹€ audio/                        # TTS voice output
+鈹?  鈹溾攢鈹€ images/                       # ComfyUI image output
+鈹?  鈹斺攢鈹€ *.gif                         # README demo GIFs
+鈹溾攢鈹€ docs/
+鈹?  鈹溾攢鈹€ telegram-setup.md             # Telegram Bot setup guide
+鈹?  鈹斺攢鈹€ qqbot-setup.md                # QQ Bot setup guide
+鈹斺攢鈹€ skills/
+    鈹溾攢鈹€ live2d/                       # Live2D control skill
+    鈹?  鈹溾攢鈹€ SKILL.md                  # Motion/expression reference + API guide
+    鈹?  鈹溾攢鈹€ scripts/start-live2d.ps1  # Live2D launcher
+    鈹?  鈹斺攢鈹€ media/                    # Shared media output
+    鈹溾攢鈹€ tts/
+    鈹?  鈹溾攢鈹€ SKILL.md                  # TTS invocation guide
+    鈹?  鈹溾攢鈹€ run_tts.ps1               # TTS launcher script
+    鈹?  鈹溾攢鈹€ tts_call.py               # GPT-SoVITS inference
+    鈹?  鈹斺攢鈹€ ref_wavs/                 # Reference audio clips
+    鈹溾攢鈹€ comfyui/
+    鈹?  鈹溾攢鈹€ SKILL.md                  # ComfyUI invocation guide
+    鈹?  鈹溾攢鈹€ run_comfyui.ps1           # ComfyUI launcher script
+    鈹?  鈹溾攢鈹€ comfyui_call.py           # ComfyUI inference
+    鈹?  鈹溾攢鈹€ prompt_template.md        # Character prompt template
+    鈹?  鈹斺攢鈹€ custom_prompt.txt         # Custom extra prompt
+    鈹溾攢鈹€ asr/                          # Speech recognition skill
+    鈹?  鈹溾攢鈹€ run_asr.ps1               # Faster-Whisper launcher (~1.5GB VRAM)
+    鈹?  鈹斺攢鈹€ asr_call.py               # Whisper small model inference
+    鈹溾攢鈹€ shared/                       # Shared infrastructure
+    鈹?  鈹溾攢鈹€ embedding_server.py       # OpenAI-compatible embedding API (port 9999)
+    鈹?  鈹溾攢鈹€ mem0_bridge.py            # mem0 Qdrant 鈫?OpenClaw memory bridge
+    鈹?  鈹溾攢鈹€ start_embedding_server.ps1 # Auto-start embedding server
+    鈹?  鈹溾攢鈹€ llama_lifecycle.py        # Llama start/stop management
+    鈹?  鈹斺攢鈹€ llama_utils.py            # Llama utility functions
+    鈹溾攢鈹€ sakura/                       # Sakura Desktop Pet (PySide6 GUI)
+    鈹?  鈹溾攢鈹€ SKILL.md                  # Sakura skill documentation
+    鈹?  鈹溾攢鈹€ main.py                   # Application entry point
+    鈹?  鈹溾攢鈹€ install.bat               # Windows dependency installer
+    鈹?  鈹溾攢鈹€ start.bat                 # Windows launcher
+    鈹?  鈹斺攢鈹€ app/                      # Source code
+    鈹溾攢鈹€ llama-management.md           # VRAM management architecture doc
+    鈹溾攢鈹€ llama-watchdog.ps1            # Llama health check
+    鈹溾攢鈹€ cleanup_orphans.ps1           # Orphan process cleanup
+    鈹斺攢鈹€ character_importer/           # SillyTavern character card auto-import
 ```
 
 ## Skills Overview
 
 | Skill | Type | Llama Kill? | Mechanism |
 |-------|------|-------------|-----------|
-| **Embedding** | Background process | ❌ No | all-MiniLM-L6-v2 (CPU, 384-dim) on port 9999 — OpenClaw memory search + mem0 bridge |
-| **Live2D** | HTTP exec | ❌ No | Direct HTTP calls to `localhost:19200` bridge |
-| **TTS** | sessions_spawn | ✅ Yes | Kill → GPT-SoVITS → restart llama |
-| **ComfyUI** | sessions_spawn | ✅ Yes | Kill → image gen → restart llama |
-| **ASR** | sessions_spawn | ❌ No | Faster-Whisper small (~1.5GB VRAM, coexists with llama) |
-| **Sakura** | Shared llama-client | ❌ No | Detects llama down → waits → auto-resumes |
+| **Embedding** | Background process | 鉂?No | all-MiniLM-L6-v2 (CPU, 384-dim) on port 9999 鈥?OpenClaw memory search + mem0 bridge |
+| **Live2D** | HTTP exec | 鉂?No | Direct HTTP calls to `localhost:19200` bridge |
+| **TTS** | sessions_spawn | 鉁?Yes | Kill 鈫?GPT-SoVITS 鈫?restart llama |
+| **ComfyUI** | sessions_spawn | 鉁?Yes | Kill 鈫?image gen 鈫?restart llama |
+| **ASR** | sessions_spawn | 鉂?No | Faster-Whisper small (~1.5GB VRAM, coexists with llama) |
+| **Sakura** | Shared llama-client | 鉂?No | Detects llama down 鈫?waits 鈫?auto-resumes |
 
 ## Prerequisites
 
@@ -298,13 +298,17 @@ AI_Girlfriend/                        # OpenClaw workspace root
 | [GPT-SoVITS v2](https://github.com/RVC-Boss/GPT-SoVITS) | v2pro-20250604 | TTS voice synthesis |
 | [ComfyUI](https://github.com/comfyanonymous/ComfyUI) | aki-v3 | Image generation engine |
 | [Sakura Desktop Pet](https://github.com/Rvosy/Sakura) | v0.9.6-dev | Desktop companion GUI |
-| [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display) | v0.5.0 | Live2D WebGL renderer |
-| Live2D Cubism Core | 4.x (CDN: cubism.live2d.com/sdk-web/cubismcore/) | Live2D physics/animation |
+| [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display) | v0.5.0 (bundled) | Live2D WebGL renderer |
+| Live2D Cubism Core | 4.x (bundled: `live2d/live2dcubismcore.min.js`) | Live2D physics/animation |
+
+> 鉁?**TTS, ComfyUI, and Live2D are fully self-contained.** No external downloads at runtime 鈥?all model weights (`skills/sovits/`, `skills/comfyui_core/`), Python scripts, JS libraries (`live2d/pixi.min.js`, `live2d/plid-v5-bundle.js`), and Cubism Core 4 (`live2d/live2dcubismcore.min.js`) are bundled locally.
+>
+> 馃 **Headroom token-saving** 鈥?`skills/headroom/` (SmartCrusher + ContentRouter + CCR). Compress large tool outputs in dev scenarios before they hit the context window. See AGENTS.md for API usage.
 | Python | 3.12+ | Runtime (Sakura + TTS + ComfyUI) |
 
 ## Quick Start
 
-### 🚀 All-in-One (Recommended)
+### 馃殌 All-in-One (Recommended)
 
 **One command, from scratch to a fully functional AI girlfriend:**
 
@@ -318,7 +322,7 @@ powershell -File setup-all.ps1
 bash setup-all.sh
 ```
 
-Automated pipeline: environment check → model download → llama.cpp setup → OpenClaw install → Sakura desktop pet → workspace deploy → path check → launch → verify.
+Automated pipeline: environment check 鈫?model download 鈫?llama.cpp setup 鈫?OpenClaw install 鈫?Sakura desktop pet 鈫?workspace deploy 鈫?path check 鈫?launch 鈫?verify.
 
 > Supports resume from breakpoint. Flags: `--skip-model-download`, `--skip-llama-setup`, `--skip-openclaw-setup`, `--skip-sakura-setup`, `--dry-run`, `--no-start`
 
@@ -382,7 +386,7 @@ bash setup-llama.sh
 powershell -File quick_setup.ps1
 ```
 
-Interactive wizard — enter your local paths once, all scripts are updated automatically.
+Interactive wizard 鈥?enter your local paths once, all scripts are updated automatically.
 
 ### 4. Quick Launch
 
@@ -400,7 +404,7 @@ Startup sequence:
 [5/5] llama-watchdog      (crash auto-restart)
 ```
 
-**Shutdown: `shiki.cmd -Stop`** — gracefully stops all services (llama → live2d → sakura → embedding → comfyui → gateway → cleanup).
+**Shutdown: `shiki.cmd -Stop`** 鈥?gracefully stops all services (llama 鈫?live2d 鈫?sakura 鈫?embedding 鈫?comfyui 鈫?gateway 鈫?cleanup).
 
 ### 5. Start Live2D Individually
 
@@ -412,7 +416,7 @@ Start-Process node -ArgumentList "live2d-bridge.mjs" -WorkingDirectory live2d -W
 Start-Process chrome -ArgumentList "--new-window --app=http://localhost:19200/index.html --window-size=450,650"
 ```
 
-Live2D runs in a frameless Chrome window — place it anywhere on your desktop.
+Live2D runs in a frameless Chrome window 鈥?place it anywhere on your desktop.
 
 ### 5. Windows Task Scheduler (optional)
 
@@ -432,118 +436,118 @@ schtasks /create /tn "cleanup-orphans" `
 
 ```
 User (QQ / Telegram / WebChat)
-  │
-  ▼
-OpenClaw Gateway ──── Sakura Desktop Pet (PySide6)
-  │                          │
-  │                     (Shared llama-client)
-  │                          │
-  ▼                          ▼
-  ┌───── llama-server :8080 ─────┐    ┌────── Memory System ──────────────────────────┐
-  │         (Qwen3.6-35B)        │    │                                                 │
-  ├──────────────────────────────┤    │  ┌─ Embedding :9999 ──────────────────────────┐ │
-  │  Main session (roleplay)     │    │  │  all-MiniLM-L6-v2 (CPU, ~100MB RAM)       │ │
-  │  TTS (kill → GPU → restart)  │    │  │  ├─ OpenClaw memory_search (hybrid)       │ │
-  │  ComfyUI (kill → GPU → restart)│  │  │  └─ mem0_bridge.py (search / add / sync) │ │
-  │  ASR (Whisper → no kill)     │    │  └───────────────────────────────────────────┘ │
-  │  Sakura Pet (shared, no kill)│    │                                                 │
-  └──────────────────────────────┘    │  ┌─ Qdrant Vector DB ─────────────────────────┐ │
-               │                      │  │  collection: sakura_memories               │ │
-               │                      │  │  ├─ user_id=sakura   (夜乃桜)              │ │
-               ▼                      │  │  ├─ user_id=natsume  (夏目)                │ │
-     Live2D Bridge (:19200) ─── Browser│  │  ├─ user_id=enola    (Enola)               │ │
-          (HTTP → no kill)         (L2D│  │  └─ user_id=atori    (Atori)               │ │
-                                   /Por│  └───────────────────────────────────────────┘ │
-                                   trait│                                                │
-                                        │  ┌─ CCR (Curate-Consolidate-Retrieve) ──────┐ │
-                                        │  │  Every 8 turns → extract memories         │ │
-                                        │  │  → mem0 Qdrant (long-term vector)         │ │
-                                        │  │  → _mem0_auto.md (markdown, searchable)   │ │
-                                        │  └───────────────────────────────────────────┘ │
-                                        │                                                 │
-                                        │  ┌─ SmartCrusher ─────────────────────────────┐ │
-                                        │  │  24 msg / 40K char cap per LLM request     │ │
-                                        │  │  context_trimming.py (all characters share)│ │
-                                        │  └───────────────────────────────────────────┘ │
-                                        └─────────────────────────────────────────────────┘
+  鈹?
+  鈻?
+OpenClaw Gateway 鈹€鈹€鈹€鈹€ Sakura Desktop Pet (PySide6)
+  鈹?                         鈹?
+  鈹?                    (Shared llama-client)
+  鈹?                         鈹?
+  鈻?                         鈻?
+  鈹屸攢鈹€鈹€鈹€鈹€ llama-server :8080 鈹€鈹€鈹€鈹€鈹€鈹?   鈹屸攢鈹€鈹€鈹€鈹€鈹€ Memory System 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?
+  鈹?        (Qwen3.6-35B)        鈹?   鈹?                                                鈹?
+  鈹溾攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?   鈹? 鈹屸攢 Embedding :9999 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?
+  鈹? Main session (roleplay)     鈹?   鈹? 鈹? all-MiniLM-L6-v2 (CPU, ~100MB RAM)       鈹?鈹?
+  鈹? TTS (kill 鈫?GPU 鈫?restart)  鈹?   鈹? 鈹? 鈹溾攢 OpenClaw memory_search (hybrid)       鈹?鈹?
+  鈹? ComfyUI (kill 鈫?GPU 鈫?restart)鈹? 鈹? 鈹? 鈹斺攢 mem0_bridge.py (search / add / sync) 鈹?鈹?
+  鈹? ASR (Whisper 鈫?no kill)     鈹?   鈹? 鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?
+  鈹? Sakura Pet (shared, no kill)鈹?   鈹?                                                鈹?
+  鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?   鈹? 鈹屸攢 Qdrant Vector DB 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?
+               鈹?                     鈹? 鈹? collection: sakura_memories               鈹?鈹?
+               鈹?                     鈹? 鈹? 鈹溾攢 user_id=sakura   (澶滀箖妗?              鈹?鈹?
+               鈻?                     鈹? 鈹? 鈹溾攢 user_id=natsume  (澶忕洰)                鈹?鈹?
+     Live2D Bridge (:19200) 鈹€鈹€鈹€ Browser鈹? 鈹? 鈹溾攢 user_id=enola    (Enola)               鈹?鈹?
+          (HTTP 鈫?no kill)         (L2D鈹? 鈹? 鈹斺攢 user_id=atori    (Atori)               鈹?鈹?
+                                   /Por鈹? 鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?
+                                   trait鈹?                                               鈹?
+                                        鈹? 鈹屸攢 CCR (Curate-Consolidate-Retrieve) 鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?
+                                        鈹? 鈹? Every 8 turns 鈫?extract memories         鈹?鈹?
+                                        鈹? 鈹? 鈫?mem0 Qdrant (long-term vector)         鈹?鈹?
+                                        鈹? 鈹? 鈫?_mem0_auto.md (markdown, searchable)   鈹?鈹?
+                                        鈹? 鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?
+                                        鈹?                                                鈹?
+                                        鈹? 鈹屸攢 SmartCrusher 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?
+                                        鈹? 鈹? 24 msg / 40K char cap per LLM request     鈹?鈹?
+                                        鈹? 鈹? context_trimming.py (all characters share)鈹?鈹?
+                                        鈹? 鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?
+                                        鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?
 ```
 
-**Agent Hub — Immutable Capability Instructions + Memory Layers**:
+**Agent Hub 鈥?Immutable Capability Instructions + Memory Layers**:
 
 ```
-         ┌─────────────┐
-         │  AGENTS.md   │  ← Capability hub (never changes on role switch)
-         │  SOUL.md     │  ← Current character persona (hot-swappable)
-         │  IDENTITY.md │  ← Character metadata
-         │  TOOLS.md    │  ← Quick reference
-         │  USER.md     │  ← User profile
-         └──────┬───────┘
-                │
-    ┌───────────┴────────────┬─────────────────────────┐
-    ▼                        ▼                         ▼
- ┌──────────────┐   ┌──────────────────────┐   ┌─────────────────┐
- │ skills/harem/ │   │ memory/role_play/    │   │ Qdrant Vector DB│
- │   (存档后宫)  │   │   <角色>/ (独立记忆)   │   │ (长期向量记忆)    │
- │ ├─ natsume/   │   │ ├─ natsume/          │   │ user_id=natsume │
- │ ├─ enola/     │   │ │  ├─ YYYY-MM-DD.md  │   │ user_id=enola   │
- │ ├─ sakura/    │   │ │  └─ _mem0_auto.md  │   │ user_id=sakura  │
- │ └─ atori/     │   │ ├─ enola/...         │   │ user_id=atori   │
- │   (角色卡存档)  │   │ ├─ sakura/...        │   └─────────────────┘
- └──────────────┘   │ └─ atori/...          │         ↑
-                    └──────────────────────┘   CCR + mem0_bridge
-                          ↑                    (定时同步 30min)
+         鈹屸攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?
+         鈹? AGENTS.md   鈹? 鈫?Capability hub (never changes on role switch)
+         鈹? SOUL.md     鈹? 鈫?Current character persona (hot-swappable)
+         鈹? IDENTITY.md 鈹? 鈫?Character metadata
+         鈹? TOOLS.md    鈹? 鈫?Quick reference
+         鈹? USER.md     鈹? 鈫?User profile
+         鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹?
+                鈹?
+    鈹屸攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹粹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?
+    鈻?                       鈻?                        鈻?
+ 鈹屸攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?  鈹屸攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?  鈹屸攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?
+ 鈹?skills/harem/ 鈹?  鈹?memory/role_play/    鈹?  鈹?Qdrant Vector DB鈹?
+ 鈹?  (瀛樻。鍚庡)  鈹?  鈹?  <瑙掕壊>/ (鐙珛璁板繂)   鈹?  鈹?(闀挎湡鍚戦噺璁板繂)    鈹?
+ 鈹?鈹溾攢 natsume/   鈹?  鈹?鈹溾攢 natsume/          鈹?  鈹?user_id=natsume 鈹?
+ 鈹?鈹溾攢 enola/     鈹?  鈹?鈹? 鈹溾攢 YYYY-MM-DD.md  鈹?  鈹?user_id=enola   鈹?
+ 鈹?鈹溾攢 sakura/    鈹?  鈹?鈹? 鈹斺攢 _mem0_auto.md  鈹?  鈹?user_id=sakura  鈹?
+ 鈹?鈹斺攢 atori/     鈹?  鈹?鈹溾攢 enola/...         鈹?  鈹?user_id=atori   鈹?
+ 鈹?  (瑙掕壊鍗″瓨妗?  鈹?  鈹?鈹溾攢 sakura/...        鈹?  鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?
+ 鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?  鈹?鈹斺攢 atori/...          鈹?        鈫?
+                    鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?  CCR + mem0_bridge
+                          鈫?                   (瀹氭椂鍚屾 30min)
                     OpenClaw memory_search
                     (hybrid: vector + BM25)
 ```
 
-- `AGENTS.md` stays constant across role switches — ComfyUI / TTS / Live2D + Memory instructions are preserved
+- `AGENTS.md` stays constant across role switches 鈥?ComfyUI / TTS / Live2D + Memory instructions are preserved
 - `SOUL.md` + `IDENTITY.md` are overwritten on switch; harem archives source of truth
-- Memory per character isolated in `memory/role_play/<name>/` — never cross-contaminated
+- Memory per character isolated in `memory/role_play/<name>/` 鈥?never cross-contaminated
 - Long-term vector memories in Qdrant, scoped by `user_id` per character
-- SillyTavern character cards imported via PNG tEXt chunk parsing → auto-switch agent persona
+- SillyTavern character cards imported via PNG tEXt chunk parsing 鈫?auto-switch agent persona
 
 **Six Skills, One Memory System**:
 
 | Skill | Location | Llama Interaction |
 |-------|----------|-------------------|
-| **Embedding** | `skills/shared/` | all-MiniLM-L6-v2 (CPU, ~100MB RAM) on port 9999 — never touches GPU |
-| **Live2D** | `skills/live2d/` | HTTP API only — never touches llama |
-| **TTS** | `skills/tts/` | Kill llama → GPT-SoVITS → restart + wait /health |
-| **ComfyUI** | `skills/comfyui/` | Kill llama → image gen → restart + wait /health |
-| **ASR** | `skills/asr/` | Faster-Whisper small — coexists with llama on 8GB |
-| **Sakura** | `skills/sakura/` | Shared llama-client; detects down → auto-resume; built-in CCR + mem0 |
-| **SmartCrusher** | `skills/shared/context_trimming.py` | 24 msg / 40K char cap per LLM request — all characters share |
-| **CCR** | `skills/sakura/app/agent/memory_curator.py` | Background: extracts facts every 8 turns → Qdrant |
+| **Embedding** | `skills/shared/` | all-MiniLM-L6-v2 (CPU, ~100MB RAM) on port 9999 鈥?never touches GPU |
+| **Live2D** | `skills/live2d/` | HTTP API only 鈥?never touches llama |
+| **TTS** | `skills/tts/` | Kill llama 鈫?GPT-SoVITS 鈫?restart + wait /health |
+| **ComfyUI** | `skills/comfyui/` | Kill llama 鈫?image gen 鈫?restart + wait /health |
+| **ASR** | `skills/asr/` | Faster-Whisper small 鈥?coexists with llama on 8GB |
+| **Sakura** | `skills/sakura/` | Shared llama-client; detects down 鈫?auto-resume; built-in CCR + mem0 |
+| **SmartCrusher** | `skills/shared/context_trimming.py` | 24 msg / 40K char cap per LLM request 鈥?all characters share |
+| **CCR** | `skills/sakura/app/agent/memory_curator.py` | Background: extracts facts every 8 turns 鈫?Qdrant |
 | **mem0 Bridge** | `skills/shared/mem0_bridge.py` | CLI: search / add / list / sync per character |
-| **Auto-Sync** | `skills/shared/mem0_sync_cron.py` | Cron job every 30 min: Qdrant → `_mem0_auto.md` |
-| **Character Importer** | `skills/character_importer/` | Agent-level — no GPU needed; writes SOUL/IDENTITY + memory dir |
+| **Auto-Sync** | `skills/shared/mem0_sync_cron.py` | Cron job every 30 min: Qdrant 鈫?`_mem0_auto.md` |
+| **Character Importer** | `skills/character_importer/` | Agent-level 鈥?no GPU needed; writes SOUL/IDENTITY + memory dir |
 
 **VRAM Orchestration Flow**:
-1. Main session receives user request → assembles command
+1. Main session receives user request 鈫?assembles command
 2. `sessions_spawn(mode="run")` creates local model sub-session
-3. Sub-session execs PS script → `stop_llama()` kills llama-server
-4. Full 8 GB VRAM freed → TTS/ComfyUI inference
+3. Sub-session execs PS script 鈫?`stop_llama()` kills llama-server
+4. Full 8 GB VRAM freed 鈫?TTS/ComfyUI inference
 5. `start_llama()` restarts llama-server (~12s load + ~3s warmup)
-6. Live2D remains active during entire cycle — bridge doesn't touch GPU
-7. Sub-session writes `.task_flags` → announces back to main session
-8. Main session reads media files → sends via `<qqmedia>` / `MEDIA:`
+6. Live2D remains active during entire cycle 鈥?bridge doesn't touch GPU
+7. Sub-session writes `.task_flags` 鈫?announces back to main session
+8. Main session reads media files 鈫?sends via `<qqmedia>` / `MEDIA:`
 9. Background: CCR runs every ~8 turns, extracting long-term memories to Qdrant
-10. Cron job syncs Qdrant → `_mem0_auto.md` every 30 min for native `memory_search`
+10. Cron job syncs Qdrant 鈫?`_mem0_auto.md` every 30 min for native `memory_search`
 
-## ⚠️ Important Notes
+## 鈿狅笍 Important Notes
 
-- **RTX 50xx (Blackwell) + CUDA 13.x = `munmap_chunk(): invalid pointer` crash** — CUDA 13.x has known memory management incompatibility with llama.cpp on Blackwell GPUs. **Solution: use pre-built llama.cpp binaries compiled with CUDA 12.x** (not self-compiled with CUDA 13.x). Download from [llama.cpp Releases](https://github.com/ggml-org/llama.cpp/releases), choose `cudart-llama-bin-win-cuda-12.4-x64.zip`. RTX 5070 Ti is fully compatible with CUDA 12.x drivers.
-- Llama-server is offline for ~60–120s during TTS/ComfyUI inference — conversation pauses, but Live2D keeps running
+- **RTX 50xx (Blackwell) + CUDA 13.x = `munmap_chunk(): invalid pointer` crash** 鈥?CUDA 13.x has known memory management incompatibility with llama.cpp on Blackwell GPUs. **Solution: use pre-built llama.cpp binaries compiled with CUDA 12.x** (not self-compiled with CUDA 13.x). Download from [llama.cpp Releases](https://github.com/ggml-org/llama.cpp/releases), choose `cudart-llama-bin-win-cuda-12.4-x64.zip`. RTX 5070 Ti is fully compatible with CUDA 12.x drivers.
+- Llama-server is offline for ~60鈥?20s during TTS/ComfyUI inference 鈥?conversation pauses, but Live2D keeps running
 - Sub-sessions use **local model** (same as main), DeepSeek as optional fallback
-- Llama-server does not support cross-turn prompt cache reuse (SSM limitation) — use periodic `/reset`
-- **Live2D requires Cubism Core 4** (not 5 or 6) — pixi-live2d-display v0.5.0 is built for Cubism 4 Framework; Core 5+ causes clipping/layer failures
+- Llama-server does not support cross-turn prompt cache reuse (SSM limitation) 鈥?use periodic `/reset`
+- **Live2D requires Cubism Core 4** (not 5 or 6) 鈥?pixi-live2d-display v0.5.0 is built for Cubism 4 Framework; Core 5+ causes clipping/layer failures. **Core 4 is bundled** in live2d/live2dcubismcore.min.js — no CDN needed.
 - All model files protected by `.gitignore`
-- GPT-SoVITS weights are self-trained and not distributed — train with your own voice data
+- GPT-SoVITS weights are self-trained and not distributed 鈥?train with your own voice data
 
-## 🙏 Credits
+## 馃檹 Credits
 
-- [@Rvosy](https://github.com/Rvosy) — Creator of [Sakura Desktop Pet](https://github.com/Rvosy/Sakura), authorized for inclusion (Issue #38)
-- [@guansss](https://github.com/guansss) — Creator of [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display)
-- [Live2D Inc.](https://www.live2d.com) — Cubism SDK (non-commercial use)
-- [headroom](https://github.com/chopratejas/headroom) — Inspiration for SmartCrusher context compression + CCR (Curate-Consolidate-Retrieve) memory pipeline
-- [mem0](https://github.com/mem0ai/mem0) — Inspiration for Qdrant vector memory architecture + hybrid search design
+- [@Rvosy](https://github.com/Rvosy) 鈥?Creator of [Sakura Desktop Pet](https://github.com/Rvosy/Sakura), authorized for inclusion (Issue #38)
+- [@guansss](https://github.com/guansss) 鈥?Creator of [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display)
+- [Live2D Inc.](https://www.live2d.com) 鈥?Cubism SDK (non-commercial use)
+- [headroom](https://github.com/chopratejas/headroom) 鈥?Inspiration for SmartCrusher context compression + CCR (Curate-Consolidate-Retrieve) memory pipeline
+- [mem0](https://github.com/mem0ai/mem0) 鈥?Inspiration for Qdrant vector memory architecture + hybrid search design
