@@ -173,7 +173,8 @@ if [[ -z "$MODEL_PATH" ]] || [[ ! -f "$MODEL_PATH" ]]; then
     exit 1
 fi
 
-MODEL_SIZE_GB=$(echo "scale=2; $(stat -f%z "$MODEL_PATH" 2>/dev/null || stat -c%s "$MODEL_PATH") / 1073741824" | bc 2>/dev/null || echo "?")
+MODEL_SIZE_BYTES=$(stat -c%s "$MODEL_PATH" 2>/dev/null || stat -f%z "$MODEL_PATH" 2>/dev/null || echo 0)
+MODEL_SIZE_GB=$(echo "scale=2; $MODEL_SIZE_BYTES / 1073741824" | bc 2>/dev/null || echo "?")
 echo -e "  Model:    ${GRAY}${MODEL_PATH}${NC}"
 echo -e "  Size:     ${GRAY}${MODEL_SIZE_GB} GB${NC}"
 
@@ -252,22 +253,29 @@ fi
 [[ "$THREADS" -lt 2 ]] && THREADS=2
 
 # Context
-if (( $(echo "$KV_CACHE_GB <= 0" | bc -l) )); then
+COMPARE_KV=$(echo "$KV_CACHE_GB <= 0" | bc -l 2>/dev/null || echo 1)
+if [[ "$COMPARE_KV" == "1" ]]; then
     REAL_CONTEXT=$((CONTEXT_SIZE < 32768 ? CONTEXT_SIZE : 32768))
+    # macOS bash handles octal-safe, but ensure leading-0 not treated as octal
+    REAL_CONTEXT=$((10#$REAL_CONTEXT))
 else
     REAL_CONTEXT=$CONTEXT_SIZE
 fi
 
 # MoE
-CPU_MOE=""
-if (( $(echo "$VRAM_GB <= 8" | bc -l) )); then
+COMPARE_VRAM=$(echo "$VRAM_GB <= 8" | bc -l 2>/dev/null || echo 0)
+if [[ "$COMPARE_VRAM" == "1" ]]; then
     CPU_MOE="--cpu-moe --cpu-mask 0xFFFFFFFF"
+else
+    CPU_MOE=""
 fi
 
 # No-mmap
-NO_MMAP=""
-if (( $(echo "$TOTAL_RAM_GB >= 32" | bc -l) )); then
+COMPARE_RAM=$(echo "$TOTAL_RAM_GB >= 32" | bc -l 2>/dev/null || echo 0)
+if [[ "$COMPARE_RAM" == "1" ]]; then
     NO_MMAP="--no-mmap"
+else
+    NO_MMAP=""
 fi
 
 echo -e "  Mode:     ${WHITE}${GPU_MODE}${NC}"
@@ -284,9 +292,9 @@ LLAMA_EXE=""
 if command -v llama-server &>/dev/null; then
     LLAMA_EXE="llama-server"
 elif [[ -f "./llama.cpp/build/bin/llama-server" ]]; then
-    LLAMA_EXE="$(realpath ./llama.cpp/build/bin/llama-server)"
+    LLAMA_EXE="$(command -v realpath &>/dev/null && realpath ./llama.cpp/build/bin/llama-server || { cd ./llama.cpp/build/bin && pwd; }/llama-server)"
 elif [[ -f "../llama.cpp/build/bin/llama-server" ]]; then
-    LLAMA_EXE="$(realpath ../llama.cpp/build/bin/llama-server)"
+    LLAMA_EXE="$(command -v realpath &>/dev/null && realpath ../llama.cpp/build/bin/llama-server || { cd ../llama.cpp/build/bin && pwd; }/llama-server)"
 fi
 
 if [[ -z "$LLAMA_EXE" ]]; then

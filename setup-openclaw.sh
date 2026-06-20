@@ -170,8 +170,8 @@ fi
 echo -e "${YELLOW}[2/5] Installing OpenClaw...${NC}"
 
 if command -v openclaw &>/dev/null; then
-    OC_VERSION=$(openclaw --version 2>&1 || echo "unknown")
-    OC_PATH=$(which openclaw)
+    OC_VERSION=$(openclaw version 2>&1 || echo "unknown")
+    OC_PATH=$(command -v openclaw)
     echo -e "  ${GREEN}OpenClaw already installed: $OC_VERSION${NC}"
     echo -e "  ${GRAY}Path: $OC_PATH${NC}"
 else
@@ -186,12 +186,12 @@ else
 
     # Verify
     if command -v openclaw &>/dev/null; then
-        OC_VERSION=$(openclaw --version 2>&1)
+        OC_VERSION=$(openclaw version 2>&1 || true)
         echo -e "  ${GREEN}OpenClaw installed successfully!${NC}"
         echo -e "  ${GRAY}Version: $OC_VERSION${NC}"
     else
         echo -e "  ${RED}[ERROR] openclaw CLI not found after install.${NC}"
-        echo -e "  ${YELLOW}Try restarting your terminal and running: openclaw --version${NC}"
+        echo -e "  ${YELLOW}Try restarting your terminal and running: openclaw version${NC}"
         echo -e "  ${YELLOW}If still not found, add npm global bin to PATH:${NC}"
         echo -e "  ${WHITE}  export PATH=\"\$(npm prefix -g)/bin:\$PATH\"${NC}"
         exit 1
@@ -363,7 +363,7 @@ echo -e "${GREEN}╚════════════════════
 echo ""
 
 echo -e "  ${CYAN}Verification commands:${NC}"
-echo -e "  ${WHITE}  openclaw --version        # Check CLI${NC}"
+echo -e "  ${WHITE}  openclaw version           # Check CLI${NC}"
 echo -e "  ${WHITE}  openclaw doctor           # Check configuration${NC}"
 echo -e "  ${WHITE}  openclaw gateway status   # Check Gateway status${NC}"
 echo ""

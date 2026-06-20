@@ -24,9 +24,14 @@ MODEL_BASE_DIR=""
 SKIP_MODEL_DOWNLOAD=false
 SKIP_LLAMA_SETUP=false
 SKIP_OPENCLAW_SETUP=false
+SKIP_BOT_CONFIG=false
+SKIP_SAKURA_SETUP=false
 WORKSPACE_PATH=""
 GPT_SOVITS_DIR=""
 COMFYUI_DIR=""
+QQ_APP_ID=""
+QQ_CLIENT_SECRET=""
+TG_BOT_TOKEN=""
 DRY_RUN=false
 NO_START=false
 
@@ -42,6 +47,7 @@ while [[ $# -gt 0 ]]; do
         --dry-run)          DRY_RUN=true; shift ;;
         --no-start)         NO_START=true; shift ;;
         --skip-bot-config)  SKIP_BOT_CONFIG=true; shift ;;
+        --skip-sakura-setup) SKIP_SAKURA_SETUP=true; shift ;;
         --qq-app-id)        QQ_APP_ID="$2"; shift 2 ;;
         --qq-client-secret) QQ_CLIENT_SECRET="$2"; shift 2 ;;
         --tg-bot-token)     TG_BOT_TOKEN="$2"; shift 2 ;;
@@ -266,15 +272,15 @@ WORKSPACE_PATH="$(cd "$(dirname "$WORKSPACE_PATH")" 2>/dev/null && pwd)/$(basena
 info "Target: $WORKSPACE_PATH"
 
 # Interactive path collection
-if [[ -z "$GPT_SOVITS_DIR" ]]; then
+if [[ -z "${GPT_SOVITS_DIR:-}" ]]; then
     echo -e "  ${CYAN}── GPT-SoVITS path ──${NC}"
     echo -n "  GPT-SoVITS install directory (enter to skip): "
-    read -r GPT_SOVITS_DIR
+    read -r GPT_SOVITS_DIR || GPT_SOVITS_DIR=""
 fi
-if [[ -z "$COMFYUI_DIR" ]]; then
+if [[ -z "${COMFYUI_DIR:-}" ]]; then
     echo -e "  ${CYAN}── ComfyUI path ──${NC}"
     echo -n "  ComfyUI install directory (enter to skip): "
-    read -r COMFYUI_DIR
+    read -r COMFYUI_DIR || COMFYUI_DIR=""
 fi
 
 # Create workspace dir
@@ -350,7 +356,7 @@ else
     fi
 
     # Apply QQ Bot config
-    if [[ -n "$QQ_APP_ID" && -n "$QQ_CLIENT_SECRET" ]]; then
+    if [[ -n "${QQ_APP_ID:-}" && -n "${QQ_CLIENT_SECRET:-}" ]]; then
         info "Applying QQ Bot config..."
         if command -v openclaw &>/dev/null; then
             QQ_PATCH='[{"path":"channels.qqbot.enabled","value":true},{"path":"channels.qqbot.name","value":"四季夏目"},{"path":"channels.qqbot.appId","value":"'"$QQ_APP_ID"'"},{"path":"channels.qqbot.clientSecret","value":"'"$QQ_CLIENT_SECRET"'"},{"path":"channels.qqbot.dmPolicy","value":"open"},{"path":"channels.qqbot.groupPolicy","value":"open"},{"path":"channels.qqbot.markdownSupport","value":true},{"path":"channels.qqbot.streaming.mode","value":"partial"},{"path":"channels.qqbot.urlDirectUpload","value":true}]'
@@ -363,7 +369,7 @@ else
     fi
 
     # Apply Telegram Bot config
-    if [[ -n "$TG_BOT_TOKEN" ]]; then
+    if [[ -n "${TG_BOT_TOKEN:-}" ]]; then
         info "Applying Telegram Bot config..."
         if command -v openclaw &>/dev/null; then
             TG_PATCH='[{"path":"channels.telegram.enabled","value":true},{"path":"channels.telegram.botToken","value":"'"$TG_BOT_TOKEN"'"},{"path":"channels.telegram.dmPolicy","value":"pairing"},{"path":"channels.telegram.replyToMode","value":"first"},{"path":"channels.telegram.historyLimit","value":50},{"path":"channels.telegram.streaming","value":"partial"},{"path":"channels.telegram.linkPreview","value":true},{"path":"channels.telegram.mediaMaxMb","value":100},{"path":"channels.telegram.actions.reactions","value":true},{"path":"channels.telegram.actions.sendMessage","value":true},{"path":"channels.telegram.reactionNotifications","value":"own"}]'
