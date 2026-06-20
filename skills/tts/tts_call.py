@@ -99,8 +99,13 @@ def _detect_character():
 
 def _resolve_ref_dir():
     """根据活跃角色解析参考音频目录。
-    规则: ref_wavs_<角色名> 优先，否则用 ref_wavs（默认夏目）。
+    规则: REF_WAVS_DIR 环境变量优先，其次 ref_wavs_<角色名>，最后 ref_wavs（默认夏目）。
     """
+    # 1. 环境变量覆盖（Artemis Studio GUI 传入角色选择）
+    env_ref = os.environ.get("REF_WAVS_DIR", "").strip()
+    if env_ref and os.path.isdir(env_ref) and os.listdir(env_ref):
+        return env_ref
+    # 2. 角色自动检测
     chara = _detect_character()
     if chara:
         chara_dir = os.path.join(_tts_dir, f"ref_wavs_{chara}")
@@ -286,16 +291,27 @@ if lock_pid is None:
     sys.exit(0)
 
 # 注册清理钩子（使用 shared 模块）
-register_cleanup_handlers(
-    lock_file=LOCK_FILE,
-    llama_port=LLAMA_PORT,
-    restart_script=RESTART_SCRIPT,
-)
+if not no_manage_llama:
+    register_cleanup_handlers(
+        lock_file=LOCK_FILE,
+        llama_port=LLAMA_PORT,
+        restart_script=RESTART_SCRIPT,
+    )
+
+# 解析 --no-manage-llama 标志
+no_manage_llama = '--no-manage-llama' in sys.argv
+if no_manage_llama:
+    # 从 sys.argv 中移除该标志，避免干扰 argparse
+    sys.argv = [a for a in sys.argv if a != '--no-manage-llama']
 
 try:
     with TimeoutGuard(HARD_TIMEOUT, lock_file=LOCK_FILE):
         # 停 llama-server 腾显存（使用 shared 模块，含 VRAM 稳定检测）
-        stop_llama(port=LLAMA_PORT, wait_vram_stable=True)
+        if no_manage_llama:
+            print("[LLAMA] 不停 llama-server，保持对话连续",
+                  file=sys.stderr, flush=True)
+        else:
+            stop_llama(port=LLAMA_PORT, wait_vram_stable=True)
 
         from GPT_SoVITS.inference_webui import get_tts_wav
 
@@ -345,7 +361,8 @@ try:
                 output_wav_path = out_path
 
         # 重启 llama-server，等它完全就绪再输出结果
-        if output_wav_path:
+        # (除非使用 --no-manage-llama 标志)
+        if output_wav_path and not no_manage_llama:
             sys.stderr.flush()
             ok = start_llama(
                 port=LLAMA_PORT,

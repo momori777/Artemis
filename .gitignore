@@ -50,6 +50,7 @@ __pycache__/
 *.wav
 !skills/tts/ref_wavs/*.wav
 !skills/tts/ref_wavs_atri/*.wav
+!skills/tts/ref_wavs_sakura/*.wav
 
 # 压缩�?
 *.rar
@@ -132,3 +133,9 @@ skills/sakura/data/memory_curation_state.json
 skills/sakura/data/memory/qdrant/
 skills/sakura/data/memory/mem0_history.db
 skills/sakura/playwright_browser/
+
+# 任务标志文件（子进程完成信号）
+.task_flags/
+
+# ComfyUI 运行时输出
+comfyui/
