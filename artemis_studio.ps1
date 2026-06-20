@@ -27,7 +27,8 @@ if (Test-Path $configPath) {
 import yaml, sys
 with open(sys.argv[1], "r", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
-print(cfg.get("sovits_python", ""))
+# Prefer comfyui_python (TTS also uses it via artemis_studio.py alignment)
+print(cfg.get("comfyui_python", ""))
 '@ -Encoding UTF8
     try { $pythonPath = (& $workspace\skills\sakura\runtime\python.exe $cfgReader $configPath).Trim().Trim('"') } catch { $pythonPath = $null }
     Remove-Item $cfgReader -ErrorAction SilentlyContinue
