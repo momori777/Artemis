@@ -304,8 +304,13 @@ AI_Girlfriend/                        # OpenClaw 工作区根目录
 | [GPT-SoVITS v2](https://github.com/RVC-Boss/GPT-SoVITS) | v2pro-20250604 | TTS 语音合成 |
 | [ComfyUI](https://github.com/comfyanonymous/ComfyUI) | aki-v3 | AI 图像生成引擎 |
 | [Sakura Desktop Pet](https://github.com/Rvosy/Sakura) | v0.9.6-dev | 桌面伴侣 GUI |
-| [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display) | v0.5.0 | Live2D WebGL 渲染器 |
-| Live2D Cubism Core | 4.x (CDN: cubism.live2d.com/sdk-web/cubismcore/) | Live2D 物理/动画 |
+| [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display) | v0.5.0 (打包内置) | Live2D WebGL 渲染器 |
+| Live2D Cubism Core | 4.x (内置: `live2d/live2dcubismcore.min.js`) | Live2D 物理/动画 |
+| headroom | 内置 (`skills/headroom/`) | SmartCrusher 上下文压缩 + ContentRouter + CCR |
+
+> ✅ **TTS、ComfyUI 和 Live2D 完全自包含。** 运行时无需外部下载——所有模型权重(`skills/sovits/`, `skills/comfyui_core/`)、Python 脚本、JS 库(`live2d/pixi.min.js`, `live2d/plid-v5-bundle.js`)和 Cubism Core 4(`live2d/live2dcubismcore.min.js`) 均打包内置。
+>
+> 🧠 **Headroom 节省 Token** — `skills/headroom/` (SmartCrusher 5维评分压缩 + ContentRouter 自动路由 + CCR 缓存)。开发场景下大输出结果自动压缩后再入上下文窗口。详见 AGENTS.md。
 | Python | 3.12+ | 运行时 (Sakura + TTS + ComfyUI) |
 
 ## 快速开始
