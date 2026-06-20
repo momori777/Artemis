@@ -70,6 +70,24 @@ models:
       huggingface-cli download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/ --local-dir gpt-sovits-weights --include "*.ckpt" "*.pth"
     note: 自训练声优模型，需两个文件配对使用。用你自己的声优数据训练替代
 
+  # GPT-SoVITS 预训练底模 / 依赖模型 (推理必需)
+  - name: SoVITS pretrained models
+    type: pretrained ckpt (共约 350 MB)
+    repo: TAOTAO777/ai-girlfriend-natsume
+    files:
+      - repo_path: gpt-sovits-weights/pretrained_models/sv/pretrained_eres2netv2w24s4ep4.ckpt
+        local_path: ${SOVITS_ROOT:-skills/sovits}/GPT_SoVITS/pretrained_models/sv/
+        note: 声纹提取(Speaker Verification)底模，所有语种必需
+      - repo_path: gpt-sovits-weights/pretrained_models/chinese-hubert-base/
+        local_path: ${SOVITS_ROOT:-skills/sovits}/GPT_SoVITS/pretrained_models/chinese-hubert-base/
+        note: 中文声纹特征提取，中文必需 (日语可选下载)
+      - repo_path: gpt-sovits-weights/pretrained_models/chinese-roberta-wwm-ext-large/
+        local_path: ${SOVITS_ROOT:-skills/sovits}/GPT_SoVITS/pretrained_models/chinese-roberta-wwm-ext-large/
+        note: 中文BERT G2P，中文必需 (日语可选下载)
+    download: |
+      huggingface-cli download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/pretrained_models/ --local-dir gpt-sovits-weights/pretrained_models
+    note: 声纹提取底模(必装) + 中文模型(仅中文用户需装)
+
   # =========================================================================
   # 本地 Embedding 模型 — 语义记忆向量化
   # =========================================================================

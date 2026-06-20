@@ -18,6 +18,8 @@
 param([switch]$Stop)
 
 $ErrorActionPreference = "Stop"
+# Gateway start 可能返回非零 exit（已运行时），不要因此中断
+$global:ProgressPreference = 'SilentlyContinue'
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 
 $scriptRoot = $PSScriptRoot
@@ -271,14 +273,20 @@ if (Test-Online 19200 "Live2D Bridge") {
 Write-Host "[4/6] OpenClaw Gateway" -ForegroundColor Yellow
 
 try {
-    $gwStatus = openclaw gateway status 2>&1
+    $gwStatus = & openclaw gateway status 2>&1
     if ($gwStatus -match 'running') {
         Write-Host "  Gateway already running" -ForegroundColor Green
     } else {
         Write-Host "  Starting gateway..."
-        openclaw gateway start
+        & openclaw gateway start 2>&1 | Out-Null
         Start-Sleep -Seconds 2
-        Write-Host "  Gateway started" -ForegroundColor Green
+        # Verify it actually started
+        $gwVerify = & openclaw gateway status 2>&1
+        if ($gwVerify -match 'running') {
+            Write-Host "  Gateway started" -ForegroundColor Green
+        } else {
+            Write-Host "  WARNING: Gateway may not have started. Check: openclaw gateway status" -ForegroundColor Yellow
+        }
     }
 } catch {
     Write-Host "  WARNING: Could not check/start gateway: $($_.Exception.Message)" -ForegroundColor Yellow
@@ -300,7 +308,7 @@ if (Test-Path $mem0Bridge) {
     $oldJobNames = @("mem0-to-markdown-sync", "mem0-sync-natsume", "mem0-sync-enola", "mem0-sync-atori")
     foreach ($name in $oldJobNames) {
         try {
-            $check = openclaw cron list 2>$null | Select-String $name -SimpleMatch
+            $check = & openclaw cron list 2>$null | Select-String $name -SimpleMatch
             if ($check) {
                 Write-Host "  Removing deprecated cron job: $name" -ForegroundColor DarkGray
             }
@@ -309,16 +317,14 @@ if (Test-Path $mem0Bridge) {
 
     # 检查 mem0-auto-sync 是否存在（统一四角色同步）
     try {
-        $check = openclaw cron list 2>$null | Select-String "mem0-auto-sync" -SimpleMatch
+        $check = & openclaw cron list 2>$null | Select-String "mem0-auto-sync" -SimpleMatch
         if ($check) {
             Write-Host "  mem0-auto-sync cron job already registered (every 30 min)" -ForegroundColor Green
         } else {
             Write-Host "  Registering mem0-auto-sync cron job..."
             $mem0SyncCron = Join-Path $scriptRoot "skills\shared\mem0_sync_cron.py"
-            $syncCmd = "powershell -ExecutionPolicy Bypass -Command `"python `\`"$mem0SyncCron`\`"`""
-            openclaw cron add --name mem0-auto-sync --every-ms 1800000 ``
-                --message "运行下面命令同步 mem0 记忆到 markdown。只用 exec 执行，不要做其他操作。`n`n$syncCmd" ``
-                --timeout 60 --light-context --no-deliver 2>&1 | Out-Null
+            $syncMsg = "Run: python `"$mem0SyncCron`". Only exec, nothing else."
+            & openclaw cron add --% --name mem0-auto-sync --every-ms 1800000 --message "$syncMsg" --timeout 60 --light-context --no-deliver 2>&1 | Out-Null
             Write-Host "  mem0-auto-sync cron job registered! (every 30 min, all 4 characters)" -ForegroundColor Green
         }
     } catch {

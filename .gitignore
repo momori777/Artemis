@@ -139,3 +139,22 @@ skills/sakura/playwright_browser/
 
 # ComfyUI 运行时输出
 comfyui/
+
+# ============================================================
+# 内置推理引擎 (Python代码入库，权重不入库)
+# ============================================================
+# SoVITS 推理核心
+!skills/sovits/
+# ComfyUI 推理核心
+!skills/comfyui_core/
+# 但排除权重文件
+skills/sovits/**/*.safetensors
+skills/sovits/**/*.onnx
+skills/sovits/**/*.pth
+skills/sovits/**/*.ckpt
+skills/sovits/**/*.bin
+skills/comfyui_core/**/*.safetensors
+skills/comfyui_core/**/*.onnx
+skills/comfyui_core/**/*.pth
+skills/comfyui_core/**/*.ckpt
+skills/comfyui_core/**/*.bin

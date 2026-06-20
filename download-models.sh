@@ -20,7 +20,7 @@ export HF_ENDPOINT="https://hf-mirror.com"
 
 HF_REPO="TAOTAO777/ai-girlfriend-natsume"
 BASE_DIR="${1:-.}"
-BASE_DIR="$(cd "$BASE_DIR" && pwd)"
+BASE_DIR="$(mkdir -p "$BASE_DIR" && cd "$BASE_DIR" && pwd)"
 
 echo "╔══════════════════════════════════════════════════════╗"
 echo "║  AI Girlfriend — 四季夏目 · Model Downloader         ║"
@@ -33,6 +33,10 @@ if command -v huggingface-cli &>/dev/null; then
     HF_CMD="huggingface-cli"
 elif command -v hf &>/dev/null; then
     HF_CMD="hf"
+elif python3 -m huggingface_hub &>/dev/null 2>&1; then
+    HF_CMD="python3 -m huggingface_hub"
+elif python -m huggingface_hub &>/dev/null 2>&1; then
+    HF_CMD="python -m huggingface_hub"
 else
     echo "[ERROR] huggingface-cli not found. Install: pip install huggingface_hub"
     exit 1
@@ -42,20 +46,18 @@ echo "Download tool: $HF_CMD"
 
 # Check auth
 echo -n "Checking auth... "
+AUTH_OK=false
 if $HF_CMD auth whoami &>/dev/null; then
+    AUTH_OK=true
+elif [[ -n "${HF_TOKEN:-}" ]] && curl -sH "Authorization: Bearer $HF_TOKEN" https://huggingface.co/api/whoami &>/dev/null; then
+    AUTH_OK=true
+fi
+if $AUTH_OK; then
     echo "OK"
 else
-    echo ""
-    echo "╔══════════════════════════════════════════════════════╗"
-    echo "║  Not logged in to HuggingFace!                       ║"
-    echo "║                                                      ║"
-    echo "║  Please login first:                                 ║"
-    echo "║    huggingface-cli login                             ║"
-    echo "║                                                      ║"
-    echo "║  Or set environment variable:                        ║"
-    echo "║    export HF_TOKEN=\"hf_xxx...\"                      ║"
-    echo "╚══════════════════════════════════════════════════════╝"
-    exit 1
+    echo "WARNING (download will still work for public repos)"
+    echo "  For gated models, set HF_TOKEN:"
+    echo "    export HF_TOKEN=\\
 fi
 
 # Create target directories
@@ -71,23 +73,23 @@ echo "Target: $HF_REPO"
 echo "Total: ~31.7 GB — this may take 30-90 minutes depending on network"
 echo ""
 
-# Model file list (repo_path, local_filename, description)
-declare -A MODELS=(
-    ["llm/Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf"]="llm/Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf|LLM GGUF (16.11 GB)"
-    ["comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors"]="comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors|ComfyUI Checkpoint — WAI (6.46 GB)"
-    ["comfyui-checkpoints/miaomiaoHarem_v20.safetensors"]="comfyui-checkpoints/miaomiaoHarem_v20.safetensors|ComfyUI Checkpoint — Miaomiao (6.46 GB)"
-    ["gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt"]="gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt|GPT-SoVITS ckpt (~155 MB)"
-    ["gpt-sovits-weights/SoVITS_weights_v2Pro/xxx_e20_s6240.pth"]="gpt-sovits-weights/SoVITS_weights_v2Pro/xxx_e20_s6240.pth|GPT-SoVITS pth (~135 MB)"
-    ["live2d-model/shiki_natsume.tar.gz"]="live2d-model/shiki_natsume.tar.gz|Live2D Model — Shiki Natsume (~209 MB)"
+# Model file list: repo_path|local_path|description
+MODELS=(
+    "llm/Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf|llm/Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf|LLM GGUF (16.11 GB)"
+    "comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors|comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors|ComfyUI Checkpoint — WAI (6.46 GB)"
+    "comfyui-checkpoints/miaomiaoHarem_v20.safetensors|comfyui-checkpoints/miaomiaoHarem_v20.safetensors|ComfyUI Checkpoint — Miaomiao (6.46 GB)"
+    "gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt|gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt|GPT-SoVITS ckpt (~155 MB)"
+    "gpt-sovits-weights/SoVITS_weights_v2Pro/xxx_e20_s6240.pth|gpt-sovits-weights/SoVITS_weights_v2Pro/xxx_e20_s6240.pth|GPT-SoVITS pth (~135 MB)"
+    "live2d-model/shiki_natsume.tar.gz|live2d-model/shiki_natsume.tar.gz|Live2D Model — Shiki Natsume (~209 MB)"
 )
 
 TOTAL=${#MODELS[@]}
 CURRENT=0
 FAILED=()
 
-for REPO_PATH in "${!MODELS[@]}"; do
+for ENTRY in "${MODELS[@]}"; do
     CURRENT=$((CURRENT + 1))
-    IFS='|' read -r LOCAL_PATH DESC <<< "${MODELS[$REPO_PATH]}"
+    IFS='|' read -r REPO_PATH LOCAL_PATH DESC <<< "$ENTRY"
     FULL_LOCAL="$BASE_DIR/$LOCAL_PATH"
     
     # Check if already exists

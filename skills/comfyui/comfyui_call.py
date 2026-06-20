@@ -46,7 +46,12 @@ from skills.shared.llama_lifecycle import (
 )
 
 # ========== 路径配置（从 config.yaml 读取） ==========
-COMFYUI_ROOT = _cfg['comfyui_root']
+# ComfyUI 推理引擎 (内置 skills/comfyui_core/，或外部 comfyui_root)
+COMFYUI_ROOT = _cfg.get('comfyui_root') or os.path.join(_def, 'skills', 'comfyui_core')
+if not os.path.isdir(COMFYUI_ROOT):
+    print(f"[ERROR] ComfyUI 推理引擎未找到: {COMFYUI_ROOT}", file=sys.stderr)
+    print("请从 GitHub 克隆完整项目或设置 config.yaml 中的 comfyui_root", file=sys.stderr)
+    sys.exit(1)
 PYTHON_PATH = _cfg['comfyui_python']
 CHECKPOINTS_DIR = _cfg['comfyui_checkpoints_dir']
 OUTPUT_DIR = _cfg['comfyui_temp_output_dir']

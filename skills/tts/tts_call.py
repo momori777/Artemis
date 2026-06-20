@@ -50,10 +50,15 @@ from skills.shared.llama_lifecycle import (
     TimeoutGuard, register_cleanup_handlers,
 )
 
-# Change to WebUI directory
-WEBUI_DIR = _cfg['sovits_root']
-os.chdir(WEBUI_DIR)
-sys.path.insert(0, WEBUI_DIR)
+# SoVITS 推理引擎路径 (内置 skills/sovits/ 或外部 sovits_root)
+SOVITS_ROOT = _cfg.get('sovits_root') or os.path.join(_def, 'skills', 'sovits')
+if not os.path.isdir(SOVITS_ROOT):
+    print(f"[ERROR] SoVITS 推理引擎未找到: {SOVITS_ROOT}", file=sys.stderr)
+    print("请从 GitHub 克隆完整项目或设置 config.yaml 中的 sovits_root", file=sys.stderr)
+    sys.exit(1)
+os.chdir(SOVITS_ROOT)
+sys.path.insert(0, SOVITS_ROOT)
+sys.path.insert(0, os.path.join(SOVITS_ROOT, "GPT_SoVITS"))
 
 # ========== 路径配置（从 config.yaml 读取） ==========
 OUTPUT_DIR = _cfg['tts_temp_output_dir']
@@ -117,27 +122,61 @@ def _resolve_ref_dir():
 REF_DIR = _resolve_ref_dir()
 
 # ========== 角色 → 模型权重映射 ==========
+# 角色名映射: 中文SOUL名 -> weight文件英文标识
+_CHARA_KEY_MAP = {
+    "四季夏目": "natsume",
+    "夜乃桜": "sakura",
+    "亚托莉": "atri",
+    "艾诺拉": "enola",
+}
+
 def _resolve_weight_paths():
     """根据活跃角色解析 SoVITS 模型权重，支持环境变量覆盖。
-    Sakura 角色: 切换到 Sakura 专用权重
-    其他: 使用 weight.json 默认值（夏目）
-    环境变量 gpt_path / sovits_path 可覆盖
+    优先级: 环境变量 > weight_<角色名>.json > weight.json
+    权重前缀目录: sovits_weights_dir (配置) > sovits_root (兼容)
     """
-    chara = _detect_character()
     # 如果环境变量已设置，优先使用
     if os.environ.get("gpt_path") and os.environ.get("sovits_path"):
         return
-    if chara and chara == "sakura":
-        gpt_name = "Sakura-e15.ckpt"
-        sovits_name = "Sakura_e8_s7176.pth"
-        gpt_dir = os.path.join(_cfg['sovits_root'], 'GPT_weights_v2Pro')
-        sovits_dir = os.path.join(_cfg['sovits_root'], 'SoVITS_weights_v2Pro')
-        gpt_path = os.path.join(gpt_dir, gpt_name)
-        sovits_path = os.path.join(sovits_dir, sovits_name)
-        if os.path.exists(gpt_path) and os.path.exists(sovits_path):
-            os.environ["gpt_path"] = gpt_path
-            os.environ["sovits_path"] = sovits_path
-            print(f"[WEIGHTS] Sakura: {gpt_name} + {sovits_name}", file=sys.stderr)
+    chara = _detect_character()
+    chara_key = _CHARA_KEY_MAP.get(chara, chara)
+    # 权重目录 (新配置 sovits_weights_dir，兼容旧 sovits_root)
+    weights_root = _cfg.get('sovits_weights_dir') or _cfg.get('sovits_root', '')
+    # weight 索引文件在 sovits 源码目录
+    weight_base = SOVITS_ROOT
+    weight_file = None
+    if chara_key:
+        candidate = os.path.join(weight_base, f"weight_{chara_key}.json")
+        if os.path.exists(candidate):
+            weight_file = candidate
+    if not weight_file:
+        candidate = os.path.join(weight_base, "weight.json")
+        if os.path.exists(candidate):
+            weight_file = candidate
+    if weight_file:
+        import json
+        with open(weight_file, "r", encoding="utf-8") as f:
+            wcfg = json.load(f)
+        gpt_rel = wcfg.get("GPT", {}).get("v2", "")
+        sovits_rel = wcfg.get("SoVITS", {}).get("v2", "")
+        if gpt_rel and sovits_rel:
+            # 权重文件可能相对于 weights_root (新) 或 sovits_root (旧)
+            for base in [weights_root, SOVITS_ROOT]:
+                gpt_path = gpt_rel if os.path.isabs(gpt_rel) else os.path.join(base, gpt_rel)
+                sovits_path = sovits_rel if os.path.isabs(sovits_rel) else os.path.join(base, sovits_rel)
+                if os.path.exists(gpt_path) and os.path.exists(sovits_path):
+                    break
+            if os.path.exists(gpt_path) and os.path.exists(sovits_path):
+                os.environ["gpt_path"] = gpt_path
+                os.environ["sovits_path"] = sovits_path
+                # 同时传递权重目录给 SoVITS 推理代码 (sv.py 等需要 pretrained models)
+                if weights_root:
+                    os.environ["SOVITS_WEIGHTS_DIR"] = weights_root
+                print(f"[WEIGHTS] {os.path.basename(gpt_path)} + {os.path.basename(sovits_path)}", file=sys.stderr)
+            else:
+                print(f"[WARN] weight file {weight_file} refs missing files", file=sys.stderr)
+                print(f"  GPT: {gpt_path}", file=sys.stderr)
+                print(f"  SoVITS: {sovits_path}", file=sys.stderr)
 
 _resolve_weight_paths()
 
@@ -263,6 +302,10 @@ def lookup_ref_info(ref_path):
 
 
 # ========== 主流程 ==========
+# 先剥离 --no-manage-llama 标志（避免干扰参数解析）
+no_manage_llama = '--no-manage-llama' in sys.argv
+sys.argv = [a for a in sys.argv if a != '--no-manage-llama']
+
 text = sys.argv[1]
 lang = sys.argv[2] if len(sys.argv) > 2 else "ja"
 mood_hint = sys.argv[3] if len(sys.argv) > 3 else None
@@ -297,12 +340,6 @@ if not no_manage_llama:
         llama_port=LLAMA_PORT,
         restart_script=RESTART_SCRIPT,
     )
-
-# 解析 --no-manage-llama 标志
-no_manage_llama = '--no-manage-llama' in sys.argv
-if no_manage_llama:
-    # 从 sys.argv 中移除该标志，避免干扰 argparse
-    sys.argv = [a for a in sys.argv if a != '--no-manage-llama']
 
 try:
     with TimeoutGuard(HARD_TIMEOUT, lock_file=LOCK_FILE):
