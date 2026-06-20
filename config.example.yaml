@@ -3,6 +3,9 @@
 #
 # 自动配置方式: 运行 quick_setup.ps1 交互式填写
 # 手动配置方式: 复制此文件为 config.yaml，修改下面各路径
+#
+# 重要: ComfyUI 和 GPT-SoVITS 推理引擎已内置在 skills/ 中
+# 所以你只需要配置 llama.cpp 路径 + 模型权重目录
 
 # ============================================================
 # Headroom SmartCrusher + CCR 上下文压缩
@@ -31,20 +34,27 @@ media_qqbot_audio: "填写音频输出路径"
 media_qqbot_images: "填写图片输出路径"
 
 # ============================================================
-# ComfyUI 文生图
+# ComfyUI 文生图 (推理引擎已内置 skills/comfyui_core/)
 # ============================================================
-comfyui_root: "填写 ComfyUI 根目录，例如 E:\\comfyui\\ComfyUI-aki-v3\\ComfyUI"
-comfyui_python: "填写 ComfyUI 使用的 python.exe 路径"
-comfyui_checkpoints_dir: "填写 checkpoints 模型目录"
-# ComfyUI 推理过程中的临时输出; PS 脚本会将成品 copy 到 media_qqbot_images
+# ComfyUI Python 环境 (系统Python或虚拟环境，需有 torch + safetensors)
+comfyui_python: "填写 Python 路径，例如 C:\\Users\\用户名\\AppData\\Local\\Programs\\Python\\Python310\\python.exe"
+# Checkpoint 模型文件目录 (从HF下载的 .safetensors)
+comfyui_checkpoints_dir: "填写 checkpoints 目录，例如 D:\\models\\checkpoints"
+# 临时输出目录 (PS脚本会将成品copy到media_qqbot_images)
 comfyui_temp_output_dir: "填写临时输出目录"
 
 # ============================================================
-# GPT-SoVITS v2 Pro (TTS)
+# GPT-SoVITS v2 Pro TTS (推理引擎已内置 skills/sovits/)
 # ============================================================
-sovits_root: "填写 GPT-SoVITS 根目录"
-sovits_python: "填写 GPT-SoVITS 使用的 python.exe 路径"
-# TTS 输出 wav 后, PS 脚本会将成品 copy 到 media_qqbot_audio
+# Python 环境 (需有 torch>=2.0 + CUDA)
+sovits_python: "填写 Python 路径"
+# 声优权重文件目录
+#   GPT_weights_v2Pro/xxx-e30.ckpt  (从HF下载)
+#   SoVITS_weights_v2Pro/xxx_e20_s6240.pth  (从HF下载)
+sovits_weights_dir: "填写权重目录，例如 D:\\models\\gpt-sovits-weights"
+# GPT-SoVITS 源码根目录 (已内置 skills/sovits/，保留此字段用于兼容)
+sovits_root: ""  # 留空 = 使用内置 skills/sovits/
+# TTS 输出目录
 tts_temp_output_dir: "填写 TTS 临时输出目录"
 
 # ============================================================
@@ -59,15 +69,9 @@ llama_port: 8080
 # ============================================================
 # Memory & Embedding（长期记忆 + 向量数据库 + 文本压缩）
 # ============================================================
-# 角色记忆存储目录
 role_memory_dir: "填写 memory/role_play 路径"
-# Qdrant 向量数据库（本地文件模式，存 mem0 记忆向量）
 mem0_qdrant_dir: "填写 Qdrant 数据目录"
-# mem0 桥接脚本路径
 mem0_bridge: "填写 mem0_bridge.py 路径"
-# mem0 定时同步脚本路径
 mem0_sync_cron: "填写 mem0_sync_cron.py 路径"
-# Embedding 模型缓存目录（首次运行自动下载 all-MiniLM-L6-v2）
 embedding_dir: "填写 embedding 模型缓存路径"
-# Embedding 服务器启动脚本（可选，缺省会使用仓库内的 embedding_server.py）
 embedding_server: ""
