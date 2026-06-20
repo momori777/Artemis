@@ -40,9 +40,10 @@ CFG = load_config()
 
 # ---- 路径常量 ----
 TTs_SCRIPT = os.path.join(WORKSPACE_ROOT, "skills", "tts", "tts_call.py")
-TTs_PYTHON = CFG["sovits_python"]
 COMFYUI_SCRIPT = os.path.join(WORKSPACE_ROOT, "skills", "comfyui", "comfyui_call.py")
-COMFYUI_PYTHON = CFG["comfyui_python"]
+# 统一使用 ComfyUI bundled Python（sovits_python 路径可能不存在）
+COMFYUI_PYTHON = CFG.get("comfyui_python", "")
+TTs_PYTHON = COMFYUI_PYTHON
 MEDIA_AUDIO = CFG.get("media_qqbot_audio", os.path.join(WORKSPACE_ROOT, "media", "qqbot", "audio"))
 MEDIA_IMAGES = CFG.get("media_qqbot_images", os.path.join(WORKSPACE_ROOT, "media", "qqbot", "images"))
 
@@ -840,7 +841,7 @@ class ArtemisStudio(QMainWindow):
         # Footer
         footer = QLabel(
             f"💡 所有推理完全绕过 llama 生命周期管理 | 使用 --no-manage-llama 标志 | "
-            f"Python: {CFG.get('comfyui_python','?')}"
+            f"Python: {COMFYUI_PYTHON}"
         )
         footer.setStyleSheet("color: #666; font-size: 10px; padding: 4px 0;")
         main_layout.addWidget(footer)
