@@ -81,9 +81,9 @@
 
 ![TTS Workshop](media/tts_workshop.gif)
 
-🔊 **听听效果**（亚托莉日语语音）：
+🔊 **听听效果**（点击播放，亚托莉日语）：
 
-<video src="media/tts_atori_demo.mp4" controls width="500"></video>
+🎧 [tts_atori.mp3](media/tts_atori.mp3) *(46KB, 浏览器直接播放)*
 
 ### 🎨 ComfyUI 画图工坊
 
