@@ -210,12 +210,13 @@ class TTSWorker(QThread):
     finished = Signal(bool, str) # success, filepath|error
     elapsed = Signal(int)        # 秒数
 
-    def __init__(self, text, lang, mood, ref_wavs_dir=None):
+    def __init__(self, text, lang, mood, ref_wavs_dir=None, character=None):
         super().__init__()
         self.text = text
         self.lang = lang
         self.mood = mood
         self.ref_wavs_dir = ref_wavs_dir
+        self.character = character
 
     def run(self):
         t0 = time.time()
@@ -234,6 +235,7 @@ class TTSWorker(QThread):
                     **os.environ,
                     "PYTHONIOENCODING": "utf-8",
                     **({"REF_WAVS_DIR": self.ref_wavs_dir} if self.ref_wavs_dir else {}),
+                    **({"TTS_CHARACTER": self.character} if self.character else {}),
                 },
             )
 
@@ -483,6 +485,7 @@ class TTSTab(QWidget):
         lang = self.lang_combo.currentText().split()[0]
         mood = self.mood_combo.currentText().split()[0]
         ref_wavs_dir = self.chara_combo.currentData()
+        character = self.chara_combo.currentText().split()[0]
 
         self.generate_btn.setEnabled(False)
         self.play_btn.setEnabled(False)
@@ -491,7 +494,7 @@ class TTSTab(QWidget):
         self.status_label.setText("正在合成...")
         self.time_label.setText("")
 
-        self.worker = TTSWorker(text, lang, mood, ref_wavs_dir)
+        self.worker = TTSWorker(text, lang, mood, ref_wavs_dir, character)
         self.worker.progress.connect(self._on_progress)
         self.worker.finished.connect(self._on_finished)
         self.worker.elapsed.connect(lambda s: self.time_label.setText(f"耗时: {s}s"))
