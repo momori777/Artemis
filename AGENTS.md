@@ -280,11 +280,43 @@ py -c "import json;from skills.shared.mem0_bridge import search_mem0_qdrant,comp
 
 ---
 
+## VRAM 级别（按需停 llama）
+
+> 📖 完整文档: `skills/shared/VRAM_LEVELS.md` | 配置: `skills/shared/vram.py`
+
+项目不再强行走 llama lifecycle。每个技能通过 `skills/shared/vram.py` 判断是否需要停 llama：
+
+| Level | 名称 | TTS | ComfyUI | ASR | Live2D | 说明 |
+|-------|------|-----|---------|-----|--------|------|
+| 0 | ALL_STOP | 停 | 停 | 停 | 不停 | <8GB VRAM 安全模式 |
+| 1 | TTS_STOP | 停 | 停 | 不停 | 不停 | <12GB 默认 |
+| **2** | **ALL_ONLINE** | **不停** | **不停** | **不停** | **不停** | **≥12GB 推荐（当前）** |
+| 3 | LEGACY | 停 | 停 | 停 | 不停 | 原始行为 |
+
+**当前设置: Level 2 (ALL_ONLINE)** — RTX 5070 12GB，所有技能和 llama 共存。
+
+### 规则
+- 所有 spawn 模板中的 `--no-manage-llama` 标记技能不杀 llama
+- 同一时刻最多一个停 llama 的技能在跑
+- ASR 永远不抢显存（独立 Whisper small ~1.5GB）
+
+### 切换级别
+```powershell
+# PowerShell
+$env:VRAM_LEVEL = "0"  # 临时切到安全模式
+$env:VRAM_LEVEL = "2"  # 恢复默认
+```
+
+---
+
 ## 串行规则
 
-ComfyUI 和 TTS 会停 llama-server，ASR 不会（Whisper 不抢显存）。
-TTS 和 ComfyUI 不能同时 spawn，必须等前一个 announce 完成（收到 "DONE:"）后再 spawn 下一个。
-ASR 可以在 llama 运行状态下随时 spawn（独立 GPU 显存架构）。
+基于当前 VRAM 级别（Level 2: ALL_ONLINE）：
+- TTS/ComfyUI: `--no-manage-llama`，不停 llama
+- ASR: 不停 llama（Whisper small ~1.5GB 独立显存）
+- TTS 和 ComfyUI 不能同时 spawn（都需要 GPU），必须串行
+- ASR 可以和任何技能并行
+- 收到 DONE: 后再 spawn 下一个 GPU 密集型技能
 
 ---
 

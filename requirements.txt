@@ -2,14 +2,7 @@
 # =============================
 # Install with: pip install -r requirements.txt
 #
-# Covers:
-#   - Root scripts (shutdown_all.py, etc.)
-#   - ASR skill (faster-whisper)
-#   - Character card importer
-#   - Shared utilities
-#   - ComfyUI / GPT-SoVITS have their own requirements
-#   - Sakura desktop pet: see skills/sakura/requirements.txt
-#
+# Covers ALL skills: root scripts, ASR, TTS (GPT-SoVITS), ComfyUI, Sakura, shared utils.
 # For Chinese users, add mirror:
 #   pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
 
@@ -19,17 +12,48 @@ psutil>=5.9
 # --- ASR (Speech-to-Text) ---
 faster-whisper>=1.0.0
 
+# --- TTS (GPT-SoVITS v2Pro) ---
+# GPT-SoVITS engine is vendored under skills/sovits/GPT_SoVITS/
+# Core deps (torch, torchaudio installed separately for CUDA)
+torch>=2.0
+torchaudio>=2.0
+transformers>=4.43
+ffmpeg-python
+einops
+soundfile
+librosa
+jieba
+jieba_fast
+pykakasi>=1.2
+numpy>=1.24
+scipy>=1.10
+onnxruntime
+openai-whisper
+av>=11
+# pyopenjtalk is optional (preferred for Japanese G2P; pykakasi fallback works)
+# pyopenjtalk  # uncomment if you can build it (requires C++ toolchain on Windows)
+
+# --- ComfyUI ---
+# ComfyUI is installed separately (E:\comfyui\ComfyUI-aki-v3)
+# This project only calls its API. No extra deps needed.
+
+# --- Sakura Desktop Pet (optional) ---
+# See skills/sakura/requirements.txt for full list
+# Core subset included here for convenience:
+PySide6>=6.7
+PySide6-Addons>=6.7
+playwright>=1.40
+openai>=1.90.0
+pydantic>=2.7.3
+
 # --- Character Card Importer ---
 PyYAML>=6.0
 
 # --- Shared utilities (character archive, memory tools) ---
 qdrant-client>=1.12.0
 sentence-transformers>=5.0.0
-numpy>=1.24
-scipy>=1.10
+
+# --- Live2D bridge (optional, Node.js-based, no Python deps) ---
 
 # --- OpenClaw Gateway + mem0 (installed by setup-openclaw.ps1) ---
-# openai, pydantic, sqlalchemy, etc. — use setup-openclaw.ps1
-
-# --- Sakura Desktop Pet (optional) ---
-# See skills/sakura/requirements.txt for PySide6, mcp, playwright, etc.
+# sqlalchemy, protobuf, etc. — use setup-openclaw.ps1
