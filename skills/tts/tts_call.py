@@ -222,7 +222,7 @@ def _load_ref_waves(ref_dir):
         # 参考文本：同目录下同名 .txt 文件，否则用文件名剩余部分
         txt_path = os.path.join(ref_dir, stem + ".txt")
         if os.path.exists(txt_path):
-            with open(txt_path, "r", encoding="utf-8") as f:
+            with open(txt_path, "r", encoding="utf-8-sig") as f:
                 ref_text = f.read().strip()
         else:
             # 从文件名提取: ref_01_日常_おはよう → おはよう
