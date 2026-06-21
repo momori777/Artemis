@@ -138,7 +138,12 @@ def _resolve_weight_paths():
     # 如果环境变量已设置，优先使用
     if os.environ.get("gpt_path") and os.environ.get("sovits_path"):
         return
-    chara = _detect_character()
+    # 环境变量 TTS_CHARACTER 覆盖角色检测（Artemis Studio GUI 传入）
+    env_chara = os.environ.get("TTS_CHARACTER", "").strip()
+    if env_chara:
+        chara = env_chara
+    else:
+        chara = _detect_character()
     chara_key = _CHARA_KEY_MAP.get(chara, chara)
     # 权重目录 (新配置 sovits_weights_dir，兼容旧 sovits_root)
     weights_root = _cfg.get('sovits_weights_dir') or _cfg.get('sovits_root', '')
