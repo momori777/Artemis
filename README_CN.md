@@ -81,6 +81,10 @@
 
 ![TTS Workshop](media/tts_workshop.gif)
 
+🔊 **听听效果**（亚托莉日语语音）：
+
+<video src="media/tts_atori_demo.mp4" controls width="500"></video>
+
 ### 🎨 ComfyUI 画图工坊
 
 <video src="media/comfyui_workshop_small.mp4" controls width="800"></video>
@@ -483,94 +487,81 @@ schtasks /create /tn "cleanup-orphans" `
 
 ## 架构
 
-```
-用户（QQ / Telegram / WebChat）
-  │
-  ▼
-OpenClaw Gateway ──── Sakura 桌宠 (PySide6)
-  │                          │
-  │                     (共享 llama-client)
-  │                          │
-  ▼                          ▼
-  ┌───── llama-server :8080 ─────┐    ┌────── 记忆系统 ────────────────────────────┐
-  │         (Qwen3.6-35B)        │    │                                               │
-  ├──────────────────────────────┤    │  ┌─ Embedding :9999 ──────────────────────┐  │
-  │  Main session（角色扮演）        │    │  │  all-MiniLM-L6-v2 + BGE-small-zh-v1.5 │  │
-  │  TTS（按 VRAM 分档停/不停）    │    │  │  (CPU, ~100MB RAM, 双模型)           │  │
-  │  ComfyUI（按 VRAM 分档停/不停）│    │  │  ├─ OpenClaw memory_search（混合）    │  │
-  │  ASR（Whisper → 不杀）          │    │  └─ mem0_bridge.py (搜索/添加/同步)    │  │
-  │  Sakura 桌宠（共享，不杀）      │    │  └─────────────────────────────────────┘  │
-  │  Artemis Studio（独立，不杀）    │    │                                               │
-  └──────────────────────────────┘    │  ┌─ Qdrant 向量库 ───────────────────────┐  │
-               │                      │  │  collection: sakura_memories          │  │
-               │                      │  │  ├─ user_id=sakura   (夜乃桜)         │  │
-               ▼                      │  │  ├─ user_id=natsume  (夏目)           │  │
-     Live2D Bridge (:19200) ─── Browser│  │  ├─ user_id=enola    (Enola)          │  │
-          (HTTP → 不杀)          (L2D/ │  │  └─ user_id=atori    (Atori)          │  │
-                                  立绘) │  └─────────────────────────────────────┘  │
-                                        │                                               │
-                                        │  ┌─ CCR（整理-合并-检索）────────────────┐  │
-                                        │  │  每 8 轮 → 提取记忆                   │  │
-                                        │  │  → mem0 Qdrant（长期向量）            │  │
-                                        │  │  → _mem0_auto.md（markdown，可搜索）   │  │
-                                        │  └─────────────────────────────────────┘  │
-                                        │                                               │
-                                        │  ┌─ SmartCrusher ────────────────────────┐  │
-                                        │  │  24 条消息 / 40K 字符硬截断           │  │
-                                        │  │  context_trimming.py（所有角色共用）   │  │
-                                        │  └─────────────────────────────────────┘  │
-                                        └───────────────────────────────────────────────┘
-```
+<table>
+<tr><td colspan="2" align="center"><b>用户入口</b></td></tr>
+<tr><td colspan="2" align="center">QQ Bot &nbsp;|&nbsp; Telegram Bot &nbsp;|&nbsp; WebChat &nbsp;|&nbsp; Artemis Studio 控制台</td></tr>
+<tr><td colspan="2" align="center">↓</td></tr>
+<tr><td colspan="2" align="center"><b>OpenClaw Gateway</b> (port 18789) &nbsp;──&nbsp; <b>Sakura 桌宠</b> (PySide6, 共享 llama-client)</td></tr>
+<tr><td colspan="2" align="center">↓</td></tr>
+<tr>
+<td width="50%" valign="top">
 
-**Agent 中枢 — 角色切换不改的能力指令 + 记忆层**：
+**🧠 LLM 推理**
 
-```
-         ┌─────────────┐
-         │  AGENTS.md   │  ← 能力中枢（角色切换时不动）
-         │  SOUL.md     │  ← 当前角色人格（热替换）
-         │  IDENTITY.md │  ← 角色元信息
-         │  TOOLS.md    │  ← 速查手册
-         │  USER.md     │  ← 用户设定
-         └──────┬───────┘
-                │
-    ┌───────────┴────────────┬─────────────────────────┐
-    ▼                        ▼                         ▼
- ┌──────────────┐   ┌──────────────────────┐   ┌─────────────────┐
- │ skills/harem/ │   │ memory/role_play/    │   │ Qdrant 向量库   │
- │   (后宫存档)  │   │   <角色>/ (独立记忆)   │   │ (长期向量记忆)   │
- │ ├─ natsume/   │   │ ├─ natsume/          │   │ user_id=natsume │
- │ ├─ enola/     │   │ │  ├─ YYYY-MM-DD.md  │   │ user_id=enola   │
- │ ├─ sakura/    │   │ │  └─ _mem0_auto.md  │   │ user_id=sakura  │
- │ └─ atori/     │   │ ├─ enola/...         │   │ user_id=atori   │
- │   (角色卡存档)  │   │ ├─ sakura/...        │   └─────────────────┘
- └──────────────┘   │ └─ atori/...          │         ↑
-                    └──────────────────────┘   CCR + mem0_bridge
-                          ↑                    (定时同步 30min)
-                    OpenClaw memory_search
-                    (混合: 向量 + BM25)
-```
+| 组件 | 说明 |
+|------|------|
+| `llama-server :8080` | Qwen3.6-35B-A3B MoE |
+| Main session | AGENTS.md 驱动角色扮演 |
+| TTS | 按 VRAM 分档停/不停 llama |
+| ComfyUI | 按 VRAM 分档停/不停 llama |
+| ASR | Whisper small, 与 llama 共存 |
+| Sakura 桌宠 | 共享, 不杀 llama |
+| Artemis Studio | 独立运行, 不杀 llama |
+| Live2D Bridge | HTTP :19200, 不杀 |
 
-- `AGENTS.md` 在角色切换时保持不变——ComfyUI / TTS / Live2D + 记忆指令常驻
-- `SOUL.md` + `IDENTITY.md` 在切换时覆盖写入；harem/ 后宫目录是归档真相来源
-- 每个角色记忆隔离在 `memory/role_play/<角色名>/`——永不交叉污染
-- 长期向量记忆在 Qdrant 中按 `user_id` 隔离
-- SillyTavern 角色卡通过 PNG tEXt 块解析导入 → agent 自动切换角色
+</td>
+<td width="50%" valign="top">
 
-**六大技能，一套记忆系统**：
+**🧠 记忆系统**
 
-| 技能 | 位置 | Llama 交互 |
-|-------|----------|-------------------|
-| **Embedding** | `skills/shared/` | all-MiniLM-L6-v2（CPU，约 100MB 内存）端口 9999——不碰 GPU |
-| **Live2D** | `skills/live2d/` | 仅 HTTP API——完全不动 llama |
-| **TTS** | `skills/tts/` | 杀 llama → GPT-SoVITS → 重启 + 等待 /health |
-| **ComfyUI** | `skills/comfyui/` | 杀 llama → 画图 → 重启 + 等待 /health |
-| **ASR** | `skills/asr/` | Faster-Whisper small——与 llama 在 8GB 显存上共存 |
-| **Sakura** | `skills/sakura/` | 共享 llama-client；检测掉线 → 自动恢复；内置 CCR + mem0 |
-| **SmartCrusher** | `skills/shared/context_trimming.py` | 24 条消息 / 40K 字符硬截断——所有角色共用 |
-| **CCR** | `skills/sakura/app/agent/memory_curator.py` | 后台：每 8 轮提取事实 → Qdrant |
-| **mem0 Bridge** | `skills/shared/mem0_bridge.py` | CLI：搜索 / 添加 / 列出 / 同步 按角色 |
-| **自动同步** | `skills/shared/mem0_sync_cron.py` | 每 30 分钟 Cron job：Qdrant → `_mem0_auto.md` |
-| **角色导入** | `skills/character_importer/` | Agent 层面——不需要 GPU；写入 SOUL/IDENTITY + 记忆目录 |
+| 组件 | 说明 |
+|------|------|
+| Embedding :9999 | all-MiniLM-L6-v2 + BGE-small-zh-v1.5 (CPU, 双模型) |
+| memory_search | OpenClaw 原生混合搜索 (向量+BM25) |
+| mem0_bridge | Qdrant 读写桥接 |
+| Qdrant 向量库 | collection: sakura_memories, 4 角色 user_id 隔离 |
+| CCR | 每 8 轮提取事实 → Qdrant |
+| SmartCrusher | 24 消息/40K 字符硬截断 |
+| mem0_sync_cron | 每 30min 同步 Qdrant → _mem0_auto.md |
+
+</td>
+</tr>
+</table>
+
+### Agent 中枢
+
+角色切换不改的能力指令 + 记忆层隔离：
+
+| 层级 | 文件 | 作用 | 切换时 |
+|------|------|------|--------|
+| **能力中枢** | `AGENTS.md` | ComfyUI/TTS/Live2D 指令 | 🛡️ 不动 |
+| **速查索引** | `TOOLS.md` | 工具调用速查 | 🛡️ 不动 |
+| **角色人格** | `SOUL.md` | 当前角色的性格/语气 | 🔄 热替换 |
+| **角色数据** | `IDENTITY.md` | 角色名/设定 | 🔄 热替换 |
+| **用户档案** | `USER.md` | 男友名称/偏好 | 🛡️ 不动 |
+| **后宫归档** | `skills/harem/<角色>/` | 角色卡真相来源 | 📦 只读 |
+| **短期记忆** | `memory/role_play/<角色>/` | 每日对话 YYYY-MM-DD.md | 🔀 按角色隔离 |
+| **长期记忆** | Qdrant `user_id=<角色>` | 向量长期记忆 | 🔀 按角色隔离 |
+| **同步缓存** | `_mem0_auto.md` | Qdrant → markdown (30min) | 🔀 按角色隔离 |
+
+> 召回优先级：向量长期记忆 > 手写日记 > SOUL 基础人设
+
+### 技能详情
+
+| 技能 | 位置 | Llama 交互 | 备注 |
+|-------|----------|-------------------|------|
+| **Embedding** | `skills/shared/` | ❌ 不碰 GPU | 双模型 CPU, 端口 9999 |
+| **Live2D** | `skills/live2d/` | ❌ 仅 HTTP | 桥接 :19200, 独立进程 |
+| **TTS** | `skills/tts/` | 🔶 按 VRAM 分档 | Level 2 不杀, Level 0/1 停 llama |
+| **ComfyUI** | `skills/comfyui/` | 🔶 按 VRAM 分档 | 同上 |
+| **ASR** | `skills/asr/` | ❌ 共存 (1.5GB) | Faster-Whisper small |
+| **Sakura** | `skills/sakura/` | ❌ 共享 client | 内置 CCR + mem0 |
+| **Artemis Studio** | `artemis_studio.py` | ❌ 独立运行 | 桌面控制台, TTS+ComfyUI 工坊 |
+| **SmartCrusher** | `skills/shared/context_trimming.py` | — | 24 消息/40K 截断 |
+| **CCR** | `skills/sakura/app/agent/memory_curator.py` | — | 每 8 轮事实提取 |
+| **mem0 Bridge** | `skills/shared/mem0_bridge.py` | — | CLI 搜索/添加/同步 |
+| **自动同步** | `skills/shared/mem0_sync_cron.py` | — | 30min Qdrant → md |
+| **角色导入** | `skills/character_importer/` | — | PNG/JSON 角色卡导入 |
 
 **VRAM 调度流程**：
 1. 启动时自动检测 GPU 显存 → 确定 VRAM 级别（Level 0/1/2）
