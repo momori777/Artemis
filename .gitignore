@@ -169,3 +169,8 @@ benchmark_projects/Linly-Talker/
 benchmark_projects/NextChat/
 benchmark_projects/lobe-chat/
 benchmark_projects/petercat/
+
+# Large files hosted on HuggingFace
+skills/sovits/GPT_SoVITS/pretrained_models/fast_langdetect/lid.176.bin
+media/sakura.mp4
+media/demo_qqbot.mp4
