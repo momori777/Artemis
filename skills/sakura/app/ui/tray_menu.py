@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QApplication, QMenu, QWidget
 
@@ -18,6 +19,7 @@ def build_pet_tray_menu(
     on_toggle_free_access: Callable[[bool], None],
     on_toggle_always_on_top: Callable[[bool], None],
     on_show_history: Callable[[], None],
+    on_show_runtime_log: Callable[[], None],
     on_show_settings: Callable[[], None],
     window_visible: bool = True,
     interactions_enabled: bool = True,
@@ -25,6 +27,14 @@ def build_pet_tray_menu(
     """构建桌宠托盘和右键菜单。"""
 
     menu = QMenu(parent)
+    # 让 QSS 大圆角的四角透明生效：原生 QMenu 在 Win11 的圆角不受 QSS 可靠控制，
+    # 必须设无边框 + 半透明背景（代价：失去系统原生阴影，由 QSS 边框/底色补偿观感）。
+    menu.setWindowFlags(
+        menu.windowFlags()
+        | Qt.WindowType.FramelessWindowHint
+        | Qt.WindowType.NoDropShadowWindowHint
+    )
+    menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
     visibility_action = QAction("隐藏至托盘" if window_visible else "显示桌宠", parent)
     visibility_action.triggered.connect(on_hide if window_visible else on_show)
@@ -59,6 +69,11 @@ def build_pet_tray_menu(
     history_action.setEnabled(interactions_enabled)
     history_action.triggered.connect(on_show_history)
     menu.addAction(history_action)
+
+    runtime_log_action = QAction("运行日志", parent)
+    runtime_log_action.setEnabled(interactions_enabled)
+    runtime_log_action.triggered.connect(on_show_runtime_log)
+    menu.addAction(runtime_log_action)
 
     settings_action = QAction("设置", parent)
     settings_action.setEnabled(interactions_enabled)

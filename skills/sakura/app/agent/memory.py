@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import logging
 import os
+import re
+import shutil
 import sqlite3
+import stat
 import sys
 import threading
 import time
+import zipfile
 from contextlib import nullcontext
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any, Callable, Iterable
 
 from app.storage.chat_history import ChatHistoryEntry
@@ -26,7 +30,9 @@ DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 DEFAULT_EMBEDDING_DIMS = 384
 DEFAULT_MEMORY_LIMIT = 20
 DEFAULT_HUGGINGFACE_ENDPOINT = "https://huggingface.co"
+DEFAULT_EMBEDDING_MODEL_CACHE_NAME = "models--" + DEFAULT_EMBEDDING_MODEL.replace("/", "--")
 _MEM0_CREATE_LOCK = threading.Lock()
+_WINDOWS_DRIVE_RE = re.compile(r"^[A-Za-z]:")
 os.environ.setdefault("MEM0_TELEMETRY", "False")
 DEFAULT_MEMORY_LANGUAGE_INSTRUCTIONS = (
     "Sakura 的长期记忆必须使用简体中文记录。"
@@ -62,6 +68,20 @@ class MemoryCurationCounts:
     returned: int = 0
     unclassified: int = 0
     event_counts: dict[str, int] = field(default_factory=dict)
+
+
+class MemoryModelImportError(RuntimeError):
+    """记忆嵌入模型归档包格式错误或导入失败。"""
+
+
+@dataclass(frozen=True)
+class EmbeddingModelImportResult:
+    """记忆嵌入模型导入结果。"""
+
+    model_name: str
+    cache_folder: Path
+    model_dir: Path
+    snapshot_count: int
 
 
 @dataclass
@@ -165,6 +185,15 @@ class MemoryStore:
         """返回当前嵌入模型下载端点，便于 UI 提示用户。"""
 
         return (os.environ.get("HF_ENDPOINT") or DEFAULT_HUGGINGFACE_ENDPOINT).strip()
+
+    def import_embedding_model_archive(self, path: Path) -> EmbeddingModelImportResult:
+        """导入离线嵌入模型 ZIP，并重置长期记忆运行时以复用新缓存。"""
+
+        result = import_embedding_model_archive(path, self.base_dir)
+        if not self.is_ready():
+            self.reset_runtime()
+            self.preload(wait=False)
+        return result
 
     def preload(self, *, wait: bool = False) -> None:
         """提前启动 mem0 加载，避免首次打开设置或聊天时才初始化。"""
@@ -315,12 +344,11 @@ class MemoryStore:
             },
             "llm": llm_config,
             "embedder": {
-                "provider": "openai",
+                "provider": "huggingface",
                 "config": {
                     "model": DEFAULT_EMBEDDING_MODEL,
                     "embedding_dims": DEFAULT_EMBEDDING_DIMS,
-                    "openai_base_url": "http://127.0.0.1:9999/v1/",
-                    "api_key": "local",
+                    "model_kwargs": _local_embedding_model_kwargs(DEFAULT_EMBEDDING_MODEL, self.base_dir),
                 },
             },
             "history_db_path": str(memory_dir / "mem0_history.db"),
@@ -363,11 +391,18 @@ class MemoryStore:
             return self._failed_response(str(exc))
         if mem is None:
             return self._loading_response()
-        raw = (
-            mem.get_all(filters={"user_id": self.scope_id}, top_k=limit)
-            if not query
-            else mem.search(query, filters={"user_id": self.scope_id}, top_k=limit)
-        )
+        try:
+            raw = (
+                mem.get_all(filters={"user_id": self.scope_id}, top_k=limit)
+                if not query
+                else mem.search(query, filters={"user_id": self.scope_id}, top_k=limit)
+            )
+        except Exception as exc:  # noqa: BLE001
+            if _is_closed_client_error(exc):
+                error = str(exc)
+                self._mark_runtime_failed(error)
+                return self._failed_response(error)
+            raise
         memories = _normalize_memory_results(raw)
         return {
             "agent_id": self.scope_id,
@@ -677,6 +712,14 @@ class MemoryStore:
             "memories": [],
         }
 
+    def _mark_runtime_failed(self, error: str) -> None:
+        with self._lock:
+            self._memory = None
+            self._loading = False
+            self._load_error = error
+            self._status = "failed"
+            self._status_message = f"长期记忆系统暂时不可用：{error}"
+
 
 def _resolve_base_dir(base_dir: Path | None) -> Path:
     if base_dir is None:
@@ -763,6 +806,158 @@ def _project_embedding_cache_folder(base_dir: Path | None = None) -> Path:
     return root / "runtime" / "hf-cache" / "hub"
 
 
+def import_embedding_model_archive(path: Path, base_dir: Path | None = None) -> EmbeddingModelImportResult:
+    """导入 all-MiniLM-L6-v2 的 HuggingFace hub 缓存 ZIP。"""
+
+    archive_path = Path(path)
+    if not archive_path.exists():
+        raise FileNotFoundError(f"记忆模型包不存在：{archive_path}")
+    destination_root = _project_embedding_cache_folder(base_dir)
+    destination_model_dir = destination_root / DEFAULT_EMBEDDING_MODEL_CACHE_NAME
+    destination_root.mkdir(parents=True, exist_ok=True)
+
+    temp_root = destination_root / f".memory_model_import_{int(time.time() * 1000)}_{threading.get_ident()}"
+    staging_model_dir = temp_root / DEFAULT_EMBEDDING_MODEL_CACHE_NAME
+    backup_model_dir = destination_root / f".{DEFAULT_EMBEDDING_MODEL_CACHE_NAME}.backup"
+    try:
+        with zipfile.ZipFile(archive_path, "r") as zf:
+            model_prefix = _validate_embedding_model_zip_members(zf)
+            temp_root.mkdir(parents=True, exist_ok=False)
+            _extract_embedding_model_zip(zf, model_prefix, staging_model_dir)
+            snapshot_dir = staging_model_dir / "snapshots"
+            if not _hub_snapshot_has_model_weights(snapshot_dir):
+                raise MemoryModelImportError(
+                    "记忆模型包不完整：snapshots/ 下未找到 model.safetensors 或 pytorch_model.bin。"
+                )
+
+        if backup_model_dir.exists():
+            shutil.rmtree(backup_model_dir, ignore_errors=True)
+        if destination_model_dir.exists():
+            destination_model_dir.rename(backup_model_dir)
+        moved = False
+        try:
+            shutil.move(str(staging_model_dir), str(destination_model_dir))
+            moved = True
+            if backup_model_dir.exists():
+                shutil.rmtree(backup_model_dir, ignore_errors=True)
+        except Exception:
+            if moved and destination_model_dir.exists():
+                shutil.rmtree(destination_model_dir, ignore_errors=True)
+            if backup_model_dir.exists() and not destination_model_dir.exists():
+                backup_model_dir.rename(destination_model_dir)
+            raise
+    except zipfile.BadZipFile as exc:
+        raise MemoryModelImportError("不是有效的记忆模型 ZIP 包。") from exc
+    finally:
+        shutil.rmtree(temp_root, ignore_errors=True)
+
+    snapshot_count = sum(
+        1
+        for child in (destination_model_dir / "snapshots").iterdir()
+        if child.is_dir()
+    )
+    return EmbeddingModelImportResult(
+        model_name=DEFAULT_EMBEDDING_MODEL,
+        cache_folder=destination_root,
+        model_dir=destination_model_dir,
+        snapshot_count=snapshot_count,
+    )
+
+
+def _validate_embedding_model_zip_members(zf: zipfile.ZipFile) -> PurePosixPath:
+    """校验 ZIP 只包含目标模型目录，并返回模型目录在 ZIP 内的前缀。"""
+
+    paths: list[PurePosixPath] = []
+    file_paths: list[PurePosixPath] = []
+    for info in zf.infolist():
+        rel = _safe_zip_member_path(info)
+        paths.append(rel)
+        if not info.is_dir():
+            file_paths.append(rel)
+    if not file_paths:
+        raise MemoryModelImportError("记忆模型包为空。")
+
+    prefixes = [
+        PurePosixPath(DEFAULT_EMBEDDING_MODEL_CACHE_NAME),
+        PurePosixPath("hub", DEFAULT_EMBEDDING_MODEL_CACHE_NAME),
+        PurePosixPath("hf-cache", "hub", DEFAULT_EMBEDDING_MODEL_CACHE_NAME),
+    ]
+    for prefix in prefixes:
+        if not any(_zip_path_is_under(path, prefix) for path in file_paths):
+            continue
+        allowed_parents = set(prefix.parents)
+        for path in paths:
+            if path == PurePosixPath("."):
+                continue
+            if path in allowed_parents:
+                continue
+            if not _zip_path_is_under(path, prefix):
+                raise MemoryModelImportError(
+                    "记忆模型包只能包含 "
+                    f"{DEFAULT_EMBEDDING_MODEL_CACHE_NAME} 模型缓存目录。"
+                )
+        return prefix
+    if any(path.parts[0] == "snapshots" for path in file_paths):
+        allowed_root_parts = {"blobs", "refs", "snapshots", ".no_exist"}
+        for path in paths:
+            if path.parts[0] not in allowed_root_parts:
+                raise MemoryModelImportError(
+                    "记忆模型包根目录只能包含 blobs/、refs/、snapshots/ 或 .no_exist/。"
+                )
+        return PurePosixPath(".")
+    raise MemoryModelImportError(
+        f"记忆模型包缺少 {DEFAULT_EMBEDDING_MODEL_CACHE_NAME} 目录。"
+    )
+
+
+def _safe_zip_member_path(info: zipfile.ZipInfo) -> PurePosixPath:
+    member = str(info.filename or "").replace("\\", "/").rstrip("/")
+    if not member:
+        raise MemoryModelImportError("记忆模型包包含空 ZIP 成员名。")
+    if _is_zip_symlink(info):
+        raise MemoryModelImportError(f"记忆模型包不允许包含符号链接：{member}")
+    if "\x00" in member or member.startswith("/") or _WINDOWS_DRIVE_RE.match(member):
+        raise MemoryModelImportError(f"ZIP 成员必须是安全的相对路径：{member!r}")
+    parts = member.split("/")
+    if any(part in ("", ".", "..") for part in parts):
+        raise MemoryModelImportError(f"ZIP 成员包含不安全路径片段：{member!r}")
+    return PurePosixPath(*parts)
+
+
+def _zip_path_is_under(path: PurePosixPath, prefix: PurePosixPath) -> bool:
+    if prefix == PurePosixPath("."):
+        return True
+    return path == prefix or path.is_relative_to(prefix)
+
+
+def _extract_embedding_model_zip(
+    zf: zipfile.ZipFile,
+    model_prefix: PurePosixPath,
+    destination_model_dir: Path,
+) -> None:
+    """只把目标模型目录抽取到 staging 目录，避免 zipfile.extractall 的路径风险。"""
+
+    destination_model_dir.mkdir(parents=True, exist_ok=True)
+    for info in zf.infolist():
+        rel = _safe_zip_member_path(info)
+        if not _zip_path_is_under(rel, model_prefix) or rel == model_prefix:
+            continue
+        prefix_length = 0 if model_prefix == PurePosixPath(".") else len(model_prefix.parts)
+        target_rel = PurePosixPath(*rel.parts[prefix_length:])
+        target = destination_model_dir.joinpath(*target_rel.parts)
+        if info.is_dir():
+            target.mkdir(parents=True, exist_ok=True)
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with zf.open(info, "r") as source, target.open("wb") as output:
+            shutil.copyfileobj(source, output)
+
+
+def _is_zip_symlink(info: zipfile.ZipInfo) -> bool:
+    mode = (info.external_attr >> 16) & 0o170000
+    return mode == stat.S_IFLNK
+
+
 def _format_memory_load_error(exc: Exception, *, embedding_download: bool) -> str:
     raw_message = str(exc).strip() or exc.__class__.__name__
     if not embedding_download:
@@ -772,6 +967,31 @@ def _format_memory_load_error(exc: Exception, *, embedding_download: bool) -> st
         "请检查 HuggingFace 访问、网络或代理后重试；普通聊天仍可继续。"
         f"\n\n原始错误：{raw_message}"
     )
+
+
+def _is_closed_client_error(exc: Exception) -> bool:
+    return "client has been closed" in str(exc).lower()
+
+
+def _close_memory_client(memory: Any | None) -> None:
+    """释放 mem0 及本地 Qdrant 资源，避免重建时残留文件锁。"""
+
+    if memory is None:
+        return
+    close = getattr(memory, "close", None)
+    if callable(close):
+        try:
+            close()
+        except Exception:  # noqa: BLE001
+            logger.debug("关闭 mem0 运行时失败", exc_info=True)
+    vector_store = getattr(memory, "vector_store", None)
+    client = getattr(vector_store, "client", None)
+    client_close = getattr(client, "close", None)
+    if callable(client_close):
+        try:
+            client_close()
+        except Exception:  # noqa: BLE001
+            logger.debug("关闭 Qdrant 客户端失败", exc_info=True)
 
 
 def _hub_snapshot_has_model_weights(snapshot_dir: Path) -> bool:
@@ -891,23 +1111,3 @@ def _positive_int(value: Any, default: int) -> int:
     except (TypeError, ValueError):
         return default
     return max(1, number)
-
-
-def _close_memory_client(memory: Any | None) -> None:
-    """释放 mem0 及本地 Qdrant 资源，避免重建时残留文件锁。"""
-    if memory is None:
-        return
-    close = getattr(memory, "close", None)
-    if callable(close):
-        try:
-            close()
-        except Exception:
-            logger.debug("关闭 mem0 运行时失败", exc_info=True)
-    vector_store = getattr(memory, "vector_store", None)
-    client = getattr(vector_store, "client", None)
-    client_close = getattr(client, "close", None)
-    if callable(client_close):
-        try:
-            client_close()
-        except Exception:
-            logger.debug("关闭 Qdrant 客户端失败", exc_info=True)

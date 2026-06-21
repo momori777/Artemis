@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -8,7 +8,6 @@ from app.agent.mcp.settings import MCPRuntimeSettings, normalize_mcp_runtime_set
 from app.config.character_loader import DEFAULT_CHARACTER_ID, CharacterProfile, CharacterRegistry
 from app.config.yaml_config import load_yaml_mapping, save_yaml_mapping
 from app.llm.api_client import ApiSettings
-from app.llm.local_llama_client import _LOCALHOST_BASE_URL, _LOCAL_MODEL_DEFAULT
 from app.ui.theme import ThemeSettings, theme_from_mapping, theme_to_mapping
 from app.agent.proactive_care import (
     PROACTIVE_DEFAULT_CHECK_INTERVAL_MINUTES,
@@ -42,6 +41,36 @@ class DebugLogSettings:
 
 
 @dataclass(frozen=True)
+class StartupSettings:
+    """启动行为配置。"""
+
+    launch_at_login: bool = False
+
+
+BUBBLE_AUTO_HIDE_MIN_DELAY_SECONDS = 1
+BUBBLE_AUTO_HIDE_MAX_DELAY_SECONDS = 120
+BUBBLE_AUTO_HIDE_DEFAULT_DELAY_SECONDS = 5
+
+
+@dataclass(frozen=True)
+class BubbleSettings:
+    """对话气泡无操作自动隐藏配置。"""
+
+    auto_hide_enabled: bool = True
+    auto_hide_delay_seconds: int = BUBBLE_AUTO_HIDE_DEFAULT_DELAY_SECONDS
+
+    def normalized(self) -> "BubbleSettings":
+        delay = max(
+            BUBBLE_AUTO_HIDE_MIN_DELAY_SECONDS,
+            min(BUBBLE_AUTO_HIDE_MAX_DELAY_SECONDS, int(self.auto_hide_delay_seconds)),
+        )
+        return BubbleSettings(
+            auto_hide_enabled=bool(self.auto_hide_enabled),
+            auto_hide_delay_seconds=delay,
+        )
+
+
+@dataclass(frozen=True)
 class AppSettingsService:
     """集中管理运行配置；唯一持久化来源是 data/config/*.yaml。"""
 
@@ -67,24 +96,34 @@ class AppSettingsService:
         data = self._api_section("llm")
         timeout_seconds = _int_value(
             data.get("timeout_seconds"),
-            120,
+            60,
         )
-        # 默认本地 llama-server（项目统一 LLM 后端）
         return ApiSettings(
-            base_url=str(data.get("base_url", _LOCALHOST_BASE_URL)).strip().rstrip("/"),
-            api_key=str(data.get("api_key", "local")).strip(),
-            model=str(data.get("model", _LOCAL_MODEL_DEFAULT)).strip(),
+            base_url=str(data.get("base_url", "https://api.openai.com/v1")).strip().rstrip("/"),
+            api_key=str(data.get("api_key", "")).strip(),
+            model=str(data.get("model", "gpt-4.1-mini")).strip(),
             timeout_seconds=timeout_seconds,
+            temperature=_optional_float(data.get("temperature"), minimum=0.0, maximum=2.0),
+            top_p=_optional_float(data.get("top_p"), minimum=0.0, maximum=1.0),
+            max_tokens=_optional_positive_int(data.get("max_tokens")),
         )
 
     def save_api_settings(self, settings: ApiSettings) -> None:
         data = load_yaml_mapping(self.api_config_path)
-        data["llm"] = {
+        llm_data: dict[str, Any] = {
             "base_url": settings.base_url.strip().rstrip("/"),
             "api_key": settings.api_key.strip(),
             "model": settings.model.strip(),
             "timeout_seconds": int(settings.timeout_seconds),
         }
+        # 仅写入用户显式配置的高级参数，避免给老配置塞入空键、改变默认行为。
+        if settings.temperature is not None:
+            llm_data["temperature"] = float(settings.temperature)
+        if settings.top_p is not None:
+            llm_data["top_p"] = float(settings.top_p)
+        if settings.max_tokens is not None:
+            llm_data["max_tokens"] = int(settings.max_tokens)
+        data["llm"] = llm_data
         save_yaml_mapping(self.api_config_path, data)
 
     def load_tts_settings(
@@ -94,6 +133,7 @@ class AppSettingsService:
         character_profile: CharacterProfile | None = None,
     ) -> GPTSoVITSTTSSettings:
         data = self._api_section("tts")
+        playback_backend = str(data.get("playback_backend", "")).strip()
         gpt_sovits = _mapping(data.get("gpt_sovits"))
         genie_tts = _mapping(data.get("genie_tts"))
         provider = str(data.get("provider", "")).strip().lower()
@@ -165,6 +205,8 @@ class AppSettingsService:
                 onnx_model_dir=onnx_model_dir,
                 validate_enabled=validate_enabled,
             )
+            if playback_backend:
+                settings = replace(settings, playback_backend=playback_backend)
         else:
             if provider == TTS_PROVIDER_GENIE and onnx_model_dir is None:
                 onnx_model_dir = self.base_dir / "data" / "tts_bundles" / "onnx" / "default"
@@ -184,6 +226,8 @@ class AppSettingsService:
                 text_lang=text_lang,
                 timeout_seconds=timeout_seconds,
             )
+            if playback_backend:
+                settings = replace(settings, playback_backend=playback_backend)
         if settings.enabled and validate_enabled:
             settings.validate()
         return settings
@@ -258,6 +302,18 @@ class AppSettingsService:
             },
         )
 
+    def load_startup_settings(self) -> StartupSettings:
+        startup = self._system_section("startup")
+        return StartupSettings(
+            launch_at_login=_bool_value(startup.get("launch_at_login"), False),
+        )
+
+    def save_startup_settings(self, settings: StartupSettings) -> None:
+        self.save_system_values(
+            "startup",
+            {"launch_at_login": bool(settings.launch_at_login)},
+        )
+
     def load_theme_settings(self) -> ThemeSettings:
         ui = self._system_section("ui")
         return theme_from_mapping(ui.get("theme"))
@@ -303,6 +359,26 @@ class AppSettingsService:
                 "screen_context_batch_limit": int(normalized.screen_context_batch_limit),
             },
         )
+
+    def load_bubble_settings(self) -> BubbleSettings:
+        ui = self._system_section("ui")
+        return BubbleSettings(
+            auto_hide_enabled=_bool_value(ui.get("bubble_auto_hide_enabled"), True),
+            auto_hide_delay_seconds=_int_value(
+                ui.get("bubble_auto_hide_delay_seconds"),
+                BUBBLE_AUTO_HIDE_DEFAULT_DELAY_SECONDS,
+            ),
+        )
+
+    def save_bubble_settings(self, settings: BubbleSettings) -> None:
+        # 气泡配置位于 ui section 下，须读-改-写以保留 subtitle_language/theme 等其他 ui 键。
+        normalized = settings.normalized()
+        ui = self._system_section("ui")
+        ui["bubble_auto_hide_enabled"] = bool(normalized.auto_hide_enabled)
+        ui["bubble_auto_hide_delay_seconds"] = int(normalized.auto_hide_delay_seconds)
+        data = load_yaml_mapping(self.system_config_path)
+        data["ui"] = ui
+        save_yaml_mapping(self.system_config_path, data)
 
     def load_memory_curation_settings(self):
         from app.agent.memory_curator import MemoryCurationSettings
@@ -382,6 +458,28 @@ def _int_value(value: Any, default: int) -> int:
         return int(str(value).strip())
     except (TypeError, ValueError):
         return default
+
+
+def _optional_float(value: Any, *, minimum: float, maximum: float) -> float | None:
+    """解析可选浮点参数；缺省或非法返回 None，合法值 clamp 到 [minimum, maximum]。"""
+    if value is None:
+        return None
+    try:
+        parsed = float(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+    return max(minimum, min(maximum, parsed))
+
+
+def _optional_positive_int(value: Any) -> int | None:
+    """解析可选正整数；缺省、非法或非正返回 None。"""
+    if value is None:
+        return None
+    try:
+        parsed = int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
 
 
 def _bool_value(value: Any, default: bool) -> bool:

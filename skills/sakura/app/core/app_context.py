@@ -6,10 +6,11 @@ from pathlib import Path
 from app.agent import AgentRuntime, MemoryStore, ReminderStore, ToolRegistry
 from app.agent.mcp import MCPRuntimeSettings, MCPToolProvider
 from app.agent.memory_curator import MemoryCurator, MemoryCurationSettings, MemoryCurationState
-from app.config.settings_service import AppSettingsService, DebugLogSettings
+from app.config.settings_service import AppSettingsService, DebugLogSettings, StartupSettings
 from app.llm.api_client import ApiSettings, OpenAICompatibleClient
 from app.config.character_loader import CharacterProfile, CharacterRegistry
 from app.storage.chat_history import ChatHistoryStore
+from app.agent.runtime_events import RuntimeEventLog
 from app.core.extensions import ExtensionRegistry
 from app.agent.proactive_care import ProactiveCareSettings
 from app.voice.tts import TTSProvider
@@ -34,6 +35,7 @@ class StorageServices:
     reminder_store: ReminderStore
     history_store: ChatHistoryStore
     visual_observation_store: VisualObservationStore
+    runtime_event_log: RuntimeEventLog
 
 
 @dataclass(frozen=True)
@@ -46,6 +48,7 @@ class FeatureServices:
     plugin_manager: SakuraPluginManager
     mcp_settings: MCPRuntimeSettings
     debug_log_settings: DebugLogSettings
+    startup_settings: StartupSettings
     memory_curation_settings: MemoryCurationSettings
     memory_curation_state: MemoryCurationState
     memory_curator: MemoryCurator
@@ -97,6 +100,10 @@ class AppContext:
         return self.storage.visual_observation_store
 
     @property
+    def runtime_event_log(self) -> RuntimeEventLog:
+        return self.storage.runtime_event_log
+
+    @property
     def extension_registry(self) -> ExtensionRegistry:
         return self.features.extension_registry
 
@@ -115,6 +122,10 @@ class AppContext:
     @property
     def debug_log_settings(self) -> DebugLogSettings:
         return self.features.debug_log_settings
+
+    @property
+    def startup_settings(self) -> StartupSettings:
+        return self.features.startup_settings
 
     @property
     def memory_curation_settings(self) -> MemoryCurationSettings:

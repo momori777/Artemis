@@ -167,7 +167,13 @@ def format_platform_summary() -> str:
 
 
 def list_nvidia_gpus() -> list[GPUInfo]:
-    exe = shutil.which("nvidia-smi")
+    # GPU 探测属于尽力而为：任何异常都按“未检测到 GPU”处理，避免拖垮设置页等调用方的构造。
+    # 注意 shutil.which 也需保护——当 sys.platform 被伪造为 win32（如测试）但宿主非 Windows 时，
+    # 其内部会访问 _winapi.NeedCurrentDirectoryForExePath，而非 Windows 上 _winapi 为 None 会抛 AttributeError。
+    try:
+        exe = shutil.which("nvidia-smi")
+    except Exception:
+        return []
     if not exe:
         return []
     cmd = [

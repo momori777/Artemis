@@ -7,6 +7,8 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any
 
+from app.core.gui_log import record_debug_log_for_gui
+
 
 
 DEBUG_KEY = "SAKURA_DEBUG"
@@ -62,12 +64,18 @@ def debug_file_enabled() -> bool:
 
 def debug_log(category: str, message: str, data: Any | None = None) -> None:
     """按统一格式输出调试日志；文件日志始终使用严格脱敏数据。"""
+    timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
+    try:
+        record_debug_log_for_gui(category, message, data, timestamp=timestamp)
+    except Exception:
+        # GUI 日志只是诊断辅助，任何异常都不应影响主流程。
+        pass
+
     terminal_enabled = debug_enabled()
     file_enabled = debug_file_enabled()
     if not terminal_enabled and not file_enabled:
         return
 
-    timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
     if terminal_enabled:
         line = f"[Debug][{category}][{timestamp}] {message}"
         if data is not None:
