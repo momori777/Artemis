@@ -269,6 +269,13 @@ def change_sovits_weights(sovits_path, prompt_language=None, text_language=None)
         gr.Warning(info)
         raise FileExistsError(info)
     dict_language = dict_language_v1 if version == "v1" else dict_language_v2
+    # Initialize defaults to prevent UnboundLocalError when prompt_language/text_language is None
+    prompt_text_update = {"__type__": "update"}
+    prompt_language_update = {"__type__": "update", "value": i18n("中文")}
+    text_update = {"__type__": "update"}
+    text_language_update = {"__type__": "update", "value": i18n("中文")}
+    visible_sample_steps = False
+    visible_inp_refs = True
     if prompt_language is not None and text_language is not None:
         if prompt_language in list(dict_language.keys()):
             prompt_text_update, prompt_language_update = (
