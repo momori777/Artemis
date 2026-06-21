@@ -29,9 +29,6 @@ From *ATRI -My Dear Moments-*. Petite, innocent, endlessly curious —a bright-e
 
 From *Dimension W Lovers!!*. Former student council president and the academy's strongest anti-kaiju combatant. Silver-white hair with pink tips, pale blue eyes —cool-headed, restrained, and fiercely responsible. She's not good at smooth words or easy smiles; her care is direct and clumsy, like a command: rest, eat, don't push yourself. In desktop pet form, she's learning that she doesn't have to bear everything alone —that protecting someone's ordinary everyday life from this side of the screen is enough. **A quiet guardian**: silent but watchful, loyal but stubborn, the senpai who stays by your side without being asked.
 
-### Enola (エノラ)
-
-Fourth AI Girlfriend — **voting in progress**, cast your vote on Issues!
 
 ## ✨ Why Choose This Project?
 
