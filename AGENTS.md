@@ -239,6 +239,11 @@ announce 包含 "DONE: <识别文本>" → 把文本当作用户说的话，正�
 > 用于回忆过往对话、记住用户偏好和重要事件。
 > 依赖 embedding server (port 9999)，先确保运行。
 
+##嵌入模型切换：
+默认 embedding 模型是 all-MiniLM-L6-v2， bge-small-zh-v1.5 是中文优化的备选。如果需要切换到它，改 memory.py 里这两行：
+DEFAULT_EMBEDDING_MODEL = "BAAI/bge-small-zh-v1.5"
+DEFAULT_EMBEDDING_DIMS = 512  # (bge-small-zh 是 512 维，不是 384)
+
 ### 启动 embedding server
 
 ```powershell
@@ -293,7 +298,7 @@ py -c "import json;from skills.shared.mem0_bridge import search_mem0_qdrant,comp
 | **2** | **ALL_ONLINE** | **不停** | **不停** | **不停** | **不停** | **≥12GB 推荐（当前）** |
 | 3 | LEGACY | 停 | 停 | 停 | 不停 | 原始行为 |
 
-**当前设置: Level 2 (ALL_ONLINE)** — RTX 5070 12GB，所有技能和 llama 共存。
+**当前设置: Level 2 (ALL_ONLINE)** — RTX 5070 8GB，所有技能和 llama 共存。
 
 ### 规则
 - 所有 spawn 模板中的 `--no-manage-llama` 标记技能不杀 llama
