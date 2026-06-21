@@ -3,27 +3,39 @@
   "display_name": "夜乃桜",
   "initial_message": "……起動した。用事があるなら、呼んで。",
   "card": "card.md",
+  "backchannel": "backchannels/manifest.json",
   "portrait": {
     "default": "portraits/A020.png",
     "expressions": {
-      "中性": "portraits/A020.png",
-      "不满": "portraits/A140.png",
-      "害羞": "portraits/A081.png",
-      "请求": "portraits/I010.png",
-      "惊讶": "portraits/A070.png",
-      "开心": "portraits/A061.png",
-      "温柔": "portraits/E140.png",
-      "困惑": "portraits/A150.png",
-      "傲娇": "portraits/A230.png",
-      "难过": "portraits/A130.png",
-      "满足": "portraits/A170.png",
-      "自信": "portraits/B180.png"
+      "站立待机": "portraits/A020.png",
+      "开心脸红": "portraits/A061.png",
+      "张嘴疑问": "portraits/A070.png",
+      "害羞脸红": "portraits/A081.png",
+      "难过沮丧": "portraits/A130.png",
+      "不满无语": "portraits/A140.png",
+      "两眼放光": "portraits/A150.png",
+      "高兴满足": "portraits/A170.png",
+      "吃醋不满": "portraits/A230.png",
+      "自信拍胸": "portraits/B180.png",
+      "自信撩发": "portraits/E050.png",
+      "侧身无语": "portraits/E140.png",
+      "伸手命令": "portraits/I010.png",
+      "伸手抚摸": "portraits/I180.png"
     }
   },
-  "live2d": {
-    "enabled": false,
-    "bridge_url": "http://localhost:19200",
-    "note": "Sakura has no dedicated L2D model yet. Deskpet uses portrait mode."
+  "theme": {
+    "primary_color": "#0083a0",
+    "primary_hover_color": "#00677e",
+    "accent_color": "#d04f7c",
+    "text_color": "#1f242e",
+    "secondary_text_color": "#485264",
+    "muted_text_color": "#7b889b",
+    "page_background_color": "#f7f9fa",
+    "panel_background_color": "#edf2f4",
+    "input_background_color": "#ffffff",
+    "bubble_background_color": "#e1f2f6",
+    "border_color": "#cbdbe0",
+    "source": "package"
   },
   "reply": {
     "tones": [
@@ -31,35 +43,14 @@
       "不满",
       "害羞",
       "请求",
-      "惊讶",
-      "开心",
-      "温柔",
-      "困惑",
-      "傲娇",
-      "难过",
-      "满足",
-      "自信"
+      "惊讶"
     ]
-  },
-  "theme": {
-    "primary_color": "#d55b91",
-    "primary_hover_color": "#bf3f7a",
-    "accent_color": "#b13e73",
-    "text_color": "#3d2b35",
-    "secondary_text_color": "#7a3656",
-    "muted_text_color": "#9b4f72",
-    "page_background_color": "#fff6fa",
-    "panel_background_color": "#ffe8f1",
-    "input_background_color": "#ffffff",
-    "bubble_background_color": "#ffe8f1",
-    "border_color": "#eeacc8",
-    "source": "compat_default"
   },
   "voice": {
     "tone_refs": "voice/refs/ref.txt",
     "ref_lang": "ja",
     "text_lang": "ja",
-    "gpt_model": "",
-    "sovits_model": ""
+    "gpt_model": "voice/models/Sakura-e15.ckpt",
+    "sovits_model": "voice/models/Sakura_e8_s7176.pth"
   }
 }

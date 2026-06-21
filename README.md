@@ -29,6 +29,10 @@ From *ATRI -My Dear Moments-*. Petite, innocent, endlessly curious —a bright-e
 
 From *Dimension W Lovers!!*. Former student council president and the academy's strongest anti-kaiju combatant. Silver-white hair with pink tips, pale blue eyes —cool-headed, restrained, and fiercely responsible. She's not good at smooth words or easy smiles; her care is direct and clumsy, like a command: rest, eat, don't push yourself. In desktop pet form, she's learning that she doesn't have to bear everything alone —that protecting someone's ordinary everyday life from this side of the screen is enough. **A quiet guardian**: silent but watchful, loyal but stubborn, the senpai who stays by your side without being asked.
 
+### Enola (エノラ)
+
+Fourth AI Girlfriend — **voting in progress**, cast your vote on Issues!
+
 ## ✨ Why Choose This Project?
 
 | | Cloud AI Girlfriend | This Project |
@@ -46,6 +50,22 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 ![QQ Bot Demo](media/demo_qqbot.gif)
 
 > 👆 QQ Bot: text chat + TTS voice + ComfyUI image generation + character memory
+
+### 🎙️ TTS Voice Workshop
+
+<video src="media/tts_workshop_small.mp4" controls width="800"></video>
+
+> 👆 **Artemis Studio — TTS Workshop**: GPT-SoVITS real-time voice synthesis with 3 character voices (Natsume/ATRI/Sakura), 5 emotion modes (casual/tsundere/romantic/long/random), and CN/JP/EN mixed-language reading. **Works whether llama is running or not.**
+
+![TTS Workshop](media/tts_workshop.gif)
+
+### 🎨 ComfyUI Image Workshop
+
+<video src="media/comfyui_workshop_small.mp4" controls width="800"></video>
+
+![ComfyUI Workshop](media/comfyui_workshop.gif)
+
+> 👆 **Artemis Studio — ComfyUI Workshop**: Visual AI image generation console — freely choose character/outfit/scene/art style, one-click generation. **Runs in parallel with llama** (12GB+ VRAM).
 
 ### Live2D Desktop Pet
 ![Live2D Demo](media/demo_live2d.gif)
@@ -92,12 +112,14 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 - 🎨 **AI Image Generation** —Local ComfyUI inference, SDXL/Illustrious models, 3 character prompt templates
 - 🖥️**Sakura Desktop Pet** —PySide6 desktop companion with proactive care, screen observation & local LLM awareness; supports 3 characters
 - 🎭 **Live2D Character Model** —Real-time Live2D rendering with emotion-driven expressions & speech bubbles (Natsume / ATRI L2D; Sakura portrait mode)
-- 🧠 **VRAM Scheduler** —Automatic llama-server →TTS/ComfyUI orchestration on 8 GB VRAM; ASR coexists
+- 🧠 **Smart VRAM Tiering** — Auto-detects GPU VRAM and picks the right strategy: ≥12GB keeps everything online (llama + skills); 8GB hot-swaps llama for GPU-heavy tasks; <8GB safe mode. Zero manual config
+- 🎛️ **Artemis Studio Console** — Visual TTS + ComfyUI workshop, DIY voice & images anytime regardless of llama status — a true offline creative suite
 - 💾 **Roleplay Memory** —Daily conversation summaries per character in `memory/role_play/`
 - 🧠 **Long-term Memory System** —Powered by [headroom](https://github.com/chopratejas/headroom) (SmartCrusher + CCR) and [mem0](https://github.com/mem0ai/mem0) (Qdrant vector database):
+  - **Chinese Embedding Boost** — Added BGE-small-zh-v1.5 alongside all-MiniLM-L6-v2 for more accurate CN/JP/EN hybrid memory retrieval
   - **SmartCrusher Context Trimming** —Hard-caps chat history at 24 messages / 40K characters per LLM request
   - **CCR (Curate-Consolidate-Retrieve)** —Background worker extracts durable facts every 8 turns, writes to mem0 Qdrant
-  - **Vector + BM25 Hybrid Search** —Semantic similarity + keyword matching via Qdrant + all-MiniLM-L6-v2 embeddings
+  - **Vector + BM25 Hybrid Search** —Semantic similarity + keyword matching via Qdrant + dual embedding models
   - **Auto-Sync Bridge** —Cron job syncs Qdrant →`_mem0_auto.md` every 30 min, making vector memories searchable by OpenClaw's native `memory_search`
   - **Per-Character Isolation** —`user_id` scoping in Qdrant; 4 independent memory spaces (sakura / natsume / enola / atori)
   - **Recall Priority** —Vector long-term memories > handwritten daily notes > SOUL base persona
@@ -118,8 +140,9 @@ See [`models.yaml`](models.yaml) for full details.
 | **miaomiaoHarem_v20** | ComfyUI generation (backup) | 6.46 GB |
 | **GPT-SoVITS voice weights** | TTS voice synthesis | ~303 MB |
 | **Sakura SoVITS weights** | TTS voice synthesis (Sakura voice) | ~313 MB |
-| **all-MiniLM-L6-v2** | Sentence embedding (mem0 memory) | ~80 MB |
-|  | →Path: `embedding/all-MiniLM-L6-v2/` (HF repo) | |
+| **all-MiniLM-L6-v2** | English/cross-lingual embedding (mem0) | ~80 MB |
+| **BGE-small-zh-v1.5** | Chinese embedding (mem0) | ~91 MB |
+|  | →Path: `embedding/all-MiniLM-L6-v2/` + `embedding/bge-small-zh-v1.5/` (HF repo) | |
 | **Shiki Natsume Live2D Model** | Live2D character rendering | ~180 MB (archive) |
 
 ### One-command Download
@@ -190,15 +213,30 @@ Qwen3.6 MoE uses SSM (Gated Delta Net) hybrid attention with `--kv-unified`.
 - Restore context from summaries on startup, keeping actual token count in 5K—0K range
 - `config-patch.json` sets OpenClaw contextWindow to 262144 to match model capacity
 
-### VRAM Budget
+### VRAM Tiering Strategy
 
+The system auto-detects GPU VRAM and selects the optimal run mode — no manual config:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ VRAM Tier               │ TTS        │ ComfyUI   │ llama   │
+├─────────────────────────────────────────────────────────────┤
+│ Tier 0: <8GB            │ Stop llama │ Stop llama│ Killed  │
+│ Tier 1: 8-12GB (current) │ Stop llama │ Stop llama│ Killed  │
+│ Tier 2: ≥12GB           │ No kill    │ No kill   │ Always on│
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Current setup (8GB VRAM)**:
 ```
 8 GB Total VRAM
 ├── llama-server resident: ~5.8 GB (model 4.6G + KV cache 1.2G)
 ├── Free: ~2.2 GB
 │
 ├── TTS inference: stop llama →~8 GB free →resume llama (~70s)
-└── ComfyUI generation: stop llama →~8 GB free →resume llama (~120s)
+├── ComfyUI generation: stop llama →~8 GB free →resume llama (~120s)
+├── Artemis Studio (TTS/ComfyUI workshop): standalone — works regardless of llama
+└── ASR / Live2D / Embedding: always online — unaffected by VRAM tiering
 ```
 
 ## Directory Structure
@@ -270,9 +308,11 @@ AI_Girlfriend/                        # OpenClaw workspace root
     │  ├── run_asr.ps1               # Faster-Whisper launcher (~1.5GB VRAM)
     │  └── asr_call.py               # Whisper small model inference
     ├── shared/                       # Shared infrastructure
-    │  ├── embedding_server.py       # OpenAI-compatible embedding API (port 9999)
+    │  ├── embedding_server.py       # OpenAI-compatible embedding API (9999, dual model)
     │  ├── mem0_bridge.py            # mem0 Qdrant →OpenClaw memory bridge
     │  ├── start_embedding_server.ps1 # Auto-start embedding server
+    │  ├── vram.py                   # VRAM tier auto-detection
+    │  ├── VRAM_LEVELS.md             # VRAM tier documentation
     │  ├── llama_lifecycle.py        # Llama start/stop management
     │  └── llama_utils.py            # Llama utility functions
     ├── sakura/                       # Sakura Desktop Pet (PySide6 GUI)
@@ -291,12 +331,13 @@ AI_Girlfriend/                        # OpenClaw workspace root
 
 | Skill | Type | Llama Kill? | Mechanism |
 |-------|------|-------------|-----------|
-| **Embedding** | Background process | ❌No | all-MiniLM-L6-v2 (CPU, 384-dim) on port 9999 —OpenClaw memory search + mem0 bridge |
+| **Embedding** | Background process | ❌No | all-MiniLM-L6-v2 + BGE-small-zh-v1.5 dual models (CPU, port 9999) —OpenClaw memory search + mem0 bridge |
 | **Live2D** | HTTP exec | ❌No | Direct HTTP calls to `localhost:19200` bridge |
-| **TTS** | sessions_spawn | ✨Yes | Kill →GPT-SoVITS →restart llama |
-| **ComfyUI** | sessions_spawn | ✨Yes | Kill →image gen →restart llama |
+| **TTS** | sessions_spawn | 🔶 VRAM-tiered | ≥12GB: no kill; 8GB: stop llama →GPT-SoVITS →restart llama |
+| **ComfyUI** | sessions_spawn | 🔶 VRAM-tiered | ≥12GB: no kill; 8GB: stop llama →image gen →restart llama |
 | **ASR** | sessions_spawn | ❌No | Faster-Whisper small (~1.5GB VRAM, coexists with llama) |
 | **Sakura** | Shared llama-client | ❌No | Detects llama down →waits →auto-resumes |
+| **Artemis Studio** | Desktop console | ❌No | TTS/ComfyUI visual workshop, standalone — works regardless of llama status |
 
 ## Prerequisites
 
@@ -410,11 +451,12 @@ powershell -File start.ps1
 
 Startup sequence:
 ```
-[1/5] llama-server        (8080, Qwen3.6-35B, ngl=41)
-[2/5] Embedding Server    (9999, all-MiniLM-L6-v2, CPU, ~100MB RAM)
-[3/5] Live2D Bridge       (19200, pixi-live2d-display)
-[4/5] OpenClaw Gateway    (18789)
-[5/5] llama-watchdog      (crash auto-restart)
+[1/6] llama-server        (8080, Qwen3.6-35B, ngl=41)
+[2/6] Embedding Server    (9999, all-MiniLM + BGE dual models, CPU, ~100MB RAM)
+[3/6] VRAM Tier Detection (auto-selects whether TTS/ComfyUI stops llama)
+[4/6] Live2D Bridge       (19200, pixi-live2d-display)
+[5/6] OpenClaw Gateway    (18789)
+[6/6] llama-watchdog      (crash auto-restart)
 ```
 
 **Shutdown: `shiki.cmd -Stop`** —gracefully stops all services (llama →live2d →sakura →embedding →comfyui →gateway →cleanup).
@@ -459,11 +501,12 @@ OpenClaw Gateway ││││ Sakura Desktop Pet (PySide6)
   ┌──│││ llama-server :8080 ││││││   ┌──││││ Memory System │││││││││││││││││││││││││││
   │        (Qwen3.6-35B)        │   │                                                │
   ├──│││││││││││││││││││││││││││││   │ ┌── Embedding :9999 ││││││││││││││││││││││││││││
-  │ Main session (roleplay)     │   │ │ all-MiniLM-L6-v2 (CPU, ~100MB RAM)       ││
-  │ TTS (kill →GPU →restart)  │   │ │ ├── OpenClaw memory_search (hybrid)       ││
-  │ ComfyUI (kill →GPU →restart)│ │ │ └── mem0_bridge.py (search / add / sync) ││
-  │ ASR (Whisper →no kill)     │   │ └──│││││││││││││││││││││││││││││││││││││││││││
-  │ Sakura Pet (shared, no kill)│   │                                                │
+  │ Main session (roleplay)        │   │ │ all-MiniLM-L6-v2 + BGE-small-zh-v1.5   ││
+  │ TTS (VRAM-tiered stop/run)   │   │ │ (CPU, ~100MB RAM, dual model)          ││
+  │ ComfyUI (VRAM-tiered stop/run)│   │ ├── OpenClaw memory_search (hybrid)    ││
+  │ ASR (Whisper →no kill)       │   │ └── mem0_bridge.py (search/add/sync)   ││
+  │ Sakura Pet (shared, no kill)  │   │ └──│││││││││││││││││││││││││││││││││││││││││││
+  │ Artemis Studio (standalone)   │   │                                               │
   └──│││││││││││││││││││││││││││││   │ ┌── Qdrant Vector DB │││││││││││││││││││││││││││
                │                     │ │ collection: sakura_memories               ││
                │                     │ │ ├── user_id=sakura   (Yono Sakura              ││
@@ -524,7 +567,7 @@ OpenClaw Gateway ││││ Sakura Desktop Pet (PySide6)
 
 | Skill | Location | Llama Interaction |
 |-------|----------|-------------------|
-| **Embedding** | `skills/shared/` | all-MiniLM-L6-v2 (CPU, ~100MB RAM) on port 9999 —never touches GPU |
+| **Embedding** | `skills/shared/` | all-MiniLM-L6-v2 + BGE-small-zh-v1.5 dual model (CPU, ~100MB RAM) on port 9999 —never touches GPU |
 | **Live2D** | `skills/live2d/` | HTTP API only —never touches llama |
 | **TTS** | `skills/tts/` | Kill llama →GPT-SoVITS →restart + wait /health |
 | **ComfyUI** | `skills/comfyui/` | Kill llama →image gen →restart + wait /health |
@@ -537,12 +580,12 @@ OpenClaw Gateway ││││ Sakura Desktop Pet (PySide6)
 | **Character Importer** | `skills/character_importer/` | Agent-level —no GPU needed; writes SOUL/IDENTITY + memory dir |
 
 **VRAM Orchestration Flow**:
-1. Main session receives user request →assembles command
-2. `sessions_spawn(mode="run")` creates local model sub-session
-3. Sub-session execs PS script →`stop_llama()` kills llama-server
-4. Full 8 GB VRAM freed →TTS/ComfyUI inference
-5. `start_llama()` restarts llama-server (~12s load + ~3s warmup)
-6. Live2D remains active during entire cycle —bridge doesn't touch GPU
+1. On startup: auto-detect GPU VRAM →determine tier (Tier 0/1/2)
+2. Main session receives user request →assembles command
+3. `sessions_spawn(mode="run")` creates sub-session
+4. Tier 0/1: `stop_llama()` frees VRAM →TTS/ComfyUI inference →`start_llama()` resumes
+5. Tier 2 (≥12GB): direct inference, llama stays online
+6. Artemis Studio, Live2D, Embedding stay active throughout —unaffected
 7. Sub-session writes `.task_flags` →announces back to main session
 8. Main session reads media files →sends via `<qqmedia>` / `MEDIA:`
 9. Background: CCR runs every ~8 turns, extracting long-term memories to Qdrant
@@ -551,7 +594,7 @@ OpenClaw Gateway ││││ Sakura Desktop Pet (PySide6)
 ## ⚠️ Important Notes
 
 - **RTX 50xx (Blackwell) + CUDA 13.x = `munmap_chunk(): invalid pointer` crash** —CUDA 13.x has known memory management incompatibility with llama.cpp on Blackwell GPUs. **Solution: use pre-built llama.cpp binaries compiled with CUDA 12.x** (not self-compiled with CUDA 13.x). Download from [llama.cpp Releases](https://github.com/ggml-org/llama.cpp/releases), choose `cudart-llama-bin-win-cuda-12.4-x64.zip`. RTX 5070 Ti is fully compatible with CUDA 12.x drivers.
-- Llama-server is offline for ~60—20s during TTS/ComfyUI inference —conversation pauses, but Live2D keeps running
+- Llama-server is offline for ~60–120s during TTS/ComfyUI inference on 8GB VRAM (Tier 1) — conversation pauses, but Live2D + Artemis Studio keep running. On 12GB+ (Tier 2), no interruption at all
 - Sub-sessions use **local model** (same as main), DeepSeek as optional fallback
 - Llama-server does not support cross-turn prompt cache reuse (SSM limitation) —use periodic `/reset`
 - **Live2D requires Cubism Core 4** (not 5 or 6) —pixi-live2d-display v0.5.0 is built for Cubism 4 Framework; Core 5+ causes clipping/layer failures. **Core 4 is bundled** in live2d/live2dcubismcore.min.js — no CDN needed.

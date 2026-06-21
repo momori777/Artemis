@@ -5,6 +5,8 @@ Artemis 省流版使用手册
     .\start.ps1 或cmd 输入shiki，回车
     首次用先跑 quick_setup.ps1 配好路径
 
+   powershell运行artemis_studio.ps1，和llama完全并行生成语音和图片
+
 二、关闭
     .\start.ps1 -Stop 或cmd 输入shiki -Stop
     或对夏目说"拜拜"，她自己关

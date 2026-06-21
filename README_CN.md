@@ -29,6 +29,10 @@
 
 出自《ディメンション凸ラバース！！》。前任生徒会长，「学园」最强级别的对怪兽战力。银白色长发发尾带淡粉色渐变，浅蓝色眼瞳——冷静、克己、责任感极强。她不擅长圆滑的安慰和漂亮话；她的关心直接而笨拙，像命令一样：休息、吃饭、别逞强。桌宠形态下，她正在学习不必一个人承担一切——在屏幕这一侧守护一个普通而重要的日常就足够了。**安静的守护者**：沉默但注视，固执但忠诚，是不请自来的学姐。
 
+### Enola（エノラ）
+
+第四位 AI 女友——**投票中**，请在 Issues 投票选择！
+
 ## ✨ 为什么选这个项目？
 
 | | 云端 AI 女友 | 本项目 |
@@ -46,6 +50,22 @@
 ![QQ Bot 演示](media/demo_qqbot.gif)
 
 > 👆 QQ Bot：文字聊天 + TTS 语音 + ComfyUI 画图 + 角色记忆
+
+### 🎙️ TTS 语音工坊
+
+<video src="media/tts_workshop_small.mp4" controls width="800"></video>
+
+> 👆 **Artemis Studio — TTS 工坊**：GPT-SoVITS 实时语音合成，支持夏目/亚托莉/夜乃桜三套声线、5 种情绪模式（日常/傲娇/深情/长句/随机），中英日三语混合朗读。**无论 llama 是否运行都能用**。
+
+![TTS Workshop](media/tts_workshop.gif)
+
+### 🎨 ComfyUI 画图工坊
+
+<video src="media/comfyui_workshop_small.mp4" controls width="800"></video>
+
+![ComfyUI Workshop](media/comfyui_workshop.gif)
+
+> 👆 **Artemis Studio — ComfyUI 工坊**：可视化的 AI 画图控制台，自由选择角色/服装/场景/画风，一键生成。**也无需停 llama**（12GB+ 显存下并行运行）。
 
 ### Live2D 桌面宠物
 ![Live2D 演示](media/demo_live2d.gif)
@@ -76,8 +96,8 @@
 
 | 组件 | 型号 |
 |-----------|-------|
-| GPU | NVIDIA GeForce RTX 5070 笔记本 (8 GB 显存) |
-| CPU | Intel Core i9-14900HX (24 核, 32 线程) |
+| GPU | NVIDIA GeForce RTX 5070 Laptop (8 GB 显存) |
+| CPU | Intel Core i9-14900 (24 核, 32 线程) |
 | 内存 | 32 GB DDR5 |
 | 系统 | Windows 11 |
 
@@ -92,12 +112,14 @@
 - 🎨 **AI 画图** — 本地 ComfyUI 推理，SDXL/Illustrious 模型，3 套角色 prompt 模板
 - 🖥️ **Sakura 桌宠** — PySide6 桌面伴侣，主动关心、屏幕观察 & 本地 LLM 感知；支持 3 角色切换
 - 🎭 **Live2D 角色模型** — 实时 Live2D 渲染，情绪驱动表情 & 对话气泡（夏目 / 亚托莉 L2D；夜乃桜立绘模式）
-- 🧠 **显存调度器** — 8 GB 显存上自动调度 llama-server ↔ TTS/ComfyUI；ASR 可共存
+- 🧠 **VRAM 智能分档** — 根据显存自动选择策略：≥12GB 所有技能在线（含 llama）；8GB 自动停 llama 秒切 GPU；<8GB 安全模式。无需手动配置
+- 🎛️ **Artemis Studio 控制台** — 可视化 TTS + ComfyUI 工坊，无论 llama 是否运行都可自由 DIY 语音和图片，真正的离线创作台
 - 💾 **角色扮演记忆** — 每日对话摘要按角色存储于 `memory/role_play/`
 - 🧠 **长期记忆系统** — 灵感源自 [headroom](https://github.com/chopratejas/headroom)（SmartCrusher + CCR）和 [mem0](https://github.com/mem0ai/mem0)（Qdrant 向量数据库）：
+  - **中文 Embedding 增强** — 新增 BGE-small-zh-v1.5 中文嵌入模型，中日英混合记忆检索更精准；all-MiniLM-L6-v2 继续用于英文/跨语言
   - **SmartCrusher 文本压缩** — 每次 LLM 请求硬截断至 24 条消息 / 40K 字符
   - **CCR（整理-合并-检索）** — 后台线程每 8 轮对话提取持久记忆，写入 mem0 Qdrant
-  - **向量 + BM25 混合搜索** — 语义相似度 + 关键词匹配，基于 Qdrant + all-MiniLM-L6-v2
+  - **向量 + BM25 混合搜索** — 语义相似度 + 关键词匹配，基于 Qdrant + 双 Embedding 模型
   - **自动同步桥接** — Cron job 每 30 分钟同步 Qdrant → `_mem0_auto.md`，使向量记忆可被 OpenClaw 原生 `memory_search` 检索
   - **角色隔离** — Qdrant 内通过 `user_id` 划分 4 个独立记忆空间（sakura / natsume / enola / atori）
   - **召回优先级** — 向量长期记忆 > 手写日记 > SOUL 基础人设
@@ -115,8 +137,9 @@
 | **miaomiaoHarem_v20** | ComfyUI 画图（备用） | 6.46 GB |
 | **GPT-SoVITS 语音权重** | TTS 语音合成 | ~303 MB |
 | **夜乃桜 SoVITS 语音权重** | TTS 语音合成（桜声线） | ~313 MB |
-| **all-MiniLM-L6-v2** | 语义 Embedding（mem0 记忆） | ~80 MB |
-|  | → 路径：`embedding/all-MiniLM-L6-v2/`（HF 仓库） | |
+| **all-MiniLM-L6-v2** | 英文/跨语言 Embedding（mem0 记忆） | ~80 MB |
+| **BGE-small-zh-v1.5** | 中文 Embedding（mem0 记忆） | ~91 MB |
+|  | → 路径：`embedding/all-MiniLM-L6-v2/` + `embedding/bge-small-zh-v1.5/`（HF 仓库） | |
 | **四季夏目 Live2D 模型** | Live2D 角色渲染 | ~180 MB (压缩包) |
 
 ### 一键下载
@@ -184,15 +207,30 @@ Qwen3.6 MoE 使用 SSM (Gated Delta Net) 混合注意力，配合 `--kv-unified`
 - 启动时从摘要恢复上下文，保持实际 token 数在 5K–20K 范围内
 - `config-patch.json` 将 OpenClaw contextWindow 设为 262144 以匹配模型容量
 
-### 显存预算
+### VRAM 分档策略
 
+系统根据 GPU 显存大小自动选择运行模式，无需手动配置：
+
+```
+┌────────────────────────────────────────────────────────────┐
+│ VRAM 级别               │ TTS       │ ComfyUI   │ llama   │
+├────────────────────────────────────────────────────────────┤
+│ Level 0: <8GB           │ 停 llama  │ 停 llama  │ 被杀    │
+│ Level 1: 8-12GB (当前)   │ 停 llama  │ 停 llama  │ 被杀    │
+│ Level 2: ≥12GB          │ 不停      │ 不停      │ 始终在线 │
+└────────────────────────────────────────────────────────────┘
+```
+
+**当前配置（8GB 显存）**：
 ```
 8 GB 总显存
 ├── llama-server 常驻：~5.8 GB（模型 4.6G + KV 缓存 1.2G）
 ├── 空闲：~2.2 GB
 │
 ├── TTS 推理：停 llama → ~8 GB 空闲 → 恢复 llama（约 70s）
-└── ComfyUI 画图：停 llama → ~8 GB 空闲 → 恢复 llama（约 120s）
+├── ComfyUI 画图：停 llama → ~8 GB 空闲 → 恢复 llama（约 120s）
+├── Artemis Studio (TTS/ComfyUI 工坊)：独立运行，无论 llama 是否在线
+└── ASR / Live2D / Embedding：始终在线，不受 VRAM 分档影响
 ```
 
 ## 目录结构
@@ -265,9 +303,11 @@ AI_Girlfriend/                        # OpenClaw 工作区根目录
     │   ├── run_asr.ps1               # Faster-Whisper 启动器 (~1.5GB 显存)
     │   └── asr_call.py               # Whisper small 模型推理
     ├── shared/                       # 共享基础设施
-    │   ├── embedding_server.py       # OpenAI 兼容的嵌入 API（端口 9999）
+    │   ├── embedding_server.py       # OpenAI 兼容嵌入 API（端口 9999, 双模型）
     │   ├── mem0_bridge.py            # mem0 Qdrant ↔ OpenClaw 记忆桥接
     │   ├── start_embedding_server.ps1 # 自动启动嵌入服务
+    │   ├── vram.py                   # VRAM 分档自动检测
+    │   ├── VRAM_LEVELS.md             # VRAM 分档说明文档
     │   ├── llama_lifecycle.py        # Llama 启动/停止管理
     │   └── llama_utils.py            # Llama 工具函数
     ├── sakura/                       # Sakura 桌宠 (PySide6 GUI)
@@ -284,14 +324,15 @@ AI_Girlfriend/                        # OpenClaw 工作区根目录
 
 ## 技能总览
 
-| 技能 | 类型 | 杀 Llama？ | 机制 |
+| 技能 | 类型 | 停 Llama？ | 机制 |
 |-------|------|-------------|-----------|
-| **Embedding** | 后台进程 | ❌ 否 | all-MiniLM-L6-v2 (CPU, 384维) 端口 9999 — OpenClaw 记忆搜索 + mem0 桥接 |
+| **Embedding** | 后台进程 | ❌ 否 | all-MiniLM-L6-v2 + BGE-small-zh-v1.5 双模型 (CPU, 端口 9999) — OpenClaw 记忆搜索 + mem0 桥接 |
 | **Live2D** | HTTP exec | ❌ 否 | 直接 HTTP 调 `localhost:19200` 桥 |
-| **TTS** | sessions_spawn | ✅ 是 | 杀 llama → GPT-SoVITS → 重启 llama |
-| **ComfyUI** | sessions_spawn | ✅ 是 | 杀 llama → 画图 → 重启 llama |
+| **TTS** | sessions_spawn | 🔶 按 VRAM 分档 | ≥12GB 时不停；8GB 时停 llama → GPT-SoVITS → 重启 llama |
+| **ComfyUI** | sessions_spawn | 🔶 按 VRAM 分档 | ≥12GB 时不停；8GB 时停 llama → 画图 → 重启 llama |
 | **ASR** | sessions_spawn | ❌ 否 | Faster-Whisper small (~1.5GB 显存，与 llama 共存) |
 | **Sakura** | 共享 llama-client | ❌ 否 | 检测 llama 掉线 → 等待 → 自动恢复 |
+| **Artemis Studio** | 桌面控制台 | ❌ 否 | TTS/ComfyUI 可视化工坊，独立运行，无论 llama 是否在线 |
 
 ## 环境依赖
 
@@ -407,11 +448,12 @@ powershell -File start.ps1
 
 启动顺序：
 ```
-[1/5] llama-server        (8080, Qwen3.6-35B, ngl=41)
-[2/5] Embedding Server    (9999, all-MiniLM-L6-v2, CPU, ~100MB 内存)
-[3/5] Live2D Bridge       (19200, pixi-live2d-display)
-[4/5] OpenClaw Gateway    (18789)
-[5/5] llama-watchdog      （崩溃自动重启）
+[1/6] llama-server        (8080, Qwen3.6-35B, ngl=41)
+[2/6] Embedding Server    (9999, all-MiniLM + BGE 双模型, CPU, ~100MB 内存)
+[3/6] VRAM 分档检测       (自动判断 TTS/ComfyUI 是否停 llama)
+[4/6] Live2D Bridge       (19200, pixi-live2d-display)
+[5/6] OpenClaw Gateway    (18789)
+[6/6] llama-watchdog      （崩溃自动重启）
 ```
 
 **关闭：`shiki.cmd -Stop`** — 优雅关闭所有服务（llama → live2d → sakura → embedding → comfyui → gateway → cleanup）。
@@ -456,11 +498,12 @@ OpenClaw Gateway ──── Sakura 桌宠 (PySide6)
   ┌───── llama-server :8080 ─────┐    ┌────── 记忆系统 ────────────────────────────┐
   │         (Qwen3.6-35B)        │    │                                               │
   ├──────────────────────────────┤    │  ┌─ Embedding :9999 ──────────────────────┐  │
-  │  Main session（角色扮演）     │    │  │  all-MiniLM-L6-v2 (CPU, ~100MB RAM)   │  │
-  │  TTS（杀 llama → GPU → 重启） │    │  │  ├─ OpenClaw memory_search（混合）   │  │
-  │  ComfyUI（杀 llama → GPU → 重启）│ │  └─ mem0_bridge.py (搜索/添加/同步)   │  │
-  │  ASR（Whisper → 不杀）        │    │  └─────────────────────────────────────┘  │
-  │  Sakura 桌宠（共享，不杀）     │    │                                               │
+  │  Main session（角色扮演）        │    │  │  all-MiniLM-L6-v2 + BGE-small-zh-v1.5 │  │
+  │  TTS（按 VRAM 分档停/不停）    │    │  │  (CPU, ~100MB RAM, 双模型)           │  │
+  │  ComfyUI（按 VRAM 分档停/不停）│    │  │  ├─ OpenClaw memory_search（混合）    │  │
+  │  ASR（Whisper → 不杀）          │    │  └─ mem0_bridge.py (搜索/添加/同步)    │  │
+  │  Sakura 桌宠（共享，不杀）      │    │  └─────────────────────────────────────┘  │
+  │  Artemis Studio（独立，不杀）    │    │                                               │
   └──────────────────────────────┘    │  ┌─ Qdrant 向量库 ───────────────────────┐  │
                │                      │  │  collection: sakura_memories          │  │
                │                      │  │  ├─ user_id=sakura   (夜乃桜)         │  │
@@ -532,13 +575,13 @@ OpenClaw Gateway ──── Sakura 桌宠 (PySide6)
 | **自动同步** | `skills/shared/mem0_sync_cron.py` | 每 30 分钟 Cron job：Qdrant → `_mem0_auto.md` |
 | **角色导入** | `skills/character_importer/` | Agent 层面——不需要 GPU；写入 SOUL/IDENTITY + 记忆目录 |
 
-**显存调度流程**：
-1. 主 session 收到用户请求 → 组装指令
-2. `sessions_spawn(mode="run")` 创建本地 model 子 session
-3. 子 session 执行 PS 脚本 → `stop_llama()` 杀掉 llama-server
-4. 释放完整 8 GB 显存 → TTS/ComfyUI 推理
-5. `start_llama()` 重启 llama-server（约 12s 加载 + 约 3s 预热）
-6. 整个过程中 Live2D 保持运行——桥接不碰 GPU
+**VRAM 调度流程**：
+1. 启动时自动检测 GPU 显存 → 确定 VRAM 级别（Level 0/1/2）
+2. 主 session 收到用户请求 → 组装指令
+3. `sessions_spawn(mode="run")` 创建子 session
+4. Level 0/1：`stop_llama()` 释放显存 → TTS/ComfyUI 推理 → `start_llama()` 恢复
+5. Level 2 (≥12GB)：直接推理，llama 始终在线
+6. 整个过程中 Artemis Studio、Live2D、Embedding 保持运行——不受影响
 7. 子 session 写入 `.task_flags` → 通知回主 session
 8. 主 session 读取媒体文件 → 通过 `<qqmedia>` / `MEDIA:` 发送
 9. 后台：CCR 每约 8 轮运行一次，提取长期记忆写入 Qdrant
