@@ -8,6 +8,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlparse, urlunparse
 
 from app.llm.chat_reply import ChatReply, parse_chat_reply
 from app.core.debug_log import debug_log, summarize_messages
@@ -46,6 +47,10 @@ class ApiSettings:
     api_key: str
     model: str
     timeout_seconds: int = 60
+    # 角色对话生成参数；None 表示沿用内置默认/不发送该参数，保持历史行为。
+    temperature: float | None = None  # None → 角色对话用内置默认 0.8
+    top_p: float | None = None  # None → 不发送 top_p
+    max_tokens: int | None = None  # None → 不发送 max_tokens（不截断输出）
 
 
 @dataclass(frozen=True)
@@ -77,6 +82,21 @@ class OpenAICompatibleClient:
         self.settings = settings
         self._unsupported_chat_params.clear()
 
+    def resolve_dialogue_params(self) -> tuple[float, dict[str, Any]]:
+        """返回角色对话用的生成参数：温度 + 额外参数（top_p/max_tokens）。
+
+        仅供角色对话入口（chat() 与 Agent 主工具循环）调用；记忆抽取、视觉摘要、
+        JSON 修复等内部功能调用必须保留各自硬编码的低温度，不得使用本方法，
+        否则会被用户配置污染。未配置的字段回退到内置默认（温度 0.8）或直接不发送。
+        """
+        temperature = self.settings.temperature if self.settings.temperature is not None else 0.8
+        extra: dict[str, Any] = {}
+        if self.settings.top_p is not None:
+            extra["top_p"] = self.settings.top_p
+        if self.settings.max_tokens is not None:
+            extra["max_tokens"] = self.settings.max_tokens
+        return temperature, extra
+
     def test_connection(self) -> str:
         """发送一次最小聊天请求，验证 Base URL、API Key 和模型是否可用。"""
         self._ensure_chat_config("缺少 API_KEY。请在设置中填写 API Key。")
@@ -104,7 +124,8 @@ class OpenAICompatibleClient:
     def list_models(self) -> list[str]:
         """读取 OpenAI 兼容 /models 接口，返回可选择的模型 id 列表。"""
         self._ensure_model_list_config()
-        url = f"{self.settings.base_url}/models"
+        base_url = _normalize_openai_base_url(self.settings.base_url)
+        url = f"{base_url}/models"
         request = urllib.request.Request(
             url=url,
             method="GET",
@@ -117,6 +138,7 @@ class OpenAICompatibleClient:
             "准备检测模型列表",
             {
                 "url": url,
+                "configured_base_url": self.settings.base_url,
                 "timeout_seconds": self.settings.timeout_seconds,
             },
         )
@@ -137,11 +159,13 @@ class OpenAICompatibleClient:
         reply_portraits: list[str] | None = None,
     ) -> ChatReply:
         segmented_reply_instruction = _build_segmented_reply_instruction(reply_tones, reply_portraits)
+        temperature, extra_params = self.resolve_dialogue_params()
         content = self.complete_raw(
             f"{system_prompt.strip()}\n\n{segmented_reply_instruction}",
             messages,
-            temperature=0.8,
+            temperature=temperature,
             response_format=STRUCTURED_JSON_RESPONSE_FORMAT,
+            **extra_params,
         )
 
         reply = parse_chat_reply(content)
@@ -178,7 +202,8 @@ class OpenAICompatibleClient:
             "API",
             "准备发送聊天补全请求",
             {
-                "base_url": self.settings.base_url,
+                "base_url": _normalize_openai_base_url(self.settings.base_url),
+                "configured_base_url": self.settings.base_url,
                 "model": self.settings.model,
                 "timeout_seconds": self.settings.timeout_seconds,
                 "temperature": temperature,
@@ -231,7 +256,8 @@ class OpenAICompatibleClient:
             "API",
             "准备发送原生工具聊天补全请求",
             {
-                "base_url": self.settings.base_url,
+                "base_url": _normalize_openai_base_url(self.settings.base_url),
+                "configured_base_url": self.settings.base_url,
                 "model": self.settings.model,
                 "timeout_seconds": self.settings.timeout_seconds,
                 "temperature": temperature,
@@ -253,6 +279,8 @@ class OpenAICompatibleClient:
 
         content = raw_message.get("content")
         tool_calls = _parse_native_tool_calls(raw_message.get("tool_calls"))
+        if not tool_calls:
+            tool_calls = _parse_pseudo_tool_calls_from_content(content)
         normalized_message = _normalize_assistant_message(raw_message, content, tool_calls)
         debug_log(
             "API",
@@ -319,7 +347,8 @@ class OpenAICompatibleClient:
     def _post_chat_completions(self, payload: dict[str, Any]) -> dict[str, Any]:
         """调用 OpenAI 兼容的 chat/completions 接口并返回 JSON 数据。"""
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        url = f"{self.settings.base_url}/chat/completions"
+        base_url = _normalize_openai_base_url(self.settings.base_url)
+        url = f"{base_url}/chat/completions"
         request = urllib.request.Request(
             url=url,
             data=body,
@@ -335,6 +364,7 @@ class OpenAICompatibleClient:
             "HTTP 请求体已构建",
             {
                 "url": url,
+                "configured_base_url": self.settings.base_url,
                 "bytes": len(body),
                 "payload": payload,
             },
@@ -382,7 +412,7 @@ class OpenAICompatibleClient:
                     },
                 )
                 if exc.code not in {429, 500, 502, 503, 504} or attempt == MAX_API_RETRY_ATTEMPTS:
-                    raise ApiRequestError(f"API HTTP {exc.code}: {error_body}") from exc
+                    raise ApiRequestError(_format_api_http_error(exc.code, error_body, request.full_url)) from exc
                 last_error = exc
             except urllib.error.URLError as exc:
                 debug_log(
@@ -460,6 +490,45 @@ def _parse_model_ids(data: dict[str, Any]) -> list[str]:
         if isinstance(model_id, str) and model_id.strip():
             model_ids.add(model_id.strip())
     return sorted(model_ids, key=str.casefold)
+
+
+def _normalize_openai_base_url(base_url: str) -> str:
+    """把 Google AI Studio 原生地址规范到 OpenAI 兼容路径。"""
+
+    normalized = base_url.strip().rstrip("/")
+    parsed = urlparse(normalized)
+    if parsed.netloc.lower() != "generativelanguage.googleapis.com":
+        return normalized
+    parts = [part for part in parsed.path.split("/") if part]
+    if parts and parts[0] in {"v1", "v1beta"} and "openai" not in parts:
+        parts.append("openai")
+        return urlunparse(parsed._replace(path="/" + "/".join(parts))).rstrip("/")
+    return normalized
+
+
+def _format_api_http_error(status_code: int, error_body: str, url: str) -> str:
+    if _looks_like_google_ai_studio_auth_error(error_body, url):
+        return (
+            f"API HTTP {status_code}: Google AI Studio 认证失败。"
+            "请确认填写的是 AI Studio API Key，并使用 Google Generative Language 的 OpenAI 兼容接口；"
+            "Sakura 会把 https://generativelanguage.googleapis.com/v1beta 自动转换为 "
+            "https://generativelanguage.googleapis.com/v1beta/openai。"
+            f"\n原始响应：{error_body}"
+        )
+    return f"API HTTP {status_code}: {error_body}"
+
+
+def _looks_like_google_ai_studio_auth_error(error_body: str, url: str) -> bool:
+    parsed = urlparse(url)
+    if parsed.netloc.lower() != "generativelanguage.googleapis.com":
+        return False
+    text = error_body.lower()
+    return (
+        "api_key_service_blocked" in text
+        or "unauthenticated" in text
+        or "invalid authentication credentials" in text
+        or "modelservice.listmodels" in text
+    )
 
 
 def _build_chat_completion_payload(
@@ -587,6 +656,75 @@ def _parse_native_tool_calls(raw_tool_calls: Any) -> list[NativeToolCall]:
             )
         )
     return parsed
+
+
+def _parse_pseudo_tool_calls_from_content(content: Any) -> list[NativeToolCall]:
+    """Parse OpenAI-compatible providers that emit tool calls as JSON text.
+
+    Some providers combine poorly with response_format=json_object and return
+    {"tool_call": "name", "parameters": {...}} in message.content instead of
+    native message.tool_calls. Keep this conservative: only accept top-level
+    JSON objects/lists that clearly describe tool calls.
+    """
+
+    if not isinstance(content, str) or not content.strip():
+        return []
+    try:
+        raw = json.loads(content)
+    except json.JSONDecodeError:
+        return []
+
+    items: list[Any]
+    if isinstance(raw, dict) and isinstance(raw.get("tool_calls"), list):
+        items = raw["tool_calls"]
+    elif isinstance(raw, dict) and isinstance(raw.get("tool_call"), dict):
+        items = [raw["tool_call"]]
+    elif isinstance(raw, dict) and (
+        "tool_call" in raw or "tool" in raw or "name" in raw or "tool_name" in raw
+    ):
+        items = [raw]
+    elif isinstance(raw, list):
+        items = raw
+    else:
+        return []
+
+    parsed: list[NativeToolCall] = []
+    for index, item in enumerate(items):
+        call = _parse_pseudo_tool_call(item, index)
+        if call is not None:
+            parsed.append(call)
+    return parsed
+
+
+def _parse_pseudo_tool_call(item: Any, index: int) -> NativeToolCall | None:
+    if not isinstance(item, dict):
+        return None
+    name = item.get("tool_call") or item.get("tool") or item.get("name") or item.get("tool_name")
+    if not isinstance(name, str) or not name.strip():
+        return None
+    arguments = (
+        item.get("arguments")
+        if "arguments" in item
+        else item.get("parameters", item.get("args", {}))
+    )
+    if isinstance(arguments, str):
+        try:
+            decoded = json.loads(arguments or "{}")
+        except json.JSONDecodeError:
+            decoded = {}
+        arguments = decoded
+    if not isinstance(arguments, dict):
+        arguments = {}
+    arguments_json = json.dumps(arguments, ensure_ascii=False)
+    call_id = item.get("id")
+    if not isinstance(call_id, str) or not call_id.strip():
+        call_id = f"pseudo_tool_call_{index}"
+    return NativeToolCall(
+        id=call_id.strip(),
+        name=name.strip(),
+        arguments=dict(arguments),
+        arguments_json=arguments_json,
+    )
 
 
 def _normalize_assistant_message(

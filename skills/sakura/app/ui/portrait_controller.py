@@ -16,10 +16,9 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QGraphicsOpacityEffect, QLabel, QMessageBox, QWidget
 
-from app.config.character_loader import CharacterProfile, Live2DProfile
+from app.config.character_loader import CharacterProfile
 from app.llm.chat_reply import ChatSegment
 from app.ui.portrait_utils import should_crossfade_portrait
-from app.ui.live2d_client import Live2DClient, Live2DConfig
 
 
 PORTRAIT_TRANSITION_MS = 300
@@ -59,7 +58,6 @@ class PortraitController(QObject):
         raise_foreground: Callable[[], None],
         on_portrait_changed: Callable[[QPixmap], None],
         portrait_scale_percent: int = PORTRAIT_SCALE_DEFAULT_PERCENT,
-        live2d_profile: Live2DProfile | None = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
@@ -75,20 +73,6 @@ class PortraitController(QObject):
         self._raise_foreground = raise_foreground
         self._on_portrait_changed = on_portrait_changed
 
-        # Live2D mode
-        self.live2d_client: Live2DClient | None = None
-        if live2d_profile and live2d_profile.enabled:
-            l2d_config = Live2DConfig(
-                enabled=True,
-                bridge_url=live2d_profile.bridge_url,
-                model_name=live2d_profile.model_name,
-                tone_motion_map=live2d_profile.tone_motion_map,
-                speak_sync=live2d_profile.speak_sync,
-            )
-            self.live2d_client = Live2DClient(l2d_config)
-            # Play start motion
-            self.live2d_client.start()
-
         self.current_path = profile.default_portrait_path
         self.pixmap_cache: dict[Path, QPixmap] = {}
         self.pixmap = self.load_portrait()
@@ -96,13 +80,14 @@ class PortraitController(QObject):
         self.transition_id = 0
 
     def apply_current(self) -> None:
+        # 主窗口几何统一由 PetWindow 的统一布局模型管理（见 _apply_pet_layout）。
+        # 这里只负责把当前立绘贴到主标签并重新布局，绝不再 resize 主窗口，
+        # 避免左上锚点 resize 与底边锚点几何相互打架产生偶发跳闪。
         self._stop_transition()
         if self.pixmap.isNull():
-            self.parent_widget.resize(*self.stage_size)
             return
 
         self._apply_pixmap_to_label(self.main_label, self.pixmap)
-        self.parent_widget.resize(*self.stage_size)
         self._relayout()
 
     def set_stage_size(self, stage_size: tuple[int, int]) -> None:
@@ -125,12 +110,6 @@ class PortraitController(QObject):
             self.load_portrait(next_portrait_path)
 
     def apply_for_segment(self, segment: ChatSegment) -> None:
-        # Live2D 模式：同时驱动 bridge motion + 保持静态立绘显示
-        if self.live2d_client and self.live2d_client.available:
-            display_text = segment.display_text("zh")
-            self.live2d_client.apply_tone(segment.tone, display_text)
-            # 不 return —— 继续更新静态立绘，保持 QLabel 有画面
-
         next_portrait_path = self.profile.portrait_for_segment(segment.portrait, segment.tone)
         if next_portrait_path == self.current_path:
             return
@@ -182,7 +161,7 @@ class PortraitController(QObject):
             return
 
         self._apply_pixmap_to_label(self.transition_label, self.pixmap)
-        self.parent_widget.resize(*self.stage_size)
+        # 不再 resize 主窗口：交叉淡入期间舞台尺寸不变，几何由 PetWindow 收口。
         self._relayout()
         self.main_opacity_effect.setOpacity(1.0)
         self.transition_opacity_effect.setOpacity(0.0)
@@ -234,7 +213,6 @@ class PortraitController(QObject):
         self.transition_opacity_effect.setOpacity(0.0)
         if finish_current and not self.pixmap.isNull():
             self._apply_pixmap_to_label(self.main_label, self.pixmap)
-            self.parent_widget.resize(*self.stage_size)
             self._relayout()
 
     def _finish_transition(self, transition_id: int) -> None:

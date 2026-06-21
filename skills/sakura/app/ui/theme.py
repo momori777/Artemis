@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from app.config.character_loader import CharacterProfile
 
 
 DEFAULT_PRIMARY_COLOR = "#d55b91"
@@ -32,7 +35,6 @@ THEME_COLOR_FIELDS: tuple[tuple[str, str, str], ...] = (
     ("bubble_background_color", "气泡背景色", DEFAULT_BUBBLE_BACKGROUND_COLOR),
     ("border_color", "边框色", DEFAULT_BORDER_COLOR),
 )
-
 _HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
@@ -52,8 +54,11 @@ class ThemeSettings:
     bubble_background_color: str = DEFAULT_BUBBLE_BACKGROUND_COLOR
     border_color: str = DEFAULT_BORDER_COLOR
     ai_enabled: bool = False
+    visual_effect_mode: str = "gaussian_blur"
 
     def normalized(self) -> "ThemeSettings":
+        from app.ui.window_backdrop import VisualEffectMode
+
         return ThemeSettings(
             primary_color=normalize_hex_color(self.primary_color, DEFAULT_PRIMARY_COLOR),
             primary_hover_color=normalize_hex_color(self.primary_hover_color, DEFAULT_PRIMARY_HOVER_COLOR),
@@ -67,6 +72,7 @@ class ThemeSettings:
             bubble_background_color=normalize_hex_color(self.bubble_background_color, DEFAULT_BUBBLE_BACKGROUND_COLOR),
             border_color=normalize_hex_color(self.border_color, DEFAULT_BORDER_COLOR),
             ai_enabled=bool(self.ai_enabled),
+            visual_effect_mode=VisualEffectMode.validate(self.visual_effect_mode),
         )
 
 
@@ -92,19 +98,49 @@ def normalize_hex_color(value: object, default: str) -> str:
 
 
 def theme_from_mapping(data: Any) -> ThemeSettings:
+    from app.ui.window_backdrop import VisualEffectMode
+
     if not isinstance(data, dict):
         return DEFAULT_THEME_SETTINGS
     values = {
         field: normalize_hex_color(data.get(field), default)
         for field, _label, default in THEME_COLOR_FIELDS
     }
-    return ThemeSettings(**values, ai_enabled=_bool_value(data.get("ai_enabled"), False))
+    return ThemeSettings(
+        **values,
+        ai_enabled=_bool_value(data.get("ai_enabled"), False),
+        visual_effect_mode=VisualEffectMode.validate(str(data.get("visual_effect_mode", VisualEffectMode.DEFAULT))),
+    )
 
 
 def theme_to_mapping(settings: ThemeSettings) -> dict[str, object]:
     data = theme_colors_to_mapping(settings)
-    data["ai_enabled"] = bool(settings.normalized().ai_enabled)
+    normalized = settings.normalized()
+    data["ai_enabled"] = bool(normalized.ai_enabled)
+    data["visual_effect_mode"] = normalized.visual_effect_mode
     return data
+
+
+def merge_theme_with_character(
+    saved_settings: ThemeSettings,
+    profile: CharacterProfile | None,
+) -> ThemeSettings:
+    """合并已保存主题与角色包主题，保留用户级偏好字段。
+
+    角色包主题只贡献配色；visual_effect_mode 和 ai_enabled 是用户级偏好
+    （character.json 不序列化这两个字段），始终沿用已保存的值。
+    """
+    from app.config.character_loader import THEME_SOURCE_PACKAGE
+
+    saved = saved_settings.normalized()
+    if profile is not None and profile.theme_source == THEME_SOURCE_PACKAGE:
+        theme = (profile.theme_settings or DEFAULT_THEME_SETTINGS).normalized()
+        return replace(
+            theme,
+            visual_effect_mode=saved.visual_effect_mode,
+            ai_enabled=saved.ai_enabled,
+        )
+    return saved
 
 
 def theme_colors_to_mapping(settings: ThemeSettings) -> dict[str, object]:
@@ -174,9 +210,9 @@ def build_pet_window_stylesheet(settings: ThemeSettings) -> str:
     theme = settings.normalized()
     return f"""
 #speechBubble {{
-    background: {rgba(theme.bubble_background_color, 220)};
-    border: 1px solid {rgba(theme.border_color, 158)};
-    border-radius: 26px;
+    background: {rgba(theme.bubble_background_color, 238)};
+    border: 1px solid {rgba(theme.border_color, 170)};
+    border-radius: 20px;
 }}
 #speakerName {{
     color: {theme.primary_color};
@@ -220,8 +256,13 @@ def build_pet_window_stylesheet(settings: ThemeSettings) -> str:
     background: transparent;
     border: none;
 }}
+#inputBar[visualEffectMode="solid"] {{
+    background: {rgba(theme.bubble_background_color, 238)};
+    border: 1px solid {rgba(theme.border_color, 170)};
+    border-radius: 22px;
+}}
 #petInput {{
-    background: {rgba(theme.input_background_color, 96)};
+    background: {rgba(theme.input_background_color, 55)};
     border: 1px solid rgba(255, 255, 255, 218);
     border-radius: 19px;
     color: {mix(theme.text_color, "#000000", 0.08)};
@@ -230,8 +271,16 @@ def build_pet_window_stylesheet(settings: ThemeSettings) -> str:
     padding: 3px 16px;
     selection-background-color: {rgba(theme.primary_color, 92)};
 }}
+#petInput[visualEffectMode="solid"] {{
+    background: {rgba(theme.input_background_color, 235)};
+    border: 1px solid {rgba(theme.border_color, 148)};
+}}
 #petInput:focus {{
-    background: {rgba(theme.input_background_color, 132)};
+    background: {rgba(theme.input_background_color, 90)};
+    border: 1px solid {rgba(theme.primary_color, 210)};
+}}
+#petInput[visualEffectMode="solid"]:focus {{
+    background: {theme.input_background_color};
     border: 1px solid {rgba(theme.primary_color, 210)};
 }}
 #petInput:disabled {{
@@ -248,8 +297,8 @@ def build_pet_window_stylesheet(settings: ThemeSettings) -> str:
 }}
 #sendButton {{
     border-radius: 16px;
-    min-width: 68px;
-    padding: 4px 14px;
+    min-width: 50px;
+    padding: 4px 10px;
 }}
 #screenshotButton {{
     width: 36px;
@@ -274,6 +323,16 @@ def build_pet_window_stylesheet(settings: ThemeSettings) -> str:
     border: 1px solid {rgba(theme.border_color, 92)};
     color: rgba(255, 255, 255, 178);
 }}
+#sendButton[replyWaiting="true"] {{
+    background: {rgba(theme.primary_color, 146)};
+    border: 1px solid {rgba(theme.primary_color, 174)};
+    color: rgba(255, 255, 255, 218);
+}}
+#sendButton[replyWaiting="true"]:disabled {{
+    background: {rgba(theme.primary_color, 146)};
+    border: 1px solid {rgba(theme.primary_color, 174)};
+    color: rgba(255, 255, 255, 218);
+}}
 #confirmActionButton {{
     background: rgba(93, 181, 130, 225);
     border: none;
@@ -297,15 +356,15 @@ def build_pet_window_stylesheet(settings: ThemeSettings) -> str:
 QMenu {{
     background: {rgba(theme.input_background_color, 246)};
     border: 1px solid {rgba(theme.border_color, 164)};
-    border-radius: 8px;
+    border-radius: 14px;
     color: {theme.text_color};
     font-size: 14px;
-    padding: 4px;
+    padding: 6px;
 }}
 QMenu::item {{
     background: transparent;
-    border-radius: 6px;
-    padding: 4px 20px 4px 24px;
+    border-radius: 8px;
+    padding: 5px 20px 5px 24px;
 }}
 QMenu::item:selected {{
     background: {rgba(theme.panel_background_color, 220)};
@@ -362,6 +421,39 @@ QTabBar::tab:selected {{
     color: {theme.accent_color};
     font-weight: 700;
 }}
+QListWidget#settingsNavList {{
+    background: {rgba(theme.panel_background_color, 179)};
+    border: 1px solid {rgba(theme.border_color, 138)};
+    border-radius: 8px;
+    padding: 6px;
+    outline: 0;
+    color: {theme.secondary_text_color};
+    font-size: 14px;
+}}
+QListWidget#settingsNavList::item {{
+    padding: 8px 12px;
+    margin: 2px 0;
+    border-radius: 6px;
+}}
+QListWidget#settingsNavList::item:hover {{
+    background: {rgba(theme.panel_background_color, 205)};
+}}
+QListWidget#settingsNavList::item:selected,
+QListWidget#settingsNavList::item:selected:active,
+QListWidget#settingsNavList::item:selected:!active {{
+    background: {theme.input_background_color};
+    color: {theme.accent_color};
+    font-weight: 700;
+}}
+QStackedWidget#settingsNavStack {{
+    background: transparent;
+    border: none;
+}}
+QWidget#settingsNavPage {{
+    background: {rgba(theme.panel_background_color, 179)};
+    border: 1px solid {rgba(theme.border_color, 138)};
+    border-radius: 8px;
+}}
 QScrollArea#settingsScrollArea {{
     background: transparent;
     border: none;
@@ -378,13 +470,21 @@ QGroupBox {{
     border-radius: 8px;
     color: {theme.secondary_text_color};
     font-weight: 700;
-    margin-top: 12px;
+    margin-top: 18px;
     padding-top: 10px;
 }}
 QGroupBox::title {{
     subcontrol-origin: margin;
+    subcontrol-position: top left;
     left: 12px;
     padding: 0 6px;
+}}
+QGroupBox#advancedParamsGroup {{
+    margin-top: 22px;
+    padding-top: 12px;
+}}
+QGroupBox#advancedParamsGroup::title {{
+    padding: 2px 6px 3px 6px;
 }}
 QLineEdit, QSpinBox, QDoubleSpinBox, QTextEdit, QTableWidget, QComboBox {{
     background: {rgba(theme.input_background_color, 235)};
@@ -393,6 +493,37 @@ QLineEdit, QSpinBox, QDoubleSpinBox, QTextEdit, QTableWidget, QComboBox {{
     padding: 6px 8px;
     color: {theme.text_color};
     selection-background-color: {rgba(theme.primary_color, 71)};
+}}
+QSlider {{
+    min-height: 22px;
+}}
+QSlider::groove:horizontal {{
+    height: 4px;
+    background: {rgba(theme.border_color, 130)};
+    border-radius: 2px;
+}}
+QSlider::sub-page:horizontal {{
+    background: {theme.accent_color};
+    border-radius: 2px;
+}}
+QSlider::add-page:horizontal {{
+    background: {rgba(theme.border_color, 92)};
+    border-radius: 2px;
+}}
+QSlider::handle:horizontal {{
+    width: 14px;
+    height: 14px;
+    margin: -6px 0;
+    border-radius: 7px;
+    background: {theme.accent_color};
+    border: 2px solid {rgba(theme.input_background_color, 235)};
+}}
+QSlider::handle:horizontal:hover {{
+    background: {theme.primary_color};
+}}
+QSlider::handle:horizontal:disabled {{
+    background: {rgba(theme.muted_text_color, 130)};
+    border: 2px solid {rgba(theme.border_color, 92)};
 }}
 QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QTextEdit:disabled, QComboBox:disabled {{
     background: {rgba(mix(theme.panel_background_color, "#808080", 0.16), 172)};
@@ -407,6 +538,7 @@ QLineEdit[readOnly="true"] {{
     selection-background-color: transparent;
 }}
 QComboBox {{
+    combobox-popup: 0;
     padding: 6px 30px 6px 8px;
 }}
 QComboBox::drop-down {{
@@ -512,14 +644,18 @@ QCheckBox {{
     color: {mix(theme.text_color, "#ffffff", 0.08)};
     spacing: 8px;
 }}
-QCheckBox::indicator {{
+QCheckBox::indicator, QGroupBox::indicator {{
     width: 16px;
     height: 16px;
     border-radius: 4px;
     border: 1px solid {rgba(theme.primary_color, 173)};
     background: {theme.input_background_color};
 }}
-QCheckBox::indicator:checked {{
+QGroupBox#advancedParamsGroup::indicator {{
+    margin-top: 2px;
+    margin-bottom: 2px;
+}}
+QCheckBox::indicator:checked, QGroupBox::indicator:checked {{
     background: {theme.primary_color};
     border: 1px solid {theme.accent_color};
 }}
@@ -539,6 +675,78 @@ QPushButton:disabled {{
     background: {rgba(theme.primary_color, 107)};
     border: 1px solid {rgba(theme.border_color, 115)};
     color: rgba(255, 255, 255, 0.76);
+}}
+"""
+
+
+def build_app_chrome_stylesheet(settings: ThemeSettings) -> str:
+    """全局应用级样式：美化滚动条与菜单等独立顶层控件。"""
+    theme = settings.normalized()
+    return f"""
+QScrollBar:vertical {{
+    background: transparent;
+    width: 12px;
+    margin: 2px 2px 2px 0;
+}}
+QScrollBar::handle:vertical {{
+    background: {rgba(theme.primary_color, 120)};
+    border-radius: 5px;
+    min-height: 28px;
+}}
+QScrollBar::handle:vertical:hover {{
+    background: {rgba(theme.primary_color, 185)};
+}}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+    height: 0;
+    background: transparent;
+}}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+    background: transparent;
+}}
+QScrollBar:horizontal {{
+    background: transparent;
+    height: 12px;
+    margin: 0 2px 2px 2px;
+}}
+QScrollBar::handle:horizontal {{
+    background: {rgba(theme.primary_color, 120)};
+    border-radius: 5px;
+    min-width: 28px;
+}}
+QScrollBar::handle:horizontal:hover {{
+    background: {rgba(theme.primary_color, 185)};
+}}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+    width: 0;
+    background: transparent;
+}}
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{
+    background: transparent;
+}}
+QMenu {{
+    background: {rgba(theme.input_background_color, 246)};
+    border: none;
+    border-radius: 8px;
+    color: {theme.text_color};
+    font-size: 14px;
+    padding: 6px;
+}}
+QMenu::item {{
+    background: transparent;
+    border-radius: 6px;
+    padding: 5px 20px 5px 20px;
+}}
+QMenu::item:selected {{
+    background: {rgba(theme.panel_background_color, 220)};
+    color: {theme.text_color};
+}}
+QMenu::item:disabled {{
+    color: {rgba(theme.muted_text_color, 145)};
+}}
+QMenu::separator {{
+    height: 1px;
+    background: {rgba(theme.border_color, 105)};
+    margin: 3px 7px;
 }}
 """
 
@@ -686,6 +894,122 @@ QPushButton#secondaryButton:default {{
 """
 
 
+def build_runtime_log_window_stylesheet(settings: ThemeSettings) -> str:
+    theme = settings.normalized()
+    return f"""
+QDialog {{
+    background: {theme.page_background_color};
+    color: {theme.text_color};
+    font-family: "Microsoft YaHei", "Yu Gothic UI", sans-serif;
+    font-size: 14px;
+}}
+QLabel#runtimeLogTitle {{
+    color: {theme.secondary_text_color};
+    font-size: 22px;
+    font-weight: 700;
+}}
+QLabel#runtimeLogSummary {{
+    color: {theme.muted_text_color};
+    background: {rgba(theme.panel_background_color, 205)};
+    border: 1px solid {rgba(theme.border_color, 122)};
+    border-radius: 11px;
+    padding: 5px 10px;
+    font-size: 13px;
+}}
+QTabWidget#runtimeLogTabs::pane {{
+    background: transparent;
+    border: none;
+}}
+QTabBar::tab {{
+    background: {rgba(theme.input_background_color, 214)};
+    border: 1px solid {rgba(theme.border_color, 132)};
+    border-bottom: none;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    color: {theme.muted_text_color};
+    padding: 8px 20px;
+    margin-right: 4px;
+    font-size: 14px;
+    font-weight: 700;
+}}
+QTabBar::tab:selected {{
+    background: {rgba(theme.panel_background_color, 245)};
+    color: {theme.secondary_text_color};
+    border: 1px solid {rgba(theme.primary_color, 145)};
+    border-bottom: none;
+}}
+QTabBar::tab:hover {{
+    color: {theme.secondary_text_color};
+    background: {rgba(theme.panel_background_color, 230)};
+}}
+QFrame#runtimeLogPage {{
+    background: {rgba(mix(theme.page_background_color, "#ffffff", 0.12), 238)};
+    border: 1px solid {rgba(theme.border_color, 138)};
+    border-radius: 12px;
+}}
+QListWidget#runtimeLogList {{
+    background: transparent;
+    border: none;
+    outline: 0;
+    color: {theme.text_color};
+    font-size: 13px;
+}}
+QPushButton {{
+    background: {rgba(theme.input_background_color, 230)};
+    border: 1px solid {rgba(theme.border_color, 148)};
+    border-radius: 8px;
+    color: {theme.secondary_text_color};
+    min-width: 72px;
+    padding: 7px 11px;
+    font-size: 14px;
+    font-weight: 600;
+}}
+QPushButton:hover {{
+    background: {rgba(theme.panel_background_color, 245)};
+    border: 1px solid {rgba(theme.primary_color, 158)};
+}}
+QPushButton#dangerButton {{
+    background: #fff1f5;
+    border: 1px solid rgba(199, 88, 122, 0.52);
+    color: #b13e5a;
+}}
+QPushButton#dangerButton:hover {{
+    background: #ffe1ea;
+}}
+QCheckBox {{
+    color: {theme.secondary_text_color};
+    font-size: 13px;
+    spacing: 8px;
+}}
+QCheckBox::indicator {{
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1px solid {rgba(theme.primary_color, 173)};
+    background: {theme.input_background_color};
+}}
+QCheckBox::indicator:hover {{
+    border: 1px solid {rgba(theme.primary_color, 210)};
+    background: {rgba(theme.panel_background_color, 210)};
+}}
+QCheckBox::indicator:checked {{
+    image: url("{_MENU_CHECK_URL}");
+    background: {theme.primary_color};
+    border: 1px solid {theme.accent_color};
+}}
+QToolTip {{
+    background: {theme.panel_background_color};
+    color: {theme.text_color};
+    border: 1px solid {rgba(theme.border_color, 190)};
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-family: "Microsoft YaHei", "Yu Gothic UI", sans-serif;
+    font-size: 13px;
+    font-weight: normal;
+}}
+"""
+
+
 def rgba(hex_color: str, alpha: int) -> str:
     red, green, blue = _rgb(hex_color)
     return f"rgba({red}, {green}, {blue}, {max(0, min(255, alpha))})"
@@ -750,3 +1074,4 @@ def _bool_value(value: object, default: bool) -> bool:
 DEFAULT_PET_WINDOW_STYLESHEET = build_pet_window_stylesheet(DEFAULT_THEME_SETTINGS)
 DEFAULT_SETTINGS_DIALOG_STYLESHEET = build_settings_dialog_stylesheet(DEFAULT_THEME_SETTINGS)
 DEFAULT_HISTORY_WINDOW_STYLESHEET = build_history_window_stylesheet(DEFAULT_THEME_SETTINGS)
+DEFAULT_RUNTIME_LOG_WINDOW_STYLESHEET = build_runtime_log_window_stylesheet(DEFAULT_THEME_SETTINGS)
