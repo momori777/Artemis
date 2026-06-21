@@ -226,7 +226,7 @@ class TTSWorker(QThread):
 
         try:
             proc = subprocess.run(
-                [TTs_PYTHON, TT_S_SCRIPT, self.text, self.lang, self.mood, "--no-manage-llama"],
+                [TTs_PYTHON, TTs_SCRIPT, self.text, self.lang, self.mood, "--no-manage-llama"],
                 capture_output=True, text=True, timeout=120,
                 cwd=WORKSPACE_ROOT,
                 env={**os.environ, "PYTHONIOENCODING": "utf-8"},
