@@ -227,7 +227,7 @@ class TTSWorker(QThread):
         try:
             proc = subprocess.run(
                 [TTs_PYTHON, TTs_SCRIPT, self.text, self.lang, self.mood, "--no-manage-llama"],
-                capture_output=True, text=True, timeout=120,
+                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
                 cwd=WORKSPACE_ROOT,
                 env={**os.environ, "PYTHONIOENCODING": "utf-8"},
             )
@@ -306,7 +306,7 @@ class ComfyUIWorker(QThread):
 
             proc = subprocess.run(
                 cmd,
-                capture_output=True, text=True, timeout=600,
+                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600,
                 cwd=WORKSPACE_ROOT,
                 env={**os.environ, "PYTHONIOENCODING": "utf-8"},
             )
