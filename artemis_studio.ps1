@@ -8,6 +8,11 @@
 
 $ErrorActionPreference = 'Continue'
 
+# ── 0. Force UTF-8 console ──
+$OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+chcp 65001 > $null
+
 # ── 1. Find workspace root ──
 $workspace = $PSScriptRoot
 if (-not $workspace) {
