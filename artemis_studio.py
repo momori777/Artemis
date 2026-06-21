@@ -210,11 +210,12 @@ class TTSWorker(QThread):
     finished = Signal(bool, str) # success, filepath|error
     elapsed = Signal(int)        # 秒数
 
-    def __init__(self, text, lang, mood):
+    def __init__(self, text, lang, mood, ref_wavs_dir=None):
         super().__init__()
         self.text = text
         self.lang = lang
         self.mood = mood
+        self.ref_wavs_dir = ref_wavs_dir
 
     def run(self):
         t0 = time.time()
@@ -229,7 +230,11 @@ class TTSWorker(QThread):
                 [TTs_PYTHON, TTs_SCRIPT, self.text, self.lang, self.mood, "--no-manage-llama"],
                 capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
                 cwd=WORKSPACE_ROOT,
-                env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+                env={
+                    **os.environ,
+                    "PYTHONIOENCODING": "utf-8",
+                    **({"REF_WAVS_DIR": self.ref_wavs_dir} if self.ref_wavs_dir else {}),
+                },
             )
 
             timer.stop()
@@ -398,6 +403,24 @@ class TTSTab(QWidget):
         self.mood_combo.setCurrentIndex(0)
         opts_layout.addWidget(self.mood_combo, 0, 3)
 
+        opts_layout.addWidget(QLabel("角色:"), 0, 4)
+        self.chara_combo = QComboBox()
+        # Auto-detect available ref_wavs dirs
+        tts_dir = os.path.join(WORKSPACE_ROOT, "skills", "tts")
+        ref_dirs = {}
+        for entry in os.listdir(tts_dir):
+            if entry.startswith("ref_wavs") and os.path.isdir(os.path.join(tts_dir, entry)):
+                wavs = [f for f in os.listdir(os.path.join(tts_dir, entry)) if f.endswith('.wav')]
+                if wavs:
+                    name = entry.replace("ref_wavs_", "").replace("ref_wavs", "natsume")
+                    ref_dirs[name] = os.path.join(tts_dir, entry)
+        for name in sorted(ref_dirs.keys()):
+            self.chara_combo.addItem(name, ref_dirs[name])
+        if self.chara_combo.count() == 0:
+            self.chara_combo.addItem("natsume (默认)", os.path.join(tts_dir, "ref_wavs"))
+        self.chara_combo.setCurrentIndex(0)
+        opts_layout.addWidget(self.chara_combo, 0, 5)
+
         opts_layout.addWidget(QLabel("音量:"), 1, 0)
         self.vol_slider = QSlider(Qt.Horizontal)
         self.vol_slider.setRange(0, 100)
@@ -459,6 +482,7 @@ class TTSTab(QWidget):
 
         lang = self.lang_combo.currentText().split()[0]
         mood = self.mood_combo.currentText().split()[0]
+        ref_wavs_dir = self.chara_combo.currentData()
 
         self.generate_btn.setEnabled(False)
         self.play_btn.setEnabled(False)
@@ -467,7 +491,7 @@ class TTSTab(QWidget):
         self.status_label.setText("正在合成...")
         self.time_label.setText("")
 
-        self.worker = TTSWorker(text, lang, mood)
+        self.worker = TTSWorker(text, lang, mood, ref_wavs_dir)
         self.worker.progress.connect(self._on_progress)
         self.worker.finished.connect(self._on_finished)
         self.worker.elapsed.connect(lambda s: self.time_label.setText(f"耗时: {s}s"))
