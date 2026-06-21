@@ -723,8 +723,13 @@ def get_phones_and_bert(text, language, version, final=False):
     phones = sum(phones_list, [])
     norm_text = "".join(norm_text_list)
 
+    # v2Pro hack: refeed leading text on short output
+    # Use text without leading punctuation to avoid G2P issues
     if not final and len(phones) < 6:
-        return get_phones_and_bert("." + text, language, version, final=True)
+        # Remove any punctuation prefix that was added in prior recursion
+        retry_text = re.sub(r'^[.,。、！？!?~:：—…·]+', '', text)
+        if retry_text and retry_text != text:
+            return get_phones_and_bert(retry_text, language, version, final=True)
 
     return phones, bert.to(dtype), norm_text
 

@@ -225,10 +225,18 @@ class TTSWorker(QThread):
         timer.start(1000)
 
         self.progress.emit("正在合成语音...")
+        # Debug: log params to file
+        try:
+            with open(os.path.join(WORKSPACE_ROOT, "_tts_debug.txt"), "a", encoding="utf-8") as df:
+                df.write(f"text={repr(self.text)} lang={self.lang} mood={self.mood} ref_dir={self.ref_wavs_dir} chara={self.character}\n")
+        except: pass
 
         try:
+            cmd = [TTs_PYTHON, TTs_SCRIPT, self.text, self.lang, self.mood, "--no-manage-llama"]
+            with open(os.path.join(WORKSPACE_ROOT, "_tts_debug.txt"), "a", encoding="utf-8") as df:
+                df.write(f"CMD: {cmd}\nenv keys: REF_WAVS_DIR={self.ref_wavs_dir} TTS_CHARACTER={self.character}\n")
             proc = subprocess.run(
-                [TTs_PYTHON, TTs_SCRIPT, self.text, self.lang, self.mood, "--no-manage-llama"],
+                cmd,
                 capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
                 cwd=WORKSPACE_ROOT,
                 env={
@@ -238,6 +246,8 @@ class TTSWorker(QThread):
                     **({"TTS_CHARACTER": self.character} if self.character else {}),
                 },
             )
+            with open(os.path.join(WORKSPACE_ROOT, "_tts_debug.txt"), "a", encoding="utf-8") as df:
+                df.write(f"STDOUT: {repr(proc.stdout.strip()[-200:])}\nSTDERR_LAST: {repr(proc.stderr.strip()[-500:])}\nRC: {proc.returncode}\n")
 
             timer.stop()
             stderr_out = proc.stderr or ""
