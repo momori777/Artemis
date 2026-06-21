@@ -132,7 +132,7 @@ exec 时一定要加 yieldMs: 180000（必须！PS脚本会杀llama，要等它�
 powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.openclaw\workspace\skills\tts\run_tts.ps1" -text "$text" -lang "$lang" -mood "$mood"
 
 exec 完毕后：
-- 如果 exec 输出包含 "DONE:" 和路径 → 输出一行 "MEDIA:<路径>"（纯文本，不要代码块）
+- 如果 exec 输出包含 "DONE:" 和路径 → 分别输出一行 "MEDIA:<路径>" 和一行 "<qqmedia><路径></qqmedia>"（纯文本，不要代码块）
 - 如果失败（包含 FAILED）→ 输出"FAILED"
 - 不要做任何其他操作！`,
   taskName: "tts",
@@ -142,7 +142,22 @@ exec 完毕后：
 })
 ```
 
-### STEP 3+4: 同 ComfyUI
+### STEP 3: 回复用户
+
+sessions_spawn 后直接回用户："正在合成语音，稍等哦~ 🎤"
+
+### STEP 4: 收到子任务完成通知时
+
+子任务完成后你会收到一条系统通知。
+如果通知包含 "DONE:" 和文件路径，提取路径（去掉 "DONE: " 前缀），输出：
+
+MEDIA:路径
+<qqmedia>路径</qqmedia>
+
+⚠️ 必须同时输出 MEDIA: 和 <qqmedia>！MEDIA: 用于 Telegram/webchat，<qqmedia> 用于 QQ 频道推送。
+两个标签各占一行，路径是同一个完整绝对路径。
+然后像平时一样附一句角色对话。
+不要转发子任务的原始输出文本。
 
 **语言代码**: ja=日文(默认), zh=中文, en=英文
 **情绪模式**: casual=日常温柔, tsundere=傲娇, romantic=深情, long=长句稳定, random=随机
