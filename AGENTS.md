@@ -97,10 +97,13 @@ sessions_spawn 后直接回用户："正在画图，等1分钟左右哦~"
 ### STEP 4: 收到子任务完成通知时
 
 子任务完成后你会收到一条系统通知。
-如果通知包含 "DONE:" 和文件路径，提取路径（去掉 "DONE: " 前缀），只输出：
+如果通知包含 "DONE:" 和文件路径，提取路径（去掉 "DONE: " 前缀），输出：
 
 MEDIA:路径
+<qqmedia>路径</qqmedia>
 
+⚠️ 必须同时输出 MEDIA: 和 <qqmedia>！MEDIA: 用于 Telegram/webchat，<qqmedia> 用于 QQ 频道推送。
+两个标签各占一行，路径是同一个完整绝对路径。
 然后像平时一样附一句角色对话。
 不要转发子任务的原始输出文本。不要说"子session已完成"之类的话。
 只看 DONE 后的路径。
@@ -213,6 +216,52 @@ exec 完毕后：
 ### STEP 3+4: 收到 announce 后
 
 announce 包含 "DONE: <识别文本>" → 把文本当作用户说的话，正常用 LLM 回复。
+
+---
+
+## 能力 5: 向量记忆搜索 (mem0)
+
+> 用于回忆过往对话、记住用户偏好和重要事件。
+> 依赖 embedding server (port 9999)，先确保运行。
+
+### 启动 embedding server
+
+```powershell
+python C:\Users\TK\.openclaw\workspace\skills\shared\start_embedding_server.ps1
+```
+
+### 搜索记忆
+
+```powershell
+py -c "import json;from skills.shared.mem0_bridge import search_mem0_qdrant;print(json.dumps(search_mem0_qdrant('natsume','搜索关键词',limit=5),ensure_ascii=False,indent=2))"
+```
+
+**参数说明：**
+- 角色名：`natsume`（夏目），`sakura`（樱），`enola`，`atori`
+- limit：搜索用 5，列表用 30
+- 结果按相似度分数降序，>0.5 为高度相关
+
+### 列出全部记忆
+
+```powershell
+py -c "import json;from skills.shared.mem0_bridge import list_mem0;print(json.dumps(list_mem0('natsume',limit=30),ensure_ascii=False,indent=2))"
+```
+
+### 添加记忆
+
+```powershell
+py -c "import json;from skills.shared.mem0_bridge import add_memory;print(json.dumps(add_memory('natsume','要记住的内容'),ensure_ascii=False,indent=2))"
+```
+
+### 压缩搜索（省 token）
+
+```powershell
+py -c "import json;from skills.shared.mem0_bridge import search_mem0_qdrant,compress_search_results;results=search_mem0_qdrant('natsume','关键词',limit=10);compressed,stats=compress_search_results(results,'关键词');print(json.dumps({'compressed':compressed,'stats':stats},ensure_ascii=False,indent=2))"
+```
+
+**输出格式：** JSON，每条记忆含 memory（文本）、score（相似度）、metadata（时间戳等）
+
+**注意：** embedding server 必须先启动，否则搜索返回零向量
 
 ---
 

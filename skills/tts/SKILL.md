@@ -78,19 +78,21 @@ sessions_spawn 后直接回复用户："正在合成语音，稍等哦~ 🎤"
 2) "DONE: <path>" —— 只有这行有用！
 
 你必须：
-1. 从 announce 文本中提取 "DONE: 后的文件路径"
-2. 用 MEDIA 指令 + <qqmedia> 标签同时发语音
+1. 从 announce 文本中提取 "DONE: " 后面的完整文件路径
+2. 同时输出 MEDIA: 和 <qqmedia> 两种格式
 3. 不要转发子 session 的日志文本
 
-📦 同时输出两种格式（Telegram + QQ 都能收到语音）：
-MEDIA:{{MEDIA_AUDIO}}\tts_yyyyMMddHHmmss.wav
-<qqmedia>{{MEDIA_AUDIO}}\tts_yyyyMMddHHmmss.wav</qqmedia>
+📦 同时输出两种格式（WebChat + QQ 频道都能收到语音）：
+MEDIA:C:\path\to\tts_yyyyMMddHHmmss.wav
+<qqmedia>C:\path\to\tts_yyyyMMddHHmmss.wav</qqmedia>
 
-⚠️ 注意：
-- MEDIA: 指令必须单独一行，在行首，不在代码块里
-- <qqmedia> 标签也单独一行
-- 路径必须是完整绝对路径
-- 可以先说一句话，再用 MEDIA 和 <qqmedia> 发语音
+⚠️ 关键：你必须用 DONE 后面的真实路径替换上面的示例路径。
+两个标签各占一行，路径是同一个完整绝对路径。
+MEDIA: 在行首，不在代码块里；<qqmedia> 标签也单独一行。
+可以先说一句话，再用 MEDIA 和 <qqmedia> 发语音。
+
+❌ 只输出 MEDIA: 不输出 <qqmedia> → QQ 频道收不到语音！
+❌ 只输出 <qqmedia> 不输出 MEDIA: → WebChat 收不到语音！
 ```
 
 ## 参数速查
