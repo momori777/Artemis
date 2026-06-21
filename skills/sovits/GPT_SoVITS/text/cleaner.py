@@ -49,8 +49,7 @@ def clean_text(text, language, version=None):
             phones = [","] + phones
         word2ph = None
     else:
-        phones = language_module.g2p(norm_text)
-        word2ph = None
+        phones, word2ph = language_module.g2p(norm_text)
     phones = ["UNK" if ph not in symbols else ph for ph in phones]
     return phones, word2ph, norm_text
 
