@@ -81,9 +81,9 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 
 ![TTS Workshop](media/tts_workshop.gif)
 
-🔊 **Listen** (ATRI Japanese voice sample):
+🔊 **Listen** (click to play, ATRI Japanese):
 
-<video src="media/tts_atori_demo.mp4" controls width="500"></video>
+🎧 [tts_atori.mp3](media/tts_atori.mp3) *(46KB, plays in browser)*
 
 ### 🎨 ComfyUI Image Workshop
 
