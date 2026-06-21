@@ -51,22 +51,6 @@
 
 > 👆 QQ Bot：文字聊天 + TTS 语音 + ComfyUI 画图 + 角色记忆
 
-### 🎙️ TTS 语音工坊
-
-<video src="media/tts_workshop_small.mp4" controls width="800"></video>
-
-> 👆 **Artemis Studio — TTS 工坊**：GPT-SoVITS 实时语音合成，支持夏目/亚托莉/夜乃桜三套声线、5 种情绪模式（日常/傲娇/深情/长句/随机），中英日三语混合朗读。**无论 llama 是否运行都能用**。
-
-![TTS Workshop](media/tts_workshop.gif)
-
-### 🎨 ComfyUI 画图工坊
-
-<video src="media/comfyui_workshop_small.mp4" controls width="800"></video>
-
-![ComfyUI Workshop](media/comfyui_workshop.gif)
-
-> 👆 **Artemis Studio — ComfyUI 工坊**：可视化的 AI 画图控制台，自由选择角色/服装/场景/画风，一键生成。**也无需停 llama**（12GB+ 显存下并行运行）。
-
 ### Live2D 桌面宠物
 ![Live2D 演示](media/demo_live2d.gif)
 
@@ -91,6 +75,22 @@
 ![Sakura Desktop Pet](media/sakura_demo.gif)
 
 > 👆 **夜乃桜** 桌宠：银粉渐变色长发，浅蓝色眼瞳，白色学园制服——立绘表情联动、主动关怀提醒、GPT-SoVITS 实时语音。
+
+### 🎙️ TTS 语音工坊
+
+<video src="media/tts_workshop_small.mp4" controls width="800"></video>
+
+> 👆 **Artemis Studio — TTS 工坊**：GPT-SoVITS 实时语音合成，支持夏目/亚托莉/夜乃桜三套声线、5 种情绪模式（日常/傲娇/深情/长句/随机），中英日三语混合朗读。**无论 llama 是否运行都能用**。
+
+![TTS Workshop](media/tts_workshop.gif)
+
+### 🎨 ComfyUI 画图工坊
+
+<video src="media/comfyui_workshop_small.mp4" controls width="800"></video>
+
+![ComfyUI Workshop](media/comfyui_workshop.gif)
+
+> 👆 **Artemis Studio — ComfyUI 工坊**：可视化的 AI 画图控制台，自由选择角色/服装/场景/画风，一键生成。**也无需停 llama**（12GB+ 显存下并行运行）。
 
 ## 硬件配置
 

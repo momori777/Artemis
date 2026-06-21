@@ -51,22 +51,6 @@ Fourth AI Girlfriend — **voting in progress**, cast your vote on Issues!
 
 > 👆 QQ Bot: text chat + TTS voice + ComfyUI image generation + character memory
 
-### 🎙️ TTS Voice Workshop
-
-<video src="media/tts_workshop_small.mp4" controls width="800"></video>
-
-> 👆 **Artemis Studio — TTS Workshop**: GPT-SoVITS real-time voice synthesis with 3 character voices (Natsume/ATRI/Sakura), 5 emotion modes (casual/tsundere/romantic/long/random), and CN/JP/EN mixed-language reading. **Works whether llama is running or not.**
-
-![TTS Workshop](media/tts_workshop.gif)
-
-### 🎨 ComfyUI Image Workshop
-
-<video src="media/comfyui_workshop_small.mp4" controls width="800"></video>
-
-![ComfyUI Workshop](media/comfyui_workshop.gif)
-
-> 👆 **Artemis Studio — ComfyUI Workshop**: Visual AI image generation console — freely choose character/outfit/scene/art style, one-click generation. **Runs in parallel with llama** (12GB+ VRAM).
-
 ### Live2D Desktop Pet
 ![Live2D Demo](media/demo_live2d.gif)
 
@@ -91,6 +75,22 @@ Fourth AI Girlfriend — **voting in progress**, cast your vote on Issues!
 ![Sakura Desktop Pet](media/sakura_demo.gif)
 
 > 👆 **Yono Sakura** Desktop Pet: silver-pink gradient hair, pale blue eyes, school uniform —reactive portrait expressions, proactive care reminders, and real-time TTS voice via GPT-SoVITS.
+
+### 🎙️ TTS Voice Workshop
+
+<video src="media/tts_workshop_small.mp4" controls width="800"></video>
+
+> 👆 **Artemis Studio — TTS Workshop**: GPT-SoVITS real-time voice synthesis with 3 character voices (Natsume/ATRI/Sakura), 5 emotion modes (casual/tsundere/romantic/long/random), and CN/JP/EN mixed-language reading. **Works whether llama is running or not.**
+
+![TTS Workshop](media/tts_workshop.gif)
+
+### 🎨 ComfyUI Image Workshop
+
+<video src="media/comfyui_workshop_small.mp4" controls width="800"></video>
+
+![ComfyUI Workshop](media/comfyui_workshop.gif)
+
+> 👆 **Artemis Studio — ComfyUI Workshop**: Visual AI image generation console — freely choose character/outfit/scene/art style, one-click generation. **Runs in parallel with llama** (12GB+ VRAM).
 
 ## Hardware
 
