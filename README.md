@@ -81,6 +81,10 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 
 ![TTS Workshop](media/tts_workshop.gif)
 
+🔊 **Listen** (ATRI Japanese voice sample):
+
+<video src="media/tts_atori_demo.mp4" controls width="500"></video>
+
 ### 🎨 ComfyUI Image Workshop
 
 <video src="media/comfyui_workshop_small.mp4" controls width="800"></video>
@@ -486,95 +490,81 @@ schtasks /create /tn "cleanup-orphans" `
 
 ## Architecture
 
-```
-User (QQ / Telegram / WebChat)
-  │
-  ▼
-OpenClaw Gateway ││││ Sakura Desktop Pet (PySide6)
-  │                         │
-  │                    (Shared llama-client)
-  │                         │
-  ▼                         ▼
-  ┌──│││ llama-server :8080 ││││││   ┌──││││ Memory System │││││││││││││││││││││││││││
-  │        (Qwen3.6-35B)        │   │                                                │
-  ├──│││││││││││││││││││││││││││││   │ ┌── Embedding :9999 ││││││││││││││││││││││││││││
-  │ Main session (roleplay)        │   │ │ all-MiniLM-L6-v2 + BGE-small-zh-v1.5   ││
-  │ TTS (VRAM-tiered stop/run)   │   │ │ (CPU, ~100MB RAM, dual model)          ││
-  │ ComfyUI (VRAM-tiered stop/run)│   │ ├── OpenClaw memory_search (hybrid)    ││
-  │ ASR (Whisper →no kill)       │   │ └── mem0_bridge.py (search/add/sync)   ││
-  │ Sakura Pet (shared, no kill)  │   │ └──│││││││││││││││││││││││││││││││││││││││││││
-  │ Artemis Studio (standalone)   │   │                                               │
-  └──│││││││││││││││││││││││││││││   │ ┌── Qdrant Vector DB │││││││││││││││││││││││││││
-               │                     │ │ collection: sakura_memories               ││
-               │                     │ │ ├── user_id=sakura   (Yono Sakura              ││
-               ▼                     │ │ ├── user_id=natsume  (Natsume)                ││
-     Live2D Bridge (:19200) │││ Browser│ │ ├── user_id=enola    (Enola)               ││
-          (HTTP →no kill)         (L2D│ │ └── user_id=atori    (Atori)               ││
-                                   /Por│ └──│││││││││││││││││││││││││││││││││││││││││││
-                                   trait│                                               │
-                                        │ ┌── CCR (Curate-Consolidate-Retrieve) ││││││││
-                                        │ │ Every 8 turns →extract memories         ││
-                                        │ │ →mem0 Qdrant (long-term vector)         ││
-                                        │ │ →_mem0_auto.md (markdown, searchable)   ││
-                                        │ └──│││││││││││││││││││││││││││││││││││││││││││
-                                        │                                                │
-                                        │ ┌── SmartCrusher │││││││││││││││││││││││││││││││
-                                        │ │ 24 msg / 40K char cap per LLM request     ││
-                                        │ │ context_trimming.py (all characters share)││
-                                        │ └──│││││││││││││││││││││││││││││││││││││││││││
-                                        └──││││││││││││││││││││││││││││││││││││││││││││││││
-```
+<table>
+<tr><td colspan="2" align="center"><b>User Entry</b></td></tr>
+<tr><td colspan="2" align="center">QQ Bot &nbsp;|&nbsp; Telegram Bot &nbsp;|&nbsp; WebChat &nbsp;|&nbsp; Artemis Studio Console</td></tr>
+<tr><td colspan="2" align="center">↓</td></tr>
+<tr><td colspan="2" align="center"><b>OpenClaw Gateway</b> (port 18789) &nbsp;──&nbsp; <b>Sakura Desktop Pet</b> (PySide6, shared llama-client)</td></tr>
+<tr><td colspan="2" align="center">↓</td></tr>
+<tr>
+<td width="50%" valign="top">
 
-**Agent Hub —Immutable Capability Instructions + Memory Layers**:
+**🧠 LLM Inference**
 
-```
-         ┌──││││││││││││
-         │ AGENTS.md   │ →Capability hub (never changes on role switch)
-         │ SOUL.md     │ →Current character persona (hot-swappable)
-         │ IDENTITY.md │ →Character metadata
-         │ TOOLS.md    │ →Quick reference
-         │ USER.md     │ →User profile
-         └──│││││─│││││││
-                │
-    ┌──││││││││││──││││││││││││─│││││││││││││││││││││││││
-    ▼                       ▼                        ▼
- ┌──│││││││││││││  ┌──│││││││││││││││││││││  ┌──││││││││││││││││
- │skills/harem/ │  │memory/role_play/    │  │Qdrant Vector DB│
- │  (skills/harem/
-                            (存档后宫))  │  │  <角色>/ (独立记忆)   │  │(长期向量记忆)    │
- │├── natsume/   │  │├── natsume/          │  │user_id=natsume │
- │├── enola/     │  ││ ├── YYYY-MM-DD.md  │  │user_id=enola   │
- │├── sakura/    │  ││ └── _mem0_auto.md  │  │user_id=sakura  │
- │└── atori/     │  │├── enola/...         │  │user_id=atori   │
- │  (角色卡存档  │  │├── sakura/...        │  └──││││││││││││││││
- └──│││││││││││││  │└── atori/...          │        →
-                    └──│││││││││││││││││││││  CCR + mem0_bridge
-                          →                   (定时同步 30min)
-                    OpenClaw memory_search
-                    (hybrid: vector + BM25)
-```
+| Component | Description |
+|-----------|-------------|
+| `llama-server :8080` | Qwen3.6-35B-A3B MoE |
+| Main session | AGENTS.md-driven roleplay |
+| TTS | VRAM-tiered stop/run |
+| ComfyUI | VRAM-tiered stop/run |
+| ASR | Whisper small, coexists with llama |
+| Sakura Pet | Shared client, no kill |
+| Artemis Studio | Standalone, no kill |
+| Live2D Bridge | HTTP :19200, no kill |
 
-- `AGENTS.md` stays constant across role switches —ComfyUI / TTS / Live2D + Memory instructions are preserved
-- `SOUL.md` + `IDENTITY.md` are overwritten on switch; harem archives source of truth
-- Memory per character isolated in `memory/role_play/<name>/` —never cross-contaminated
-- Long-term vector memories in Qdrant, scoped by `user_id` per character
-- SillyTavern character cards imported via PNG tEXt chunk parsing →auto-switch agent persona
+</td>
+<td width="50%" valign="top">
 
-**Six Skills, One Memory System**:
+**🧠 Memory System**
 
-| Skill | Location | Llama Interaction |
-|-------|----------|-------------------|
-| **Embedding** | `skills/shared/` | all-MiniLM-L6-v2 + BGE-small-zh-v1.5 dual model (CPU, ~100MB RAM) on port 9999 —never touches GPU |
-| **Live2D** | `skills/live2d/` | HTTP API only —never touches llama |
-| **TTS** | `skills/tts/` | Kill llama →GPT-SoVITS →restart + wait /health |
-| **ComfyUI** | `skills/comfyui/` | Kill llama →image gen →restart + wait /health |
-| **ASR** | `skills/asr/` | Faster-Whisper small —coexists with llama on 8GB |
-| **Sakura** | `skills/sakura/` | Shared llama-client; detects down →auto-resume; built-in CCR + mem0 |
-| **SmartCrusher** | `skills/shared/context_trimming.py` | 24 msg / 40K char cap per LLM request —all characters share |
-| **CCR** | `skills/sakura/app/agent/memory_curator.py` | Background: extracts facts every 8 turns →Qdrant |
-| **mem0 Bridge** | `skills/shared/mem0_bridge.py` | CLI: search / add / list / sync per character |
-| **Auto-Sync** | `skills/shared/mem0_sync_cron.py` | Cron job every 30 min: Qdrant →`_mem0_auto.md` |
-| **Character Importer** | `skills/character_importer/` | Agent-level —no GPU needed; writes SOUL/IDENTITY + memory dir |
+| Component | Description |
+|-----------|-------------|
+| Embedding :9999 | all-MiniLM-L6-v2 + BGE-small-zh-v1.5 (CPU, dual model) |
+| memory_search | OpenClaw native hybrid search (vector+BM25) |
+| mem0_bridge | Qdrant read/write bridge |
+| Qdrant DB | collection: sakura_memories, 4 user_id scopes |
+| CCR | Extracts facts every 8 turns → Qdrant |
+| SmartCrusher | 24 msg/40K char hard cap |
+| mem0_sync_cron | Every 30min: Qdrant → _mem0_auto.md |
+
+</td>
+</tr>
+</table>
+
+### Agent Hub
+
+Immutable capability instructions with per-character memory isolation:
+
+| Layer | File | Purpose | On Switch |
+|-------|------|---------|-----------|
+| **Capability Hub** | `AGENTS.md` | ComfyUI/TTS/Live2D instructions | 🛡️ Immutable |
+| **Quick Reference** | `TOOLS.md` | Tool invocation cheatsheet | 🛡️ Immutable |
+| **Character Persona** | `SOUL.md` | Current character's personality/tone | 🔄 Hot-swapped |
+| **Character Data** | `IDENTITY.md` | Character name/settings | 🔄 Hot-swapped |
+| **User Profile** | `USER.md` | Boyfriend name/preferences | 🛡️ Immutable |
+| **Harem Archive** | `skills/harem/<char>/` | Character card source of truth | 📦 Read-only |
+| **Short-term Memory** | `memory/role_play/<char>/` | Daily conversations YYYY-MM-DD.md | 🔀 Per-char isolated |
+| **Long-term Memory** | Qdrant `user_id=<char>` | Vector long-term memories | 🔀 Per-char isolated |
+| **Sync Cache** | `_mem0_auto.md` | Qdrant → markdown (30min) | 🔀 Per-char isolated |
+
+> Recall priority: Vector long-term memories > handwritten daily notes > SOUL base persona
+
+### Skills Detail
+
+| Skill | Location | Llama Interaction | Notes |
+|-------|----------|-------------------|-------|
+| **Embedding** | `skills/shared/` | ❌ No GPU | Dual model CPU, port 9999 |
+| **Live2D** | `skills/live2d/` | ❌ HTTP only | Bridge :19200, separate process |
+| **TTS** | `skills/tts/` | 🔶 VRAM-tiered | Tier 2: no kill, Tier 0/1: stop llama |
+| **ComfyUI** | `skills/comfyui/` | 🔶 VRAM-tiered | Same as above |
+| **ASR** | `skills/asr/` | ❌ Coexist (1.5GB) | Faster-Whisper small |
+| **Sakura** | `skills/sakura/` | ❌ Shared client | Built-in CCR + mem0 |
+| **Artemis Studio** | `artemis_studio.py` | ❌ Standalone | Desktop console, TTS+ComfyUI workshop |
+| **SmartCrusher** | `skills/shared/context_trimming.py` | — | 24 msg/40K cap |
+| **CCR** | `skills/sakura/app/agent/memory_curator.py` | — | Every 8 turns fact extraction |
+| **mem0 Bridge** | `skills/shared/mem0_bridge.py` | — | CLI search/add/sync |
+| **Auto-Sync** | `skills/shared/mem0_sync_cron.py` | — | 30min Qdrant → md |
+| **Character Importer** | `skills/character_importer/` | — | PNG/JSON card import |
 
 **VRAM Orchestration Flow**:
 1. On startup: auto-detect GPU VRAM →determine tier (Tier 0/1/2)
