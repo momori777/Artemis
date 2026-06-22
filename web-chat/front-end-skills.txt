@@ -1,0 +1,136 @@
+# Taste-Skill v2 — Core Rules (KV Cache Snapshot)
+# Locked for this conversation. All web-chat/ frontend work follows these.
+
+## Design Read
+# AI girlfriend private chat app, dark-tech + warm-intimate, desktop web app
+
+## Three Dials (current)
+DESIGN_VARIANCE=5    # (1=Symmetry, 10=Artsy Chaos)
+MOTION_INTENSITY=4   # (1=Static, 10=Cinematic)
+VISUAL_DENSITY=3     # (1=Art Gallery, 10=Cockpit)
+
+## System / Stack
+# Pure HTML/CSS/JS (no framework), dark mode only
+
+## Accent: #d4787a (singular rose, no AI-purple)
+
+## Font: Geist + Geist Mono (no Inter)
+
+## Hard Bans (zero tolerance)
+- ZERO em-dash (— or –) anywhere on page
+- NO pure black (#000000) or pure white (#ffffff)
+- NO AI-purple gradients or glows
+- NO Inter as default font
+- NO Fraunces or Instrument_Serif
+- NO custom mouse cursors
+- NO window.addEventListener('scroll')
+- NO h-screen (use min-h-[100dvh])
+- NO 3-column equal feature cards
+- NO div-based fake screenshots
+- NO hand-rolled SVG icons (use icon library)
+- NO placeholder-as-label in forms
+- NO scroll cues ("Scroll", "↓ scroll")
+- NO decorative status dots (semantic only)
+- NO locale/time/weather strips
+- NO version footers on marketing pages
+- NO pills/labels overlaid on images
+- NO photo-credit captions as decoration
+- NO decoration text strips at hero bottom
+- NO floating top-right sub-text in section headings
+- NO scoring/progress bars with filled tracks
+- NO section-numbering eyebrows
+
+## Design Locks
+- Color lock: ONE accent, whole page
+- Shape lock: ONE corner-radius system
+- Theme lock: NO section-level theme inversions
+- Eyebrow restraint: max 1 per 3 sections
+- Split-header banned as default
+- Zigzag alternation max 2 consecutive
+- No duplicate CTA intent
+- Marquee max 1 per page
+- Nav single-line, height <= 80px
+- Section-layout-repetition: each layout family once
+
+## Content Rules
+- Hero: 2-line headline max, 20-word subtext max, pt-24 top padding max, 4 text elements max
+- Per section: headline <= 8 words, sub-paragraph <= 25 words
+- No fake-precise numbers without data source
+- Quotes <= 3 lines
+- Copy self-audit before ship (no AI-hallucinated phrases)
+
+## Motion Rules
+- Animate ONLY transform + opacity (no top/left/width/height)
+- prefers-reduced-motion honored for MOTION > 3
+- Motion must be motivated (hierarchy/storytelling/feedback/state-transition)
+- No infinite loops on static informational sections
+- useMotionValue/useTransform, never useState for continuous values
+
+## Accessibility
+- Button contrast WCAG AA (4.5:1 body, 3:1 large text)
+- Form contrast checks on all elements
+- Mobile collapse explicit per section at <768px
+- min-h-[100dvh] for full-height, never h-screen
+
+## Icons
+- Priority: Phosphor > HugeIcons > Radix > Tabler
+- Lucide discouraged (only on explicit request)
+- One family per project
+
+## Pre-Flight Checklist (run every time)
+- [ ] Brief inference declared
+- [ ] Dial values explicit
+- [ ] ZERO em-dashes
+- [ ] Theme lock
+- [ ] Color lock
+- [ ] Shape lock
+- [ ] Button contrast
+- [ ] CTA no-wrap
+- [ ] Serif discipline
+- [ ] Premium-consumer palette check
+- [ ] Italic descender clearance
+- [ ] Hero viewport fit
+- [ ] Hero top padding cap
+- [ ] Hero stack discipline
+- [ ] Eyebrow count
+- [ ] Split-header ban
+- [ ] Zigzag alternation cap
+- [ ] No duplicate CTA intent
+- [ ] Logo wall logo-only
+- [ ] Bento background diversity
+- [ ] Copy self-audit
+- [ ] Motion motivated
+- [ ] Marquee max-one
+- [ ] Nav single-line
+- [ ] Section-layout-repetition
+- [ ] Bento cell count
+- [ ] Long lists use right UI component
+- [ ] Real images (not div fakes)
+- [ ] No pills on images
+- [ ] No photo-credit captions
+- [ ] No version footers
+- [ ] No micro-meta sentences
+- [ ] No decoration text strips
+- [ ] No floating top-right sub-text
+- [ ] No scoring bars
+- [ ] No locale/time strips
+- [ ] No scroll cues
+- [ ] No version labels in hero
+- [ ] No section-numbering eyebrows
+- [ ] No decorative dots
+- [ ] No border-t+b on every row
+- [ ] Content density sane
+- [ ] Quotes <= 3 lines
+- [ ] Motion claimed = motion shown
+- [ ] Reduced motion wrapped
+- [ ] Dark mode tokens defined
+- [ ] Mobile collapse explicit
+- [ ] Viewport stability (min-h-[100dvh])
+- [ ] useEffect cleanups
+- [ ] Empty/loading/error states
+- [ ] Cards omitted where possible
+- [ ] Icons from allowed library
+- [ ] Motion in client-leaf only
+- [ ] No AI Tells (Inter, AI-purple, 3-cards, Jane Doe, Acme)
+- [ ] Core Web Vitals plausible
+- [ ] One design system

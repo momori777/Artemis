@@ -224,6 +224,29 @@ def kill_gateway():
         return False
 
 
+def kill_webchat():
+    """Stop webchat server on port 19270."""
+    if not port_open("127.0.0.1", 19270):
+        print("[shutdown] webchat: not running")
+        return True
+    print("[shutdown] webchat: stopping...")
+    try:
+        subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "$conn = Get-NetTCPConnection -LocalPort 19270 -ErrorAction SilentlyContinue; "
+             "if ($conn) { $conn | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } }"],
+            capture_output=True, text=True, timeout=10
+        )
+    except Exception:
+        pass
+    for i in range(5):
+        time.sleep(0.3)
+        if not port_open("127.0.0.1", 19270):
+            print(f"[shutdown] webchat: stopped ({i*0.3:.0f}s)")
+            return True
+    print("[shutdown] webchat: STILL RUNNING - manual kill needed")
+    return False
+
 def run_cleanup():
     """Run cleanup_orphans.ps1 to kill stuck children and clean locks."""
     ps1 = os.path.join(WORKSPACE, "skills", "cleanup_orphans.ps1")
@@ -367,6 +390,7 @@ def main():
     results["llama"] = kill_llama()
     results["live2d"] = kill_live2d()
     results["sakura"] = kill_sakura()
+    results["webchat"] = kill_webchat()
     results["embedding"] = kill_embedding_server()
     results["comfyui"] = kill_comfyui()
     results["gateway"] = kill_gateway()

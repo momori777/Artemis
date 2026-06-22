@@ -235,25 +235,33 @@ class TTSWorker(QThread):
             cmd = [TTs_PYTHON, TTs_SCRIPT, self.text, self.lang, self.mood, "--no-manage-llama"]
             with open(os.path.join(WORKSPACE_ROOT, "_tts_debug.txt"), "a", encoding="utf-8") as df:
                 df.write(f"CMD: {cmd}\nenv keys: REF_WAVS_DIR={self.ref_wavs_dir} TTS_CHARACTER={self.character}\n")
+
+            # Force UTF-8 everywhere — Windows subprocess defaults to GBK
+            env = os.environ.copy()
+            env["PYTHONIOENCODING"] = "utf-8"
+            env["PYTHONUTF8"] = "1"
+            if self.ref_wavs_dir:
+                env["REF_WAVS_DIR"] = self.ref_wavs_dir
+            if self.character:
+                env["TTS_CHARACTER"] = self.character
+
             proc = subprocess.run(
                 cmd,
-                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
+                capture_output=True, text=False, timeout=120,
                 cwd=WORKSPACE_ROOT,
-                env={
-                    **os.environ,
-                    "PYTHONIOENCODING": "utf-8",
-                    **({"REF_WAVS_DIR": self.ref_wavs_dir} if self.ref_wavs_dir else {}),
-                    **({"TTS_CHARACTER": self.character} if self.character else {}),
-                },
+                env=env,
             )
+            # Decode stdout/stderr as UTF-8 (force-UTF-8 env above prevents GBK corruption)
+            stdout_text = proc.stdout.decode("utf-8", errors="replace") if proc.stdout else ""
+            stderr_out = proc.stderr.decode("utf-8", errors="replace") if proc.stderr else ""
+
             with open(os.path.join(WORKSPACE_ROOT, "_tts_debug.txt"), "a", encoding="utf-8") as df:
-                df.write(f"STDOUT: {repr(proc.stdout.strip()[-200:])}\nSTDERR_LAST: {repr(proc.stderr.strip()[-500:])}\nRC: {proc.returncode}\n")
+                df.write(f"STDOUT: {repr(stdout_text.strip()[-200:])}\nSTDERR_LAST: {repr(stderr_out.strip()[-500:])}\nRC: {proc.returncode}\n")
 
             timer.stop()
-            stderr_out = proc.stderr or ""
 
             # Parse output — last line of stdout should be the wav path
-            stdout_lines = [l.strip() for l in proc.stdout.strip().splitlines() if l.strip()]
+            stdout_lines = [l.strip() for l in stdout_text.strip().splitlines() if l.strip()]
             wav_path = None
             for line in reversed(stdout_lines):
                 if line.endswith('.wav') and os.path.exists(line):
@@ -321,18 +329,26 @@ class ComfyUIWorker(QThread):
                 "--no-manage-llama",
             ]
 
+            # Force UTF-8 everywhere — Windows subprocess defaults to GBK
+            env = os.environ.copy()
+            env["PYTHONIOENCODING"] = "utf-8"
+            env["PYTHONUTF8"] = "1"
+
             proc = subprocess.run(
                 cmd,
-                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600,
+                capture_output=True, text=False, timeout=600,
                 cwd=WORKSPACE_ROOT,
-                env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+                env=env,
             )
 
             timer.stop()
-            stderr_out = proc.stderr or ""
+
+            # Decode stdout/stderr as UTF-8 (force-UTF-8 env above)
+            stdout_text = proc.stdout.decode("utf-8", errors="replace") if proc.stdout else ""
+            stderr_out = proc.stderr.decode("utf-8", errors="replace") if proc.stderr else ""
 
             # Parse output — the last line of stdout should be the png path
-            stdout_lines = [l.strip() for l in proc.stdout.strip().splitlines() if l.strip()]
+            stdout_lines = [l.strip() for l in stdout_text.strip().splitlines() if l.strip()]
             img_path = None
             for line in reversed(stdout_lines):
                 if line.endswith('.png') and os.path.exists(line):

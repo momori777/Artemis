@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shiki Dashboard</title>
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Geist","Noto Sans SC",system-ui,sans-serif;background:#0a0a12;color:#e8e4f0;min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;padding:40px 20px}
+h1{font-size:24px;font-weight:600;margin-bottom:4px;letter-spacing:-0.02em}
+.subtitle{font-size:13px;color:#605a6e;margin-bottom:32px}
+.panel{background:#151525;border:1px solid rgba(255,255,255,0.08);border-radius:14px;width:100%;max-width:600px;overflow:hidden}
+.panel-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;
+  border-bottom:1px solid rgba(255,255,255,0.06)}
+.panel-title{font-size:12px;text-transform:uppercase;letter-spacing:0.1em;color:#9890a8;font-family:"Geist Mono",monospace}
+.panel-actions{display:flex;gap:6px}
+.btn{padding:8px 16px;border-radius:8px;border:none;font-size:13px;font-family:inherit;cursor:pointer;
+  transition:all 0.15s ease;display:flex;align-items:center;gap:6px}
+.btn-primary{background:#d4787a;color:#0a0a12}
+.btn-primary:hover{background:#e08a8c}
+.btn-secondary{background:#1c1c30;color:#9890a8;border:1px solid rgba(255,255,255,0.06)}
+.btn-secondary:hover{background:#222238;color:#e8e4f0}
+.btn-danger{background:transparent;color:#d4787a;border:1px solid rgba(212,120,122,0.2)}
+.btn-danger:hover{background:rgba(212,120,122,0.1)}
+.service-list{padding:8px}
+.service-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:8px;transition:background 0.15s}
+.service-row:hover{background:#1c1c30}
+.service-indicator{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.service-indicator.online{background:#7eb8a0;box-shadow:0 0 6px rgba(126,184,160,0.3)}
+.service-indicator.offline{background:#555}
+.service-name{flex:1;font-size:14px}
+.service-port{font-size:11px;color:#605a6e;font-family:"Geist Mono",monospace}
+.service-action{border:none;background:transparent;color:#605a6e;cursor:pointer;padding:4px;border-radius:4px;
+  font-size:14px;display:flex;align-items:center;transition:all 0.15s}
+.service-action:hover{color:#9890a8;background:#222238}
+.logs{margin-top:4px;font-size:11px;color:#605a6e;padding:0 8px;min-height:20px}
+.footer{display:flex;gap:12px;margin-top:24px;font-size:12px;color:#605a6e}
+.footer a{color:#d4787a;text-decoration:none}
+.footer a:hover{text-decoration:underline}
+.spin{animation:spin 1s linear infinite}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<h1>Shiki Dashboard</h1>
+<p class="subtitle">AI Girlfriend Service Manager</p>
+
+<div class="panel">
+  <div class="panel-header">
+    <span class="panel-title">Services</span>
+    <div class="panel-actions">
+      <button class="btn btn-primary" onclick="startAll()">
+        <i class="ph ph-play"></i> Start All
+      </button>
+      <button class="btn btn-danger" onclick="stopAll()">
+        <i class="ph ph-stop"></i> Stop All
+      </button>
+    </div>
+  </div>
+  <div class="service-list" id="service-list">
+    <div style="text-align:center;padding:24px;color:#605a6e">
+      <i class="ph ph-spinner spin" style="font-size:20px"></i>
+      <p style="margin-top:8px">Loading...</p>
+    </div>
+  </div>
+  <div class="logs" id="logs"></div>
+</div>
+
+<div class="footer">
+  <a href="#" onclick="openWebChat();return false"><i class="ph ph-chat"></i> Open Web Chat</a>
+  <span>Dashboard: 19260</span>
+</div>
+
+<script>
+var STATUS = [];
+
+function refresh() {
+  fetch("/api/status").then(function(r){return r.json()}).then(function(data){
+    STATUS = data;
+    render();
+  });
+}
+
+function render() {
+  var list = document.getElementById("service-list");
+  list.innerHTML = STATUS.map(function(s){
+    var cls = s.online ? "online" : "offline";
+    return '<div class="service-row">' +
+      '<span class="service-indicator ' + cls + '"></span>' +
+      '<span class="service-name">' + s.name + '</span>' +
+      '<span class="service-port">:' + s.port + '</span>' +
+      '<button class="service-action" title="Restart" onclick="restartService(\'' + s.name + '\')">' +
+        '<i class="ph ph-arrows-clockwise"></i>' +
+      '</button>' +
+    '</div>';
+  }).join("");
+}
+
+function startAll() {
+  document.getElementById("logs").innerHTML = '<i class="ph ph-spinner spin"></i> Starting services...';
+  fetch("/api/start", {method:"POST"}).then(function(r){return r.json()}).then(function(data){
+    document.getElementById("logs").textContent = JSON.stringify(data.results);
+    setTimeout(refresh, 3000);
+    setTimeout(refresh, 8000);
+  });
+}
+
+function stopAll() {
+  if (!confirm("Stop all services?")) return;
+  document.getElementById("logs").innerHTML = '<i class="ph ph-spinner spin"></i> Stopping...';
+  fetch("/api/stop", {method:"POST"}).then(function(r){return r.json()}).then(function(data){
+    document.getElementById("logs").textContent = data.message || "Stopped";
+    setTimeout(refresh, 2000);
+  });
+}
+
+function restartService(name) {
+  document.getElementById("logs").textContent = "Restarting " + name + "...";
+  fetch("/api/restart-service?name=" + encodeURIComponent(name)).then(function(r){return r.json()}).then(function(data){
+    document.getElementById("logs").textContent = name + ": " + (data.result || "ok");
+    setTimeout(refresh, 2000);
+  });
+}
+
+function openWebChat() {
+  window.open("http://localhost:19270", "_blank");
+}
+
+refresh();
+setInterval(refresh, 10000);
+</script>
+</body>
+</html>

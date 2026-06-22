@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Girlfriend</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="styles/main.css">
+<link rel="stylesheet" href="styles/polish.css">
+</head>
+<body>
+
+<div id="app">
+  <!-- ===== Sidebar ===== -->
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <div class="app-title">AI Girlfriend</div>
+
+      <div class="char-selector">
+        <button class="char-select-btn" id="char-select-btn">
+          <div class="char-avatar">
+            <span class="char-avatar-icon" id="char-avatar-icon">N</span>
+          </div>
+          <div class="char-select-text">
+            <div class="char-name">
+              <span id="sidebar-char-name">四季夏目</span>
+              <i class="ph ph-caret-down char-chevron"></i>
+            </div>
+            <div class="char-subtitle" id="char-subtitle-text">Shiki Natsume</div>
+          </div>
+        </button>
+        <div class="char-dropdown" id="char-dropdown">
+          <div id="char-dropdown-list"></div>
+        </div>
+      </div>
+
+      <div class="status-row">
+        <span class="status-label" id="status-label">Checking...</span>
+      </div>
+    </div>
+
+    <div class="sidebar-sessions">
+      <div class="sessions-header">
+        <span class="sessions-title">Chats</span>
+        <button class="btn-new-chat" id="btn-new-chat" title="New chat">
+          <i class="ph ph-plus"></i>
+        </button>
+      </div>
+      <div id="sessions-list"></div>
+    </div>
+
+    <div class="sidebar-body">
+      <div class="info-group">
+        <div class="info-label">Persona</div>
+        <div class="info-text" id="char-persona"></div>
+        <div class="info-text" id="char-persona-note" style="margin-top:4px"></div>
+      </div>
+      <div class="info-group">
+        <div class="info-label">Traits</div>
+        <div class="tag-list" id="char-tags"></div>
+      </div>
+      <div class="info-group">
+        <div class="info-label">Source</div>
+        <div class="info-text" id="char-source"></div>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="skill-btn" id="btn-studio-toggle">
+        <i class="ph ph-paint-brush-broad"></i>
+        <span>Open Studio</span>
+      </button>
+      <button class="skill-btn" id="btn-live2d">
+        <i class="ph ph-person-simple-walk"></i>
+        <span>Live2D Action</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <main id="main">
+    <!-- Tab bar -->
+    <div id="main-tabs">
+      <button class="main-tab active" data-tab="chat">Chat</button>
+      <button class="main-tab" data-tab="studio">Studio</button>
+    </div>
+
+    <!-- ===== CHAT TAB ===== -->
+    <div id="tab-chat" class="tab-panel active">
+      <header class="chat-header">
+        <div class="chat-header-left">
+          <button id="mobile-sidebar-toggle" aria-label="Toggle sidebar">
+            <i class="ph ph-list"></i>
+          </button>
+          <span class="chat-header-name" id="char-name-text">四季夏目</span>
+        </div>
+        <div class="chat-header-actions">
+          <button class="header-action" id="btn-search" title="Search">
+            <i class="ph ph-magnifying-glass"></i> Search
+          </button>
+          <button class="header-action" id="btn-settings" title="Settings">
+            <i class="ph ph-gear"></i> Settings
+          </button>
+          <button class="header-action" id="btn-reset" title="Reset session">
+            <i class="ph ph-arrow-counter-clockwise"></i> Reset
+          </button>
+          <button class="header-action" id="btn-clear" title="Clear messages">
+            <i class="ph ph-trash"></i> Clear
+          </button>
+        </div>
+      </header>
+
+      <div class="search-row" id="search-row" style="display:none">
+        <i class="ph ph-magnifying-glass"></i>
+        <input type="text" id="search-input" placeholder="Search messages...">
+        <span class="search-count" id="search-count"></span>
+      </div>
+
+      <div id="messages"></div>
+
+      <div id="input-area">
+        <div id="input-row">
+          <textarea id="msg-input" placeholder="Type a message..." rows="1"></textarea>
+        </div>
+        <button id="send-btn" title="Send">
+          <i class="ph ph-paper-plane-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== STUDIO TAB ===== -->
+    <div id="tab-studio" class="tab-panel">
+      <header class="chat-header">
+        <div class="chat-header-left">
+          <span class="chat-header-name">Artemis Studio</span>
+        </div>
+        <div class="chat-header-actions">
+          <span class="studio-bridge-status" id="bridge-status">Bridge: checking...</span>
+          <button class="header-action" id="btn-bridge-refresh">
+            <i class="ph ph-arrows-clockwise"></i> Refresh
+          </button>
+        </div>
+      </header>
+
+      <div class="studio-body">
+        <!-- Studio sub-tabs -->
+        <div class="studio-subtabs">
+          <button class="studio-subtab active" data-stab="tts">TTS Voice</button>
+          <button class="studio-subtab" data-stab="comfyui">ComfyUI Image</button>
+          <button class="studio-subtab" data-stab="dashboard">Dashboard</button>
+        </div>
+
+        <!-- ===== TTS Panel ===== -->
+        <div id="stab-tts" class="stab-panel active">
+          <div class="studio-grid">
+            <div class="studio-left">
+              <div class="studio-field">
+                <label class="studio-label">Text</label>
+                <textarea id="tts-text" class="studio-textarea" rows="4" placeholder="Enter text to synthesize..."></textarea>
+              </div>
+
+              <div class="studio-row">
+                <div class="studio-field" style="flex:1">
+                  <label class="studio-label">Language</label>
+                  <select id="tts-lang" class="studio-select">
+                    <option value="ja">Japanese</option>
+                    <option value="zh">Chinese</option>
+                    <option value="en">English</option>
+                  </select>
+                </div>
+                <div class="studio-field" style="flex:1">
+                  <label class="studio-label">Mood</label>
+                  <select id="tts-mood" class="studio-select">
+                    <option value="casual">Casual</option>
+                    <option value="tsundere">Tsundere</option>
+                    <option value="romantic">Romantic</option>
+                    <option value="random">Random</option>
+                  </select>
+                </div>
+                <div class="studio-field" style="flex:1">
+                  <label class="studio-label">Character</label>
+                  <select id="tts-character" class="studio-select">
+                    <option value="natsume">Natsume</option>
+                    <option value="sakura">Sakura</option>
+                    <option value="atori">Atori</option>
+                    <option value="enola">Enola</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="studio-actions">
+                <button class="btn-primary" id="btn-tts-generate">
+                  <i class="ph ph-microphone"></i> Synthesize
+                </button>
+              </div>
+
+              <div class="studio-progress" id="tts-progress" style="display:none">
+                <div class="progress-bar-track">
+                  <div class="progress-bar-fill" id="tts-progress-fill"></div>
+                </div>
+                <span class="progress-text" id="tts-progress-text"></span>
+              </div>
+            </div>
+
+            <div class="studio-right">
+              <div class="studio-preview-box" id="tts-preview">
+                <i class="ph ph-microphone" style="font-size:32px;color:var(--text-muted)"></i>
+                <p style="margin-top:12px;color:var(--text-muted);font-size:13px">Audio preview will appear here</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== ComfyUI Panel ===== -->
+        <div id="stab-comfyui" class="stab-panel">
+          <div class="studio-grid">
+            <div class="studio-left">
+              <div class="studio-field">
+                <label class="studio-label">Positive Prompt</label>
+                <textarea id="comfy-pos" class="studio-textarea mono" rows="4" placeholder="masterpiece, best quality, 1girl..."></textarea>
+              </div>
+
+              <div class="studio-field">
+                <label class="studio-label">Negative Prompt</label>
+                <textarea id="comfy-neg" class="studio-textarea mono" rows="2">bad quality, worst quality, blurry, distorted, lowres, bad anatomy, extra fingers, watermark, text</textarea>
+              </div>
+
+              <div class="studio-row">
+                <div class="studio-field" style="flex:1">
+                  <label class="studio-label">Width</label>
+                  <input type="number" id="comfy-width" class="studio-input" value="1200" min="256" max="2048" step="64">
+                </div>
+                <div class="studio-field" style="flex:1">
+                  <label class="studio-label">Height</label>
+                  <input type="number" id="comfy-height" class="studio-input" value="1500" min="256" max="2048" step="64">
+                </div>
+                <div class="studio-field" style="flex:1">
+                  <label class="studio-label">Steps</label>
+                  <input type="number" id="comfy-steps" class="studio-input" value="30" min="5" max="100">
+                </div>
+                <div class="studio-field" style="flex:1">
+                  <label class="studio-label">CFG</label>
+                  <input type="number" id="comfy-cfg" class="studio-input" value="6.0" min="1" max="20" step="0.5">
+                </div>
+              </div>
+
+              <div class="studio-row">
+                <div class="studio-field" style="flex:1">
+                  <label class="studio-label">Checkpoint</label>
+                  <select id="comfy-ckpt" class="studio-select">
+                    <option value="WAI-Nsfw-Illustrious-17.safetensors">WAI-Nsfw-Illustrious-17</option>
+                    <option value="miaomiaoHarem_v20.safetensors">miaomiaoHarem v20</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="studio-field">
+                <label class="studio-label">Quick Presets</label>
+                <div class="preset-row" id="comfy-presets"></div>
+              </div>
+
+              <div class="studio-actions">
+                <button class="btn-primary" id="btn-comfy-generate">
+                  <i class="ph ph-image"></i> Generate
+                </button>
+              </div>
+
+              <div class="studio-progress" id="comfy-progress" style="display:none">
+                <div class="progress-bar-track">
+                  <div class="progress-bar-fill" id="comfy-progress-fill"></div>
+                </div>
+                <span class="progress-text" id="comfy-progress-text"></span>
+              </div>
+            </div>
+
+            <div class="studio-right">
+              <div class="studio-preview-box" id="comfy-preview">
+                <i class="ph ph-image" style="font-size:32px;color:var(--text-muted)"></i>
+                <p style="margin-top:12px;color:var(--text-muted);font-size:13px">Image preview will appear here</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- ===== Dashboard Panel ===== -->
+        <div id="stab-dashboard" class="stab-panel">
+          <div class="studio-grid" style="grid-template-columns:1fr">
+            <div class="studio-left" style="max-width:600px;margin:0 auto;width:100%">
+              <div class="dashboard-services" id="dash-services"></div>
+              <div class="studio-actions" style="margin-top:16px">
+                <button class="btn-primary" id="btn-dash-start">
+                  <i class="ph ph-play"></i> Start All Services
+                </button>
+                <button class="btn-secondary" id="btn-dash-stop">
+                  <i class="ph ph-stop"></i> Stop All
+                </button>
+              </div>
+              <div class="dash-log" id="dash-log"></div>
+              <div class="dash-link" style="margin-top:16px;text-align:center">
+                <a href="#" id="dash-open-webchat" style="color:var(--accent);font-size:13px;text-decoration:none">
+                  Open Web Chat
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+          </div>
+        </div>
+      </main>
+
+<!-- Settings overlay -->
+<div id="settings-overlay">
+  <div id="settings-panel">
+    <div class="settings-title">Settings</div>
+    <div class="settings-subtitle">Configure API endpoint and preferences</div>
+
+    <div class="settings-group">
+      <div class="settings-label">Chat API Base URL</div>
+      <input class="settings-input" id="setting-api-base" placeholder="Leave empty for same-origin">
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">Artemis Bridge URL</div>
+      <input class="settings-input" id="setting-bridge-url" placeholder="http://localhost:19250" value="http://localhost:19250">
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">Model</div>
+      <input class="settings-input" id="setting-model" value="local-model">
+    </div>
+
+    <div class="settings-group">
+      <label class="settings-toggle" id="toggle-stream-label">
+        <span class="toggle-switch on" id="toggle-stream-switch"></span>
+        <input type="checkbox" id="setting-stream" checked style="display:none">
+        Stream responses
+      </label>
+    </div>
+
+    <div class="settings-actions">
+      <button class="btn-secondary" id="settings-cancel">Cancel</button>
+      <button class="btn-primary" id="settings-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+</div>
+
+<script src="scripts/chars.js"></script>
+<script src="scripts/store.js"></script>
+<script src="scripts/api.js"></script>
+<script src="scripts/ui.js"></script>
+<script src="scripts/studio.js"></script>
+</body>
+</html>
