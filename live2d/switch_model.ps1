@@ -1,7 +1,7 @@
 # Live2D model switcher
 param([string]$Character)
 
-$live2d_dir = "C:\Users\TK\.openclaw\workspace\live2d"
+$live2d_dir = $PSScriptRoot  # this script lives in live2d/
 
 $switches = @{
     atri    = @{ model = "/model/atri/atri.model3.json"; title = "ATRI - yatoli" }

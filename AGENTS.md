@@ -247,7 +247,8 @@ DEFAULT_EMBEDDING_DIMS = 512  # (bge-small-zh 是 512 维，不是 384)
 ### 启动 embedding server
 
 ```powershell
-python C:\Users\TK\.openclaw\workspace\skills\shared\start_embedding_server.ps1
+# Run from repo root
+powershell -ExecutionPolicy Bypass -File ".\skills\shared\start_embedding_server.ps1"
 ```
 
 ### 搜索记忆

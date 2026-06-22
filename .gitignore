@@ -174,3 +174,6 @@ benchmark_projects/petercat/
 skills/sovits/GPT_SoVITS/pretrained_models/fast_langdetect/lid.176.bin
 media/sakura.mp4
 media/demo_qqbot.mp4
+
+# TTS debug log (contains absolute paths)
+_tts_debug.txt
