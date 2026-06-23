@@ -73,6 +73,12 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 
 > 👆 **Yono Sakura** Desktop Pet: silver-pink gradient hair, pale blue eyes, school uniform -reactive portrait expressions, proactive care reminders, and real-time TTS voice via GPT-SoVITS.
 
+### 🌐 Web Chat Frontend
+
+![Web Chat Demo](media/webchat-demo.gif)
+
+> 👆 **Web Chat**: browser-based chat interface at `http://127.0.0.1:19270` — an alternative to QQ/Telegram bots. Connects directly to local daemon proxy → llama.cpp server.no thing stop and running well even in 8GB VRAM!!!!!
+
 ### 🎙️ TTS Voice Workshop
 
 <video src="media/tts_workshop_small.mp4" controls width="800"></video>
@@ -92,12 +98,6 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 ![ComfyUI Workshop](media/comfyui_workshop.gif)
 
 > 👆 **Artemis Studio - ComfyUI Workshop**: Visual AI image generation console - freely choose character/outfit/scene/art style, one-click generation. **Runs in parallel with llama** (12GB+ VRAM).
-
-### 🌐 Web Chat Frontend
-
-![Web Chat Demo](media/webchat-demo.gif)
-
-> 👆 **Web Chat**: browser-based chat interface at `http://127.0.0.1:19270` — an alternative to QQ/Telegram bots. Connects directly to local daemon proxy → llama.cpp server.
 
 | Feature | Description |
 |-|-|
