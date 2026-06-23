@@ -73,6 +73,10 @@
 
 > 👆 **夜乃桜** 桌宠：银粉渐变色长发，浅蓝色眼瞳，白色学园制服--立绘表情联动、主动关怀提醒、GPT-SoVITS 实时语音。
 
+![Web Chat 演示](media/webchat-demo.gif)
+
+> 👆 **Web Chat**：浏览器端聊天界面，访问 `http://127.0.0.1:19270` — QQ/Telegram Bot 的替代方案。直接连接本地守护进程代理 → llama.cpp 服务器。什么服务都不停！！！！
+
 ### 🎙️ TTS 语音工坊
 
 <video src="media/tts_workshop_small.mp4" controls width="800"></video>
@@ -92,10 +96,6 @@
 ![ComfyUI Workshop](media/comfyui_workshop.gif)
 
 > 👆 **Artemis Studio - ComfyUI 工坊**：可视化的 AI 画图控制台，自由选择角色/服装/场景/画风，一键生成。**也无需停 llama**（12GB+ 显存下并行运行）。
-
-![Web Chat 演示](media/webchat-demo.gif)
-
-> 👆 **Web Chat**：浏览器端聊天界面，访问 `http://127.0.0.1:19270` — QQ/Telegram Bot 的替代方案。直接连接本地守护进程代理 → llama.cpp 服务器。
 
 | 功能 | 说明 |
 |-|-|
