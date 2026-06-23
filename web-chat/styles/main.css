@@ -436,6 +436,19 @@ html,body{
   font-family:var(--font-mono);letter-spacing:0.03em;
 }
 
+.msg-system.paint-done{
+  flex-direction:column;gap:8px;
+  padding:8px 12px;border-radius:var(--radius-md);
+  max-width:360px;
+}
+
+.msg-system.paint-done img{
+  border-radius:var(--radius-sm);
+  max-width:100%;height:auto;
+  cursor:pointer;
+  border:1px solid var(--border-subtle);
+}
+
 /* Media in bubble */
 .msg-media{
   margin-top:8px;border-radius:var(--radius-sm);
@@ -533,6 +546,18 @@ html,body{
 
 .input-action:hover{background:var(--bg-elevated);color:var(--text-secondary)}
 .input-action i{font-size:18px}
+
+#btn-auto-paint{color:var(--accent);opacity:0.7}
+#btn-auto-paint:hover{color:var(--accent-hover);opacity:1}
+
+.input-llama-toggle{
+  display:flex;align-items:center;gap:6px;
+  padding:4px 20px 6px;
+  font-size:11px;color:var(--text-muted);
+  cursor:pointer;user-select:none;
+}
+
+.input-llama-toggle:hover{color:var(--text-secondary)}
 
 #send-btn{
   width:44px;height:44px;border-radius:var(--radius-md);

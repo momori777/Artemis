@@ -214,6 +214,15 @@ SERVICE_STARTERS = {
     "WebChat": start_webchat,
 }
 
+SERVICE_KILLERS = {
+    "llama-server": "llama-server.exe",
+    "Embedding": "python.exe",  # kill the embedding server python process
+    "Live2D Bridge": "node.exe",
+    "Artemis Bridge": "python.exe",
+    "OpenClaw Gateway": "node.exe",
+    "WebChat": None,  # WebChat runs in daemon thread, can't kill separately
+}
+
 # ---- Daemon core ----
 
 class ShikiDaemon:
@@ -429,6 +438,78 @@ def _load_harem_characters():
     return characters
 
 
+def _build_system_prompt(character_id):
+    """Build system prompt from character SOUL.md + IDENTITY.md + USER.md.
+    AGENTS.md is intentionally excluded — it's for the Gateway agent, not the chat model."""
+    parts = []
+
+    # 1. SOUL.md — prefer character-specific from harem, fallback to root
+    if character_id:
+        char_soul = os.path.join(WORKSPACE, "skills", "harem", character_id, "SOUL.md")
+        if os.path.isfile(char_soul):
+            try:
+                with open(char_soul, "r", encoding="utf-8") as f:
+                    soul_content = f.read().strip()
+                if soul_content:
+                    parts.append(soul_content)
+            except Exception:
+                pass
+    # Fallback: root SOUL.md (if no character-specific one found)
+    if not parts:
+        soul_path = os.path.join(WORKSPACE, "SOUL.md")
+        if os.path.isfile(soul_path):
+            try:
+                with open(soul_path, "r", encoding="utf-8") as f:
+                    soul_content = f.read().strip()
+                if soul_content:
+                    parts.append(soul_content)
+            except Exception:
+                pass
+
+    # 2. IDENTITY.md from harem/<character_id>
+    if character_id:
+        identity_path = os.path.join(WORKSPACE, "skills", "harem", character_id, "IDENTITY.md")
+        if os.path.isfile(identity_path):
+            try:
+                with open(identity_path, "r", encoding="utf-8") as f:
+                    identity_content = f.read().strip()
+                if identity_content:
+                    parts.append(identity_content)
+            except Exception:
+                pass
+
+    # 3. USER.md (user context)
+    user_path = os.path.join(WORKSPACE, "USER.md")
+    if os.path.isfile(user_path):
+        try:
+            with open(user_path, "r", encoding="utf-8") as f:
+                user_content = f.read().strip()
+            if user_content:
+                parts.append(user_content)
+        except Exception:
+            pass
+
+    if not parts:
+        return None
+    return "\n\n---\n\n".join(parts)
+
+
+def _inject_system_prompt(messages, character_id):
+    """Ensure a system message is first in the messages list.
+    If the first message is already a system message, replace it.
+    Otherwise, insert a new system message at the beginning."""
+    prompt = _build_system_prompt(character_id)
+    if not prompt:
+        return messages
+    
+    result = list(messages)  # shallow copy
+    if result and result[0].get("role") == "system":
+        result[0] = {"role": "system", "content": prompt}
+    else:
+        result.insert(0, {"role": "system", "content": prompt})
+    return result
+
+
 def _resolve_provider_for_model(model_id):
     """Given a model id like 'deepseek/deepseek-v4-flash', return the provider config from openclaw.json."""
     cfg_path = os.path.join(os.path.expanduser("~"), ".openclaw", "openclaw.json")
@@ -516,6 +597,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_dashboard()
             return
 
+        if path == "/api/media" or path.startswith("/api/media/"):
+            self._handle_media_proxy()
+            return
+
         self.send_error(404)
 
     def do_OPTIONS(self):
@@ -533,6 +618,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._handle_chat_proxy()
             return
 
+        if path == "/api/gen-prompt":
+            self._handle_gen_prompt()
+            return
+
         cl = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(cl).decode("utf-8") if cl else "{}"
         try:
@@ -547,6 +636,29 @@ class DashboardHandler(BaseHTTPRequestHandler):
         elif path == "/api/stop":
             msg = stop_all()
             self.send_json({"ok": True, "message": msg})
+
+        elif path == "/api/start-service":
+            name = data.get("name")
+            fn = SERVICE_STARTERS.get(name)
+            if fn:
+                result = fn()
+                self.send_json({"ok": True, "result": result})
+            else:
+                self.send_json({"ok": False, "error": "Unknown service"})
+
+        elif path == "/api/stop-service":
+            name = data.get("name")
+            process_name = SERVICE_KILLERS.get(name)
+            if process_name is None:
+                self.send_json({"ok": False, "error": f"Service '{name}' cannot be stopped individually (runs in daemon)"})
+            elif process_name:
+                try:
+                    subprocess.run(["taskkill", "/F", "/IM", process_name], capture_output=True, timeout=5)
+                    self.send_json({"ok": True, "result": f"Killed {process_name}"})
+                except Exception as e:
+                    self.send_json({"ok": False, "error": str(e)})
+            else:
+                self.send_json({"ok": False, "error": f"No kill handler for '{name}'"})
 
         elif path == "/api/toggle":
             name = data.get("name")
@@ -602,6 +714,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
         messages = req_data.get("messages", [])
         stream = req_data.get("stream", False)
         max_tokens = req_data.get("max_tokens", 4096)
+        character_id = req_data.get("characterId", "natsume")
+
+        # Inject system prompt from AGENTS.md + SOUL.md + character IDENTITY.md
+        messages = _inject_system_prompt(messages, character_id)
 
         # Local llama: skip provider lookup, use hardcoded endpoint
         if model_id.startswith("local/"):
@@ -670,6 +786,143 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self.send_json(json.loads(resp.read()))
         except Exception as e:
             self.send_json({"error": str(e)}, 502)
+
+    def _handle_gen_prompt(self):
+        """Use LLM to generate a ComfyUI image prompt from conversation context."""
+        body_len = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(body_len)
+        try:
+            req_data = json.loads(body)
+        except Exception:
+            self.send_json({"error": "Invalid JSON"}, 400)
+            return
+
+        character_id = req_data.get("characterId", "natsume")
+        messages = req_data.get("messages", [])
+
+        # Get character name for the prompt instruction
+        char_name = character_id.capitalize()
+        # Try to get display name from harem
+        identity_path = os.path.join(WORKSPACE, "skills", "harem", character_id, "IDENTITY.md")
+        if os.path.isfile(identity_path):
+            try:
+                with open(identity_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        if line.strip().startswith("- Name:") or line.strip().startswith("* **Name:**"):
+                            # Extract name
+                            char_name = line.split(":", 1)[1].strip()
+                            # Remove parenthetical English
+                            import re
+                            char_name = re.sub(r"\s*[（(][^)）]*[)）]", "", char_name).strip()
+                            break
+            except Exception:
+                pass
+
+        # Build the instruction for LLM
+        instruction = f"""You are an AI prompt engineer for image generation. Based on the conversation context below, generate a ComfyUI/Stable Diffusion prompt for the character "{char_name}".
+
+Rules:
+- Output ONLY a JSON object with "prompt" and "negative" fields, nothing else.
+- The prompt should be in English, detailed, include character appearance, clothing, setting, mood, lighting.
+- Use tags like: masterpiece, best quality, 1girl, {character_id}, highly detailed, etc.
+- Describe the current scene/mood based on the conversation. If no specific scene is mentioned, create a beautiful portrait.
+- The negative prompt should cover common issues: bad quality, worst quality, blurry, distorted, lowres, bad anatomy, extra fingers, watermark, text, ugly, deformed.
+- Keep the prompt under 300 characters.
+
+Conversation:
+"""
+        # Format messages as conversation text
+        conv_lines = []
+        for msg in messages[-6:]:  # last 6 messages
+            role = msg.get("role", "")
+            content = msg.get("content", "")[:200]
+            if role == "user":
+                conv_lines.append(f"User: {content}")
+            elif role == "assistant":
+                conv_lines.append(f"{char_name}: {content}")
+        instruction += "\n".join(conv_lines)
+
+        # Call local LLM (non-streaming)
+        try:
+            import urllib.request, urllib.error
+            payload = {
+                "model": "Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf",
+                "messages": [{"role": "user", "content": instruction}],
+                "stream": False,
+                "max_tokens": 300,
+                "temperature": 0.7,
+            }
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                "http://127.0.0.1:8080/v1/chat/completions",
+                data=data,
+                headers={"Content-Type": "application/json"}
+            )
+            resp = urllib.request.urlopen(req, timeout=30)
+            result = json.loads(resp.read())
+            content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+
+            # Parse JSON from response
+            # Try to find JSON block
+            import re
+            json_match = re.search(r'\{[^}]+\}', content, re.DOTALL)
+            if json_match:
+                prompt_data = json.loads(json_match.group())
+                self.send_json({
+                    "prompt": prompt_data.get("prompt", ""),
+                    "negative": prompt_data.get("negative", "bad quality, worst quality, blurry"),
+                })
+            else:
+                # Fallback: treat the whole response as prompt
+                prompt_text = content.strip().strip('"').strip("'")
+                if len(prompt_text) > 500:
+                    prompt_text = prompt_text[:500]
+                self.send_json({
+                    "prompt": prompt_text,
+                    "negative": "bad quality, worst quality, blurry, distorted, lowres, bad anatomy, extra fingers, watermark, text",
+                })
+        except Exception as e:
+            self.send_json({"error": f"LLM prompt generation failed: {str(e)}"}, 502)
+
+    def _handle_media_proxy(self):
+        """Proxy local file paths so the browser can load generated images."""
+        # The file path comes after ? in the URL, e.g. /api/media?C:/Users/.../image.png
+        # parse_qs won't work because file paths don't have key=value format
+        from urllib.parse import unquote
+        parsed = urlparse(self.path)
+        file_path = unquote(parsed.query) if parsed.query else None
+        # Also handle /api/media/<path> style
+        if not file_path:
+            prefix = "/api/media/"
+            if parsed.path.startswith(prefix):
+                file_path = unquote(parsed.path[len(prefix):])
+        if not file_path:
+            self.send_error(400)
+            return
+        if not os.path.isfile(file_path):
+            self.send_error(404)
+            return
+        try:
+            # Determine content type
+            ext = os.path.splitext(file_path)[1].lower()
+            content_types = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+                           ".gif": "image/gif", ".webp": "image/webp", ".mp3": "audio/mpeg",
+                           ".wav": "audio/wav", ".mp4": "video/mp4"}
+            content_type = content_types.get(ext, "application/octet-stream")
+            with open(file_path, "rb") as f:
+                data = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "public, max-age=3600")
+            self.end_headers()
+            self.wfile.write(data)
+        except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError):
+            pass
+        except Exception as e:
+            self.send_error(500)
+            print(f"[media proxy] Error serving {file_path}: {e}")
 
 import pystray
 from PIL import Image, ImageDraw

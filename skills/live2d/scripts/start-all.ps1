@@ -7,7 +7,7 @@
 #   3. Sakura character.json has live2d.enabled = true
 
 $ErrorActionPreference = "Stop"
-$projectRoot = "D:\AI_Girlfriend"
+$projectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
 
 Write-Host "=== Starting Live2D + Sakura ===" -ForegroundColor Cyan
 
