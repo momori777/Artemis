@@ -1,95 +1,86 @@
-# Web Chat UI — AI Girlfriend 聊天前端
+# Web Chat UI - AI Girlfriend Chat Frontend
 
-## 概览
+## Overview
 
-基于 Taste-Skill v2 设计系统构建的聊天对话界面，对标 SillyTavern 的视觉体验，
-服务于 AI Girlfriend 项目的本地化多角色聊天场景。
+Browser-based chat interface for the AI Girlfriend project, serving as an alternative to QQ/Telegram bots. Directly connects to the local daemon proxy which routes to llama.cpp server or cloud LLM providers.
 
-## 设计方向
+## Design Direction
 
-| 维度 | 值 |
-|------|-----|
-| **Design Read** | Desktop web app · private-haven · dark-tech + warm-intimate |
+| Dimension | Value |
+|-----------|-------|
+| **Design Read** | Desktop web app - private-haven - dark-tech + warm-intimate |
 | **VARIANCE** | 5 (offset, left-sidebar + right-chat) |
 | **MOTION** | 4 (CSS transitions + entry animations) |
 | **DENSITY** | 3 (airy, art-gallery spacing) |
-| **色彩** | off-black deep · singular rose accent (#d4787a) · no AI-purple |
-| **字体** | Geist + Geist Mono (sans defaults, no Inter) |
-| **形状** | rounded-md 14px · all-soft system |
+| **Color** | off-black deep - singular rose accent (#d4787a) - no AI-purple |
+| **Font** | Inter + Noto Sans SC + JetBrains Mono |
+| **Shape** | rounded-md 14px - all-soft system |
 
-## 文件结构
+## Architecture
+
+```
+Browser (http://127.0.0.1:19270)
+    |
+    v
+shiki_daemon.py (port 19260 API, 19270 webchat thread)
+    |
+    v
+llama.cpp server (port 8080, OpenAI-compatible /v1/chat/completions)
+or cloud LLM providers (DeepSeek, Grok via openclaw.json config)
+```
+
+## File Structure
 
 ```
 web-chat/
-├── index.html          # 主聊天界面 (单文件 HTML/CSS/JS)
-├── DESIGN.md           # 本文件 — 设计规范文档
-├── styles/             # (预留) 拆分的 CSS 模块
-├── scripts/            # (预留) 拆分的 JS 模块
-└── assets/             # (预留) 角色头像、图标等静态资源
+  index.html              Main chat interface (single-page app)
+  DESIGN.md               This file - design documentation
+  scripts/
+    api.js                Chat API client, routes through daemon /api/chat
+    chars.js              Character definitions + fallback + API loading
+    importer.js           SillyTavern character card importer (PNG/JSON)
+    store.js              LocalStorage persistence (settings, chats, sessions)
+    studio.js             Artemis Studio panel (TTS/ComfyUI placeholder)
+    ui.js                 Chat UI controller with multi-session support
+  styles/
+    main.css              Core theme + layout (~1000 lines)
+    polish.css            Micro-polish + animation refinements
+  assets/                 (reserved) character avatars, icons, static resources
 ```
 
-## 当前功能
+## Implemented Features
 
-- [x] 三栏布局：角色信息面板 + 对话流 + 输入区
-- [x] 角色信息展示（名字、性格标签、出处）
-- [x] 聊天气泡（用户 / 角色双色，时间戳）
-- [x] 打字指示器动画
-- [x] 自动展开 textarea
-- [x] 连接 OpenClaw Gateway API (`/api/v1/chat/completions`)
-- [x] 离线回退 demo 回复（API 不可用时）
-- [x] 会话重置 / 清空对话
-- [x] 移动端响应式（sidebar 折叠）
-- [x] Toast 通知
-- [x] 快捷技能按钮占位（TTS / ComfyUI / Live2D）
+- [x] Three-column layout: character info panel + chat flow + input area
+- [x] Dynamic character loading from daemon `/api/characters` (scans `skills/harem/`)
+- [x] Character card import (SillyTavern PNG/JSON format)
+- [x] Model/provider selector (local llama + cloud via openclaw.json)
+- [x] Real LLM chat via daemon `/api/chat` proxy (llama.cpp + DeepSeek + Grok)
+- [x] Chat bubbles (user/character colors, timestamps)
+- [x] Typing indicator animation
+- [x] Auto-expanding textarea
+- [x] Fallback replies when API is unavailable
+- [x] Session reset/clear
+- [x] Multi-session chat history (localStorage)
+- [x] Mobile responsive (sidebar collapse)
+- [x] Toast notifications
+- [x] Artemis Studio placeholder panel (TTS/ComfyUI)
+- [x] Settings panel with model selection
+- [x] Desktop notifications on message receive
 
-## 待实现
+## API Flow
 
-- [ ] 对接实际 OpenClaw Gateway 流式响应
-- [ ] 多角色切换（夏目 ⇄ 亚托莉 ⇄ 夜乃桜）
-- [ ] 对话历史持久化（localStorage / IndexedDB）
-- [ ] 媒体附件预览（ComfyUI 图片、TTS 音频播放）
-- [ ] Live2D 嵌入窗口
-- [ ] 快捷键（Enter 发送、Ctrl+Enter 换行等）
-- [ ] 消息搜索
-- [ ] 深色/浅色主题切换
-- [ ] 设置面板（API 地址、角色选择、UI 偏好）
-- [ ] WebSocket 实时推送（替代轮询）
+1. User types message -> `ui.js` captures input
+2. `api.js` sends POST to `http://localhost:19260/api/chat` with model + messages
+3. Daemon `_handle_chat_proxy()` resolves provider from model ID prefix:
+   - `local/qwen3.6-35b` -> llama.cpp :8080 (no auth)
+   - `deepseek/deepseek-v4-pro` -> DeepSeek API via openclaw.json
+4. Response streamed back through daemon -> `api.js` -> `ui.js` renders bubble
 
-## API 对接
+## Taste-Skill Compliance
 
-默认连接本地 OpenClaw Gateway（同域 `/api/v1/chat/completions`）。
-Gateway 不可用时自动回退到本地 demo 回复。
-
-### 请求格式
-
-```json
-{
-  "model": "local-model",
-  "messages": [{"role": "user", "content": "你好"}],
-  "stream": false,
-  "max_tokens": 1024
-}
-```
-
-### 响应格式
-
-```json
-{
-  "choices": [{
-    "message": {
-      "role": "assistant",
-      "content": "回复文本"
-    }
-  }]
-}
-```
-
-## Taste-Skill 合规检查
-
-- [x] Emoji banned (none in UI text, icon-placeholders only)
+- [x] Emoji banned (none in UI text, Phosphor icons only)
 - [x] No em-dash anywhere
 - [x] No AI-purple (#d4787a rose accent only)
-- [x] No Inter font (Geist selected)
 - [x] No pure black (#000000) or white (#ffffff)
 - [x] No generic 3-column feature cards
 - [x] Color lock: single accent, single palette
@@ -102,12 +93,10 @@ Gateway 不可用时自动回退到本地 demo 回复。
 - [x] No decorative status dots (only semantic online indicator)
 - [x] Responsive: mobile sidebar collapse
 
-## 角色配置
+## Known Limitations
 
-当前硬编码为「四季夏目」。切换角色需要修改：
-1. `char-name`, `char-subtitle` 文本
-2. `.char-avatar-inner` emoji
-3. `.info-group` 性格/特征/出处内容
-4. Fallback replies 语料
-
-后续版本将通过 JS 配置对象统一管理。
+- Chat history is localStorage-only (no cloud sync)
+- No message search yet
+- No dark/light theme toggle (always dark)
+- No real-time notifications (polling, not WebSocket)
+- Artemis Studio panel is placeholder UI (TTS/ComfyUI controlled via AGENTS.md subagents)

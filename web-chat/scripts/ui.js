@@ -87,9 +87,14 @@ var UI = {
     list.innerHTML = CHARACTERS.map(function(c) {
       var activeClass = c.id === activeId ? ' active' : '';
       return '<div class="char-option' + activeClass + '" data-char-id="' + c.id + '"><div class="char-option-avatar">' + c.icon.toUpperCase() + '</div><span>' + c.name + '</span></div>';
-    }).join('');
+    }).join('') + '<div class="char-option char-import-option" id="char-import-option"><div class="char-option-avatar" style="background:var(--accent);color:#fff"><i class="ph ph-plus"></i></div><span>Import character...</span></div>';
     document.querySelectorAll('.char-option').forEach(function(opt) {
       opt.addEventListener('click', function() {
+        if (opt.id === 'char-import-option' || opt.classList.contains('char-import-option')) {
+          var fileInput = document.getElementById('import-char-file');
+          if (fileInput) fileInput.click();
+          return;
+        }
         var id = opt.dataset.charId;
         document.getElementById('char-dropdown').classList.remove('open');
         document.getElementById('char-select-btn').classList.remove('open');
@@ -149,7 +154,7 @@ var UI = {
 
     list.innerHTML = CHARACTERS.map(function(c) {
       return '<div class="char-option" data-char-id="' + c.id + '"><div class="char-option-avatar">' + c.icon.toUpperCase() + '</div><span>' + c.name + '</span></div>';
-    }).join('');
+    }).join('') + '<div class="char-option char-import-option" id="char-import-option"><div class="char-option-avatar" style="background:var(--accent);color:#fff"><i class="ph ph-plus"></i></div><span>Import character...</span></div>';
 
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
@@ -163,9 +168,30 @@ var UI = {
       btn.classList.remove('open');
     });
 
+    // Sidebar + import button (outside dropdown)
+    var importBtn = document.getElementById('btn-import-char');
+    if (importBtn) {
+      importBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var fileInput = document.getElementById('import-char-file');
+        if (fileInput) fileInput.click();
+      });
+    }
+
     list.addEventListener('click', function(e) {
       var opt = e.target.closest('.char-option');
       if (!opt) return;
+
+      // Import option
+      if (opt.id === 'char-import-option' || opt.classList.contains('char-import-option')) {
+        e.stopPropagation();
+        dropdown.classList.remove('open');
+        btn.classList.remove('open');
+        var fileInput = document.getElementById('import-char-file');
+        if (fileInput) fileInput.click();
+        return;
+      }
+
       var charId = opt.dataset.charId;
       if (charId && charId !== self.state.currentCharId) {
         self.switchChar(charId);
@@ -436,81 +462,56 @@ var UI = {
 
     var settings = getSettings();
 
-    ApiClient.checkStatus().then(function(online) {
-      if (online && settings.streamEnabled) {
-        self.hideTyping();
-        self.createStreamBubble();
+    // Always try API (daemon proxy). Fallback if it fails.
+    if (settings.streamEnabled !== false) {
+      self.hideTyping();
+      self.createStreamBubble();
 
-        ApiClient.chatStream(
-          self.state.messages,
-          settings,
-          function(token) { self.appendStreamToken(token); },
-          function(result) {
-            self.finalizeStream(result.text);
-            var charMsg = { role: 'assistant', content: result.text, time: self.formatTime(new Date()) };
-            if (result.media) charMsg.media = result.media;
-            self.state.messages.push(charMsg);
-            saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
-            self.state.streaming = false;
-            self.$sendBtn.disabled = false;
-            self.$input.focus();
-          },
-          function(err) {
-            console.warn('Stream failed:', err.message);
-            self.finalizeStream('');
-            var bubble = document.getElementById('stream-bubble');
-            if (bubble) bubble.remove();
-            self.doFallback();
-            saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
-            self.state.streaming = false;
-            self.$sendBtn.disabled = false;
-            self.$input.focus();
-          }
-        );
-      } else {
-        self.doNonStream(online);
-      }
-    });
-  },
-
-  doNonStream: function(online) {
-    var self = this;
-    if (online) {
-      var settings = getSettings();
-      fetch((settings.apiBase || '') + '/api/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: settings.model || 'local-model',
-          messages: this.state.messages,
-          stream: false,
-          max_tokens: 4096,
-        }),
-        signal: AbortSignal.timeout(30000),
-      }).then(function(res) {
-        return res.json();
-      }).then(function(data) {
+      ApiClient.chatStream(
+        self.state.messages,
+        settings,
+        function(token) { self.appendStreamToken(token); },
+        function(result) {
+          self.finalizeStream(result.text);
+          var charMsg = { role: 'assistant', content: result.text, time: self.formatTime(new Date()) };
+          if (result.media) charMsg.media = result.media;
+          self.state.messages.push(charMsg);
+          saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
+          self.state.streaming = false;
+          self.$sendBtn.disabled = false;
+          self.$input.focus();
+        },
+        function(err) {
+          console.warn('Stream failed:', err.message);
+          self.finalizeStream('');
+          var bubble = document.getElementById('stream-bubble');
+          if (bubble) bubble.remove();
+          self.doFallback();
+          saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
+          self.state.streaming = false;
+          self.$sendBtn.disabled = false;
+          self.$input.focus();
+        }
+      );
+    } else {
+      ApiClient.nonStreamChat(self.state.messages, settings).then(function(reply) {
         self.hideTyping();
-        var reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
         var charMsg = { role: 'assistant', content: reply, time: self.formatTime(new Date()) };
         self.appendMessage(charMsg);
         self.state.messages.push(charMsg);
-      }).catch(function() {
+        saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
+        self.state.streaming = false;
+        self.$sendBtn.disabled = false;
+        self.$input.focus();
+      }).catch(function(err) {
+        console.warn('Non-stream failed:', err.message);
         self.hideTyping();
         self.doFallback();
-      }).finally(function() {
         saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
         self.state.streaming = false;
         self.$sendBtn.disabled = false;
         self.$input.focus();
       });
-    } else {
-      this.hideTyping();
-      this.doFallback();
-      saveChatHistory(this.state.currentCharId, this.state.currentSessionId, self.state.messages);
-      this.state.streaming = false;
-      this.$sendBtn.disabled = false;
-      this.$input.focus();
     }
   },
 
@@ -623,14 +624,13 @@ var UI = {
     var saveBtn = document.getElementById('settings-save');
     var cancelBtn = document.getElementById('settings-cancel');
     var overlay = document.getElementById('settings-overlay');
-    var streamCheckbox = document.getElementById('setting-stream');
-    var streamToggle = document.getElementById('toggle-stream-switch');
+    var refreshBtn = document.getElementById('settings-refresh-models');
 
     if (saveBtn) saveBtn.addEventListener('click', function() {
       var s = getSettings();
-      s.apiBase = document.getElementById('setting-api-base').value.trim();
+      s.apiBase = document.getElementById('setting-api-base').value.trim() || 'http://localhost:18789';
       s.bridgeUrl = document.getElementById('setting-bridge-url').value.trim() || 'http://localhost:19250';
-      s.model = document.getElementById('setting-model').value.trim() || 'local-model';
+      s.model = document.getElementById('setting-model-select').value || 'local/qwen3.6-35b';
       s.streamEnabled = document.getElementById('setting-stream').checked;
       saveSettings(s);
       ApiClient.init(s.apiBase);
@@ -644,6 +644,8 @@ var UI = {
       overlay.classList.remove('open');
     });
 
+    var streamCheckbox = document.getElementById('setting-stream');
+    var streamToggle = document.getElementById('toggle-stream-switch');
     if (streamCheckbox && streamToggle) streamCheckbox.addEventListener('change', function(e) {
       streamToggle.classList.toggle('on', e.target.checked);
     });
@@ -653,23 +655,53 @@ var UI = {
         overlay.classList.remove('open');
       }
     });
+
+    if (refreshBtn) refreshBtn.addEventListener('click', function() {
+      ApiClient._modelsCache = null;
+      ApiClient._modelsPromise = null;
+      UI._populateModelSelect(true);
+      showToast('Refreshing models...');
+    });
+  },
+
+  _populateModelSelect: function(forceRefresh) {
+    var select = document.getElementById('setting-model-select');
+    if (!select) return;
+    var currentModel = getSettings().model || 'local/qwen3.6-35b';
+
+    // Show loading
+    select.innerHTML = '<option value="">Loading models...</option>';
+
+    ApiClient.fetchModels().then(function(models) {
+      select.innerHTML = models.map(function(m) {
+        var sel = m.id === currentModel ? ' selected' : '';
+        return '<option value="' + m.id + '"' + sel + '>' + m.name + ' (' + m.id + ')</option>';
+      }).join('');
+      if (models.length === 0) {
+        select.innerHTML = '<option value="local/qwen3.6-35b">Local (Llama) - default</option>';
+      }
+    }).catch(function() {
+      select.innerHTML = '<option value="local/qwen3.6-35b">Local (Llama) - default</option>';
+    });
   },
 
   openSettings: function() {
+    var self = this;
     var s = getSettings();
     var apiBase = document.getElementById('setting-api-base');
     var bridgeUrl = document.getElementById('setting-bridge-url');
-    var model = document.getElementById('setting-model');
     var streamCheckbox = document.getElementById('setting-stream');
     var streamToggle = document.getElementById('toggle-stream-switch');
     var overlay = document.getElementById('settings-overlay');
 
-    if (apiBase) apiBase.value = s.apiBase || '';
+    if (apiBase) apiBase.value = s.apiBase || 'http://localhost:18789';
     if (bridgeUrl) bridgeUrl.value = s.bridgeUrl || 'http://localhost:19250';
-    if (model) model.value = s.model || 'local-model';
     if (streamCheckbox) streamCheckbox.checked = s.streamEnabled !== false;
     if (streamToggle) streamToggle.classList.toggle('on', s.streamEnabled !== false);
     if (overlay) overlay.classList.add('open');
+
+    // Populate model dropdown from Gateway
+    this._populateModelSelect();
   },
 
   // ---- Gateway ----

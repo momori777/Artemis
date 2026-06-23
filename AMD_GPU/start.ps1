@@ -110,7 +110,6 @@ if (Test-Online $llamaPort "llama-server") {
         '--batch-size', '2048',
         '--ubatch-size', '1024',
         '--threads', '24',
-        '--api-key', '***',
         '-rea', 'off',
         '--jinja',
         '--cache-ram', '5000',

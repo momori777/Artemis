@@ -148,3 +148,13 @@
 .import-btn i {
   font-size: 16px;
 }
+
+/* ---- Inline style replacements ---- */
+.studio-field-fill { flex: 1; }
+.preview-placeholder-icon { font-size: 32px; color: var(--text-muted); }
+.preview-placeholder-text { margin-top: 12px; color: var(--text-muted); font-size: 13px; }
+.studio-grid-dash { grid-template-columns: 1fr; }
+.studio-left-dash { max-width: 600px; margin: 0 auto; width: 100%; }
+.studio-actions-dash { margin-top: 16px; }
+.dash-link { margin-top: 16px; text-align: center; }
+.dash-link-a { color: var(--accent); font-size: 13px; text-decoration: none; }

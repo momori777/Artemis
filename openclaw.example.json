@@ -1,0 +1,80 @@
+{
+  "_comment": "Copy this file to openclaw.json and fill in your API keys. Then restart OpenClaw Gateway.",
+  "agents": {
+    "defaults": {
+      "workspace": "C:\\Users\\YOUR_USER\\.openclaw\\workspace",
+      "models": {
+        "deepseek/deepseek-v4-flash": { "alias": "DeepSeek" },
+        "deepseek/deepseek-v4-pro": { "alias": "DeepSeek Pro" },
+        "x-ai/grok-4": { "alias": "Grok" }
+      },
+      "model": "deepseek/deepseek-v4-flash"
+    }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "deepseek": {
+        "baseUrl": "https://api.deepseek.com/v1",
+        "api": "openai-completions",
+        "apiKey": "sk-YOUR_DEEPSEEK_API_KEY_HERE",
+        "models": [
+          {
+            "id": "deepseek-v4-flash",
+            "name": "DeepSeek V4 Flash",
+            "api": "openai-completions",
+            "reasoning": false,
+            "input": ["text"],
+            "contextWindow": 256000,
+            "maxTokens": 65536
+          },
+          {
+            "id": "deepseek-v4-pro",
+            "name": "DeepSeek V4 Pro",
+            "api": "openai-completions",
+            "reasoning": false,
+            "input": ["text"],
+            "contextWindow": 256000,
+            "maxTokens": 65536
+          }
+        ]
+      },
+      "x-ai": {
+        "baseUrl": "https://api.x.ai/v1",
+        "api": "openai-completions",
+        "apiKey": "xai-YOUR_GROK_API_KEY_HERE",
+        "models": [
+          {
+            "id": "grok-4",
+            "name": "Grok 4",
+            "api": "openai-completions",
+            "reasoning": false,
+            "input": ["text"],
+            "contextWindow": 131072,
+            "maxTokens": 32768
+          },
+          {
+            "id": "grok-4-mini",
+            "name": "Grok 4 Mini",
+            "api": "openai-completions",
+            "reasoning": false,
+            "input": ["text"],
+            "contextWindow": 131072,
+            "maxTokens": 16384
+          }
+        ]
+      }
+    }
+  },
+  "gateway": {
+    "mode": "local",
+    "port": 18789,
+    "bind": "loopback",
+    "http": {
+      "endpoints": {
+        "chatCompletions": { "enabled": true },
+        "models": { "enabled": true }
+      }
+    }
+  }
+}

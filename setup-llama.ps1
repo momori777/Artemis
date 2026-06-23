@@ -17,7 +17,7 @@
 param(
     [string]$ModelPath = "",
     [int]$ContextSize = 120000,
-    [string]$ApiKey = "llama-key-change-me",
+    [string]$ApiKey = "",
     [int]$Port = 8080,
     [switch]$BuildLlama,
     [switch]$DryRun,
@@ -234,8 +234,7 @@ $llamaArgs = @(
     '-ngl', $ngl.ToString(),
     '--batch-size', $batchSize.ToString(),
     '--ubatch-size', $ubatch.ToString(),
-    '--threads', $threads.ToString(),
-    '--api-key', "`"$ApiKey`"",
+    '--threads', $threads.ToString()$ApiKey`"",
     '-rea', 'off',
     '--jinja',
     '--cache-ram', '2048',

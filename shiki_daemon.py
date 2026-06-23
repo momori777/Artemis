@@ -87,7 +87,7 @@ def start_llama():
         "-ctk", "q8_0", "-ctv", "q8_0",
         "-ngl", "41", "--cpu-moe",
         "--batch-size", "2048", "--ubatch-size", "1024",
-        "--threads", "24", "--api-key", "123456",
+        "--threads", "24",
         "-rea", "off", "--jinja", "--cache-ram", "3000",
         "--parallel", "1", "--kv-unified", "--no-mmap",
         "--port", str(LLAMA_PORT), "--timeout", "600",
@@ -429,6 +429,22 @@ def _load_harem_characters():
     return characters
 
 
+def _resolve_provider_for_model(model_id):
+    """Given a model id like 'deepseek/deepseek-v4-flash', return the provider config from openclaw.json."""
+    cfg_path = os.path.join(os.path.expanduser("~"), ".openclaw", "openclaw.json")
+    if not os.path.isfile(cfg_path):
+        return None
+    try:
+        with open(cfg_path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        providers = cfg.get("models", {}).get("providers", {})
+        parts = model_id.split("/", 1)
+        provider_name = parts[0]
+        return providers.get(provider_name)
+    except Exception:
+        return None
+
+
 class DashboardHandler(BaseHTTPRequestHandler):
     def log_message(self, *args): pass
 
@@ -438,6 +454,37 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/characters":
             chars = _load_harem_characters()
             self.send_json(chars)
+            return
+
+        if path == "/api/gateway-config":
+            # Expose Gateway URL and token for webchat (localhost only)
+            import json as _json
+            cfg_path = os.path.join(os.path.dirname(os.path.expanduser("~")), ".openclaw", "openclaw.json")
+            if not os.path.isfile(cfg_path):
+                cfg_path = os.path.join(os.path.expanduser("~"), ".openclaw", "openclaw.json")
+            gw_config = {"baseUrl": "http://localhost:18789", "token": "", "models": []}
+            if os.path.isfile(cfg_path):
+                try:
+                    with open(cfg_path, "r", encoding="utf-8") as f:
+                        cfg = _json.load(f)
+                    gw_config["token"] = cfg.get("gateway", {}).get("auth", {}).get("token", "")
+                    # Extract model aliases
+                    aliases = cfg.get("agents", {}).get("defaults", {}).get("models", {})
+                    providers = cfg.get("models", {}).get("providers", {})
+                    model_list = []
+                    for key, meta in aliases.items():
+                        name = meta.get("alias", key) if isinstance(meta, dict) else str(meta)
+                        model_list.append({"id": key, "name": name})
+                    if not model_list:
+                        # Fallback: use provider models
+                        for pid, pdata in providers.items():
+                            for m in pdata.get("models", []):
+                                mid = pid + "/" + m["id"]
+                                model_list.append({"id": mid, "name": m.get("name", mid)})
+                    gw_config["models"] = model_list
+                except Exception:
+                    pass
+            self.send_json(gw_config)
             return
 
         if path == "/api/status":
@@ -481,6 +528,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
+
+        if path == "/api/chat":
+            self._handle_chat_proxy()
+            return
+
         cl = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(cl).decode("utf-8") if cl else "{}"
         try:
@@ -508,9 +560,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
         else:
             self.send_error(404)
 
-    def send_json(self, data):
+    def send_json(self, data, status=200):
         body = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
-        self.send_response(200)
+        self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Content-Length", str(len(body)))
@@ -529,6 +581,96 @@ class DashboardHandler(BaseHTTPRequestHandler):
 # ================================================================
 # Tray App (Windows)
 # ================================================================
+# ================================================================
+# Tray App (Windows)
+# ================================================================
+
+    def _handle_chat_proxy(self):
+        body_len = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(body_len)
+        try:
+            req_data = json.loads(body)
+        except Exception:
+            self.send_json({"error": "Invalid JSON"}, 400)
+            return
+
+        # Run the upstream request in a background thread so this handler
+        # can stream the response without blocking the whole server loop.
+        from threading import Thread, Event
+
+        model_id = req_data.get("model", "local/qwen3.6-35b")
+        messages = req_data.get("messages", [])
+        stream = req_data.get("stream", False)
+        max_tokens = req_data.get("max_tokens", 4096)
+
+        # Local llama: skip provider lookup, use hardcoded endpoint
+        if model_id.startswith("local/"):
+            api_key = ""
+            auth_header = ""  # no auth needed (--api-key breaks llama-server)
+            base_url = "http://127.0.0.1:8080/v1"
+            # llama.cpp server's model name is the full gguf filename
+            backend_model = "Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf"
+        else:
+            provider_cfg = _resolve_provider_for_model(model_id)
+            if not provider_cfg:
+                self.send_json({"error": f"Unknown model: {model_id}"}, 400)
+                return
+            api_key = provider_cfg.get("apiKey", "")
+            auth_header = "***" + api_key
+            base_url = provider_cfg.get("baseUrl", "").rstrip("/")
+            backend_model = model_id.split("/")[-1]
+
+        endpoint = base_url + "/chat/completions"
+        payload = {"model": backend_model, "messages": messages, "stream": stream, "max_tokens": max_tokens}
+
+        error_evt = Event()
+        error_msg = [None]
+
+        def upstream():
+            try:
+                import urllib.request, urllib.error
+                data = json.dumps(payload).encode("utf-8")
+                req = urllib.request.Request(endpoint, data=data,
+                    headers=({"Authorization": auth_header, "Content-Type": "application/json"} if auth_header else {"Content-Type": "application/json"}))
+                resp = urllib.request.urlopen(req, timeout=120)
+                return resp, None
+            except Exception as e:
+                error_msg[0] = str(e)
+                error_evt.set()
+                return None, e
+
+        # Send response headers now (we'll stream as data arrives)
+        try:
+            import urllib.request
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(endpoint, data=data,
+                headers=({"Authorization": auth_header, "Content-Type": "application/json"} if auth_header else {"Content-Type": "application/json"}))
+        except Exception as e:
+            self.send_json({"error": str(e)}, 502)
+            return
+
+        # Open upstream in the same thread. If it hangs for > 120 s the
+        # client will time out (Python HTTP server will not kill the
+        # upstream, but urllib timeout handles it).
+        try:
+            resp = urllib.request.urlopen(req, timeout=120)
+            if stream:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream")
+                self.send_header("Cache-Control", "no-cache")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                for line_bytes in resp:
+                    line = line_bytes.decode("utf-8", errors="replace")
+                    self.wfile.write((line.rstrip("\n") + "\n").encode("utf-8"))
+                    self.wfile.flush()
+                self.wfile.write(b"data: [DONE]\n\n")
+                self.wfile.flush()
+            else:
+                self.send_json(json.loads(resp.read()))
+        except Exception as e:
+            self.send_json({"error": str(e)}, 502)
+
 import pystray
 from PIL import Image, ImageDraw
 
