@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
-<link rel="stylesheet" href="styles/main.css?v=2">
-<link rel="stylesheet" href="styles/polish.css?v=2">
+<link rel="stylesheet" href="styles/main.css?v=14">
+<link rel="stylesheet" href="styles/polish.css?v=14">
 </head>
 <body>
 
@@ -37,6 +37,11 @@
           <div id="char-dropdown-list"></div>
         </div>
       </div>
+
+      <button class="btn-import-char" id="btn-import-char" title="Import character card (.png/.json)">
+        <i class="ph ph-plus-circle"></i>
+      </button>
+      <input type="file" id="import-char-file" accept=".png,.json" style="display:none">
 
       <div class="status-row">
         <span class="status-label" id="status-label">Checking...</span>
@@ -164,7 +169,7 @@
               </div>
 
               <div class="studio-row">
-                <div class="studio-field" style="flex:1">
+                <div class="studio-field studio-field-fill">
                   <label class="studio-label">Language</label>
                   <select id="tts-lang" class="studio-select">
                     <option value="ja">Japanese</option>
@@ -172,7 +177,7 @@
                     <option value="en">English</option>
                   </select>
                 </div>
-                <div class="studio-field" style="flex:1">
+                <div class="studio-field studio-field-fill">
                   <label class="studio-label">Mood</label>
                   <select id="tts-mood" class="studio-select">
                     <option value="casual">Casual</option>
@@ -181,7 +186,7 @@
                     <option value="random">Random</option>
                   </select>
                 </div>
-                <div class="studio-field" style="flex:1">
+                <div class="studio-field studio-field-fill">
                   <label class="studio-label">Character</label>
                   <select id="tts-character" class="studio-select">
                     <option value="natsume">Natsume</option>
@@ -198,7 +203,7 @@
                 </button>
               </div>
 
-              <div class="studio-progress" id="tts-progress" style="display:none">
+              <div class="studio-progress" id="tts-progress" hidden>
                 <div class="progress-bar-track">
                   <div class="progress-bar-fill" id="tts-progress-fill"></div>
                 </div>
@@ -208,8 +213,8 @@
 
             <div class="studio-right">
               <div class="studio-preview-box" id="tts-preview">
-                <i class="ph ph-microphone" style="font-size:32px;color:var(--text-muted)"></i>
-                <p style="margin-top:12px;color:var(--text-muted);font-size:13px">Audio preview will appear here</p>
+                <i class="ph ph-microphone preview-placeholder-icon"></i>
+                <p class="preview-placeholder-text">Audio preview will appear here</p>
               </div>
             </div>
           </div>
@@ -230,26 +235,26 @@
               </div>
 
               <div class="studio-row">
-                <div class="studio-field" style="flex:1">
+                <div class="studio-field studio-field-fill">
                   <label class="studio-label">Width</label>
                   <input type="number" id="comfy-width" class="studio-input" value="1200" min="256" max="2048" step="64">
                 </div>
-                <div class="studio-field" style="flex:1">
+                <div class="studio-field studio-field-fill">
                   <label class="studio-label">Height</label>
                   <input type="number" id="comfy-height" class="studio-input" value="1500" min="256" max="2048" step="64">
                 </div>
-                <div class="studio-field" style="flex:1">
+                <div class="studio-field studio-field-fill">
                   <label class="studio-label">Steps</label>
                   <input type="number" id="comfy-steps" class="studio-input" value="30" min="5" max="100">
                 </div>
-                <div class="studio-field" style="flex:1">
+                <div class="studio-field studio-field-fill">
                   <label class="studio-label">CFG</label>
                   <input type="number" id="comfy-cfg" class="studio-input" value="6.0" min="1" max="20" step="0.5">
                 </div>
               </div>
 
               <div class="studio-row">
-                <div class="studio-field" style="flex:1">
+                <div class="studio-field studio-field-fill">
                   <label class="studio-label">Checkpoint</label>
                   <select id="comfy-ckpt" class="studio-select">
                     <option value="WAI-Nsfw-Illustrious-17.safetensors">WAI-Nsfw-Illustrious-17</option>
@@ -269,7 +274,7 @@
                 </button>
               </div>
 
-              <div class="studio-progress" id="comfy-progress" style="display:none">
+              <div class="studio-progress" id="comfy-progress" hidden>
                 <div class="progress-bar-track">
                   <div class="progress-bar-fill" id="comfy-progress-fill"></div>
                 </div>
@@ -279,18 +284,18 @@
 
             <div class="studio-right">
               <div class="studio-preview-box" id="comfy-preview">
-                <i class="ph ph-image" style="font-size:32px;color:var(--text-muted)"></i>
-                <p style="margin-top:12px;color:var(--text-muted);font-size:13px">Image preview will appear here</p>
+                <i class="ph ph-image preview-placeholder-icon"></i>
+                <p class="preview-placeholder-text">Image preview will appear here</p>
               </div>
             </div>
           </div>
         </div>
         <!-- ===== Dashboard Panel ===== -->
         <div id="stab-dashboard" class="stab-panel">
-          <div class="studio-grid" style="grid-template-columns:1fr">
-            <div class="studio-left" style="max-width:600px;margin:0 auto;width:100%">
+          <div class="studio-grid studio-grid-dash">
+            <div class="studio-left studio-left-dash">
               <div class="dashboard-services" id="dash-services"></div>
-              <div class="studio-actions" style="margin-top:16px">
+              <div class="studio-actions studio-actions-dash">
                 <button class="btn-primary" id="btn-dash-start">
                   <i class="ph ph-play"></i> Start All Services
                 </button>
@@ -299,8 +304,8 @@
                 </button>
               </div>
               <div class="dash-log" id="dash-log"></div>
-              <div class="dash-link" style="margin-top:16px;text-align:center">
-                <a href="#" id="dash-open-webchat" style="color:var(--accent);font-size:13px;text-decoration:none">
+              <div class="dash-link">
+                <a href="#" id="dash-open-webchat" class="dash-link-a">
                   Open Web Chat
                 </a>
               </div>
@@ -329,8 +334,10 @@
     </div>
 
     <div class="settings-group">
-      <div class="settings-label">Model</div>
-      <input class="settings-input" id="setting-model" value="local-model">
+      <div class="settings-label">Model <button class="settings-refresh-btn" id="settings-refresh-models" title="Refresh models from Gateway"><i class="ph ph-arrows-clockwise"></i></button></div>
+      <select class="settings-input settings-select" id="setting-model-select">
+        <option value="">Loading models...</option>
+      </select>
     </div>
 
     <div class="settings-group">
@@ -352,12 +359,12 @@
 
 </div>
 
-<script src="scripts/chars.js?v=3"></script>
+<script src="scripts/chars.js?v=14"></script>
 <script>window.addEventListener('error',function(e){document.title='JS ERR: '+e.message;console.error(e);});</script>
-<script src="scripts/store.js?v=3"></script>
-<script src="scripts/api.js?v=3"></script>
-<script src="scripts/importer.js?v=3"></script>
-<script src="scripts/ui.js?v=3"></script>
-<script src="scripts/studio.js?v=3"></script>
+<script src="scripts/store.js?v=14"></script>
+<script src="scripts/api.js?v=14"></script>
+<script src="scripts/importer.js?v=14"></script>
+<script src="scripts/ui.js?v=14"></script>
+<script src="scripts/studio.js?v=14"></script>
 </body>
 </html>

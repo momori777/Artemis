@@ -21,7 +21,6 @@ set -euo pipefail
 # ============================================================================
 MODEL_PATH=""
 CONTEXT_SIZE=120000
-API_KEY="llama-key-change-me"
 PORT=8080
 BUILD_LLAMA=false
 DRY_RUN=false
@@ -30,7 +29,6 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --model) MODEL_PATH="$2"; shift 2 ;;
         --context) CONTEXT_SIZE="$2"; shift 2 ;;
-        --api-key) API_KEY="$2"; shift 2 ;;
         --port) PORT="$2"; shift 2 ;;
         --build) BUILD_LLAMA=true; shift ;;
         --dry-run) DRY_RUN=true; shift ;;

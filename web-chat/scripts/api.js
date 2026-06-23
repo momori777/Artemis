@@ -1,50 +1,74 @@
 // ============================================================
-// api.js - OpenClaw Gateway API client (SSE streaming)
+// api.js - Chat API client. Routes through daemon /api/chat proxy.
+// Daemon reads openclaw.json providers and forwards to DeepSeek/Grok.
 // ============================================================
 
-const ApiClient = {
-  base: '',
+var ApiClient = {
+  base: 'http://localhost:19260',
+  _modelsCache: null,
+  _modelsPromise: null,
 
-  init(apiBase) {
-    this.base = apiBase || '';
+  init: function (apiBase) {
+    this.base = apiBase || 'http://localhost:19260';
+  },
+
+  fetchModels: function () {
+    var self = this;
+    // Get models from daemon's gateway-config
+    return fetch('http://localhost:19260/api/gateway-config', {
+      signal: AbortSignal.timeout(5000),
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error('Daemon returned ' + r.status);
+        return r.json();
+      })
+      .then(function (cfg) {
+        var models = (cfg.models || []).map(function (m) {
+          return { id: m.id, name: m.name };
+        });
+        if (models.length === 0) {
+          models = [{ id: 'local/qwen3.6-35b', name: 'Local (Llama)' }];
+        }
+        self._modelsCache = models;
+        return models;
+      })
+      .catch(function () {
+        return [{ id: 'local/qwen3.6-35b', name: 'Local (Llama)' }];
+      });
   },
 
   /**
-   * Stream chat completion via SSE
-   * Returns { text: string, media: string|null }
+   * Stream chat via daemon proxy.
    */
-  async chatStream(messages, settings = {}, onToken, onComplete, onError) {
-    const base = settings.apiBase || this.base || '';
-    const endpoint = base + '/api/v1/chat/completions';
-    const model = settings.model || 'local-model';
-
+  chatStream: async function (messages, settings, onToken, onComplete, onError) {
+    var model = settings.model || 'local/qwen3.6-35b';
     try {
-      const res = await fetch(endpoint, {
+      var res = await fetch('http://localhost:19260/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model,
-          messages,
+          model: model,
+          messages: messages,
           stream: true,
           max_tokens: 4096,
         }),
-        signal: AbortSignal.timeout(60000),
+        signal: AbortSignal.timeout(180000),
       });
 
       if (!res.ok) {
-        throw new Error(`API ${res.status}: ${res.statusText}`);
+        var errText = '';
+        try { var ej = await res.json(); errText = ej.error || res.statusText; } catch (_) {}
+        throw new Error('API ' + res.status + ': ' + errText);
       }
 
-      // Check if SSE or plain JSON
-      const contentType = res.headers.get('content-type') || '';
+      var contentType = res.headers.get('content-type') || '';
       if (contentType.includes('text/event-stream')) {
         await this._readSSE(res, onToken, onComplete, onError);
       } else {
-        // Fallback to non-streaming parse
-        const data = await res.json();
-        const text = data.choices?.[0]?.message?.content || '';
+        var data = await res.json();
+        var text = data.choices?.[0]?.message?.content || '';
         onToken(text);
-        onComplete({ text, media: null });
+        onComplete({ text: text, media: null });
       }
     } catch (err) {
       if (onError) onError(err);
@@ -52,51 +76,48 @@ const ApiClient = {
     }
   },
 
-  async _readSSE(response, onToken, onComplete, onError) {
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder('utf-8');
-    let fullText = '';
-    let buffer = '';
+  _readSSE: async function (response, onToken, onComplete, onError) {
+    var reader = response.body.getReader();
+    var decoder = new TextDecoder('utf-8');
+    var fullText = '';
+    var buffer = '';
 
     try {
       while (true) {
-        const { done, value } = await reader.read();
+        var _a = await reader.read(),
+          done = _a.done,
+          value = _a.value;
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
+        var lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
-        for (const line of lines) {
-          const trimmed = line.trim();
+        for (var i = 0; i < lines.length; i++) {
+          var trimmed = lines[i].trim();
           if (!trimmed || trimmed.startsWith(':')) continue;
 
           if (trimmed.startsWith('data: ')) {
-            const data = trimmed.slice(6);
-            if (data === '[DONE]') {
+            var raw = trimmed.slice(6);
+            if (raw === '[DONE]') {
               onComplete({ text: fullText, media: null });
               return;
             }
-
             try {
-              const json = JSON.parse(data);
-              const delta = json.choices?.[0]?.delta?.content;
+              var json = JSON.parse(raw);
+              var delta = json.choices?.[0]?.delta?.content;
               if (delta) {
                 fullText += delta;
                 onToken(delta);
               }
-              // Check for finish_reason
               if (json.choices?.[0]?.finish_reason) {
                 onComplete({ text: fullText, media: null });
                 return;
               }
-            } catch {
-              // skip malformed chunks
-            }
+            } catch (_) {}
           }
         }
       }
-      // stream ended without [DONE]
       onComplete({ text: fullText, media: null });
     } catch (err) {
       if (onError) onError(err);
@@ -105,17 +126,33 @@ const ApiClient = {
     }
   },
 
-  /**
-   * Check if Gateway is online
-   */
-  async checkStatus() {
-    try {
-      const res = await fetch((this.base || '') + '/api/v1/models', {
-        signal: AbortSignal.timeout(3000),
+  nonStreamChat: function (messages, settings) {
+    var model = settings.model || 'local/qwen3.6-35b';
+    return fetch('http://localhost:19260/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: model,
+        messages: messages,
+        stream: false,
+        max_tokens: 4096,
+      }),
+      signal: AbortSignal.timeout(180000),
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error('API ' + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        return data.choices?.[0]?.message?.content || '';
       });
-      return res.ok;
-    } catch {
-      return false;
-    }
+  },
+
+  checkStatus: function () {
+    return fetch('http://localhost:19260/api/status', {
+      signal: AbortSignal.timeout(3000),
+    })
+      .then(function (r) { return r.ok; })
+      .catch(function () { return false; });
   },
 };
