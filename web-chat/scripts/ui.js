@@ -68,6 +68,20 @@ var UI = {
 
     // Skill buttons
     document.getElementById('btn-live2d').addEventListener('click', function() { showToast('Live2D - action triggered'); });
+    document.getElementById('btn-auto-paint').addEventListener('click', function() { self.autoPaint(); });
+
+    // Llama management toggle in chat input area
+    var llamaToggleLabel = document.getElementById('toggle-chat-llama-label');
+    var llamaToggleCheck = document.getElementById('chat-manage-llama');
+    var llamaToggleSwitch = document.getElementById('toggle-chat-llama-switch');
+    llamaToggleLabel.addEventListener('click', function() {
+      llamaToggleCheck.checked = !llamaToggleCheck.checked;
+      if (llamaToggleCheck.checked) {
+        llamaToggleSwitch.classList.add('on');
+      } else {
+        llamaToggleSwitch.classList.remove('on');
+      }
+    });
 
     // New chat button in sessions list
     document.getElementById('btn-new-chat').addEventListener('click', function() { self.createSession(); });
@@ -406,6 +420,10 @@ var UI = {
 
   // ---- Streaming ----
   createStreamBubble: function() {
+    // Remove any stale stream-bubble from previous reply
+    var old = document.getElementById('stream-bubble');
+    if (old) { old.removeAttribute('id'); old.querySelector('#stream-bubble-text')?.removeAttribute('id'); }
+
     var row = document.createElement('div');
     row.className = 'msg-row char';
     row.id = 'stream-bubble';
@@ -461,6 +479,7 @@ var UI = {
     this.$sendBtn.disabled = true;
 
     var settings = getSettings();
+    settings.characterId = self.state.currentCharId || 'natsume';
 
     // Always try API (daemon proxy). Fallback if it fails.
     if (settings.streamEnabled !== false) {
@@ -520,6 +539,130 @@ var UI = {
     var charMsg = { role: 'assistant', content: reply, time: this.formatTime(new Date()) };
     this.appendMessage(charMsg);
     this.state.messages.push(charMsg);
+  },
+
+  // ---- Auto Paint (AI-driven image generation from chat context) ----
+  autoPaint: function() {
+    var self = this;
+    if (this.state.streaming) return;
+    if (this.state.messages.length === 0) {
+      showToast('Start a conversation first so I know what to draw~');
+      return;
+    }
+
+    // Show generating indicator in chat
+    this.appendSystemMsg('🎨 Generating illustration from conversation context...');
+    this.scrollToBottom();
+
+    var charId = this.state.currentCharId || 'natsume';
+    var recentMessages = this.state.messages.slice(-10);
+
+    // Ask daemon to generate a paint prompt via LLM
+    fetch('http://localhost:19260/api/gen-prompt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        characterId: charId,
+        messages: recentMessages,
+      }),
+      signal: AbortSignal.timeout(60000),
+    })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.prompt) {
+          self.appendSystemMsg('✨ Prompt: ' + data.prompt.substring(0, 80) + '...');
+          self.scrollToBottom();
+          self._submitPaintJob(data.prompt, data.negative || 'bad quality, worst quality, blurry, distorted, lowres, bad anatomy, extra fingers, watermark, text');
+        } else {
+          self.appendSystemMsg('⚠️ Failed to generate paint prompt: ' + (data.error || 'unknown'));
+          self.scrollToBottom();
+        }
+      })
+      .catch(function(err) {
+        self.appendSystemMsg('⚠️ Paint prompt generation failed: ' + err.message);
+        self.scrollToBottom();
+      });
+  },
+
+  _submitPaintJob: function(prompt, negative) {
+    var self = this;
+    var params = {
+      positive: prompt,
+      negative: negative || 'bad quality, worst quality, blurry, distorted, lowres, bad anatomy, extra fingers, watermark, text',
+      width: 1200,
+      height: 1500,
+      steps: 30,
+      cfg: 6.0,
+      checkpoint: 'WAI-Nsfw-Illustrious-17.safetensors',
+      manage_llama: document.getElementById('chat-manage-llama').checked,
+    };
+
+    var bridgeUrl = getSettings().bridgeUrl || 'http://localhost:19250';
+
+    fetch(bridgeUrl + '/api/comfyui', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+      signal: AbortSignal.timeout(5000),
+    })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.job_id) {
+          self.appendSystemMsg('🖼️ Image generation started... (job: ' + data.job_id.substring(0, 8) + ')');
+          self.scrollToBottom();
+          self._pollAutoPaint(data.job_id);
+        } else {
+          self.appendSystemMsg('⚠️ Failed to start image generation: ' + (data.error || 'unknown'));
+          self.scrollToBottom();
+        }
+      })
+      .catch(function(err) {
+        self.appendSystemMsg('⚠️ Image generation failed: ' + err.message);
+        self.scrollToBottom();
+      });
+  },
+
+  _pollAutoPaint: function(jobId) {
+    var self = this;
+    var bridgeUrl = getSettings().bridgeUrl || 'http://localhost:19250';
+    var attempt = 0;
+    var maxAttempts = 180;
+
+    var interval = setInterval(function() {
+      attempt++;
+      fetch(bridgeUrl + '/api/jobs/' + jobId, { signal: AbortSignal.timeout(3000) })
+        .then(function(res) { return res.json(); })
+        .then(function(job) {
+          if (job.status === 'done') {
+            clearInterval(interval);
+            // Show image in chat
+            var imgSrc = self._resolveMediaPath(job.path);
+            var imgHtml = '<br><img src="' + imgSrc + '" alt="Generated" loading="lazy">';
+            var el = document.createElement('div');
+            el.className = 'msg-system paint-done';
+            el.innerHTML = '🖼️ Done! (' + Math.round(job.elapsed || 0) + 's)' + imgHtml;
+            self.$messages.appendChild(el);
+            self.scrollToBottom();
+          } else if (job.status === 'failed') {
+            clearInterval(interval);
+            self.appendSystemMsg('💔 Image generation failed: ' + (job.error || 'unknown'));
+            self.scrollToBottom();
+          }
+        })
+        .catch(function() {});
+
+      if (attempt >= maxAttempts) {
+        clearInterval(interval);
+        self.appendSystemMsg('⏰ Image generation timed out');
+        self.scrollToBottom();
+      }
+    }, 3000);
+  },
+
+  _resolveMediaPath: function(path) {
+    // Proxy local files through daemon: /api/media/<encoded-absolute-path>
+    if (!path) return '';
+    return 'http://localhost:19260/api/media/' + encodeURIComponent(path);
   },
 
   // ---- History ----
