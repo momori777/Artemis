@@ -47,6 +47,7 @@ SERVICES = [
 ]
 
 AUTO_START = "--no-auto-start" not in sys.argv
+NO_LLAMA = "--no-llama" in sys.argv
 
 # ---- Helpers ----
 
@@ -73,6 +74,8 @@ def kill_process(name):
     except: pass
 
 def start_llama():
+    if NO_LLAMA:
+        return "skipped (--no-llama)"
     if is_port_open(LLAMA_PORT):
         return "already running"
     kill_process("llama-server.exe")
@@ -223,6 +226,9 @@ class ShikiDaemon:
         for svc in SERVICES:
             if not svc["enabled"]: continue
             name = svc["name"]
+            if NO_LLAMA and name == "llama-server":
+                results[name] = "skipped (--no-llama)"
+                continue
             print(f"[daemon] Starting {name}...")
             fn = SERVICE_STARTERS.get(name)
             if fn:

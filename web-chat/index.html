@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
-<link rel="stylesheet" href="styles/main.css">
-<link rel="stylesheet" href="styles/polish.css">
+<link rel="stylesheet" href="styles/main.css?v=2">
+<link rel="stylesheet" href="styles/polish.css?v=2">
 </head>
 <body>
 
@@ -352,10 +352,12 @@
 
 </div>
 
-<script src="scripts/chars.js"></script>
-<script src="scripts/store.js"></script>
-<script src="scripts/api.js"></script>
-<script src="scripts/ui.js"></script>
-<script src="scripts/studio.js"></script>
+<script src="scripts/chars.js?v=3"></script>
+<script>window.addEventListener('error',function(e){document.title='JS ERR: '+e.message;console.error(e);});</script>
+<script src="scripts/store.js?v=3"></script>
+<script src="scripts/api.js?v=3"></script>
+<script src="scripts/importer.js?v=3"></script>
+<script src="scripts/ui.js?v=3"></script>
+<script src="scripts/studio.js?v=3"></script>
 </body>
 </html>
