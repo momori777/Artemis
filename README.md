@@ -93,9 +93,22 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 
 > 👆 **Artemis Studio - ComfyUI Workshop**: Visual AI image generation console - freely choose character/outfit/scene/art style, one-click generation. **Runs in parallel with llama** (12GB+ VRAM).
 
-![Front end](media/webchat-demo.gif)
+### 🌐 Web Chat Frontend
 
-> front end coming!!!!! all plugins no stop,even 8GB VRAM,I have tested,can run well,tts, comfyui,and llama!!! even 8GB VRAM!
+![Web Chat Demo](media/webchat-demo.gif)
+
+> 👆 **Web Chat**: browser-based chat interface at `http://127.0.0.1:19270` — an alternative to QQ/Telegram bots. Connects directly to local daemon proxy → llama.cpp server.
+
+| Feature | Description |
+|-|-|
+| 🎭 **Dynamic Characters** | Auto-loads from `skills/harem/`, displays persona + tags + greeting per character |
+| 🔄 **Character Hot-Swap** | One-click switch from sidebar dropdown, memories and chat context preserved per character |
+| 🃏 **Card Import** | Drag-drop or select SillyTavern PNG/JSON character cards, auto-parses metadata and persona |
+| 🤖 **Model Selector** | Choose local llama / DeepSeek / Grok from Settings dropdown, routes through daemon proxy |
+| 💬 **Real LLM Chat** | Streaming replies via daemon `/api/chat` → llama.cpp `/v1/chat/completions`, no fake fallbacks |
+| 📱 **Responsive** | Mobile sidebar collapse, adaptive bubble layout, works on desktop and tablet |
+| 💾 **Local Storage** | Multi-session chat history, settings, and character state persisted in browser localStorage |
+| 🎛️ **Artemis Studio** | Built-in TTS + ComfyUI placeholder panel (voice/image generation controlled via agent subprocesses) |
 
 ## Hardware
 

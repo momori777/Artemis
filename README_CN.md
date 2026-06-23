@@ -93,9 +93,20 @@
 
 > 👆 **Artemis Studio - ComfyUI 工坊**：可视化的 AI 画图控制台，自由选择角色/服装/场景/画风，一键生成。**也无需停 llama**（12GB+ 显存下并行运行）。
 
-![Front end](media/webchat-demo.gif)
+![Web Chat 演示](media/webchat-demo.gif)
 
-> 前端来了！！！！创意工坊已经内嵌，所有东西都不停，tts,comfyui,llama,我自己试过了，8G显存也能正常运行！！！！
+> 👆 **Web Chat**：浏览器端聊天界面，访问 `http://127.0.0.1:19270` — QQ/Telegram Bot 的替代方案。直接连接本地守护进程代理 → llama.cpp 服务器。
+
+| 功能 | 说明 |
+|-|-|
+| 🎭 **动态角色加载** | 从 `skills/harem/` 自动扫描，展示每个角色的人设 + 标签 + 问候语 |
+| 🔄 **角色热切换** | 侧边栏下拉菜单一键切换，记忆和聊天上下文按角色隔离 |
+| 🃏 **角色卡导入** | 拖拽或选择 SillyTavern PNG/JSON 角色卡，自动解析元数据和人设 |
+| 🤖 **模型选择器** | 在设置中切换本地 llama / DeepSeek / Grok，通过守护进程代理路由 |
+| 💬 **真实 LLM 聊天** | 流式回复通过守护进程 `/api/chat` → llama.cpp `/v1/chat/completions`，无 fake 回复 |
+| 📱 **响应式设计** | 移动端侧边栏折叠，自适应气泡布局，兼容桌面和平板 |
+| 💾 **本地存储** | 多会话聊天历史、设置和角色状态持久化在浏览器 localStorage |
+| 🎛️ **Artemis Studio** | 内嵌 TTS + ComfyUI 占位面板（语音/图片生成由 agent 子进程控制） |
 
 ## 硬件配置
 
