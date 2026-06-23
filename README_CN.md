@@ -75,7 +75,7 @@
 
 ![Web Chat 演示](media/webchat-demo.gif)
 
-> 👆 **Web Chat**：浏览器端聊天界面，访问 `http://127.0.0.1:19270` — QQ/Telegram Bot 的替代方案。直接连接本地守护进程代理 → llama.cpp 服务器。什么服务都不停！！！！
+> 👆 **Web Chat**：浏览器端聊天界面，访问 `http://127.0.0.1:19270` — QQ/Telegram Bot 的替代方案。直接连接本地守护进程代理 → llama.cpp 服务器。什么服务都不停！！！！8g显存也能正常全量跑！！！
 
 ### 🎙️ TTS 语音工坊
 
