@@ -150,6 +150,21 @@ var Studio = {
       self.comfyGenerate();
     });
 
+    // Llama management toggle in ComfyUI panel
+    var llamaToggleLabel1 = document.getElementById('toggle-llama-manage-label');
+    var llamaToggleCheck1 = document.getElementById('comfy-manage-llama');
+    var llamaToggleSwitch1 = document.getElementById('toggle-llama-manage-switch');
+    if (llamaToggleLabel1 && llamaToggleCheck1 && llamaToggleSwitch1) {
+      llamaToggleLabel1.addEventListener('click', function() {
+        llamaToggleCheck1.checked = !llamaToggleCheck1.checked;
+        if (llamaToggleCheck1.checked) {
+          llamaToggleSwitch1.classList.add('on');
+        } else {
+          llamaToggleSwitch1.classList.remove('on');
+        }
+      });
+    }
+
     // Quick presets
     this.loadComfyPresets();
   },
@@ -187,6 +202,7 @@ var Studio = {
       steps: parseInt(document.getElementById('comfy-steps').value) || 30,
       cfg: parseFloat(document.getElementById('comfy-cfg').value) || 6.0,
       checkpoint: document.getElementById('comfy-ckpt').value,
+      manage_llama: document.getElementById('comfy-manage-llama').checked,
     };
 
     var btn = document.getElementById('btn-comfy-generate');
@@ -416,13 +432,18 @@ var Studio = {
       list.innerHTML = services.map(function(s) {
         var cls = s.online ? 'online' : 'offline';
         var icon = s.online ? 'ph ph-check-circle' : 'ph ph-circle';
+        var btns = '';
+        if (s.online) {
+          btns = '<button class="dash-service-action" title="Stop" onclick="Studio.stopDaemonService(\'' + s.name + '\')"><i class="ph ph-stop-circle"></i></button>';
+          btns += '<button class="dash-service-action" title="Restart" onclick="Studio.restartDaemonService(\'' + s.name + '\')"><i class="ph ph-arrows-clockwise"></i></button>';
+        } else {
+          btns = '<button class="dash-service-action" title="Start" onclick="Studio.startDaemonService(\'' + s.name + '\')"><i class="ph ph-play-circle"></i></button>';
+        }
         return '<div class="dash-service-row">' +
           '<i class="dash-service-status ' + cls + ' ' + icon + '"></i>' +
           '<span class="dash-service-name">' + s.name + '</span>' +
           '<span class="dash-service-port">:' + s.port + '</span>' +
-          '<button class="dash-service-action" title="Restart" onclick="Studio.restartDaemonService(\'' + s.name + '\')">' +
-            '<i class="ph ph-arrows-clockwise"></i>' +
-          '</button>' +
+          btns +
         '</div>';
       }).join('');
     };
@@ -444,6 +465,46 @@ var Studio = {
       .then(function(r) { return r.json(); })
       .then(function(data) {
         log.textContent = name + ': ' + (data.result || 'ok');
+        setTimeout(function() { self.refreshDashboard(); }, 2000);
+      })
+      .catch(function(err) {
+        log.textContent = 'Error: ' + err.message;
+      });
+  },
+
+  stopDaemonService: function(name) {
+    var self = this;
+    var log = document.getElementById('dash-log');
+    log.textContent = 'Stopping ' + name + '...';
+    fetch(this.dashboardUrl + '/api/stop-service', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name }),
+      signal: AbortSignal.timeout(10000),
+    })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        log.textContent = name + ': ' + (data.result || data.error || 'done');
+        setTimeout(function() { self.refreshDashboard(); }, 2000);
+      })
+      .catch(function(err) {
+        log.textContent = 'Error: ' + err.message;
+      });
+  },
+
+  startDaemonService: function(name) {
+    var self = this;
+    var log = document.getElementById('dash-log');
+    log.textContent = 'Starting ' + name + '...';
+    fetch(this.dashboardUrl + '/api/start-service', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name }),
+      signal: AbortSignal.timeout(120000),
+    })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        log.textContent = name + ': ' + (data.result || data.error || 'done');
         setTimeout(function() { self.refreshDashboard(); }, 2000);
       })
       .catch(function(err) {

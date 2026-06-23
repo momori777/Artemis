@@ -466,12 +466,13 @@ powershell -File start.ps1
 
 启动顺序：
 ```
-[1/6] llama-server        (8080, Qwen3.6-35B, ngl=41)
-[2/6] Embedding Server    (9999, all-MiniLM + BGE 双模型, CPU, ~100MB 内存)
-[3/6] VRAM 分档检测       (自动判断 TTS/ComfyUI 是否停 llama)
-[4/6] Live2D Bridge       (19200, pixi-live2d-display)
-[5/6] OpenClaw Gateway    (18789)
-[6/6] llama-watchdog      （崩溃自动重启）
+[1/7] llama-server        (8080, Qwen3.6-35B, ngl=41)
+[2/7] Embedding Server    (9999, all-MiniLM + BGE 双模型, CPU, ~100MB 内存)
+[3/7] VRAM 分档检测       (自动判断 TTS/ComfyUI 是否停 llama)
+[4/7] Live2D Bridge       (19200, pixi-live2d-display)
+[5/7] OpenClaw Gateway    (18789)
+[6/7] llama-watchdog      （崩溃自动重启）
+[7/7] Web Chat Daemon     (19260 API + 19270 webchat, --no-llama)
 ```
 
 **关闭：`shiki.cmd -Stop`** - 优雅关闭所有服务（llama → live2d → sakura → embedding → comfyui → gateway → cleanup）。
@@ -563,10 +564,29 @@ schtasks /create /tn "cleanup-orphans" `
 
 > 召回优先级：向量长期记忆 > 手写日记 > SOUL 基础人设
 
+### WebChat — 内置浏览器客户端
+
+由 shiki daemon 驱动的完整网页 AI 女友聊天界面，本地运行在 `http://127.0.0.1:19270`。
+
+| 功能 | 说明 |
+|-|-|
+| **多角色标签页** | 在四季夏目、亚托莉、夜乃桜之间自由切换 — 每人独立对话历史、SOUL.md 人设和长期记忆 |
+| **流式对话** | 实时 token 流式输出，自动注入角色专属 system prompt（角色人格 + 用户档案） |
+| **AI 画图** 🎨 | 聊天输入区一键按钮 — LLM 根据对话上下文自动生成 ComfyUI 提示词，触发本地画图，图片直接显示在聊天流中 |
+| **Live2D 联动** | 直接在界面控制 Live2D 桌面宠物：摸头、戳戳、待机动画 |
+| **TTS 语音** | 将聊天文本生成角色语音回复（GPT-SoVITS） |
+| **工坊面板** | 侧边栏手动 TTS 合成和 ComfyUI 画图，支持全参数调节（提示词、负向、尺寸、步数、CFG、模型） |
+| **仪表盘** | 服务健康面板，显示 llama-server、Embedding、Live2D Bridge、Artemis Bridge、OpenClaw Gateway、WebChat 状态 — 每项独立启/停/重启 |
+| **显存管理开关** | 控制画图前是否停 llama-server 释放显存（8GB 显卡默认开启，12GB+ 可关闭保持对话不中断） |
+| **双模型支持** | 本地 llama-server 或远程 DeepSeek 模型自由切换 — 设置中修改，配置持久化 |
+
+> WebChat 直接与 shiki daemon (:19260) 通信，daemon 代理请求到 llama-server 或 OpenAI 兼容 API。角色切换即时生效 — 每个标签页加载对应角色的 SOUL.md + IDENTITY.md + USER.md 作为 system prompt。
+
 ### 技能详情
 
 | 技能 | 位置 | Llama 交互 | 备注 |
 |-|-|-|-|
+| **WebChat** | `web-chat/` | ❌ HTTP 代理 | 端口 19270, daemon 后端, 多角色 |
 | **Embedding** | `skills/shared/` | ❌ 不碰 GPU | 双模型 CPU, 端口 9999 |
 | **Live2D** | `skills/live2d/` | ❌ 仅 HTTP | 桥接 :19200, 独立进程 |
 | **TTS** | `skills/tts/` | 🔶 按 VRAM 分档 | Level 2 不杀, Level 0/1 停 llama |

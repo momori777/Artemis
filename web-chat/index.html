@@ -1,7 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AI Girlfriend</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -9,8 +12,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
-<link rel="stylesheet" href="styles/main.css?v=14">
-<link rel="stylesheet" href="styles/polish.css?v=14">
+<link rel="stylesheet" href="styles/main.css?v=18">
+<link rel="stylesheet" href="styles/polish.css?v=18">
 </head>
 <body>
 
@@ -27,7 +30,7 @@
           </div>
           <div class="char-select-text">
             <div class="char-name">
-              <span id="sidebar-char-name">四季夏目</span>
+              <span id="sidebar-char-name">鍥涘澶忕洰</span>
               <i class="ph ph-caret-down char-chevron"></i>
             </div>
             <div class="char-subtitle" id="char-subtitle-text">Shiki Natsume</div>
@@ -101,7 +104,7 @@
           <button id="mobile-sidebar-toggle" aria-label="Toggle sidebar">
             <i class="ph ph-list"></i>
           </button>
-          <span class="chat-header-name" id="char-name-text">四季夏目</span>
+          <span class="chat-header-name" id="char-name-text">鍥涘澶忕洰</span>
         </div>
         <div class="chat-header-actions">
           <button class="header-action" id="btn-search" title="Search">
@@ -130,11 +133,21 @@
       <div id="input-area">
         <div id="input-row">
           <textarea id="msg-input" placeholder="Type a message..." rows="1"></textarea>
+          <div class="input-actions">
+            <button class="input-action" id="btn-auto-paint" title="AI鐢诲浘 鈥?鏍规嵁瀵硅瘽鐢熸垚鎻掑浘">
+              <i class="ph ph-image"></i>
+            </button>
+          </div>
         </div>
         <button id="send-btn" title="Send">
           <i class="ph ph-paper-plane-right"></i>
         </button>
       </div>
+      <label class="input-llama-toggle" id="toggle-chat-llama-label" title="画图时是否停llama释放显存">
+        <span class="toggle-switch on" id="toggle-chat-llama-switch"></span>
+        <input type="checkbox" id="chat-manage-llama" checked style="display:none">
+        Stop llama for painting
+      </label>
     </div>
 
     <!-- ===== STUDIO TAB ===== -->
@@ -268,6 +281,14 @@
                 <div class="preset-row" id="comfy-presets"></div>
               </div>
 
+              <div class="studio-field" style="margin-top:2px">
+                <label class="settings-toggle" id="toggle-llama-manage-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text-muted)">
+                  <span class="toggle-switch on" id="toggle-llama-manage-switch"></span>
+                  <input type="checkbox" id="comfy-manage-llama" checked style="display:none">
+                  Stop llama-server before generating (frees VRAM, prevents OOM)
+                </label>
+              </div>
+
               <div class="studio-actions">
                 <button class="btn-primary" id="btn-comfy-generate">
                   <i class="ph ph-image"></i> Generate
@@ -359,12 +380,12 @@
 
 </div>
 
-<script src="scripts/chars.js?v=14"></script>
+<script src="scripts/chars.js?v=18"></script>
 <script>window.addEventListener('error',function(e){document.title='JS ERR: '+e.message;console.error(e);});</script>
-<script src="scripts/store.js?v=14"></script>
-<script src="scripts/api.js?v=14"></script>
-<script src="scripts/importer.js?v=14"></script>
-<script src="scripts/ui.js?v=14"></script>
-<script src="scripts/studio.js?v=14"></script>
+<script src="scripts/store.js?v=18"></script>
+<script src="scripts/api.js?v=18"></script>
+<script src="scripts/importer.js?v=18"></script>
+<script src="scripts/ui.js?v=18"></script>
+<script src="scripts/studio.js?v=18"></script>
 </body>
 </html>

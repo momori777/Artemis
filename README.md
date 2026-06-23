@@ -472,12 +472,12 @@ powershell -File start.ps1
 
 Startup sequence:
 ```
-[1/6] llama-server        (8080, Qwen3.6-35B, ngl=41)
-[2/6] Embedding Server    (9999, all-MiniLM + BGE dual models, CPU, ~100MB RAM)
-[3/6] VRAM Tier Detection (auto-selects whether TTS/ComfyUI stops llama)
-[4/6] Live2D Bridge       (19200, pixi-live2d-display)
-[5/6] OpenClaw Gateway    (18789)
-[6/6] llama-watchdog      (crash auto-restart)
+[1/7] llama-server        (8080, Qwen3.6-35B, ngl=41)
+[2/7] Embedding Server    (9999, all-MiniLM + BGE dual models, CPU, ~100MB RAM)
+[3/7] VRAM Tier Detection (auto-selects whether TTS/ComfyUI stops llama)
+[4/7] Live2D Bridge       (19200, pixi-live2d-display)
+[5/7] OpenClaw Gateway    (18789)
+[6/7] llama-watchdog      (crash auto-restart)
 [7/7] Web Chat Daemon    (19260 API + 19270 webchat, --no-llama)
 ```
 
@@ -570,10 +570,29 @@ Immutable capability instructions with per-character memory isolation:
 
 > Recall priority: Vector long-term memories > handwritten daily notes > SOUL base persona
 
+### WebChat — Built-in Browser Client
+
+A complete web-based AI girlfriend chat interface, served locally at `http://127.0.0.1:19270` by the shiki daemon.
+
+| Feature | Description |
+|-|-|
+| **Multi-character Tabs** | Switch between Shiki Natsume, ATRI, and Yono Sakura — each with isolated conversation history, SOUL.md, and long-term memory |
+| **Streaming Chat** | Real-time token streaming with character-tailored system prompt injection (role persona + user profile) |
+| **Auto Paint** 🎨 | One-click button in the chat input area — LLM generates a ComfyUI prompt from conversation context, then triggers local image generation. Results appear inline in the chat flow |
+| **Live2D Integration** | Control the Live2D desktop pet directly: tap head, poke, play idle animations |
+| **TTS Voice** | Generate character voice replies from chat text via GPT-SoVITS |
+| **Studio Panel** | Side panel for manual TTS synthesis and ComfyUI image generation with full parameter control (prompt, negative, size, steps, CFG, checkpoint) |
+| **Dashboard** | Service health dashboard showing llama-server, Embedding, Live2D Bridge, Artemis Bridge, OpenClaw Gateway, and WebChat status — with per-service Start / Stop / Restart controls |
+| **Llama Lifecycle Toggle** | Toggle whether to stop llama-server before ComfyUI image generation (frees VRAM for 8GB GPUs, default ON) |
+| **Dual Model Support** | Choose between local llama-server or remote DeepSeek models — switch in settings, config persists |
+
+> The WebChat talks directly to the shiki daemon (:19260) which proxies to llama-server or OpenAI-compatible APIs. Character-switching is instant — each tab loads its own SOUL.md + IDENTITY.md + USER.md as the system prompt.
+
 ### Skills Detail
 
 | Skill | Location | Llama Interaction | Notes |
 |-|-|-|-|
+| **WebChat** | `web-chat/` | ❌ HTTP proxy | Port 19270, daemon-backed, multi-char |
 | **Embedding** | `skills/shared/` | ❌ No GPU | Dual model CPU, port 9999 |
 | **Live2D** | `skills/live2d/` | ❌ HTTP only | Bridge :19200, separate process |
 | **TTS** | `skills/tts/` | 🔶 VRAM-tiered | Tier 2: no kill, Tier 0/1: stop llama |

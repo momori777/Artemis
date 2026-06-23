@@ -146,6 +146,10 @@ def api_comfyui():
     if not positive:
         return jsonify({"error": "positive prompt is required"}), 400
 
+    # manage_llama=True → stop llama before ComfyUI (default, safer)
+    # manage_llama=False → keep llama alive, risk OOM on low VRAM
+    manage_llama = data.get("manage_llama", True)
+
     job_id = "comfyui_" + uuid.uuid4().hex[:8]
     with jobs_lock:
         jobs[job_id] = {"status": "running", "type": "comfyui", "created": time.time()}
@@ -159,7 +163,9 @@ def api_comfyui():
             cmd = [COMFYUI_PYTHON, COMFYUI_SCRIPT,
                    positive, negative, str(-1),
                    str(width), str(height), str(steps), str(cfg),
-                   checkpoint, "--no-manage-llama"]
+                   checkpoint]
+            if not manage_llama:
+                cmd.append("--no-manage-llama")
 
             proc = subprocess.run(cmd, capture_output=True, text=False, timeout=600,
                                  cwd=WORKSPACE_ROOT, env=env)
@@ -185,9 +191,16 @@ def api_comfyui():
                     jobs[job_id] = {"status": "done", "type": "comfyui", "path": img_path,
                                     "elapsed": time.time() - jobs[job_id]["created"]}
             else:
+                # Don't leak full stderr to frontend — find last error line
+                error_msg = "No output generated"
+                for line in reversed(stderr_out.strip().splitlines()):
+                    line = line.strip()
+                    if line and ("rror" in line or "Error" in line or "FAIL" in line or "fail" in line):
+                        error_msg = line[-200:]
+                        break
                 with jobs_lock:
                     jobs[job_id] = {"status": "failed", "type": "comfyui",
-                                    "error": stderr_out[-300:] or "No output generated"}
+                                    "error": error_msg}
         except Exception as e:
             with jobs_lock:
                 jobs[job_id] = {"status": "failed", "type": "comfyui", "error": str(e)}

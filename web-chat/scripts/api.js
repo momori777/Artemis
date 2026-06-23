@@ -42,6 +42,7 @@ var ApiClient = {
    */
   chatStream: async function (messages, settings, onToken, onComplete, onError) {
     var model = settings.model || 'local/qwen3.6-35b';
+    var characterId = settings.characterId || 'natsume';
     try {
       var res = await fetch('http://localhost:19260/api/chat', {
         method: 'POST',
@@ -51,6 +52,7 @@ var ApiClient = {
           messages: messages,
           stream: true,
           max_tokens: 4096,
+          characterId: characterId,
         }),
         signal: AbortSignal.timeout(180000),
       });
@@ -128,6 +130,7 @@ var ApiClient = {
 
   nonStreamChat: function (messages, settings) {
     var model = settings.model || 'local/qwen3.6-35b';
+    var characterId = settings.characterId || 'natsume';
     return fetch('http://localhost:19260/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -136,6 +139,7 @@ var ApiClient = {
         messages: messages,
         stream: false,
         max_tokens: 4096,
+        characterId: characterId,
       }),
       signal: AbortSignal.timeout(180000),
     })
