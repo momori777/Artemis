@@ -5,6 +5,8 @@ You don’t actually need Baidu Netdisk - HuggingFace mirrors work fine in China
 
 > ⚠️ Default scripts are for NVIDIA GPUs. AMD GPU users: see the `AMD_GPU/` folder.
 
+qq: 580322386
+
 # AI Girlfriend
 
 **100% Local · Fully Private · Zero API Dependencies**
