@@ -2,20 +2,15 @@
 
 ## 1. Start
 
-```powershell
-.\start.ps1 or cmd shiki
-```
-
-Launches in order: llama-server → Live2D Bridge → Sakura Desktop Pet → OpenClaw Gateway.
-First-timers: run `quick_setup.ps1` to generate `config.yaml` with your local paths.
+windows click shiki.cmd
+Linux start.ps1
 
 ## 2. Stop
 
-```powershell
-.\start.ps1 -Stop or cmd shiki -Stop
-```
+windows click shiki.stop
 
-Or just tell Natsume "goodbye" in WebChat / QQ / Telegram — she shuts everything down herself.
+Linux please ref on start.ps1,I am only rhcsa
+cd .. + rm -rf (laugh)
 
 ## 3. Debugging
 
@@ -27,7 +22,8 @@ The project has four layers. Debug bottom-up:
 | Visual | Live2D / Sakura      | Live2D: `http://localhost:19200/api/status`; Sakura: just look at your desktop |
 | Skills | TTS / ComfyUI        | Run `skills/tts/tts_call.py` or `skills/comfyui/comfyui_call.py` directly with the right args |
 | Hub    | OpenClaw Gateway     | `openclaw gateway status`; logs at `%TEMP%\openclaw\` |
-
+| Ports  | dashboard          | all ports list,check what is on or off
+ 
 **Common issues:**
 - llama won't start → check `llama_exe` / `llama_model` paths in `config.yaml`
 - ComfyUI/TTS returns a file path but no actual file → run `sync_qqbot_workspace.py` (qqbot agent may be on a stale workspace)

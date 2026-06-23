@@ -2,20 +2,19 @@ Artemis 省流版使用手册
 ====================
 
 一、启动
-    .\start.ps1 或cmd 输入shiki，回车
-    首次用先跑 quick_setup.ps1 配好路径
-
-   powershell运行artemis_studio.ps1，和llama完全并行生成语音和图片
+   window 双击shiki.cmd,
+   linux 看start脚本
 
 二、关闭
-    .\start.ps1 -Stop 或cmd 输入shiki -Stop
-    或对夏目说"拜拜"，她自己关
+   windows 双击shiki stop, 
+   linux 不会写，我红帽就初级，cd..  + rm-rf(笑)
 
 三、调试（四层，从下往上查）
     1.GPU层   → 浏览器打开 http://127.0.0.1:8080/health 看llama活着没
     2.桌宠层 → Live2D看 http://localhost:19200/api/status ；Sakura直接看桌面
     3.能力层 → 直接跑 skills/tts/tts_call.py 或 skills/comfyui/comfyui_call.py
     4.中枢层 → openclaw gateway status ；日志在 %TEMP%\openclaw\
+    5.网关层 → 看网关list是否都全部启动，在dashboard里找
 
 常见坑：
     - llama起不来 → config.yaml里llama_exe/llama_model路径对不对
