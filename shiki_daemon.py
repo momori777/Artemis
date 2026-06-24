@@ -494,11 +494,18 @@ def _build_system_prompt(character_id):
     return "\n\n---\n\n".join(parts)
 
 
-def _inject_system_prompt(messages, character_id):
+def _inject_system_prompt(messages, character_id, custom_system_prompt=None):
     """Ensure a system message is first in the messages list.
     If the first message is already a system message, replace it.
-    Otherwise, insert a new system message at the beginning."""
-    prompt = _build_system_prompt(character_id)
+    Otherwise, insert a new system message at the beginning.
+    
+    Priority: custom_system_prompt > harem file > root SOUL.md
+    """
+    if custom_system_prompt:
+        prompt = custom_system_prompt.strip()
+    else:
+        prompt = _build_system_prompt(character_id)
+    
     if not prompt:
         return messages
     
@@ -715,9 +722,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
         stream = req_data.get("stream", False)
         max_tokens = req_data.get("max_tokens", 4096)
         character_id = req_data.get("characterId", "natsume")
+        custom_system_prompt = req_data.get("systemPrompt", None)  # imported characters pass their own prompt
 
-        # Inject system prompt from AGENTS.md + SOUL.md + character IDENTITY.md
-        messages = _inject_system_prompt(messages, character_id)
+        # Inject system prompt from custom/harem/SOUL.md
+        messages = _inject_system_prompt(messages, character_id, custom_system_prompt)
 
         # Local llama: skip provider lookup, use hardcoded endpoint
         if model_id.startswith("local/"):
