@@ -345,6 +345,16 @@ html,body{
 #main{
   display:flex;flex-direction:column;
   background:var(--bg-deepest);position:relative;
+  overflow:hidden;
+}
+
+/* Tab panels — must be flex column so messages area can flex:1 */
+.tab-panel{
+  display:none;
+}
+.tab-panel.active{
+  display:flex;flex-direction:column;flex:1;
+  min-height:0;overflow:hidden;
 }
 
 /* Chat header */
@@ -381,8 +391,9 @@ html,body{
 #messages{
   flex:1;overflow-y:auto;padding:32px;
   display:flex;flex-direction:column;gap:6px;
-  scroll-behavior:smooth;
 }
+/* Smooth scrolling only when user isn't manually browsing */
+#messages.auto-scroll{scroll-behavior:smooth}
 
 #messages::-webkit-scrollbar{width:4px}
 #messages::-webkit-scrollbar-track{background:transparent}
@@ -424,6 +435,22 @@ html,body{
   border:1px solid var(--border-subtle);
   border-top-left-radius:4px;color:var(--text-primary);
 }
+
+/* Long message collapse */
+.msg-bubble.long-collapsed{max-height:360px;overflow-y:hidden;position:relative}
+.msg-bubble.long-collapsed::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;
+  height:60px;
+  background:linear-gradient(transparent,var(--bg-surface));
+  pointer-events:none;
+}
+.msg-collapse-btn{
+  display:block;margin:6px 0 0;padding:4px 12px;
+  background:transparent;border:1px solid var(--border-moderate);
+  border-radius:var(--radius-xs);color:var(--text-muted);
+  font-size:12px;cursor:pointer;transition:all var(--dur-fast);
+}
+.msg-collapse-btn:hover{color:var(--text-primary);border-color:var(--accent)}
 
 .msg-row.user .msg-bubble{
   background:var(--accent-soft);

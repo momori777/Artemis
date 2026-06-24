@@ -26,6 +26,9 @@ var UI = {
     this.$charName = document.getElementById('char-name-text');
     this.$charSubtitle = document.getElementById('char-subtitle-text');
 
+    // Setup scroll detection early (before any messages load)
+    this._setupScrollDetection();
+
     // CHARACTERS already loaded with fallback via chars.js IIFE boot.
     // UI renders immediately; API refresh happens asynchronously.
     CharacterImporter.init();
@@ -376,6 +379,11 @@ var UI = {
     bubble.className = 'msg-bubble';
     bubble.textContent = msg.content;
 
+    // Collapse long historical messages
+    if (!isUser && msg.content && msg.content.length > this.LONG_MSG_THRESHOLD) {
+      bubble.classList.add('long-collapsed');
+    }
+
     // Media
     if (msg.media) {
       if (msg.mediaType === 'audio' || /\.(wav|mp3|ogg)$/.test(msg.media)) {
@@ -403,20 +411,51 @@ var UI = {
     row.appendChild(avatar);
     row.appendChild(contentWrap);
 
+    // Add collapse toggle for long messages
+    if (!isUser && msg.content && msg.content.length > this.LONG_MSG_THRESHOLD) {
+      var btn = document.createElement('button');
+      btn.className = 'msg-collapse-btn';
+      btn.textContent = 'Show full message (' + Math.round(msg.content.length / 1000) + 'k chars)';
+      btn.addEventListener('click', function() {
+        if (bubble.classList.contains('long-collapsed')) {
+          bubble.classList.remove('long-collapsed');
+          btn.textContent = 'Collapse';
+        } else {
+          bubble.classList.add('long-collapsed');
+          btn.textContent = 'Show full message (' + Math.round(msg.content.length / 1000) + 'k chars)';
+        }
+      });
+      row.appendChild(btn);
+    }
+
     return row;
   },
 
   appendMessage: function(msg) {
     var el = this.renderMessage(msg, this.state.messages.length);
     this.$messages.appendChild(el);
-    this.scrollToBottom();
+    this._userScrolledUp = false;
+    this.scrollToBottom(true);
   },
 
-  scrollToBottom: function() {
+  scrollToBottom: function(force) {
     var self = this;
+    // If user scrolled up manually, don't force them back down
+    if (!force && this._userScrolledUp) return;
+    // Double-RAF to ensure DOM layout is complete (esp. after collapse/expand)
     requestAnimationFrame(function() {
-      if (self.$messages) self.$messages.scrollTop = self.$messages.scrollHeight;
+      requestAnimationFrame(function() {
+        if (self.$messages) {
+          self.$messages.scrollTop = self.$messages.scrollHeight;
+        }
+      });
     });
+  },
+
+  _isNearBottom: function() {
+    if (!this.$messages) return true;
+    var el = this.$messages;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 80;
   },
 
   // ---- Typing ----
@@ -437,7 +476,8 @@ var UI = {
     row.appendChild(avatar);
     row.appendChild(bubble);
     this.$messages.appendChild(row);
-    this.scrollToBottom();
+    this._userScrolledUp = false;
+    this.scrollToBottom(true);
   },
 
   hideTyping: function() {
@@ -466,7 +506,31 @@ var UI = {
     row.appendChild(avatar);
     row.appendChild(bubble);
     this.$messages.appendChild(row);
-    this.scrollToBottom();
+
+    // Reset scroll state on new message
+    this._userScrolledUp = false;
+    this._lastScrollTs = 0;
+    this._streamTokenCount = 0;
+    this.scrollToBottom(true);
+  },
+
+  _setupScrollDetection: function() {
+    var self = this;
+    if (this._scrollDetectorSet) return;
+    this._scrollDetectorSet = true;
+
+    var onScroll = function() {
+      if (self.$messages.scrollTop < self.$messages.scrollHeight - self.$messages.clientHeight - 60) {
+        self._userScrolledUp = true;
+      } else {
+        self._userScrolledUp = false;
+      }
+    };
+
+    // Cover all scroll interaction types
+    this.$messages.addEventListener('wheel', onScroll, { passive: true });
+    this.$messages.addEventListener('touchmove', onScroll, { passive: true });
+    this.$messages.addEventListener('scroll', onScroll, { passive: true });
   },
 
   appendStreamToken: function(text) {
@@ -478,7 +542,14 @@ var UI = {
     } else {
       bubble.appendChild(document.createTextNode(text));
     }
-    this.scrollToBottom();
+    this._streamTokenCount++;
+
+    // Throttle scroll: every 3rd token or every 50ms
+    var now = Date.now();
+    if (this._streamTokenCount % 3 === 0 || now - this._lastScrollTs > 50) {
+      this._lastScrollTs = now;
+      this.scrollToBottom(false);
+    }
   },
 
   finalizeStream: function(text) {
@@ -486,6 +557,42 @@ var UI = {
     if (!bubble) return;
     var cursor = bubble.querySelector('.stream-cursor');
     if (cursor) cursor.remove();
+
+    // Collapse long messages
+    this._autoCollapseLong(bubble, text);
+
+    this._userScrolledUp = false;
+    this.scrollToBottom(true);
+  },
+
+  // ---- Long message auto-collapse ----
+  LONG_MSG_THRESHOLD: 2000, // characters
+
+  _autoCollapseLong: function(bubble, text) {
+    if (!bubble || text.length < this.LONG_MSG_THRESHOLD) return;
+
+    // Get the row container
+    var row = bubble.closest('.msg-row');
+    if (!row) return;
+
+    // Check if collapse button already exists
+    if (row.querySelector('.msg-collapse-btn')) return;
+
+    bubble.classList.add('long-collapsed');
+
+    var btn = document.createElement('button');
+    btn.className = 'msg-collapse-btn';
+    btn.textContent = 'Show full message (' + Math.round(text.length / 1000) + 'k chars)';
+    btn.addEventListener('click', function() {
+      if (bubble.classList.contains('long-collapsed')) {
+        bubble.classList.remove('long-collapsed');
+        btn.textContent = 'Collapse';
+      } else {
+        bubble.classList.add('long-collapsed');
+        btn.textContent = 'Show full message (' + Math.round(text.length / 1000) + 'k chars)';
+      }
+    });
+    row.appendChild(btn);
   },
 
   // ---- Send ----
@@ -713,7 +820,8 @@ var UI = {
         self.$messages.appendChild(el);
       });
     }
-    this.scrollToBottom();
+    this._userScrolledUp = false;
+    this.scrollToBottom(true);
   },
 
   appendSystemMsg: function(text) {
