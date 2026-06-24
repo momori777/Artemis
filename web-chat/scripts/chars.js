@@ -2,6 +2,7 @@
 // chars.js - Character definitions for AI Girlfriend
 // Loads from daemon API (port 19260) which scans skills/harem/
 // Falls back to hardcoded defaults if daemon is unreachable.
+// Imported characters survive API refreshes via localStorage.
 // ============================================================
 
 var CHARACTERS = [];
@@ -112,6 +113,77 @@ var FALLBACK_REPLIES = {
 
 var DEFAULT_CHAR_ID = 'natsume';
 
+// ---- Single source of truth: merge all sources into CHARACTERS ----
+function mergeAllCharacters(apiData) {
+  var result = [];
+  var seen = {};
+
+  // 1. Load imported chars from localStorage first (they survive everything)
+  try {
+    var raw = localStorage.getItem('ai-gf-imported-chars');
+    if (raw) {
+      var imported = JSON.parse(raw);
+      imported.forEach(function(c) {
+        c.imported = true;
+        ensureDefaults(c);
+        result.push(c);
+        seen[c.id] = true;
+      });
+    }
+  } catch (e) {}
+
+  // 2. API data (from harem scan) — merge with fallback enrichment
+  if (apiData && Array.isArray(apiData) && apiData.length > 0) {
+    apiData.forEach(function(c) {
+      var fb = CHAR_FALLBACKS[c.id] || {};
+      var id = c.id || fb.id;
+      if (seen[id]) return; // already imported
+      seen[id] = true;
+      result.push({
+        id: id,
+        name: c.name || fb.name,
+        nameEn: c.nameEn || fb.nameEn,
+        icon: c.icon || fb.icon,
+        persona: c.persona || fb.persona || '',
+        personaNote: c.personaNote || fb.personaNote || '',
+        tags: c.tags || fb.tags || [],
+        source: c.source || fb.source || '',
+        accent: c.accent || fb.accent || '#c4a882',
+        ttsLang: c.ttsLang || fb.ttsLang || 'ja',
+        ttsMood: c.ttsMood || fb.ttsMood || 'casual',
+        fallbackReplies: c.fallbackReplies || FALLBACK_REPLIES[c.id] || ['I\'m here.'],
+      });
+    });
+  }
+
+  // 3. Fill in any missing fallback chars (not already in result)
+  Object.keys(CHAR_FALLBACKS).forEach(function(id) {
+    if (seen[id]) return;
+    seen[id] = true;
+    var fb = CHAR_FALLBACKS[id];
+    result.push(Object.assign({}, fb, {
+      fallbackReplies: FALLBACK_REPLIES[id] || ['I\'m here.'],
+    }));
+  });
+
+  CHARACTERS = result;
+  CHARACTERS_LOADED = true;
+}
+
+function ensureDefaults(c) {
+  if (!c.fallbackReplies) c.fallbackReplies = ['I\'m here.', 'Tell me more.', 'I see...', 'Mm.', 'What do you think?'];
+  if (!c.tags) c.tags = ['Imported'];
+  if (!c.source) c.source = 'Imported character';
+  if (!c.icon) c.icon = (c.name || '?').charAt(0).toLowerCase();
+  if (!c.accent) c.accent = '#888';
+  if (!c.persona) c.persona = 'Custom character';
+  if (!c.personaNote) c.personaNote = 'Imported character';
+  if (!c.nameEn) c.nameEn = c.name || '';
+  if (!c.ttsLang) c.ttsLang = 'en';
+  if (!c.ttsMood) c.ttsMood = 'casual';
+}
+
+// ---- Boot: build CHARACTERS from fallback + localStorage first, then API ----
 function loadCharactersFromAPI() {
   return fetch('http://localhost:19260/api/characters', {
     signal: AbortSignal.timeout(3000),
@@ -121,41 +193,12 @@ function loadCharactersFromAPI() {
       return r.json();
     })
     .then(function (data) {
-      if (Array.isArray(data) && data.length > 0) {
-        // Convert API data to CHARACTERS format, merging with fallback data
-        CHARACTERS = data.map(function (c) {
-          var fb = CHAR_FALLBACKS[c.id] || {};
-          return {
-            id: c.id || fb.id,
-            name: c.name || fb.name,
-            nameEn: c.nameEn || fb.nameEn,
-            icon: c.icon || fb.icon,
-            persona: c.persona || fb.persona || '',
-            personaNote: c.personaNote || fb.personaNote || '',
-            tags: c.tags || fb.tags || ['Imported'],
-            source: c.source || fb.source || '',
-            accent: c.accent || fb.accent || '#c4a882',
-            ttsLang: c.ttsLang || fb.ttsLang || 'ja',
-            ttsMood: c.ttsMood || fb.ttsMood || 'casual',
-            fallbackReplies: c.fallbackReplies || FALLBACK_REPLIES[c.id] || ['I\'m here.'],
-          };
-        });
-        CHARACTERS_LOADED = true;
-      }
+      mergeAllCharacters(data);
     })
     .catch(function (err) {
-      console.warn('Failed to load characters from API, using fallback:', err.message);
-      loadFallbackCharacters();
+      console.warn('Failed to load characters from API:', err.message);
+      mergeAllCharacters(null); // fallback-only merge
     });
-}
-
-function loadFallbackCharacters() {
-  CHARACTERS = Object.values(CHAR_FALLBACKS).map(function (fb) {
-    return Object.assign({}, fb, {
-      fallbackReplies: FALLBACK_REPLIES[fb.id] || ['I\'m here.'],
-    });
-  });
-  CHARACTERS_LOADED = true;
 }
 
 function getChar(id) {
@@ -166,13 +209,12 @@ function getChar(id) {
 
 function getFallbackReply(charId) {
   var c = getChar(charId);
-  var r = c.fallbackReplies || FALLBACK_REPLIES[charId] || ['Mm.'];
+  var r = c && c.fallbackReplies ? c.fallbackReplies : FALLBACK_REPLIES[charId] || ['Mm.'];
   return r[Math.floor(Math.random() * r.length)];
 }
 
-// ---- Boot: load fallback first so UI renders immediately,
-// then replace with API data if available. ----
+// ---- Boot ----
 (function () {
-  loadFallbackCharacters();
-  CHAR_API_PROMISE = loadCharactersFromAPI();
+  mergeAllCharacters(null); // fallback + localStorage
+  CHAR_API_PROMISE = loadCharactersFromAPI(); // enriches with API data
 })();
