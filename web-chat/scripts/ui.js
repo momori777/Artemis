@@ -725,9 +725,17 @@ var UI = {
 
   _submitPaintJob: function(prompt, negative) {
     var self = this;
+    // Prepend quality tags if not already present
+    var qualityPrefix = 'masterpiece, best quality, highly detailed,';
+    var hasQuality = /masterpiece|best.quality/i.test(prompt);
+    var finalPositive = hasQuality ? prompt : qualityPrefix + ' ' + prompt;
+
+    var defaultNegative = 'worst quality, bad quality, low quality, blurry, lowres, bad anatomy, extra fingers, missing fingers, extra limbs, deformed, disfigured, watermark, text, signature, jpeg artifacts, censored';
+    var finalNegative = negative || defaultNegative;
+
     var params = {
-      positive: prompt,
-      negative: negative || 'bad quality, worst quality, blurry, distorted, lowres, bad anatomy, extra fingers, watermark, text',
+      positive: finalPositive,
+      negative: finalNegative,
       width: 1200,
       height: 1500,
       steps: 30,
