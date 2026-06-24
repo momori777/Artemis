@@ -43,17 +43,19 @@ var ApiClient = {
   chatStream: async function (messages, settings, onToken, onComplete, onError) {
     var model = settings.model || 'local/qwen3.6-35b';
     var characterId = settings.characterId || 'natsume';
+    var body = {
+      model: model,
+      messages: messages,
+      stream: true,
+      max_tokens: 4096,
+      characterId: characterId,
+    };
+    if (settings.systemPrompt) body.systemPrompt = settings.systemPrompt;
     try {
       var res = await fetch('http://localhost:19260/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: model,
-          messages: messages,
-          stream: true,
-          max_tokens: 4096,
-          characterId: characterId,
-        }),
+        body: JSON.stringify(body),
         signal: AbortSignal.timeout(180000),
       });
 
@@ -131,16 +133,18 @@ var ApiClient = {
   nonStreamChat: function (messages, settings) {
     var model = settings.model || 'local/qwen3.6-35b';
     var characterId = settings.characterId || 'natsume';
+    var body = {
+      model: model,
+      messages: messages,
+      stream: false,
+      max_tokens: 4096,
+      characterId: characterId,
+    };
+    if (settings.systemPrompt) body.systemPrompt = settings.systemPrompt;
     return fetch('http://localhost:19260/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: model,
-        messages: messages,
-        stream: false,
-        max_tokens: 4096,
-        characterId: characterId,
-      }),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(180000),
     })
       .then(function (res) {
