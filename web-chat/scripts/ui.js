@@ -507,6 +507,11 @@ var UI = {
 
     var settings = getSettings();
     settings.characterId = self.state.currentCharId || 'natsume';
+    // Pass custom system prompt for imported characters
+    var currentChar = getChar(self.state.currentCharId);
+    if (currentChar && currentChar.imported && currentChar.systemPrompt) {
+      settings.systemPrompt = currentChar.systemPrompt;
+    }
 
     // Always try API (daemon proxy). Fallback if it fails.
     if (settings.streamEnabled !== false) {
