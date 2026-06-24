@@ -7,7 +7,8 @@ Artemis 省流版使用手册
 
 二、关闭
    windows 双击shiki stop, 
-   linux 不会写，我红帽就初级，cd..  + rm-rf(笑)
+   linux 参照start.ps1，
+   我红帽就初级，cd..  + rm-rf(笑)
 
 三、调试（四层，从下往上查）
     1.GPU层   → 浏览器打开 http://127.0.0.1:8080/health 看llama活着没
