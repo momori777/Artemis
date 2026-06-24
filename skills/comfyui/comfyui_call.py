@@ -242,10 +242,15 @@ def run_txt2img(positive_prompt, negative_prompt, seed, width, height,
     torch.cuda.empty_cache()
     import gc
     gc.collect()
-    # 等 GPU 真正释放 VRAM，峰值后给 5 秒让驱动回收
+    # 释放进程 RSS 回 OS，给后续 --no-mmap 腾 Host RAM
+    try:
+        import ctypes
+        ctypes.windll.psapi.EmptyWorkingSet(ctypes.windll.kernel32.GetCurrentProcess())
+    except Exception:
+        pass
     if manage_llama:
         time.sleep(5)
-        print(f"[VRAM] ComfyUI 模型已释放，gc+empty_cache 完成",
+        print(f"[VRAM] ComfyUI 模型已释放，gc+empty_cache+EmptyWorkingSet 完成",
               file=sys.stderr, flush=True)
     # ---
 

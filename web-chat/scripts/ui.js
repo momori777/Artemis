@@ -558,8 +558,22 @@ var UI = {
     var cursor = bubble.querySelector('.stream-cursor');
     if (cursor) cursor.remove();
 
+    // Extract and inject MEDIA: image if present
+    var parsed = this._parseMediaFromText(text);
+    if (parsed.mediaPath) {
+      var img = document.createElement('img');
+      img.className = 'msg-media';
+      img.src = this._resolveMediaPath(parsed.mediaPath);
+      img.loading = 'lazy';
+      img.addEventListener('click', function() { window.open(img.src, '_blank'); });
+      bubble.appendChild(img);
+      // Replace text content with cleaned version (strips MEDIA: line)
+      bubble.textContent = parsed.cleanText || '';
+    }
+
     // Collapse long messages
-    this._autoCollapseLong(bubble, text);
+    var displayText = parsed.cleanText || text;
+    this._autoCollapseLong(bubble, displayText);
 
     this._userScrolledUp = false;
     this.scrollToBottom(true);
@@ -631,8 +645,11 @@ var UI = {
         function(token) { self.appendStreamToken(token); },
         function(result) {
           self.finalizeStream(result.text);
-          var charMsg = { role: 'assistant', content: result.text, time: self.formatTime(new Date()) };
+          var parsed = self._parseMediaFromText(result.text);
+          var cleanText = parsed.cleanText;
+          var charMsg = { role: 'assistant', content: cleanText, time: self.formatTime(new Date()) };
           if (result.media) charMsg.media = result.media;
+          else if (parsed.mediaPath) charMsg.media = self._resolveMediaPath(parsed.mediaPath);
           self.state.messages.push(charMsg);
           saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
           self.state.streaming = false;
@@ -654,7 +671,9 @@ var UI = {
     } else {
       ApiClient.nonStreamChat(self.state.messages, settings).then(function(reply) {
         self.hideTyping();
-        var charMsg = { role: 'assistant', content: reply, time: self.formatTime(new Date()) };
+        var parsed = self._parseMediaFromText(reply);
+        var charMsg = { role: 'assistant', content: parsed.cleanText, time: self.formatTime(new Date()) };
+        if (parsed.mediaPath) charMsg.media = self._resolveMediaPath(parsed.mediaPath);
         self.appendMessage(charMsg);
         self.state.messages.push(charMsg);
         saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
@@ -812,6 +831,19 @@ var UI = {
     return 'http://localhost:19260/api/media/' + encodeURIComponent(path);
   },
 
+  // Parse MEDIA: directive from message text, returns { cleanText, mediaPath }
+  _parseMediaFromText: function(text) {
+    if (!text) return { cleanText: text, mediaPath: null };
+    // Match MEDIA: directive — supports backtick-quoted and bare paths
+    var re = /^MEDIA:\s*(?:`([^`\n]+)`|([^\n]+))\s*$/m;
+    var m = text.match(re);
+    if (!m) return { cleanText: text, mediaPath: null };
+    var path = (m[1] || m[2] || '').trim();
+    // Strip all MEDIA and qqmedia lines from text
+    var clean = text.replace(/^(MEDIA|qqmedia):\s*[^\n]*\n?/gm, '').trim();
+    return { cleanText: clean, mediaPath: path };
+  },
+
   // ---- History ----
   loadHistory: function() {
     if (!this.$messages) return;
@@ -824,6 +856,15 @@ var UI = {
     } else {
       this.appendSystemMsg('Resumed (' + msgs.length + ' messages) - ' + this.formatDate(new Date()));
       msgs.forEach(function(m, i) {
+        // Re-extract MEDIA: from stored text on load (just in case media wasn't saved separately)
+        if (!m.media && m.content && m.role === 'assistant') {
+          var parsed = self._parseMediaFromText(m.content);
+          if (parsed.mediaPath) {
+            m.media = self._resolveMediaPath(parsed.mediaPath);
+            m.content = parsed.cleanText;
+            self.state.messages[i] = m;
+          }
+        }
         var el = self.renderMessage(m, i);
         self.$messages.appendChild(el);
       });

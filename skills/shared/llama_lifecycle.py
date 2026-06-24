@@ -380,6 +380,12 @@ def start_llama(port=8080, exe_path=None, model_path=None,
             torch.cuda.empty_cache()
             gc.collect()
             time.sleep(2)
+            # 释放当前进程 RSS 回操作系统（ComfyUI call 在同一进程内运行）
+            try:
+                import ctypes
+                ctypes.windll.psapi.EmptyWorkingSet(ctypes.windll.kernel32.GetCurrentProcess())
+            except Exception:
+                pass
             free = torch.cuda.mem_get_info()[0] / (1024 ** 2)
             total = torch.cuda.mem_get_info()[1] / (1024 ** 2)
             print(f"[LLAMA] VRAM: {free:.0f} MiB free / {total:.0f} MiB total",
