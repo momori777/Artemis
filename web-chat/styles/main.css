@@ -182,6 +182,7 @@ html,body{
   padding:10px 14px;cursor:pointer;
   transition:background var(--dur-fast);
   font-size:13px;color:var(--text-secondary);
+  position:relative;
 }
 
 .char-option:hover{background:var(--bg-overlay);color:var(--text-primary)}
@@ -193,6 +194,17 @@ html,body{
   display:flex;align-items:center;justify-content:center;
   font-size:14px;flex-shrink:0;
 }
+
+/* Delete button on imported character options */
+.char-delete-btn{
+  margin-left:auto;opacity:0;
+  font-size:14px;color:var(--text-muted);
+  padding:4px;border-radius:var(--radius-xs);
+  transition:opacity var(--dur-fast),color var(--dur-fast),background var(--dur-fast);
+  flex-shrink:0;
+}
+.char-option:hover .char-delete-btn{opacity:1;}
+.char-delete-btn:hover{color:var(--error);background:rgba(212,120,122,0.12);}
 
 /* Sessions list */
 .sidebar-sessions{

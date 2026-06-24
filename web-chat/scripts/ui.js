@@ -100,23 +100,46 @@ var UI = {
     var activeId = this.state.currentCharId;
     list.innerHTML = CHARACTERS.map(function(c) {
       var activeClass = c.id === activeId ? ' active' : '';
-      return '<div class="char-option' + activeClass + '" data-char-id="' + c.id + '"><div class="char-option-avatar">' + c.icon.toUpperCase() + '</div><span>' + c.name + '</span></div>';
+      var deleteBtn = c.imported ? '<i class="ph ph-x char-delete-btn" data-char-id="' + c.id + '" title="Delete ' + c.name + '"></i>' : '';
+      return '<div class="char-option' + activeClass + '" data-char-id="' + c.id + '"><div class="char-option-avatar">' + c.icon.toUpperCase() + '</div><span>' + c.name + '</span>' + deleteBtn + '</div>';
     }).join('') + '<div class="char-option char-import-option" id="char-import-option"><div class="char-option-avatar" style="background:var(--accent);color:#fff"><i class="ph ph-plus"></i></div><span>Import character...</span></div>';
-    document.querySelectorAll('.char-option').forEach(function(opt) {
-      opt.addEventListener('click', function() {
-        if (opt.id === 'char-import-option' || opt.classList.contains('char-import-option')) {
-          var fileInput = document.getElementById('import-char-file');
-          if (fileInput) fileInput.click();
-          return;
+
+    // Click delegation — handle char selection and delete
+    list.onclick = function(e) {
+      var delBtn = e.target.closest('.char-delete-btn');
+      if (delBtn) {
+        e.stopPropagation();
+        var id = delBtn.dataset.charId;
+        if (confirm('Delete "' + (getChar(id) || {}).name + '" permanently?')) {
+          if (CharacterImporter.removeCharacter(id)) {
+            if (self.state.currentCharId === id) {
+              // Switch to first available character
+              self.selectCharacter(CHARACTERS[0].id);
+            } else {
+              self.rebuildCharList();
+            }
+            UI.showToast('Character deleted', 'success');
+          }
         }
-        var id = opt.dataset.charId;
-        document.getElementById('char-dropdown').classList.remove('open');
-        document.getElementById('char-select-btn').classList.remove('open');
-        if (id !== self.state.currentCharId) {
-          self.switchChar(id);
-        }
-      });
-    });
+        return;
+      }
+
+      var opt = e.target.closest('.char-option');
+      if (!opt) return;
+
+      if (opt.id === 'char-import-option' || opt.classList.contains('char-import-option')) {
+        var fileInput = document.getElementById('import-char-file');
+        if (fileInput) fileInput.click();
+        return;
+      }
+
+      var charId = opt.dataset.charId;
+      document.getElementById('char-dropdown').classList.remove('open');
+      document.getElementById('char-select-btn').classList.remove('open');
+      if (charId && charId !== self.state.currentCharId) {
+        self.switchChar(charId);
+      }
+    };
   },
 
   selectCharacter: function(id) {
@@ -167,7 +190,8 @@ var UI = {
     if (!btn || !dropdown || !list) return;
 
     list.innerHTML = CHARACTERS.map(function(c) {
-      return '<div class="char-option" data-char-id="' + c.id + '"><div class="char-option-avatar">' + c.icon.toUpperCase() + '</div><span>' + c.name + '</span></div>';
+      var deleteBtn = c.imported ? '<i class="ph ph-x char-delete-btn" data-char-id="' + c.id + '" title="Delete ' + c.name + '"></i>' : '';
+      return '<div class="char-option" data-char-id="' + c.id + '"><div class="char-option-avatar">' + c.icon.toUpperCase() + '</div><span>' + c.name + '</span>' + deleteBtn + '</div>';
     }).join('') + '<div class="char-option char-import-option" id="char-import-option"><div class="char-option-avatar" style="background:var(--accent);color:#fff"><i class="ph ph-plus"></i></div><span>Import character...</span></div>';
 
     btn.addEventListener('click', function(e) {
@@ -193,6 +217,9 @@ var UI = {
     }
 
     list.addEventListener('click', function(e) {
+      // Delete button already handled by rebuildCharList's onclick
+      if (e.target.closest('.char-delete-btn')) return;
+
       var opt = e.target.closest('.char-option');
       if (!opt) return;
 
