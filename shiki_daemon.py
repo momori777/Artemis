@@ -864,7 +864,10 @@ Conversation:
             req = urllib.request.Request(
                 "http://127.0.0.1:8080/v1/chat/completions",
                 data=data,
-                headers={"Content-Type": "application/json"}
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer 123456"
+                }
             )
             resp = urllib.request.urlopen(req, timeout=30)
             result = json.loads(resp.read())
@@ -890,7 +893,9 @@ Conversation:
                     "negative": "bad quality, worst quality, blurry, distorted, lowres, bad anatomy, extra fingers, watermark, text",
                 })
         except Exception as e:
-            self.send_json({"error": f"LLM prompt generation failed: {str(e)}"}, 502)
+            import traceback
+            tb = traceback.format_exc()
+            self.send_json({"error": f"LLM prompt generation failed: {e}\n{tb[-500:]}"}, 502)
 
     def _handle_media_proxy(self):
         """Proxy local file paths so the browser can load generated images."""
