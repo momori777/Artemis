@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "artemis": {
+      "command": "python",
+      "args": [".claude/artemis_mcp_server.py"],
+      "cwd": "${projectDir}"
+    }
+  }
+}

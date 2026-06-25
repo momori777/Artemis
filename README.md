@@ -347,6 +347,91 @@ AI_Girlfriend/                        # OpenClaw workspace root
     └── character_importer/           # SillyTavern character card auto-import
 ```
 
+## 🤖 Claude Code + AgentRQ-Style Task Board (NEW)
+
+Artemis now supports **Claude Code** as a parallel agent runtime alongside OpenClaw. Claude Code connects via MCP to access all Artemis capabilities — **with a built-in AgentRQ-compatible task queue** for human-agent collaboration.
+
+### How it works
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Task Board (http://127.0.0.1:19280)                    │
+│  Create task → assignee: agent → notstarted             │
+└───────────────────────┬─────────────────────────────────┘
+                        │ SQLite (.claude/task_queue.db)
+                        ▼
+┌─────────────────────────────────────────────────────────┐
+│  Claude Code (terminal)                                 │
+│  CLAUDE.md → getNextTask() → ongoing → execute          │
+│  Artemis tools → TTS / ComfyUI / Live2D / memory        │
+│  reply() → updateTaskStatus(completed)                  │
+└─────────────────────────────────────────────────────────┘
+```
+
+### AgentRQ-Style Task Loop
+
+Claude Code automatically runs a task loop on startup:
+1. `getWorkspace()` — check workspace status
+2. `getNextTask()` — dequeue next pending task
+3. `updateTaskStatus(taskId, "ongoing")` — claim it
+4. Execute using Artemis tools (TTS, ComfyUI, etc.)
+5. `reply(taskId, "Done!")` — report result
+6. `updateTaskStatus(taskId, "completed")` — mark done
+7. Loop back to `getNextTask()`
+
+### Launch
+
+```powershell
+# Prerequisites: npm install -g @anthropic-ai/claude-code
+# Start Shiki Daemon first (.\shiki.cmd), then:
+
+# Full AgentRQ workflow (Task Board + Claude Code)
+.\claude-code.ps1
+
+# Task Board only (browser UI, no Claude)
+.\claude-code.ps1 -BoardOnly
+
+# Stop the task board
+.\claude-code.ps1 -KillBoard
+```
+
+Then open **http://127.0.0.1:19280** — create tasks, watch Claude Code pick them up.
+
+### MCP Tools (15 total)
+
+| Category | Tool | Description |
+|-|-|-|
+| 🎤 TTS | `tts_generate` | Voice synthesis (character/lang/mood) |
+| 🎨 Image | `comfyui_generate` | AI image generation (prompt, checkpoint) |
+| 🎤 ASR | `asr_transcribe` | Speech-to-text (wav/mp3/ogg/flac, Whisper small, ~1.5GB VRAM) |
+| 🎭 Live2D | `live2d_emotion` | Motion + speech bubble |
+| 🔄 Char | `switch_character` / `list_characters` | Character management |
+| 🧠 Memory | `memory_search` / `memory_add` | Vector memory (mem0 Qdrant) |
+| 📊 Status | `get_status` | Service health check |
+| 📋 Task | `getWorkspace` / `getNextTask` / `createTask` | Task queue ops |
+| 📋 Task | `updateTaskStatus` / `reply` / `getTaskMessages` | Task lifecycle |
+
+### Artemis Task Board vs AgentRQ
+
+| Feature | Artemis Task Board | AgentRQ (self-hosted) |
+|-|-|-|
+| Runtime | 1 Python script + SQLite | Go+Vue+Docker+Google OAuth |
+| MCP tools | 6 task + 9 Artemis (15 total) | Same set (8 tools) |
+| Setup | Zero config | Docker + .env + OAuth |
+
+### Files
+
+| File | Purpose |
+|-|-|
+| `.mcp.json` | MCP server config for Claude Code |
+| `.claude/CLAUDE.md` | Persona + task loop instructions |
+| `.claude/artemis_mcp_server.py` | MCP server (15 tools, JSON-RPC stdio) |
+| `.claude/task_board_api.py` | Task board HTTP API (port 19280) |
+| `.claude/task_board.html` | Task board browser UI |
+| `.claude/task_queue.db` | SQLite task database (auto-created) |
+| `.claude/settings.local.json` | Pre-approved MCP tools |
+| `claude-code.ps1` / `.sh` | Launcher scripts |
+
 ## Skills Overview
 
 | Skill | Type | Llama Kill? | Mechanism |
@@ -354,6 +439,7 @@ AI_Girlfriend/                        # OpenClaw workspace root
 | **Embedding** | Background process | ❌No | all-MiniLM-L6-v2 + BGE-small-zh-v1.5 dual models (CPU, port 9999) -OpenClaw memory search + mem0 bridge |
 | **Live2D** | HTTP exec | ❌No | Direct HTTP calls to `localhost:19200` bridge |
 | **Web Chat** | Browser | ❌ No | Local daemon proxy to llama :8080, port 19270 frontend, real-time chat with full character/multi-session support |
+| **Claude Code** | Terminal (MCP) | ❌ No | Parallel agent runtime via .claude/artemis_mcp_server.py, uses llama :8080 directly |
 | **TTS** | sessions_spawn | 🔶 VRAM-tiered | ≥12GB: no kill; 8GB: stop llama →GPT-SoVITS →restart llama |
 | **ComfyUI** | sessions_spawn | 🔶 VRAM-tiered | ≥12GB: no kill; 8GB: stop llama →image gen →restart llama |
 | **ASR** | sessions_spawn | ❌No | Faster-Whisper small (~1.5GB VRAM, coexists with llama) |
@@ -365,6 +451,7 @@ AI_Girlfriend/                        # OpenClaw workspace root
 | Component | Version / Source | Purpose |
 |-|-|-|
 | [OpenClaw](https://docs.openclaw.ai) | latest | AI Agent Gateway |
+| [Claude Code](https://github.com/anthropics/claude-code) | latest | Terminal-based AI agent (optional, MCP integration) |
 | QQ Bot | OpenClaw qqbot channel | QQ message relay |
 | Telegram Bot | OpenClaw telegram channel | Telegram message relay |
 | [llama.cpp](https://github.com/ggml-org/llama.cpp) | b9222 | Local LLM inference server |
@@ -513,9 +600,9 @@ schtasks /create /tn "cleanup-orphans" `
 
 <table>
 <tr><td colspan="2" align="center"><b>User Entry</b></td></tr>
-<tr><td colspan="2" align="center">QQ Bot &nbsp;|&nbsp; Telegram Bot &nbsp;|&nbsp; WebChat &nbsp;|&nbsp; Artemis Studio Console</td></tr>
+<tr><td colspan="2" align="center">QQ Bot &nbsp;|&nbsp; Telegram Bot &nbsp;|&nbsp; WebChat &nbsp;|&nbsp; Claude Code (MCP) &nbsp;|&nbsp; Artemis Studio Console</td></tr>
 <tr><td colspan="2" align="center">↓</td></tr>
-<tr><td colspan="2" align="center"><b>OpenClaw Gateway</b> (port 18789) &nbsp;──&nbsp; <b>Sakura Desktop Pet</b> (PySide6, shared llama-client)</td></tr>
+<tr><td colspan="2" align="center"><b>OpenClaw Gateway</b> (port 18789) &nbsp;──&nbsp; <b>Claude Code MCP</b> (stdio) &nbsp;──&nbsp; <b>Sakura Desktop Pet</b> (PySide6, shared llama-client)</td></tr>
 <tr><td colspan="2" align="center">↓</td></tr>
 <tr>
 <td width="50%" valign="top">
