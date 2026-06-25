@@ -313,10 +313,31 @@ def _read_current_character():
             first = f.readline().strip()
             if "Tool Mode" in first:
                 return "tool"
-            for name in ["Shiki Natsume","ATRI","Yono Sakura","Enola"]:
+            # Check harem directory names against first line
+            harem_dir = os.path.join(WORKSPACE, "skills", "harem")
+            if os.path.isdir(harem_dir):
+                for entry in sorted(os.listdir(harem_dir)):
+                    p = os.path.join(harem_dir, entry)
+                    if os.path.isdir(p):
+                        s = os.path.join(p, "SOUL.md")
+                        if os.path.exists(s):
+                            with open(s, "r", encoding="utf-8") as sf:
+                                title = sf.readline().strip()
+                            # If current SOUL first line matches this harem character's title
+                            if first == title:
+                                return entry
+            # Fallback: try direct name matching
+            for name in ["Shiki Natsume", "ATRI", "Yono Sakura", "Enola",
+                         "四季夏目", "亚托莉", "夜野樱", "エノラ"]:
                 if name in first:
-                    return name.lower().replace(" ","_")
-            return first.split(" — ")[-1].lower().split(" ")[0] if " — " in first else "unknown"
+                    name_map = {
+                        "Shiki Natsume": "natsume", "四季夏目": "natsume",
+                        "ATRI": "atori", "亚托莉": "atori",
+                        "Yono Sakura": "sakura", "夜野樱": "sakura",
+                        "Enola": "enola", "エノラ": "enola",
+                    }
+                    return name_map.get(name, name.lower().replace(" ", "_"))
+            return "unknown"
     except:
         return "natsume"
 
