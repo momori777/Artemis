@@ -177,3 +177,6 @@ media/demo_qqbot.mp4
 
 # TTS debug log (contains absolute paths)
 _tts_debug.txt
+
+# Claude Code local settings (may contain tokens)
+.claude/settings.local.json

@@ -340,12 +340,98 @@ AI_Girlfriend/                        # OpenClaw 工作区根目录
     └── character_importer/           # SillyTavern 角色卡 + 对话记忆导入
 ```
 
+## 🤖 Claude Code + AgentRQ 风格任务看板
+
+除了 OpenClaw，Artemis 还支持 **Claude Code** 作为并列的 Agent 运行时。Claude Code 通过 MCP 协议接入 Artemis 全部能力，并内置了一个与 AgentRQ 兼容的任务队列系统。
+
+### 工作原理
+
+```
+┌─────────────────────────────────────────────┐
+│  任务看板 (http://127.0.0.1:19280)          │
+│  创建任务 → assignee: agent → notstarted    │
+└──────────────────┬──────────────────────────┘
+                   │ SQLite (.claude/task_queue.db)
+                   ▼
+┌─────────────────────────────────────────────┐
+│  Claude Code (终端)                         │
+│  CLAUDE.md → getNextTask() → 执行任务        │
+│  Artemis 工具 → TTS / ComfyUI / Live2D      │
+│  reply() → updateTaskStatus(completed)      │
+└─────────────────────────────────────────────┘
+```
+
+### 启动方式
+
+```powershell
+# 先装 Claude Code
+npm install -g @anthropic-ai/claude-code
+
+# 启动 Shiki Daemon（自动拉起 Task Board :19280）
+.\shiki.cmd
+
+# 启动 Claude Code
+.\claude-code.ps1
+
+# 或只开任务看板（浏览器操作）
+.\claude-code.ps1 -BoardOnly
+```
+
+然后浏览器打开 **http://127.0.0.1:19280** — 建任务，Claude Code 自动领取执行。
+
+### MCP 工具列表（15 个）
+
+| 类别 | 工具 | 说明 |
+|-|-|-|
+| 🎤 TTS | `tts_generate` | 语音合成 (角色/语言/情绪) |
+| 🎨 图像 | `comfyui_generate` | AI 绘画 (提示词, 模型选择) |
+| 🎤 ASR | `asr_transcribe` | 语音转文字 (wav/mp3/ogg/flac, Whisper small) |
+| 🎭 Live2D | `live2d_emotion` | 桌宠动作 + 气泡 |
+| 🔄 角色 | `switch_character` / `list_characters` | 角色管理 |
+| 🧠 记忆 | `memory_search` / `memory_add` | 向量记忆 (mem0 Qdrant) |
+| 📊 状态 | `get_status` | 服务健康检查 |
+| 📋 任务 | `getWorkspace` / `getNextTask` / `createTask` | 任务队列操作 |
+| 📋 任务 | `updateTaskStatus` / `reply` / `getTaskMessages` | 任务生命周期 |
+
+### OpenClaw vs Claude Code — 功能对比
+
+| 功能 | OpenClaw | Claude Code |
+|-|-|-|
+| QQ Bot 消息 | ✅ | ❌ (非消息通道) |
+| Telegram Bot 消息 | ✅ | ❌
+| WebChat 浏览器聊天 | ✅ | ❌
+| 终端对话 | ❌ | ✅
+| TTS / ComfyUI / Live2D | ✅ | ✅
+| ASR 语音识别 | ✅ | ✅
+| mem0 记忆系统 | ✅ | ✅
+| 角色切换 | ✅ | ✅
+| 定时任务 (cron) | ✅ | ❌
+| 任务面板 | ❌ | ✅ (AgentRQ 风格) |
+| sessions_spawn | ✅ | ❌ (无等价物) |
+
+> **定位**：OpenClaw 是生产环境的消息中枢（QQ/TG/WebChat + 角色扮演），Claude Code 是终端开发 agent（任务面板驱动 + 能力调试）。两者互补，非替代关系。
+
+### 相关文件
+
+| 文件 | 用途 |
+|-|-|
+| `.mcp.json` | Claude Code 的 MCP 服务配置 |
+| `.claude/CLAUDE.md` | 角色设定 + 任务循环指令 |
+| `.claude/artemis_mcp_server.py` | MCP 服务 (15 工具, JSON-RPC stdio) |
+| `.claude/task_board_api.py` | 任务看板 API (端口 19280) |
+| `.claude/task_board.html` | 任务看板浏览器界面 |
+| `.claude/task_queue.db` | SQLite 任务数据库 (自动创建) |
+| `.claude/settings.local.json` | 预批准的 MCP 工具权限 |
+| `claude-code.ps1` / `.sh` | 启动脚本 |
+
 ## 技能总览
 
 | 技能 | 类型 | 停 Llama？ | 机制 |
 |-|-|-|-|
 | **Embedding** | 后台进程 | ❌ 否 | all-MiniLM-L6-v2 + BGE-small-zh-v1.5 双模型 (CPU, 端口 9999) - OpenClaw 记忆搜索 + mem0 桥接 |
 | **Live2D** | HTTP exec | ❌ 否 | 直接 HTTP 调 `localhost:19200` 桥 |
+| **Web Chat** | 浏览器 | ❌ 否 | 本地守护进程代理到 llama :8080，端口 19270，实时聊天 |
+| **Claude Code** | 终端 (MCP) | ❌ 否 | 并行 Agent 运行时，通过 .claude/artemis_mcp_server.py 工作 |
 | **TTS** | sessions_spawn | 🔶 按 VRAM 分档 | ≥12GB 时不停；8GB 时停 llama → GPT-SoVITS → 重启 llama |
 | **ComfyUI** | sessions_spawn | 🔶 按 VRAM 分档 | ≥12GB 时不停；8GB 时停 llama → 画图 → 重启 llama |
 | **ASR** | sessions_spawn | ❌ 否 | Faster-Whisper small (~1.5GB 显存，与 llama 共存) |

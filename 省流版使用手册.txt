@@ -1,27 +1,54 @@
 Artemis 省流版使用手册
 ====================
 
-一、启动
-   window 双击shiki.cmd,
-   linux 看start脚本
+一、启动 — 两条通道，选一个
+
+  【通道 A：OpenClaw — 主通道（QQ/TG/WebChat 聊天用这个）】
+    Windows: 双击 shiki.cmd
+    Linux:    bash start.sh
+    启动后用：WebChat → http://127.0.0.1:19270
+
+  【通道 B：Claude Code — 终端通道（任务看板/开发调试用这个）】
+    Windows: .\claude-code.ps1
+    Linux:   bash claude-code.sh
+    前提：   npm install -g @anthropic-ai/claude-code
+    任务看板 → http://127.0.0.1:19280
+
+  【对比速查】
+    功能               OpenClaw    Claude Code
+    ────────────────   ────────    ───────────
+    QQ/TG 消息收发     ✅          ❌
+    WebChat 浏览器     ✅          ❌
+    终端对话          ❌          ✅
+    TTS/ComfyUI/ASR   ✅          ✅
+    Live2D 桌宠       ✅          ✅
+    角色切换          ✅          ✅
+    mem0 记忆         ✅          ✅
+    定时任务          ✅          ❌
+    AgentRQ 任务看板  ❌          ✅
 
 二、关闭
-   windows 双击shiki stop, 
-   linux 参照start.ps1，
-   我红帽就初级，cd..  + rm-rf(笑)
+
+   Windows: 双击 shiki-stop.cmd
+   Linux:   参考 start.sh 停止脚本
 
 三、调试（四层，从下往上查）
+
     1.GPU层   → 浏览器打开 http://127.0.0.1:8080/health 看llama活着没
-    2.桌宠层 → Live2D看 http://localhost:19200/api/status ；Sakura直接看桌面
-    3.能力层 → 直接跑 skills/tts/tts_call.py 或 skills/comfyui/comfyui_call.py
-    4.中枢层 → openclaw gateway status ；日志在 %TEMP%\openclaw\
-    5.网关层 → 看网关list是否都全部启动，在dashboard里找
+    2.桌宠层  → Live2D看 http://localhost:19200/api/status ；Sakura直接看桌面
+    3.能力层  → 直接跑 skills/tts/tts_call.py 或 skills/comfyui/comfyui_call.py 或 skills/asr/asr_call.py <音频文件>
+    4.中枢层  → openclaw gateway status ；日志在 %TEMP%\openclaw\
+    5.MCP层   → python .claude/artemis_mcp_server.py 然后粘贴 JSON-RPC 请求测试
+    6.任务层  → http://127.0.0.1:19280 看 AgentRQ 风格任务队列
+    7.网关层  → Shiki Daemon 面板 http://127.0.0.1:19260 看全部服务状态
 
 常见坑：
     - llama起不来 → config.yaml里llama_exe/llama_model路径对不对
     - 图片/语音只返回路径没文件 → 跑一下 sync_qqbot_workspace.py
     - Sakura闪退 → 进 skills/sakura/ 手动跑 start.bat 看报啥错
+    - Task Board打不开 → 检查 python .claude/task_board_api.py 是否在跑 (:19280)
+    - Claude Code MCP工具超时 → 单独跑 .claude/artemis_mcp_server.py 看有没有报错
 
 ##别用什么傻逼DZMM、Glow、星野、筑梦岛、CharStar，举个例子，
-dzmm的代号sigma“旗舰”模型在4.17发布,而https://huggingface.co/HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive发布日期就是4.17！！！！
+dzmm的代号sigma"旗舰"模型在4.17发布,而https://huggingface.co/HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive发布日期就是4.17！！！！
 所谓旗舰就是qwen3.6 35B A3B量化后的开源模型！！！连deepseek都不是，你觉得给这种厂商付钱值得吗？缺什么功能我直接给你做，别被割韭菜了！！！
