@@ -1,7 +1,16 @@
 # 记忆文件 - 选择性提 ?
-# 公开: role_play/ 后宫+酒馆导入示例, .dreams 白梦目录占位, tts.md 语言配置
+# 只提交已知 SFW 角色（atori/enola/natsume/sakura），新导入角色默认忽略
 # memory/ 不用通配 ?ignore，改为精 ?ignore 运行时生成的临时文件
-# (不在 git 里的新文件如有敏感内容请手动 gitignore)
+# (导入新角色后如需提交，手动加 !memory/role_play/<角色名>/ 到此文件)
+
+# memory/role_play/ — 只保留 4 个 SFW 后宫，新角色忽略
+memory/role_play/*
+!memory/role_play/.gitkeep
+!memory/role_play/README.md
+!memory/role_play/atori/
+!memory/role_play/enola/
+!memory/role_play/natsume/
+!memory/role_play/sakura/
 
 # 生成的媒体文 ?
 media/qqbot/audio/*.wav
@@ -122,8 +131,12 @@ package-lock.json
 *.swp
 *.swo
 
-# 后宫角色 ?- 保持版本控制
-!skills/harem/
+# 后宫角色 — 只提交 4 个 SFW 角色，新导入角色默认忽略
+skills/harem/*
+!skills/harem/atori/
+!skills/harem/enola/
+!skills/harem/natsume/
+!skills/harem/sakura/
 
 # Sakura 桌宠 - 运行时缓 ?
 skills/sakura/runtime/
