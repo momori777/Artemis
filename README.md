@@ -720,5 +720,6 @@ A complete web-based AI girlfriend chat interface, served locally at `http://127
 - [@Rvosy](https://github.com/Rvosy) -Creator of [Sakura Desktop Pet](https://github.com/Rvosy/Sakura), authorized for inclusion (Issue #38)
 - [@guansss](https://github.com/guansss) -Creator of [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display)
 - [Live2D Inc.](https://www.live2d.com) -Cubism SDK (non-commercial use)
+- [AgentRQ](https://github.com/agentrq/agentrq) -Inspiration for the AgentRQ-compatible task queue and MCP tool interface design
 - [headroom](https://github.com/chopratejas/headroom) -Inspiration for SmartCrusher context compression + CCR (Curate-Consolidate-Retrieve) memory pipeline
 - [mem0](https://github.com/mem0ai/mem0) -Inspiration for Qdrant vector memory architecture + hybrid search design
