@@ -1,9 +1,12 @@
 {
   "mcpServers": {
     "artemis": {
+      "type": "stdio",
       "command": "python",
-      "args": [".claude/artemis_mcp_server.py"],
-      "cwd": "${projectDir}"
+      "args": [
+        ".claude/artemis_mcp_server.py"
+      ],
+      "env": {}
     }
   }
 }
