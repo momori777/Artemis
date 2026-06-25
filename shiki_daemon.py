@@ -43,6 +43,8 @@ SERVICES = [
     {"name": "Live2D Bridge",   "port": 19200,        "enabled": True},
     {"name": "Artemis Bridge",  "port": 19250,        "enabled": True},
     {"name": "OpenClaw Gateway","port": 18789,        "enabled": True},
+    {"name": "Task Board",      "port": 19280,        "enabled": True,  "note": "AgentRQ-style task queue UI"},
+    {"name": "Claude Code MCP", "port": None,          "enabled": False, "note": "Run claude-code.ps1 manually"},
     {"name": "WebChat",         "port": 19270,        "enabled": True},
 ]
 
@@ -147,6 +149,23 @@ def start_bridge():
         time.sleep(2)
     return "timeout"
 
+def start_task_board():
+    TASK_PORT = 19280
+    if is_port_open(TASK_PORT):
+        return "already running"
+    api_script = os.path.join(WORKSPACE, ".claude", "task_board_api.py")
+    if not os.path.exists(api_script):
+        return "task_board_api.py not found"
+    try:
+        subprocess.Popen([PYTHON, api_script], cwd=WORKSPACE,
+                         creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
+        for _ in range(3):
+            if is_port_open(TASK_PORT): return "ready"
+            time.sleep(1)
+        return "timeout"
+    except Exception as e:
+        return f"error: {e}"
+
 def start_webchat():
     if is_port_open(WEBCHAT_PORT):
         return "already running"
@@ -211,15 +230,17 @@ SERVICE_STARTERS = {
     "Live2D Bridge": start_live2d,
     "Artemis Bridge": start_bridge,
     "OpenClaw Gateway": start_gateway,
+    "Task Board": start_task_board,
     "WebChat": start_webchat,
 }
 
 SERVICE_KILLERS = {
     "llama-server": "llama-server.exe",
-    "Embedding": "python.exe",  # kill the embedding server python process
+    "Embedding": "python.exe",
     "Live2D Bridge": "node.exe",
     "Artemis Bridge": "python.exe",
     "OpenClaw Gateway": "node.exe",
+    "Task Board": "python.exe",
     "WebChat": None,  # WebChat runs in daemon thread, can't kill separately
 }
 
