@@ -713,5 +713,6 @@ schtasks /create /tn "cleanup-orphans" `
 - [@Rvosy](https://github.com/Rvosy) - [Sakura Desktop Pet](https://github.com/Rvosy/Sakura) 作者，已授权收录（Issue #38）
 - [@guansss](https://github.com/guansss) - [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display) 作者
 - [Live2D Inc.](https://www.live2d.com) - Cubism SDK（非商业用途）
+- [AgentRQ](https://github.com/agentrq/agentrq) - AgentRQ 兼容任务队列 + MCP 工具接口设计灵感来源
 - [headroom](https://github.com/chopratejas/headroom) - SmartCrusher 上下文压缩 + CCR（整理-合并-检索）记忆管线灵感来源
 - [mem0](https://github.com/mem0ai/mem0) - Qdrant 向量记忆架构 + 混合搜索设计灵感来源
