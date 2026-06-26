@@ -575,6 +575,34 @@ html,body{
 
 .input-actions{display:flex;gap:4px;align-items:center;padding-right:4px}
 
+/* Paint button group */
+.paint-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+}
+.paint-btn-group .input-action {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.paint-btn-group .input-action:hover {
+  background: var(--accent-soft);
+}
+.paint-mode-divider {
+  color: var(--text-muted);
+  font-size: 12px;
+  opacity: 0.4;
+  user-select: none;
+}
+
+
 .input-action{
   width:34px;height:34px;border-radius:var(--radius-sm);
   border:none;background:transparent;
@@ -1007,6 +1035,28 @@ html,body{
   font-size:11px;color:var(--text-muted);font-family:var(--font-mono);
 }
 
+/* Llama status inline */
+.llama-offline {
+  color: var(--error);
+  font-weight: 600;
+}
+.btn-llama-restart {
+  margin-left: 8px;
+  padding: 2px 10px;
+  font-size: 11px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-llama-restart:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+
 .studio-bridge-status.online{color:var(--success)}
 .studio-bridge-status.offline{color:var(--error)}
 
@@ -1071,4 +1121,99 @@ html,body{
     animation-duration:0.01ms!important;
     transition-duration:0.01ms!important;
   }
+}
+
+/* ============================================================
+   Paint Modal
+   ============================================================ */
+.paint-modal-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.paint-modal {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-moderate);
+  border-radius: 16px;
+  width: 560px; max-width: 95vw; max-height: 90vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.paint-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 15px; font-weight: 600; color: var(--text-primary);
+}
+.paint-modal-close {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 20px; cursor: pointer; padding: 0 4px; line-height: 1;
+}
+.paint-modal-close:hover { color: var(--text-primary); }
+.paint-modal-body {
+  padding: 16px 20px;
+  overflow-y: auto; flex: 1;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.paint-modal-body label {
+  font-size: 12px; font-weight: 500; color: var(--text-secondary);
+  margin-bottom: -8px;
+}
+.paint-prompt-input {
+  width: 100%; padding: 10px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.paint-prompt-input:focus { border-color: var(--accent); }
+.paint-preset-row {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.paint-preset-btn {
+  padding: 5px 12px;
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 12px; cursor: pointer;
+  transition: all 0.15s;
+}
+.paint-preset-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.paint-param-row {
+  display: flex; gap: 10px;
+}
+.paint-param {
+  display: flex; flex-direction: column; gap: 4px; flex: 1;
+}
+.paint-param label {
+  font-size: 11px; color: var(--text-muted); margin: 0;
+}
+.paint-param input {
+  width: 100%; padding: 6px 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  outline: none;
+}
+.paint-param input:focus { border-color: var(--accent); }
+.paint-modal-footer {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border-subtle);
 }

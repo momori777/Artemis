@@ -65,13 +65,55 @@ var Studio = {
     fetch(this.bridgeUrl + '/api/status', { signal: AbortSignal.timeout(3000) })
       .then(function(res) { return res.json(); })
       .then(function(data) {
-        el.textContent = 'Bridge: online (v' + (data.ok ? 'ok' : '?') + ')';
+        var llamaStatus = data.llama || 'unknown';
+        el.textContent = 'Bridge: online | LLM: ' + llamaStatus;
         el.className = 'studio-bridge-status online';
+        self.updateLlamaStatus(llamaStatus);
         self.populateCharacters(data.characters || []);
       })
       .catch(function() {
         el.textContent = 'Bridge: offline';
         el.className = 'studio-bridge-status offline';
+      });
+  },
+
+  updateLlamaStatus: function(status) {
+    var el = document.getElementById('bridge-status');
+    if (status === 'offline') {
+      el.innerHTML = 'Bridge: online | LLM: <span class="llama-offline">offline</span> <button class="btn-llama-restart" id="btn-llama-restart" title="Restart LLM"><i class="ph ph-arrows-clockwise"></i> Restart</button>';
+      setTimeout(function() {
+        var btn = document.getElementById('btn-llama-restart');
+        if (btn) {
+          btn.addEventListener('click', function() {
+            Studio.restartLlama();
+          });
+        }
+      }, 100);
+    }
+  },
+
+  restartLlama: function() {
+    var self = this;
+    var el = document.getElementById('bridge-status');
+    el.textContent = 'Bridge: online | LLM: restarting...';
+    el.className = 'studio-bridge-status online';
+
+    fetch(this.bridgeUrl + '/api/restart-llama', {
+      method: 'POST',
+      signal: AbortSignal.timeout(300000),
+    })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.ok) {
+          showToast('LLM restarted!');
+        } else {
+          showToast('LLM restart failed: ' + (data.error || 'unknown'));
+        }
+        self.checkBridge();
+      })
+      .catch(function(err) {
+        showToast('LLM restart error: ' + err.message);
+        self.checkBridge();
       });
   },
 

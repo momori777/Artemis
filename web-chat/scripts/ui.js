@@ -72,6 +72,7 @@ var UI = {
     // Skill buttons
     document.getElementById('btn-live2d').addEventListener('click', function() { showToast('Live2D - action triggered'); });
     document.getElementById('btn-auto-paint').addEventListener('click', function() { self.autoPaint(); });
+    document.getElementById('btn-manual-paint').addEventListener('click', function() { self.manualPaint(); });
 
     // Llama management toggle in chat input area
     var llamaToggleLabel = document.getElementById('toggle-chat-llama-label');
@@ -699,6 +700,82 @@ var UI = {
     this.state.messages.push(charMsg);
   },
 
+  // ---- Manual Paint (user-provided prompt with full params) ----
+  manualPaint: function() {
+    var self = this;
+    if (this.state.streaming) return;
+
+    // Build and show a proper prompt modal
+    var overlay = document.createElement('div');
+    overlay.className = 'paint-modal-overlay';
+    overlay.innerHTML =
+      '<div class="paint-modal">' +
+        '<div class="paint-modal-header">' +
+          '<span>🎨 Manual Paint</span>' +
+          '<button class="paint-modal-close">&times;</button>' +
+        '</div>' +
+        '<div class="paint-modal-body">' +
+          '<label>Positive Prompt <span style="color:var(--text-muted);font-size:11px">(English, comma-separated tags)</span></label>' +
+          '<textarea class="paint-prompt-input" id="paint-pos-prompt" rows="4" placeholder="masterpiece, best quality, 1girl, natsume, white hair, red eyes, standing, cherry blossom..."></textarea>' +
+          '<label>Negative Prompt</label>' +
+          '<textarea class="paint-prompt-input" id="paint-neg-prompt" rows="2">worst quality, bad quality, low quality, blurry, lowres, bad anatomy, extra fingers, missing fingers, extra limbs, deformed, disfigured, watermark, text, signature, jpeg artifacts</textarea>' +
+          '<label>Quick Presets</label>' +
+          '<div class="paint-preset-row">' +
+            '<button class="paint-preset-btn" data-prompt="masterpiece, best quality, 1girl, natsume, white hair, red eyes, school uniform, standing, cherry blossom, soft lighting, detailed">Natsume</button>' +
+            '<button class="paint-preset-btn" data-prompt="masterpiece, best quality, 1girl, sakura, silver pink hair, light blue eyes, school uniform, serious expression, moonlight, detailed">Sakura</button>' +
+            '<button class="paint-preset-btn" data-prompt="masterpiece, best quality, 1girl, atori, silver hair, red eyes, white dress, barefoot, seaside sunset, warm light, detailed">Atori</button>' +
+            '<button class="paint-preset-btn" data-prompt="masterpiece, best quality, 1girl, enola, brown hair, gentle smile, casual clothes, soft lighting, warm atmosphere">Enola</button>' +
+          '</div>' +
+          '<div class="paint-param-row">' +
+            '<div class="paint-param"><label>W</label><input type="number" id="paint-width" value="1200" min="256" max="2048" step="64"></div>' +
+            '<div class="paint-param"><label>H</label><input type="number" id="paint-height" value="1500" min="256" max="2048" step="64"></div>' +
+            '<div class="paint-param"><label>Steps</label><input type="number" id="paint-steps" value="30" min="5" max="100"></div>' +
+            '<div class="paint-param"><label>CFG</label><input type="number" id="paint-cfg" value="6.0" min="1" max="20" step="0.5"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="paint-modal-footer">' +
+          '<button class="btn-secondary" id="paint-cancel">Cancel</button>' +
+          '<button class="btn-primary" id="paint-generate"><i class="ph ph-image"></i> Generate</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+
+    var closeModal = function() { overlay.remove(); };
+    overlay.querySelector('.paint-modal-close').addEventListener('click', closeModal);
+    overlay.querySelector('#paint-cancel').addEventListener('click', closeModal);
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(); });
+
+    // Preset buttons
+    overlay.querySelectorAll('.paint-preset-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        overlay.querySelector('#paint-pos-prompt').value = btn.dataset.prompt;
+      });
+    });
+
+    // Generate
+    overlay.querySelector('#paint-generate').addEventListener('click', function() {
+      var pos = overlay.querySelector('#paint-pos-prompt').value.trim();
+      if (!pos) { showToast('Please enter a positive prompt'); return; }
+      var neg = overlay.querySelector('#paint-neg-prompt').value.trim();
+      var width = parseInt(overlay.querySelector('#paint-width').value) || 1200;
+      var height = parseInt(overlay.querySelector('#paint-height').value) || 1500;
+      var steps = parseInt(overlay.querySelector('#paint-steps').value) || 30;
+      var cfg = parseFloat(overlay.querySelector('#paint-cfg').value) || 6.0;
+      closeModal();
+
+      self.appendSystemMsg('🎨 Generating from manual prompt...');
+      self.scrollToBottom();
+      self._submitPaintJob(pos, neg, width, height, steps, cfg);
+    });
+
+    // Focus the input
+    setTimeout(function() {
+      var ta = overlay.querySelector('#paint-pos-prompt');
+      if (ta) ta.focus();
+    }, 100);
+  },
+
   // ---- Auto Paint (AI-driven image generation from chat context) ----
   autoPaint: function() {
     var self = this;
@@ -742,7 +819,7 @@ var UI = {
       });
   },
 
-  _submitPaintJob: function(prompt, negative) {
+  _submitPaintJob: function(prompt, negative, width, height, steps, cfg) {
     var self = this;
     // Prepend quality tags if not already present
     var qualityPrefix = 'masterpiece, best quality, highly detailed,';
@@ -755,10 +832,10 @@ var UI = {
     var params = {
       positive: finalPositive,
       negative: finalNegative,
-      width: 1200,
-      height: 1500,
-      steps: 30,
-      cfg: 6.0,
+      width: width || 1200,
+      height: height || 1500,
+      steps: steps || 30,
+      cfg: cfg || 6.0,
       checkpoint: 'WAI-Nsfw-Illustrious-17.safetensors',
       manage_llama: document.getElementById('chat-manage-llama').checked,
     };
