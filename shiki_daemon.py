@@ -15,7 +15,9 @@ Usage:
 
 import sys, os, json, time, threading, subprocess
 import socket, signal, webbrowser
+import http.server
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from socketserver import ThreadingMixIn
 from urllib.parse import urlparse, parse_qs
 
 WORKSPACE = os.path.dirname(os.path.abspath(__file__))
@@ -584,11 +586,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     for key, meta in aliases.items():
                         name = meta.get("alias", key) if isinstance(meta, dict) else str(meta)
                         model_list.append({"id": key, "name": name})
-                    if not model_list:
-                        # Fallback: use provider models
-                        for pid, pdata in providers.items():
-                            for m in pdata.get("models", []):
-                                mid = pid + "/" + m["id"]
+                    # Also add provider models (DeepSeek, etc.)
+                    for pid, pdata in providers.items():
+                        for m in pdata.get("models", []):
+                            mid = pid + "/" + m["id"]
+                            if not any(mm["id"] == mid for mm in model_list):
                                 model_list.append({"id": mid, "name": m.get("name", mid)})
                     gw_config["models"] = model_list
                 except Exception:
@@ -761,7 +763,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self.send_json({"error": f"Unknown model: {model_id}"}, 400)
                 return
             api_key = provider_cfg.get("apiKey", "")
-            auth_header = "***" + api_key
+            auth_header = "Bearer " + api_key
             base_url = provider_cfg.get("baseUrl", "").rstrip("/")
             backend_model = model_id.split("/")[-1]
 
@@ -885,10 +887,7 @@ Conversation:
             req = urllib.request.Request(
                 "http://127.0.0.1:8080/v1/chat/completions",
                 data=data,
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer 123456"
-                }
+                headers={"Content-Type": "application/json"}
             )
             resp = urllib.request.urlopen(req, timeout=30)
             result = json.loads(resp.read())
@@ -968,10 +967,18 @@ def make_icon():
     draw.ellipse([16, 16, 48, 48], fill="#1a1a2e")
     return img
 
+class ThreadingDashboardServer(ThreadingMixIn, HTTPServer):
+    """Multi-threaded HTTP server so chat proxy doesn't block status checks."""
+    daemon_threads = True
+    
+class ThreadingWebChatServer(ThreadingMixIn, http.server.HTTPServer):
+    """Multi-threaded HTTP server for web-chat static files."""
+    daemon_threads = True
+
 def run_dashboard_server(daemon):
     global daemon_instance
     daemon_instance = daemon
-    server = HTTPServer(("127.0.0.1", DASHBOARD_PORT), DashboardHandler)
+    server = ThreadingDashboardServer(("127.0.0.1", DASHBOARD_PORT), DashboardHandler)
     print(f"[dashboard] http://127.0.0.1:{DASHBOARD_PORT}")
     server.serve_forever()
 
@@ -979,7 +986,7 @@ def run_webchat_server():
     """Simple file server for web-chat"""
     import http.server
     os.chdir(WEBCHAT_DIR)
-    server = http.server.HTTPServer(("127.0.0.1", WEBCHAT_PORT),
+    server = ThreadingWebChatServer(("127.0.0.1", WEBCHAT_PORT),
         http.server.SimpleHTTPRequestHandler)
     print(f"[webchat] http://127.0.0.1:{WEBCHAT_PORT}")
     server.serve_forever()
