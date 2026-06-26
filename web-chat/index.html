@@ -10,10 +10,10 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Satoshi:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
-<link rel="stylesheet" href="styles/main.css?v=23">
-<link rel="stylesheet" href="styles/polish.css?v=23">
+<link rel="stylesheet" href="styles/main.css?v=37">
+<link rel="stylesheet" href="styles/polish.css?v=26">
 </head>
 <body>
 
@@ -107,6 +107,9 @@
           <span class="chat-header-name" id="char-name-text">四季夏目</span>
         </div>
         <div class="chat-header-actions">
+          <button class="theme-toggle" id="btn-theme-toggle" title="Switch theme">
+            <i class="ph ph-moon" id="theme-icon"></i>
+          </button>
           <button class="header-action" id="btn-search" title="Search">
             <i class="ph ph-magnifying-glass"></i> Search
           </button>
@@ -153,7 +156,7 @@
           <i class="ph ph-paper-plane-right"></i>
         </button>
       </div>
-      <label class="input-llama-toggle" id="toggle-chat-llama-label" title="��ͼʱ�Ƿ�ͣllama�ͷ��Դ�">
+      <label class="input-llama-toggle" id="toggle-chat-llama-label" title="��ͼʱ�Ƿ�ͣllama�ͷ��Դ�">
         <span class="toggle-switch on" id="toggle-chat-llama-switch"></span>
         <input type="checkbox" id="chat-manage-llama" checked style="display:none">
         Stop llama for painting
@@ -388,14 +391,90 @@
 
 <div id="toast-container"></div>
 
+<!-- Avatar Upload Modal -->
+<div id="avatar-modal">
+  <div id="avatar-modal-panel">
+    <div class="avatar-modal-header">
+      <h3>Change Avatar</h3>
+      <button class="avatar-modal-close" id="avatar-modal-close">&times;</button>
+    </div>
+    <div class="avatar-modal-body">
+      <div class="avatar-preview" id="avatar-preview">
+        <span class="avatar-placeholder" id="avatar-preview-icon">N</span>
+        <img id="avatar-preview-img" src="" alt="" style="display:none">
+        <div class="avatar-overlay" id="avatar-overlay">
+          <i class="ph ph-camera"></i>
+        </div>
+        <!-- Crop overlay (shown when cropping) -->
+        <div id="avatar-crop-box" style="display:none">
+          <div class="crop-handle" id="avatar-crop-handle-tl"></div>
+          <div class="crop-handle" id="avatar-crop-handle-tr"></div>
+          <div class="crop-handle" id="avatar-crop-handle-bl"></div>
+          <div class="crop-handle" id="avatar-crop-handle-br"></div>
+          <div class="crop-handle" id="avatar-crop-handle-tm"></div>
+          <div class="crop-handle" id="avatar-crop-handle-bm"></div>
+          <div class="crop-handle" id="avatar-crop-handle-lm"></div>
+          <div class="crop-handle" id="avatar-crop-handle-rm"></div>
+        </div>
+      </div>
+      <div class="avatar-char-info" id="avatar-char-info">四季夏目</div>
+      <div class="avatar-crop-hint" id="avatar-crop-hint" style="display:none">
+        Drag to select the avatar area, then click <strong>Apply</strong>.
+      </div>
+      <div class="avatar-upload-area">
+        <div class="avatar-drop-zone" id="avatar-drop-zone">
+          <i class="ph ph-upload-simple"></i>
+          <span>Click or drag image here</span>
+        </div>
+        <input type="file" id="avatar-file-input" accept="image/*" style="display:none">
+        <div class="avatar-file-name" id="avatar-file-name"></div>
+      </div>
+    </div>
+    <div class="avatar-modal-footer">
+      <button class="btn-remove-avatar" id="btn-remove-avatar">Remove Avatar</button>
+      <button class="btn-crop-cancel" id="btn-crop-cancel" style="display:none">Cancel</button>
+      <button class="btn-crop-apply" id="btn-crop-apply" style="display:none">Apply</button>
+    </div>
+  </div>
 </div>
 
-<script src="scripts/chars.js?v=23"></script>
+</div>
+
+<script src="CHARACTERS_JSON.js"></script>
+<script src="scripts/chars.js?v=27"></script>
+<script>
+// Theme toggle: read saved preference or auto-detect
+(function() {
+  var saved = localStorage.getItem('theme');
+  if (saved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    var icon = document.getElementById('theme-icon');
+            if (icon) { icon.className = 'ph ph-sun'; }
+  } else if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+    if (!saved) { localStorage.setItem('theme', 'light'); }
+    document.documentElement.setAttribute('data-theme', 'light');
+    var icon2 = document.getElementById('theme-icon');
+    if (icon2) { icon2.className = 'ph ph-sun'; }
+  }
+  document.getElementById('btn-theme-toggle').addEventListener('click', function() {
+    var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    if (isLight) {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('theme', 'dark');
+      document.getElementById('theme-icon').className = 'ph ph-moon';
+    } else {
+      document.documentElement.setAttribute('data-theme', 'light');
+      localStorage.setItem('theme', 'light');
+      document.getElementById('theme-icon').className = 'ph ph-sun';
+    }
+  });
+})();
+</script>
 <script>window.addEventListener('error',function(e){document.title='JS ERR: '+e.message;console.error(e);});</script>
-<script src="scripts/store.js?v=23"></script>
-<script src="scripts/api.js?v=23"></script>
-<script src="scripts/importer.js?v=23"></script>
-<script src="scripts/ui.js?v=23"></script>
-<script src="scripts/studio.js?v=23"></script>
+<script src="scripts/store.js?v=25"></script>
+<script src="scripts/api.js?v=25"></script>
+<script src="scripts/importer.js?v=25"></script>
+<script src="scripts/ui.js?v=36"></script>
+<script src="scripts/studio.js?v=25"></script>
 </body>
 </html>

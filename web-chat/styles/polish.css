@@ -158,3 +158,16 @@
 .studio-actions-dash { margin-top: 16px; }
 .dash-link { margin-top: 16px; text-align: center; }
 .dash-link-a { color: var(--accent); font-size: 13px; text-decoration: none; }
+
+/* ---- Theme toggle in header ---- */
+.theme-toggle {
+  display:flex;align-items:center;gap:6px;
+  padding:6px 12px;border-radius:var(--radius-full);
+  border:1px solid var(--border-subtle);
+  background:transparent;color:var(--text-secondary);
+  font-size:12px;cursor:pointer;
+  transition:all var(--dur-fast) var(--ease-out-expo);
+  font-family:var(--font-sans);
+}
+.theme-toggle:hover { background:var(--bg-elevated); color:var(--text-primary); }
+.theme-toggle i { font-size:14px; }
