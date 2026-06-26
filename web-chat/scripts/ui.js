@@ -1336,7 +1336,7 @@ var UI = {
         self.hideTyping();
         var bubble = document.getElementById('stream-bubble');
         if (bubble) bubble.remove();
-        self.doFallback();
+        self.doFallback(err.message);
         saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
         self.state.streaming = false;
         self.$sendBtn.disabled = false;
@@ -1548,7 +1548,7 @@ var UI = {
           self.finalizeStream('');
           var bubble = document.getElementById('stream-bubble');
           if (bubble) bubble.remove();
-          self.doFallback();
+          self.doFallback(err.message);
           saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
           self.state.streaming = false;
           self.$sendBtn.disabled = false;
@@ -1570,7 +1570,7 @@ var UI = {
       }).catch(function(err) {
         console.warn('Non-stream failed:', err.message);
         self.hideTyping();
-        self.doFallback();
+        self.doFallback(err.message);
         saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
         self.state.streaming = false;
         self.$sendBtn.disabled = false;
@@ -1579,9 +1579,9 @@ var UI = {
     }
   },
 
-  doFallback: function() {
-    var reply = getFallbackReply(this.state.currentCharId);
-    var charMsg = { role: 'assistant', content: reply, time: this.formatTime(new Date()) };
+  doFallback: function(error) {
+    var errMsg = error ? '⚠️ ' + error : '⚠️ API 请求失败';
+    var charMsg = { role: 'assistant', content: errMsg, time: this.formatTime(new Date()) };
     this.appendMessage(charMsg);
     this.state.messages.push(charMsg);
   },
