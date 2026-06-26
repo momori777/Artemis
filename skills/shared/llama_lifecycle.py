@@ -359,7 +359,7 @@ def stop_llama(port=8080, wait_vram_stable=True):
 
 
 def start_llama(port=8080, exe_path=None, model_path=None,
-                log_dir=None, timeout=180):
+                log_dir=None, timeout=180, use_mmap=False):
     """
     启动 llama-server 并等待就绪。
 
@@ -437,6 +437,9 @@ def start_llama(port=8080, exe_path=None, model_path=None,
         batch_size = 4096
         ubatch_size = 2048
 
+    # Build args — use mmap mode after ComfyUI restart to avoid
+    # host RAM fragmentation from large model load/unload cycles.
+    # --no-mmap requires pristine contiguous address space.
     args = [
         exe_path or "llama-server.exe",
         "-m", model_path or "",
@@ -456,9 +459,10 @@ def start_llama(port=8080, exe_path=None, model_path=None,
         "--cache-ram", "5000",
         "--parallel", "1",
         "--kv-unified",
-        "--no-mmap",
         "--no-warmup",
     ]
+    if not use_mmap:
+        args.append("--no-mmap")
 
     if log_dir:
         os.makedirs(log_dir, exist_ok=True)
@@ -482,6 +486,17 @@ def start_llama(port=8080, exe_path=None, model_path=None,
 
     print(f"[LLAMA] 已启动，PID={proc.pid}，等待端口 {port}...",
           file=sys.stderr, flush=True)
+
+    # Quick crash detection: if process exits within 5s, it's dead
+    for i in range(10):
+        if proc.poll() is not None:
+            print(f"[LLAMA] crash detected at {i*0.5:.1f}s (exit {proc.returncode})",
+                  file=sys.stderr, flush=True)
+            return False
+        if _port_open("127.0.0.1", port, timeout=0.3):
+            break
+        time.sleep(0.5)
+
     return _wait_for_llama_ready(port=port, timeout=timeout)
 
 

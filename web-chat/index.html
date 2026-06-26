@@ -12,8 +12,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
-<link rel="stylesheet" href="styles/main.css?v=21">
-<link rel="stylesheet" href="styles/polish.css?v=21">
+<link rel="stylesheet" href="styles/main.css?v=23">
+<link rel="stylesheet" href="styles/polish.css?v=23">
 </head>
 <body>
 
@@ -142,7 +142,11 @@
               <button class="input-action" id="btn-manual-paint" title="手动输入提示词画图">
                 <i class="ph ph-pencil-simple"></i>
               </button>
-            </div>
+            
+              <span class="paint-mode-divider">/</span>
+              <button class="input-action" id="btn-tts-voice" title="语音朗读最近回复">
+                <i class="ph ph-microphone"></i>
+              </button></div>
           </div>
         </div>
         <button id="send-btn" title="Send">
@@ -386,12 +390,12 @@
 
 </div>
 
-<script src="scripts/chars.js?v=21"></script>
+<script src="scripts/chars.js?v=23"></script>
 <script>window.addEventListener('error',function(e){document.title='JS ERR: '+e.message;console.error(e);});</script>
-<script src="scripts/store.js?v=21"></script>
-<script src="scripts/api.js?v=21"></script>
-<script src="scripts/importer.js?v=21"></script>
-<script src="scripts/ui.js?v=21"></script>
-<script src="scripts/studio.js?v=21"></script>
+<script src="scripts/store.js?v=23"></script>
+<script src="scripts/api.js?v=23"></script>
+<script src="scripts/importer.js?v=23"></script>
+<script src="scripts/ui.js?v=23"></script>
+<script src="scripts/studio.js?v=23"></script>
 </body>
 </html>
