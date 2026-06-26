@@ -231,6 +231,8 @@ def run_txt2img(positive_prompt, negative_prompt, seed, width, height,
     print("=" * 60, file=sys.stderr, flush=True)
 
     # --- 释放 ComfyUI 模型显存，防止 start_llama OOM ---
+    # 顺序很重要：先 del Python 对象 → gc → CUDA sync → empty_cache
+    # → 等驱动异步回收 → 再次 empty_cache → 然后才能启动 llama
     del pos_out, neg_out
     if model is not None:
         del model
@@ -239,18 +241,47 @@ def run_txt2img(positive_prompt, negative_prompt, seed, width, height,
     if vae is not None:
         del vae
     del images, state_dict, samples, latent
+
+    # 清理 ComfyUI 的 model_management 内部缓存
+    try:
+        from comfy import model_management as mm
+        mm.unload_all_models()
+        mm.soft_empty_cache()
+    except Exception:
+        pass
+
+    # 激进回收
+    import gc as _gc
+    _gc.collect()
+    torch.cuda.synchronize()
     torch.cuda.empty_cache()
-    import gc
-    gc.collect()
+    _gc.collect()
+    torch.cuda.empty_cache()
+
     # 释放进程 RSS 回 OS，给后续 --no-mmap 腾 Host RAM
     try:
         import ctypes
         ctypes.windll.psapi.EmptyWorkingSet(ctypes.windll.kernel32.GetCurrentProcess())
     except Exception:
         pass
+
+    # 等 GPU 驱动异步回收完成 —— 这是关键！
+    # Blackwell (RTX 5070) 驱动的 deferred-free 延迟比 Ampere 更大
     if manage_llama:
-        time.sleep(5)
-        print(f"[VRAM] ComfyUI 模型已释放，gc+empty_cache+EmptyWorkingSet 完成",
+        free0 = torch.cuda.mem_get_info()[0] / (1024 ** 2)
+        print(f"[VRAM] 释放后立即值: {free0:.0f} MiB", file=sys.stderr, flush=True)
+
+        # 每 3 秒测一次，等 VRAM 稳定或 30 秒过去
+        peak_free = free0
+        for i in range(10):
+            time.sleep(3)
+            torch.cuda.empty_cache()
+            cur = torch.cuda.mem_get_info()[0] / (1024 ** 2)
+            peak_free = max(peak_free, cur)
+            print(f"[VRAM] +{(i+1)*3}s: {cur:.0f} MiB (peak {peak_free:.0f})",
+                  file=sys.stderr, flush=True)
+
+        print(f"[VRAM] 回收完成，peak free: {peak_free:.0f} MiB",
               file=sys.stderr, flush=True)
     # ---
 
@@ -263,12 +294,23 @@ def run_txt2img(positive_prompt, negative_prompt, seed, width, height,
             log_dir=LLAMA_LOG_DIR,
         )
         if not ok:
-            # 首次启动失败 → 再清一次 VRAM，等久一点，重试一次
-            print(f"[LLAMA] 启动失败，再清一次 VRAM 后重试...",
+            # 首次启动失败 → VRAM 还是不够，再等一轮+更激进回收
+            print(f"[LLAMA] 启动失败，激进回收 VRAM 后重试...",
                   file=sys.stderr, flush=True)
+            torch.cuda.synchronize()
             torch.cuda.empty_cache()
-            gc.collect()
-            time.sleep(10)
+            _gc.collect()
+            torch.cuda.empty_cache()
+            _gc.collect()
+            try:
+                ctypes.windll.psapi.EmptyWorkingSet(ctypes.windll.kernel32.GetCurrentProcess())
+            except Exception:
+                pass
+            time.sleep(15)
+            torch.cuda.empty_cache()
+            free_retry = torch.cuda.mem_get_info()[0] / (1024 ** 2)
+            print(f"[LLAMA] 重试前 VRAM: {free_retry:.0f} MiB",
+                  file=sys.stderr, flush=True)
             ok = start_llama(
                 port=LLAMA_PORT,
                 exe_path=LLAMA_EXE_PATH,

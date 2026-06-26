@@ -60,13 +60,134 @@ jobs = {}
 jobs_lock = threading.Lock()
 
 # ================================================================
-# Routes
+# Llama health check & recovery
 # ================================================================
 
-@app.route("/api/status")
+LLAMA_PORT = CFG.get("llama_port", 8080)
+LLAMA_EXE = CFG.get("llama_exe", "")
+LLAMA_MODEL = CFG.get("llama_model", "")
+LLAMA_LOG_DIR = CFG.get("llama_log_dir", WORKSPACE_ROOT)
+LLAMA_RESTART_SCRIPT = CFG.get("restart_script", "")
+
+
+def _is_llama_running():
+    """Quick check if llama-server is responsive."""
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{LLAMA_PORT}/health", method="GET")
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+
+def _ensure_llama_running():
+    """Check if llama is alive after ComfyUI; restart if not."""
+    if _is_llama_running():
+        print("[Bridge] llama-server: alive \u2713", flush=True)
+        return True
+
+    print("[Bridge] llama-server: down after ComfyUI, restarting...", flush=True)
+
+    # ===== Step 1: VRAM reclaim first, THEN start llama =====
+    _release_vram_before_llama()
+
+    # ===== Step 2: restart llama =====
+    try:
+        _def = WORKSPACE_ROOT
+        if _def not in sys.path:
+            sys.path.insert(0, _def)
+        from skills.shared.llama_lifecycle import start_llama
+
+        for attempt in range(3):
+            if attempt > 0:
+                wait = 10 + attempt * 10
+                print(f"[Bridge] Retry {attempt + 1}/3 after {wait}s...", flush=True)
+                time.sleep(wait)
+                _release_vram_before_llama()
+
+            ok = start_llama(
+                port=LLAMA_PORT,
+                exe_path=LLAMA_EXE,
+                model_path=LLAMA_MODEL,
+                log_dir=LLAMA_LOG_DIR,
+                timeout=180,
+            )
+            if ok:
+                print("[Bridge] llama-server: restarted successfully", flush=True)
+                return True
+
+        print("[Bridge] llama-server: all restart attempts failed", flush=True)
+    except Exception as e:
+        print(f"[Bridge] llama restart error: {e}", flush=True)
+
+    # Fallback: try the restart script
+    if LLAMA_RESTART_SCRIPT and os.path.isfile(LLAMA_RESTART_SCRIPT):
+        try:
+            print("[Bridge] Trying restart script fallback...", flush=True)
+            subprocess.Popen(
+                ["powershell", "-ExecutionPolicy", "Bypass", "-File", LLAMA_RESTART_SCRIPT],
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
+            time.sleep(30)
+            if _is_llama_running():
+                print("[Bridge] Restart script succeeded", flush=True)
+                return True
+        except Exception:
+            pass
+
+    print("[Bridge] CRITICAL: llama-server could not be recovered!", flush=True)
+    return False
+
+
+def _release_vram_before_llama():
+    """Aggressively free VRAM before restarting llama-server.
+
+    ComfyUI subprocess may leave tensors in GPU driver deferred-free queue.
+    Steps: torch cleanup -> wait for driver reclaim -> then safe to start llama.
+    """
+    # 1. torch-level cleanup (cache release + IPC collect + RSS trim)
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+            import gc
+            gc.collect()
+            torch.cuda.empty_cache()
+            gc.collect()
+            try:
+                import ctypes
+                ctypes.windll.psapi.EmptyWorkingSet(
+                    ctypes.windll.kernel32.GetCurrentProcess())
+            except Exception:
+                pass
+            free = torch.cuda.mem_get_info()[0] / (1024 ** 2)
+            print(f"[Bridge] VRAM after torch cleanup: {free:.0f} MiB", flush=True)
+    except Exception:
+        print("[Bridge] torch not available, skip torch-level cleanup", flush=True)
+
+    # 2. Wait for GPU driver to async-reclaim ComfyUI's freed tensors
+    print("[Bridge] Waiting for GPU driver reclaim (15s)...", flush=True)
+
+    for sec in (5, 10, 15):
+        time.sleep(5)
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                free = torch.cuda.mem_get_info()[0] / (1024 ** 2)
+                print(f"[Bridge] VRAM after {sec}s: {free:.0f} MiB", flush=True)
+        except Exception:
+            pass
+
 def api_status():
     return jsonify({
         "ok": True,
+        "llama": "online" if _is_llama_running() else "offline",
         "characters": list(AVAILABLE_CHARACTERS.keys()),
         "checkpoints": ["WAI-Nsfw-Illustrious-17.safetensors", "miaomiaoHarem_v20.safetensors"],
     })
@@ -187,6 +308,9 @@ def api_comfyui():
                     img_path = max(candidates, key=os.path.getmtime)
 
             if img_path and os.path.exists(img_path):
+                # After successful image generation, check llama health
+                if manage_llama:
+                    _ensure_llama_running()
                 with jobs_lock:
                     jobs[job_id] = {"status": "done", "type": "comfyui", "path": img_path,
                                     "elapsed": time.time() - jobs[job_id]["created"]}
@@ -198,10 +322,16 @@ def api_comfyui():
                     if line and ("rror" in line or "Error" in line or "FAIL" in line or "fail" in line):
                         error_msg = line[-200:]
                         break
+                # Even on failure, try to recover llama
+                if manage_llama:
+                    _ensure_llama_running()
                 with jobs_lock:
                     jobs[job_id] = {"status": "failed", "type": "comfyui",
                                     "error": error_msg}
         except Exception as e:
+            # On exception, still try to recover llama
+            if manage_llama:
+                _ensure_llama_running()
             with jobs_lock:
                 jobs[job_id] = {"status": "failed", "type": "comfyui", "error": str(e)}
 
@@ -242,6 +372,16 @@ def serve_media(filepath):
         except: pass
 
     return jsonify({"error": "file not found"}), 404
+
+@app.route("/api/restart-llama", methods=["POST"])
+def api_restart_llama():
+    """Manually restart llama-server (recovery endpoint)."""
+    if _is_llama_running():
+        return jsonify({"ok": True, "message": "llama-server already running"})
+    ok = _ensure_llama_running()
+    if ok:
+        return jsonify({"ok": True, "message": "llama-server restarted"})
+    return jsonify({"ok": False, "error": "Failed to restart llama-server"}), 500
 
 # ================================================================
 # Main
