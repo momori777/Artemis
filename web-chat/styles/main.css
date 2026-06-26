@@ -5,14 +5,16 @@
    Icons: Phosphor (CDN)
    ============================================================ */
 
-/* ---- CSS Variables ---- */
+/* ---- CSS Variables (Dark mode defaults, overridden by [data-theme="light"]) ---- */
 :root {
+  /* Dark mode surfaces */
   --bg-deepest: #0a0a12;
   --bg-root: #0f0f1a;
   --bg-surface: #151525;
   --bg-elevated: #1c1c30;
   --bg-overlay: #222238;
 
+  /* Dark mode text */
   --text-primary: #e8e4f0;
   --text-secondary: #9890a8;
   --text-muted: #8a84a0;
@@ -33,7 +35,7 @@
   --radius-lg: 20px;
   --radius-full: 9999px;
 
-  --font-sans: "Inter","Noto Sans SC",system-ui,-apple-system,sans-serif;
+  --font-sans: "Satoshi","Noto Sans SC",system-ui,-apple-system,sans-serif;
   --font-mono: "JetBrains Mono","Cascadia Code",monospace;
 
   --ease-out-expo: cubic-bezier(0.16,1,0.3,1);
@@ -53,6 +55,47 @@ html,body{
   background:var(--bg-deepest);color:var(--text-primary);
   font-family:var(--font-sans);font-size:14px;line-height:1.5;
   -webkit-font-smoothing:antialiased;
+}
+
+/* ================================================================
+   Light Mode Theme
+   ================================================================ */
+[data-theme="light"] {
+  --bg-deepest: #f5f5f7;
+  --bg-root: #ffffff;
+  --bg-surface: #f0f0f2;
+  --bg-elevated: #e8e8ec;
+  --bg-overlay: #e0e0e4;
+
+  --text-primary: #1a1a2e;
+  --text-secondary: #4a4a5a;
+  --text-muted: #7a7a8a;
+  --text-inverse: #ffffff;
+
+  --accent: #c05a5c;
+  --accent-soft: rgba(192,90,92,0.10);
+  --accent-glow: rgba(192,90,92,0.06);
+  --accent-hover: #a8484a;
+
+  --border-subtle: rgba(0,0,0,0.06);
+  --border-moderate: rgba(0,0,0,0.12);
+  --success: #4a9a7a;
+  --error: #c05a5c;
+}
+
+/* Light mode surface adjustments for glass effects */
+[data-theme="light"] .chat-header,
+[data-theme="light"] #input-area {
+  background: rgba(255,255,255,0.90);
+  backdrop-filter: blur(16px);
+}
+
+[data-theme="light"] .char-avatar {
+  background: linear-gradient(135deg, #f5e6e8, #e8e0e4 50%, #e0e8ec);
+}
+
+[data-theme="light"] .char-avatar::after {
+  background: radial-gradient(ellipse at 40% 30%, var(--accent-glow), transparent 70%);
 }
 
 /* ---- App Shell ---- */
@@ -106,6 +149,12 @@ html,body{
   border:1px solid var(--border-moderate);
   display:flex;align-items:center;justify-content:center;
   position:relative;overflow:hidden;
+  cursor:pointer;
+  transition:border-color var(--dur-fast),box-shadow var(--dur-fast);
+}
+.char-avatar:hover{
+  border-color:var(--accent);
+  box-shadow:0 0 0 2px var(--accent-soft);
 }
 
 .char-avatar::after{
@@ -192,7 +241,13 @@ html,body{
   width:32px;height:32px;border-radius:var(--radius-sm);
   background:var(--bg-surface);
   display:flex;align-items:center;justify-content:center;
-  font-size:14px;flex-shrink:0;
+  font-size:14px;flex-shrink:0;overflow:hidden;
+}
+.char-option-avatar img{
+  width:100%;height:100%;object-fit:cover;border-radius:var(--radius-sm);
+}
+.char-option:hover .char-option-avatar{
+  border:1px solid var(--accent);
 }
 
 /* Delete button on imported character options */
@@ -1243,6 +1298,26 @@ html,body{
   color: var(--accent);
 }
 .msg-row.editing .msg-edit-btn { display: none; }
+.msg-row.editing .msg-btns { display: none; }
+
+/* Button row (edit + regenerate) */
+.msg-btns {
+  display:flex;gap:4px;margin-top:6px;
+}
+.msg-regen-btn {
+  background:transparent;border:none;
+  color:var(--text-muted);
+  font-size:13px;
+  padding:4px 6px;
+  border-radius:var(--radius-sm);
+  cursor:pointer;
+  transition:all var(--dur-fast);
+  font-family:var(--font-sans);
+}
+.msg-regen-btn:hover {
+  color:var(--accent);
+  background:var(--accent-soft);
+}
 .msg-edit-textarea {
   width: 100%; min-width: 300px;
   min-height: 60px;
@@ -1288,4 +1363,182 @@ html,body{
   width: 100%; height: 36px;
   border-radius: 8px;
   background: var(--bg-surface);
+}
+
+/* Faded regenerated messages */
+.msg-row.faded {
+  opacity: 0.4;
+}
+
+/* ============================================================
+   Avatar Upload Modal
+   ============================================================ */
+#avatar-modal {
+  display:none;position:fixed;inset:0;
+  background:rgba(10,10,18,0.75);z-index:250;
+  align-items:center;justify-content:center;
+}
+#avatar-modal.open{display:flex}
+#avatar-modal-panel {
+  background:var(--bg-root);
+  border:1px solid var(--border-moderate);
+  border-radius:var(--radius-lg);
+  width:min(380px,90vw);
+  animation:fadeIn var(--dur-normal) var(--ease-out-expo);
+  overflow:hidden;
+}
+.avatar-modal-header {
+  padding:16px 20px;
+  border-bottom:1px solid var(--border-subtle);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.avatar-modal-header h3 {
+  font-size:15px;font-weight:600;color:var(--text-primary);margin:0;
+}
+.avatar-modal-close {
+  background:none;border:none;color:var(--text-muted);
+  font-size:20px;cursor:pointer;padding:4px;border-radius:var(--radius-sm);
+  transition:all var(--dur-fast);
+}
+.avatar-modal-close:hover{color:var(--text-primary);background:var(--bg-elevated)}
+.avatar-modal-body {
+  padding:20px;
+  display:flex;flex-direction:column;align-items:center;gap:16px;
+}
+.avatar-preview {
+  width:300px;height:300px;border-radius:var(--radius-md);
+  border:2px solid var(--border-moderate);
+  background:var(--bg-surface);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+  position:relative;
+  cursor:crosshair;
+  transition:border-color var(--dur-fast);
+}
+.avatar-preview:hover{border-color:var(--accent)}
+.avatar-preview img {
+  width:100%;height:100%;
+  object-fit:cover;
+}
+.avatar-preview .avatar-placeholder {
+  font-size:40px;color:var(--text-muted);
+}
+.avatar-preview .avatar-overlay {
+  position:absolute;inset:0;
+  background:rgba(0,0,0,0.5);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity var(--dur-fast);
+  pointer-events:none;
+  z-index:2;
+}
+.avatar-preview:hover .avatar-overlay{opacity:1;pointer-events:auto}
+.avatar-overlay i{font-size:24px;color:#fff}
+.avatar-char-info {
+  font-size:14px;color:var(--text-secondary);text-align:center;
+}
+.avatar-upload-area {
+  width:100%;display:flex;flex-direction:column;gap:10px;
+}
+.avatar-drop-zone {
+  border:2px dashed var(--border-moderate);
+  border-radius:var(--radius-md);
+  padding:24px;
+  text-align:center;
+  color:var(--text-muted);
+  font-size:13px;
+  cursor:pointer;
+  transition:all var(--dur-fast);
+  background:var(--bg-surface);
+}
+.avatar-drop-zone:hover,.avatar-drop-zone.dragover {
+  border-color:var(--accent);
+  background:var(--accent-soft);
+  color:var(--text-primary);
+}
+.avatar-drop-zone i{
+  font-size:24px;display:block;margin-bottom:8px;
+  color:var(--text-muted);
+}
+.avatar-file-name {
+  font-size:12px;color:var(--text-muted);font-family:var(--font-mono);
+  word-break:break-all;
+}
+.avatar-modal-footer {
+  padding:14px 20px;
+  border-top:1px solid var(--border-subtle);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.btn-remove-avatar {
+  background:transparent;border:1px solid var(--border-subtle);
+  color:var(--text-muted);font-size:12px;padding:6px 14px;
+  border-radius:var(--radius-sm);cursor:pointer;
+  font-family:var(--font-sans);
+  transition:all var(--dur-fast);
+}
+.btn-remove-avatar:hover{border-color:var(--error);color:var(--error);background:rgba(212,120,122,0.1)}
+
+/* Avatar crop overlay */
+#avatar-crop-box {
+  position:absolute;
+  border:2px solid #fff;
+  border-radius:2px;
+  box-shadow:0 0 0 9999px rgba(0,0,0,0.55);
+  z-index:5;
+  touch-action:none;
+}
+#avatar-crop-box .crop-handle {
+  position:absolute;
+  width:12px;height:12px;
+  background:#fff;
+  border:1px solid var(--accent);
+  border-radius:50%;
+}
+#avatar-crop-handle-tl { top:-6px;left:-6px;cursor:nw-resize; }
+#avatar-crop-handle-tr { top:-6px;right:-6px;cursor:ne-resize; }
+#avatar-crop-handle-bl { bottom:-6px;left:-6px;cursor:sw-resize; }
+#avatar-crop-handle-br { bottom:-6px;right:-6px;cursor:se-resize; }
+#avatar-crop-handle-tm { top:-6px;left:50%;margin-left:-6px;cursor:n-resize; }
+#avatar-crop-handle-bm { bottom:-6px;left:50%;margin-left:-6px;cursor:s-resize; }
+#avatar-crop-handle-lm { left:-6px;top:50%;margin-top:-6px;cursor:w-resize; }
+#avatar-crop-handle-rm { right:-6px;top:50%;margin-top:-6px;cursor:e-resize; }
+
+.avatar-crop-hint {
+  font-size:12px;color:var(--text-muted);
+text-align:center;
+  padding:8px 12px;
+  background:var(--bg-surface);
+  border:1px solid var(--border-moderate);
+  border-radius:var(--radius-sm);
+}
+
+.btn-crop-cancel {
+  background:transparent;border:1px solid var(--border-subtle);
+  color:var(--text-secondary);font-size:12px;padding:6px 14px;
+  border-radius:var(--radius-sm);cursor:pointer;
+  font-family:var(--font-sans);
+  transition:all var(--dur-fast);
+}
+.btn-crop-cancel:hover{border-color:var(--text-muted);color:var(--text-primary)}
+
+.btn-crop-apply {
+  background:var(--accent);border:none;
+  color:#fff;font-size:13px;padding:6px 18px;
+  border-radius:var(--radius-sm);cursor:pointer;
+  font-family:var(--font-sans);font-weight:600;
+  transition:all var(--dur-fast);
+}
+.btn-crop-apply:hover{opacity:0.9;transform:scale(1.03)}
+
+/* Sidebar avatar hover hint */
+.char-avatar[title]{cursor:pointer}
+.char-avatar[title]:hover::before {
+  content:'Click to change avatar';
+  position:absolute;
+  bottom:-22px;left:50%;transform:translateX(-50%);
+  font-size:10px;color:var(--text-muted);
+  background:var(--bg-overlay);
+  padding:2px 8px;border-radius:4px;
+  white-space:nowrap;
+  pointer-events:none;
+  z-index:10;
 }

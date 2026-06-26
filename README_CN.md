@@ -43,6 +43,22 @@ q群： 580322386
 | 🔞 **内容** | 严格审查，动不动封号 | **无审查**--想聊什么聊什么 |
 | 🎨 **可扩展性** | 锁死在厂商模型和功能上 | **自由混搭**--随意换 LLM、画画模型、语音模型 |
 
+## 📌 前置步骤
+
+> **⚠️ 第一步：先运行 `quick_setup.ps1` 配置路径和语言。**
+>
+> 这个向导会：
+> 1. **让你选择默认 Agent 语言**（中文 / 日语 / 英文）— 将对应的 `AGENTS_*.md` 复制为 `DEFAULT_AGENT.md`
+> 2. 自动检测已安装的工具（ComfyUI、GPT-SoVITS、llama.cpp、嵌入模型）
+> 3. 对没找到的路径会交互式询问
+> 4. 生成包含所有路径的 `config.yaml`，准备好后运行 `download-models.ps1`
+>
+> ```powershell
+> powershell -ExecutionPolicy Bypass -File quick_setup.ps1
+> ```
+>
+> quick_setup 完成后，继续 **download-models.ps1** → **setup-llama.ps1** → **start.ps1**。
+
 ## 🎬 演示
 
 ### 多通道聊天

@@ -39,9 +39,18 @@ print(cfg.get("comfyui_python", ""))
     Remove-Item $cfgReader -ErrorAction SilentlyContinue
 }
 
-# Try 2: ComfyUI bundled Python (always exists)
+# Try 2: Look for Python in common locations
+$comfyuiSearchPaths = @(
+    "C:\comfyui\ComfyUI\python\python.exe",
+    "D:\comfyui\ComfyUI\python\python.exe",
+    "E:\comfyui\ComfyUI\python\python.exe",
+    "C:\Users\$env:USERNAME\AppData\Local\Programs\Python\Python311\python.exe",
+    "D:\Users\$env:USERNAME\AppData\Local\Programs\Python\Python311\python.exe"
+)
 if (-not $pythonPath -or -not (Test-Path $pythonPath)) {
-    $pythonPath = "E:\comfyui\ComfyUI-aki-v3\python\python.exe"
+    foreach ($p in $comfyuiSearchPaths) {
+        if (Test-Path $p) { $pythonPath = $p; break }
+    }
 }
 
 # Try 3: sakura runtime

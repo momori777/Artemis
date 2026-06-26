@@ -1,4 +1,4 @@
-# AI Girlfriend 四季夏目 — 一键路径配置脚本
+﻿# AI Girlfriend 四季夏目 — 一键路径配置脚本
 # 自动检测已安装的工具路径，没找到的交互式填写，最终生成 config.yaml
 #
 # 用法: powershell -ExecutionPolicy Bypass -File quick_setup.ps1
@@ -10,6 +10,49 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  AI Girlfriend 四季夏目 — 一键路径向导" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+
+# ============================================================
+# 0. Language Selection: ZH / JA / EN
+# ============================================================
+Write-Host "--- Default Agent Language ---" -ForegroundColor Green
+$lang = ""
+while ($lang -notmatch '^[123]$') {
+    Write-Host ""
+    Write-Host "  [1] Chinese (AGENTS.md) - current default" -ForegroundColor White
+    Write-Host "  [2] Japanese (AGENTS_JA.md)" -ForegroundColor White
+    Write-Host "  [3] English (AGENTS_EN.md)" -ForegroundColor White
+    Write-Host ""
+    Write-Host "Select default Agent language (enter 1/2/3): " -NoNewline -ForegroundColor Yellow
+    $input = Read-Host
+    if ($input -match '^[123]$') {
+        $lang = $input
+    } else {
+        Write-Host "  Invalid input, please enter 1, 2, or 3" -ForegroundColor Red
+    }
+}
+
+$selectedAgent = "AGENTS.md"
+$langLabel = "ZH"
+$langMap = @{
+    "1" = @{ Agent="AGENTS.md";     Label="ZH" }
+    "2" = @{ Agent="AGENTS_JA.md";  Label="JA" }
+    "3" = @{ Agent="AGENTS_EN.md";  Label="EN" }
+}
+$selectedAgent = $langMap[$lang].Agent
+$langLabel = $langMap[$lang].Label
+
+# 将选定的 AGENTS 文件复制为 DEFAULT_AGENT.md
+$defaultAgentPath = Join-Path $scriptDir "DEFAULT_AGENT.md"
+if (Test-Path (Join-Path $scriptDir $selectedAgent)) {
+    Copy-Item (Join-Path $scriptDir $selectedAgent) $defaultAgentPath -Force
+    Write-Host ""
+    Write-Host "  Set default Agent: $langLabel -> DEFAULT_AGENT.md" -ForegroundColor Green
+} else {
+    Write-Host ""
+    Write-Host "  Warning: $selectedAgent not found, keeping current DEFAULT_AGENT.md" -ForegroundColor Yellow
+}
+
 Write-Host ""
 Write-Host "正在扫描已安装的工具……" -ForegroundColor Yellow
 Write-Host ""

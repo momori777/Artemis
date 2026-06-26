@@ -62,6 +62,19 @@ var CHAR_FALLBACKS = {
     ttsLang: 'ja',
     ttsMood: 'casual',
   },
+  ruruka: {
+    id: 'ruruka',
+    name: '森亚露露卡',
+    nameEn: 'Moria Ruruka',
+    icon: 'r',
+    persona: '高冷寡言 / 暗之美少女 / 温柔忠诚',
+    personaNote: '对外高冷，只对你一人敞开心扉',
+    tags: ['高冷', '暗之美少女', '寡言', '发小&妻子', '哥特系'],
+    source: '光之美少女世界书 / DZMM原创角色卡',
+    accent: '#7b4f9e',
+    ttsLang: 'ja',
+    ttsMood: 'tsundere',
+  },
 };
 
 var FALLBACK_REPLIES = {
@@ -109,6 +122,16 @@ var FALLBACK_REPLIES = {
     '我也想试试看！',
     '主人今天心情怎么样？',
   ],
+  ruruka: [
+    '...（绵糖探：露露卡大人说她在听）',
+    '哼，随你便。',
+    '...冰淇淋呢？',
+    '（绵糖探：露露卡大人觉得你今天还不错）',
+    '少废话，直接说事。',
+    '...别以为这样我就会高兴。',
+    '（绵糖探：露露卡大人笑了，我看见了！）',
+    '统治世界的约定，你还记得吗...',
+  ],
 };
 
 var DEFAULT_CHAR_ID = 'natsume';
@@ -144,6 +167,7 @@ function mergeAllCharacters(apiData) {
         name: c.name || fb.name,
         nameEn: c.nameEn || fb.nameEn,
         icon: c.icon || fb.icon,
+        avatar: c.avatar || null,
         persona: c.persona || fb.persona || '',
         personaNote: c.personaNote || fb.personaNote || '',
         tags: c.tags || fb.tags || [],
@@ -176,6 +200,7 @@ function ensureDefaults(c) {
   if (!c.source) c.source = 'Imported character';
   if (!c.icon) c.icon = (c.name || '?').charAt(0).toLowerCase();
   if (!c.accent) c.accent = '#888';
+  if (!c.avatar) c.avatar = null;
   if (!c.persona) c.persona = 'Custom character';
   if (!c.personaNote) c.personaNote = 'Imported character';
   if (!c.nameEn) c.nameEn = c.name || '';
@@ -215,6 +240,13 @@ function getFallbackReply(charId) {
 
 // ---- Boot ----
 (function () {
-  mergeAllCharacters(null); // fallback + localStorage
-  CHAR_API_PROMISE = loadCharactersFromAPI(); // enriches with API data
+  // 1. Load from CHARACTERS_JSON.js (hardcoded file with all 6 characters)
+  if (typeof CHARACTERS_JSON !== 'undefined' && Array.isArray(CHARACTERS_JSON)) {
+    mergeAllCharacters(CHARACTERS_JSON);
+  } else {
+    // 2. Fallback: use fallbacks only
+    mergeAllCharacters(null);
+  }
+  // 3. API data (from harem scan) — merge with fallback enrichment
+  CHAR_API_PROMISE = loadCharactersFromAPI();
 })();

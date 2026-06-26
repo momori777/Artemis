@@ -43,6 +43,22 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 | 🔞 **Content** | Heavy censorship, accounts get banned | **No censorship** -talk about whatever you want |
 | 🎨 **Extensibility** | Locked into vendor models and features | **Mix and match** -swap LLMs, image models, voice models freely |
 
+## 📌 Prerequisites
+
+> **⚠️ First step: Run `quick_setup.ps1` to configure paths and language.**
+>
+> This wizard will:
+> 1. **Let you choose the default Agent language** (Chinese / Japanese / English) — copies the corresponding `AGENTS_*.md` to `DEFAULT_AGENT.md`
+> 2. Auto-detect your installed tools (ComfyUI, GPT-SoVITS, llama.cpp, embedding models)
+> 3. Prompt you for any paths it can't find
+> 4. Generate `config.yaml` with all paths, ready for `download-models.ps1`
+>
+> ```powershell
+> powershell -ExecutionPolicy Bypass -File quick_setup.ps1
+> ```
+>
+> After quick_setup completes, proceed with **download-models.ps1** → **setup-llama.ps1** → **start.ps1**.
+
 ## 🎬 Demo
 
 ### Multi-Channel Chat
