@@ -114,6 +114,7 @@ def _ensure_llama_running():
                 model_path=LLAMA_MODEL,
                 log_dir=LLAMA_LOG_DIR,
                 timeout=180,
+                use_mmap=True,  # after ComfyUI, avoid --no-mmap fragmentation
             )
             if ok:
                 print("[Bridge] llama-server: restarted successfully", flush=True)
