@@ -12,8 +12,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
-<link rel="stylesheet" href="styles/main.css?v=19">
-<link rel="stylesheet" href="styles/polish.css?v=19">
+<link rel="stylesheet" href="styles/main.css?v=21">
+<link rel="stylesheet" href="styles/polish.css?v=21">
 </head>
 <body>
 
@@ -134,9 +134,15 @@
         <div id="input-row">
           <textarea id="msg-input" placeholder="Type a message..." rows="1"></textarea>
           <div class="input-actions">
-            <button class="input-action" id="btn-auto-paint" title="AI画图 �?根据对话生成插图">
-              <i class="ph ph-image"></i>
-            </button>
+            <div class="paint-btn-group">
+              <button class="input-action" id="btn-auto-paint" title="AI自动生成画图提示词">
+                <i class="ph ph-robot"></i>
+              </button>
+              <span class="paint-mode-divider">/</span>
+              <button class="input-action" id="btn-manual-paint" title="手动输入提示词画图">
+                <i class="ph ph-pencil-simple"></i>
+              </button>
+            </div>
           </div>
         </div>
         <button id="send-btn" title="Send">
@@ -380,12 +386,12 @@
 
 </div>
 
-<script src="scripts/chars.js?v=19"></script>
+<script src="scripts/chars.js?v=21"></script>
 <script>window.addEventListener('error',function(e){document.title='JS ERR: '+e.message;console.error(e);});</script>
-<script src="scripts/store.js?v=19"></script>
-<script src="scripts/api.js?v=19"></script>
-<script src="scripts/importer.js?v=19"></script>
-<script src="scripts/ui.js?v=19"></script>
-<script src="scripts/studio.js?v=19"></script>
+<script src="scripts/store.js?v=21"></script>
+<script src="scripts/api.js?v=21"></script>
+<script src="scripts/importer.js?v=21"></script>
+<script src="scripts/ui.js?v=21"></script>
+<script src="scripts/studio.js?v=21"></script>
 </body>
 </html>
