@@ -36,6 +36,8 @@ function createDefaultStore() {
     chats: {},
     // { [charId]: sessionId }
     activeSession: {},
+    // { [charId]: dataUrl } — custom avatar image (base64)
+    avatars: {},
   };
 }
 
@@ -183,4 +185,25 @@ function setActiveCharId(charId) {
   var store = loadStore();
   store.activeCharId = charId;
   saveStore(store);
+}
+
+// ---- Custom Avatars ----
+function getCharAvatar(charId) {
+  var store = loadStore();
+  return (store.avatars && store.avatars[charId]) || null;
+}
+
+function setCharAvatar(charId, dataUrl) {
+  var store = loadStore();
+  if (!store.avatars) store.avatars = {};
+  store.avatars[charId] = dataUrl;
+  saveStore(store);
+}
+
+function removeCharAvatar(charId) {
+  var store = loadStore();
+  if (store.avatars && store.avatars[charId]) {
+    delete store.avatars[charId];
+    saveStore(store);
+  }
 }

@@ -41,6 +41,9 @@ var UI = {
     this.checkGateway();
     this.$input.focus();
 
+    // Avatar modal
+    this._initAvatarModal();
+
     // When API characters arrive, refresh the UI
     if (CHAR_API_PROMISE) {
       CHAR_API_PROMISE.then(function () {
@@ -106,7 +109,11 @@ var UI = {
     list.innerHTML = CHARACTERS.map(function(c) {
       var activeClass = c.id === activeId ? ' active' : '';
       var deleteBtn = c.imported ? '<i class="ph ph-x char-delete-btn" data-char-id="' + c.id + '" title="Delete ' + c.name + '"></i>' : '';
-      return '<div class="char-option' + activeClass + '" data-char-id="' + c.id + '"><div class="char-option-avatar">' + c.icon.toUpperCase() + '</div><span>' + c.name + '</span>' + deleteBtn + '</div>';
+      var avatarHtml = self._renderDropdownAvatar(c);
+      var avatarTag = typeof avatarHtml === 'string' && avatarHtml.indexOf('<img') === 0
+        ? '<div class="char-option-avatar"><img class="char-option-avatar-img" src="' + avatarHtml.replace(/^<img[^>]*src="|">$/g, '') + '"></div>'
+        : '<div class="char-option-avatar">' + avatarHtml + '</div>';
+      return '<div class="char-option' + activeClass + '" data-char-id="' + c.id + '">' + avatarTag + '<span>' + c.name + '</span>' + deleteBtn + '</div>';
     }).join('') + '<div class="char-option char-import-option" id="char-import-option"><div class="char-option-avatar" style="background:var(--accent);color:#fff"><i class="ph ph-plus"></i></div><span>Import character...</span></div>';
 
     // Click delegation — handle char selection and delete
@@ -166,8 +173,7 @@ var UI = {
     }
     if (this.$charName) this.$charName.textContent = c.name;
     if (this.$charSubtitle) this.$charSubtitle.textContent = c.nameEn;
-    var avatarIcon = document.getElementById('char-avatar-icon');
-    if (avatarIcon) avatarIcon.textContent = c.icon.toUpperCase();
+    this._renderCharAvatar();
     var persona = document.getElementById('char-persona');
     if (persona) persona.textContent = c.persona;
     var personaNote = document.getElementById('char-persona-note');
@@ -187,6 +193,53 @@ var UI = {
     });
   },
 
+  // ---- Avatar Rendering ----
+  _renderCharAvatar: function() {
+    var charId = this.state.currentCharId;
+    var c = getChar(charId);
+    var avatarEl = document.querySelector('.char-avatar');
+    if (!avatarEl) return;
+
+    // Check stored avatar first, then character data, then fallback to icon
+    var avatarData = getCharAvatar(charId) || (c && c.avatar);
+    var iconEl = document.getElementById('char-avatar-icon');
+
+    if (avatarData) {
+      // Remove icon if exists
+      if (iconEl && iconEl.parentNode) iconEl.remove();
+      // Remove existing img if any
+      var existingImg = avatarEl.querySelector('.char-avatar-img');
+      if (existingImg) existingImg.remove();
+
+      var img = document.createElement('img');
+      img.className = 'char-avatar-img';
+      img.src = avatarData;
+      img.alt = (c && c.name) || '';
+      avatarEl.appendChild(img);
+      avatarEl.title = 'Click to change avatar';
+    } else {
+      // Show icon
+      if (iconEl) iconEl.textContent = (c && c.icon) || '?';
+      else {
+        var span = document.createElement('span');
+        span.className = 'char-avatar-icon';
+        span.id = 'char-avatar-icon';
+        span.textContent = (c && c.icon) || '?';
+        avatarEl.appendChild(span);
+      }
+      avatarEl.title = '';
+    }
+  },
+
+  _renderDropdownAvatar: function(c) {
+    // Returns avatar HTML for dropdown items
+    var avatarData = getCharAvatar(c.id) || (c && c.avatar);
+    if (avatarData) {
+      return '<img class="char-option-avatar-img" src="' + avatarData + '">';
+    }
+    return c.icon.toUpperCase();
+  },
+
   initCharSelector: function() {
     var self = this;
     var btn = document.getElementById('char-select-btn');
@@ -196,7 +249,11 @@ var UI = {
 
     list.innerHTML = CHARACTERS.map(function(c) {
       var deleteBtn = c.imported ? '<i class="ph ph-x char-delete-btn" data-char-id="' + c.id + '" title="Delete ' + c.name + '"></i>' : '';
-      return '<div class="char-option" data-char-id="' + c.id + '"><div class="char-option-avatar">' + c.icon.toUpperCase() + '</div><span>' + c.name + '</span>' + deleteBtn + '</div>';
+      var avatarHtml = self._renderDropdownAvatar(c);
+      var avatarTag = typeof avatarHtml === 'string' && avatarHtml.indexOf('<img') === 0
+        ? '<div class="char-option-avatar"><img class="char-option-avatar-img" src="' + avatarHtml.replace(/^<img[^>]*src="|">$/g, '') + '"></div>'
+        : '<div class="char-option-avatar">' + avatarHtml + '</div>';
+      return '<div class="char-option" data-char-id="' + c.id + '">' + avatarTag + '<span>' + c.name + '</span>' + deleteBtn + '</div>';
     }).join('') + '<div class="char-option char-import-option" id="char-import-option"><div class="char-option-avatar" style="background:var(--accent);color:#fff"><i class="ph ph-plus"></i></div><span>Import character...</span></div>';
 
     btn.addEventListener('click', function(e) {
@@ -258,6 +315,500 @@ var UI = {
     this.loadSessionsList();
     this.loadHistory();
     showToast('Switched to ' + getChar(charId).name);
+  },
+
+  // ---- Avatar Modal ----
+  _initAvatarModal: function() {
+    var self = this;
+    this._avatarCharId = null;
+    this._avatarDataURL = null;
+
+    // Click on sidebar avatar opens modal
+    var sidebarAvatar = document.querySelector('.char-avatar');
+    if (sidebarAvatar) {
+      sidebarAvatar.addEventListener('click', function() {
+        self._openAvatarModal(self.state.currentCharId);
+      });
+    }
+
+    // Modal close button
+    var closeBtn = document.getElementById('avatar-modal-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function() {
+        self._closeAvatarModal();
+      });
+    }
+
+    // Click outside panel closes modal
+    var modal = document.getElementById('avatar-modal');
+    if (modal) {
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) self._closeAvatarModal();
+      });
+    }
+
+    // File input change — THE ONLY change handler
+    var fileInput = document.getElementById('avatar-file-input');
+    if (fileInput) {
+      fileInput.addEventListener('change', function(e) {
+        var file = e.target.files && e.target.files[0];
+        if (file) self._handleAvatarFile(file);
+      });
+    }
+
+    // Preview area click opens file picker
+    var preview = document.getElementById('avatar-preview');
+    if (preview) {
+      preview.addEventListener('click', function(e) {
+        var cropBox = document.getElementById('avatar-crop-box');
+        if (cropBox && cropBox.style.display === 'block') return;
+        if (e.target.id === 'avatar-crop-box') return;
+        if (e.target.id && e.target.id.startsWith('avatar-crop-handle')) return;
+        document.getElementById('avatar-file-input').click();
+      });
+    }
+
+    // Drop zone click also opens file picker
+    var dropZone = document.getElementById('avatar-drop-zone');
+    if (dropZone) {
+      dropZone.addEventListener('click', function(e) {
+        e.stopPropagation();
+        document.getElementById('avatar-file-input').click();
+      });
+    }
+
+    // Drop zone (drag & drop support)
+    if (dropZone) {
+      dropZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+      });
+      dropZone.addEventListener('dragleave', function() {
+        dropZone.classList.remove('dragover');
+      });
+      dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file && file.type.indexOf('image/') === 0) self._handleAvatarFile(file);
+      });
+    }
+
+    // Remove avatar button
+    var removeBtn = document.getElementById('btn-remove-avatar');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', function() {
+        self._removeAvatar();
+      });
+    }
+
+    // Crop Apply button
+    var btnCropApply = document.getElementById('btn-crop-apply');
+    if (btnCropApply) {
+      btnCropApply.addEventListener('click', function() {
+        self._applyCrop();
+      });
+    }
+
+    // Crop Cancel button
+    var btnCropCancel = document.getElementById('btn-crop-cancel');
+    if (btnCropCancel) {
+      btnCropCancel.addEventListener('click', function() {
+        self._cancelCrop();
+      });
+    }
+
+    // Stash crop event handlers so we can add/remove them
+    self._onCropDragHandler = null;
+    self._onCropEndHandler = null;
+    self._onCropDragTouchHandler = null;
+    self._onCropEndHandlerTouch = null;
+    self._cropPct = { x: 0, y: 0, w: 1, h: 1 };
+
+    // Attach crop drag events once (one-time setup)
+    self._attachCropEvents();
+  },
+
+  _openAvatarModal: function(charId) {
+    var self = this;
+    this._avatarCharId = charId;
+    var c = getChar(charId);
+    var modal = document.getElementById('avatar-modal');
+    var iconEl = document.getElementById('avatar-preview-icon');
+    var imgEl = document.getElementById('avatar-preview-img');
+    var infoEl = document.getElementById('avatar-char-info');
+
+    if (infoEl) infoEl.textContent = c ? (c.name + ' — ' + c.nameEn) : '';
+
+    // Hide crop UI and reset state
+    var cropBox = document.getElementById('avatar-crop-box');
+    var hintEl = document.getElementById('avatar-crop-hint');
+    var btnApply = document.getElementById('btn-crop-apply');
+    var btnCancel = document.getElementById('btn-crop-cancel');
+    if (cropBox) cropBox.style.display = 'none';
+    if (hintEl) hintEl.style.display = 'none';
+    if (btnApply) btnApply.style.display = 'none';
+    if (btnCancel) btnCancel.style.display = 'none';
+    this._cropPct = { x: 0, y: 0, w: 1, h: 1 };
+    this._cropDragging = false;
+
+    // Check for existing avatar
+    var avatarData = getCharAvatar(charId) || (c && c.avatar);
+    if (avatarData && imgEl) {
+      imgEl.src = avatarData;
+      imgEl.style.display = 'block';
+      if (iconEl) iconEl.style.display = 'none';
+    } else {
+      if (imgEl) { imgEl.src = ''; imgEl.style.display = 'none'; }
+      if (iconEl) { iconEl.textContent = (c && c.icon) || '?'; iconEl.style.display = ''; }
+    }
+
+    if (modal) modal.classList.add('open');
+  },
+
+  _closeAvatarModal: function() {
+    var modal = document.getElementById('avatar-modal');
+    if (modal) modal.classList.remove('open');
+    var fileInput = document.getElementById('avatar-file-input');
+    if (fileInput) fileInput.value = '';
+    var nameEl = document.getElementById('avatar-file-name');
+    if (nameEl) nameEl.textContent = '';
+    this._avatarCharId = null;
+    this._avatarDataURL = null;
+    this._avatarOriginalUrl = null;
+    this._avatarFile = null;
+    this._cropPct = { x: 0, y: 0, w: 0, h: 0 };
+    this._cropEventsAttached = false;
+    this._cropDragging = false;
+    // Hide crop UI
+    var cropBox = document.getElementById('avatar-crop-box');
+    if (cropBox) cropBox.style.display = 'none';
+    var hintEl = document.getElementById('avatar-crop-hint');
+    if (hintEl) hintEl.style.display = 'none';
+    var btnApply = document.getElementById('btn-crop-apply');
+    if (btnApply) btnApply.style.display = 'none';
+    var btnCancel = document.getElementById('btn-crop-cancel');
+    if (btnCancel) btnCancel.style.display = 'none';
+    document.removeEventListener('mousemove', this._onCropDragHandler);
+    document.removeEventListener('mouseup', this._onCropEndHandler);
+    document.removeEventListener('touchmove', this._onCropDragTouchHandler);
+    document.removeEventListener('touchend', this._onCropEndHandlerTouch);
+  },
+
+  _handleAvatarFile: function(file) {
+    var self = this;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var dataUrl = e.target.result;
+      self._avatarOriginalUrl = dataUrl;
+      self._avatarFile = file;
+
+      var imgEl = document.getElementById('avatar-preview-img');
+      var iconEl = document.getElementById('avatar-preview-icon');
+      if (imgEl) { imgEl.src = dataUrl; imgEl.style.display = 'block'; }
+      if (iconEl) iconEl.style.display = 'none';
+
+      // Show crop UI
+      var cropBox = document.getElementById('avatar-crop-box');
+      var hintEl = document.getElementById('avatar-crop-hint');
+      var btnApply = document.getElementById('btn-crop-apply');
+      var btnCancel = document.getElementById('btn-crop-cancel');
+      if (cropBox) cropBox.style.display = 'block';
+      if (hintEl) hintEl.style.display = '';
+      if (btnApply) btnApply.style.display = '';
+      if (btnCancel) btnCancel.style.display = '';
+
+      var nameEl = document.getElementById('avatar-file-name');
+      if (nameEl) nameEl.textContent = '📷 ' + file.name;
+
+      // Initialize crop to full preview area
+      self._cropPct = { x: 0, y: 0, w: 1, h: 1 };
+      self._syncCropBoxFromPct();
+    };
+    reader.readAsDataURL(file);
+  },
+
+  // ---- Avatar Crop Selection ----
+  // ---- Crop helpers (simple percentage-based) ----
+  _syncCropBoxFromPct: function() {
+    var cropBox = document.getElementById('avatar-crop-box');
+    if (!cropBox || !this._cropPct) return;
+    var p = this._cropPct;
+    cropBox.style.left = (p.x * 100) + '%';
+    cropBox.style.top = (p.y * 100) + '%';
+    cropBox.style.width = (p.w * 100) + '%';
+    cropBox.style.height = (p.h * 100) + '%';
+  },
+
+  _cropPctFromPreview: function(clientX, clientY) {
+    var preview = document.getElementById('avatar-preview');
+    if (!preview) return { x: 0, y: 0 };
+    var r = preview.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return { x: 0, y: 0 };
+    return {
+      x: Math.max(0, Math.min(1, (clientX - r.left) / r.width)),
+      y: Math.max(0, Math.min(1, (clientY - r.top) / r.height))
+    };
+  },
+
+  _attachCropEvents: function() {
+    var self = this;
+    var preview = document.getElementById('avatar-preview');
+    var cropBox = document.getElementById('avatar-crop-box');
+    if (!preview || !cropBox) return;
+
+    // Create stored handlers (bound once, reused for add/remove)
+    self._onCropDragHandler = self._onCropDrag.bind(self);
+    self._onCropEndHandler = self._onCropEnd.bind(self);
+    self._onCropDragTouchHandler = self._onCropDragTouch.bind(self);
+    self._onCropEndHandlerTouch = self._onCropEnd.bind(self);
+
+    var startDrag = function(edge, clientX, clientY) {
+      self._cropDragging = true;
+      self._cropDragEdge = edge;
+      self._cropDragPct = {
+        x: self._cropPct.x, y: self._cropPct.y,
+        w: self._cropPct.w, h: self._cropPct.h
+      };
+      self._cropStartPct = self._cropPctFromPreview(clientX, clientY);
+      document.addEventListener('mousemove', self._onCropDragHandler);
+      document.addEventListener('mouseup', self._onCropEndHandler);
+    };
+
+    var startDragTouch = function(edge, clientX, clientY) {
+      self._cropDragging = true;
+      self._cropDragEdge = edge;
+      self._cropDragPct = {
+        x: self._cropPct.x, y: self._cropPct.y,
+        w: self._cropPct.w, h: self._cropPct.h
+      };
+      self._cropStartPct = self._cropPctFromPreview(clientX, clientY);
+      document.addEventListener('touchmove', self._onCropDragTouchHandler);
+      document.addEventListener('touchend', self._onCropEndHandlerTouch);
+    };
+
+    var handleIds = ['tl','tr','bl','br','tm','bm','lm','rm'];
+    handleIds.forEach(function(edge) {
+      var handle = document.getElementById('avatar-crop-handle-' + edge);
+      if (handle) {
+        handle.addEventListener('mousedown', function(e) {
+          e.stopPropagation(); e.preventDefault();
+          startDrag(edge, e.clientX, e.clientY);
+        });
+        handle.addEventListener('touchstart', function(e) {
+          e.stopPropagation(); e.preventDefault();
+          var t = e.touches[0];
+          startDragTouch(edge, t.clientX, t.clientY);
+        });
+      }
+    });
+
+    cropBox.addEventListener('mousedown', function(e) {
+      if (self._cropDragging) return;
+      e.stopPropagation(); e.preventDefault();
+      startDrag('move', e.clientX, e.clientY);
+    });
+    cropBox.addEventListener('touchstart', function(e) {
+      if (self._cropDragging) return;
+      e.stopPropagation(); e.preventDefault();
+      var t = e.touches[0];
+      startDragTouch('move', t.clientX, t.clientY);
+    });
+  },
+
+  _onCropDrag: function(e) {
+    if (!this._cropDragging) return;
+    this._updateCropDrag(e.clientX, e.clientY);
+  },
+
+  _onCropDragTouch: function(e) {
+    if (!this._cropDragging) return;
+    this._updateCropDrag(e.touches[0].clientX, e.touches[0].clientY);
+  },
+
+  _updateCropDrag: function(clientX, clientY) {
+    var now = this._cropPctFromPreview(clientX, clientY);
+    var r = this._cropDragPct; // saved state at drag start
+    var newX = r.x, newY = r.y, newW = r.w, newH = r.h;
+    var dx = now.x - this._cropStartPct.x;
+    var dy = now.y - this._cropStartPct.y;
+    var MIN = 0.05;
+
+    switch (this._cropDragEdge) {
+      case 'tl':
+        newW = r.w + (r.x - now.x); newH = r.h + (r.y - now.y);
+        newX = now.x; newY = now.y;
+        if (newW < MIN) { newW = MIN; newX = r.x + r.w - MIN; }
+        if (newH < MIN) { newH = MIN; newY = r.y + r.h - MIN; }
+        break;
+      case 'tr':
+        newW = r.w + (now.x - (r.x + r.w)); newH = r.h + (r.y - now.y);
+        newY = now.y;
+        if (newW < MIN) newW = MIN;
+        if (newH < MIN) { newH = MIN; newY = r.y + r.h - MIN; }
+        break;
+      case 'bl':
+        newW = r.w + (r.x - now.x); newH = r.h + (now.y - (r.y + r.h));
+        newX = now.x;
+        if (newW < MIN) { newW = MIN; newX = r.x + r.w - MIN; }
+        if (newH < MIN) newH = MIN;
+        break;
+      case 'br':
+        newW = r.w + (now.x - (r.x + r.w)); newH = r.h + (now.y - (r.y + r.h));
+        if (newW < MIN) newW = MIN;
+        if (newH < MIN) newH = MIN;
+        break;
+      case 'tm':
+        newH = r.h + (r.y - now.y); newY = now.y;
+        if (newH < MIN) { newH = MIN; newY = r.y + r.h - MIN; }
+        break;
+      case 'bm':
+        newH = r.h + (now.y - (r.y + r.h));
+        if (newH < MIN) newH = MIN;
+        break;
+      case 'lm':
+        newW = r.w + (r.x - now.x); newX = now.x;
+        if (newW < MIN) { newW = MIN; newX = r.x + r.w - MIN; }
+        break;
+      case 'rm':
+        newW = r.w + (now.x - (r.x + r.w));
+        if (newW < MIN) newW = MIN;
+        break;
+      case 'move':
+        newX = Math.max(0, Math.min(1 - r.w, r.x + dx));
+        newY = Math.max(0, Math.min(1 - r.h, r.y + dy));
+        break;
+    }
+
+    this._cropPct = { x: newX, y: newY, w: newW, h: newH };
+    this._syncCropBoxFromPct();
+  },
+
+  _onCropEnd: function() {
+    this._cropDragging = false;
+    this._cropDragEdge = null;
+    document.removeEventListener('mousemove', this._onCropDragHandler);
+    document.removeEventListener('mouseup', this._onCropEndHandler);
+    document.removeEventListener('touchmove', this._onCropDragTouchHandler);
+    document.removeEventListener('touchend', this._onCropEndHandlerTouch);
+  },
+
+  _applyCrop: function() {
+    var self = this;
+    var img = new Image();
+    img.onload = function() {
+      var nw = img.naturalWidth, nh = img.naturalHeight;
+      // Reverse the cover scaling: preview is 300x300 with object-fit:cover
+      var scaleX, scaleY, offsetX, offsetY;
+      if (nw / nh > 1) {
+        // Image is wider than preview -> height fills, width overflows
+        scaleY = nh / 300;
+        scaleX = scaleY;
+        offsetX = (nw - 300 * scaleX) / 2;
+        offsetY = 0;
+      } else {
+        // Image is taller -> width fills, height overflows
+        scaleX = nw / 300;
+        scaleY = scaleX;
+        offsetX = 0;
+        offsetY = (nh - 300 * scaleY) / 2;
+      }
+
+      var p = self._cropPct;
+      var cx = offsetX + p.x * 300 * scaleX;
+      var cy = offsetY + p.y * 300 * scaleY;
+      var cw = p.w * 300 * scaleX;
+      var ch = p.h * 300 * scaleY;
+
+      // Square crop from center of selection
+      var size = Math.min(cw, ch);
+      cx += Math.floor((cw - size) / 2);
+      cy += Math.floor((ch - size) / 2);
+      if (cx < 0) cx = 0;
+      if (cx + size > nw) cx = nw - size;
+      if (cy < 0) cy = 0;
+      if (cy + size > nh) cy = nh - size;
+
+      var canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, Math.round(cx), Math.round(cy), Math.round(size), Math.round(size), 0, 0, 256, 256);
+
+      var compressed = canvas.toDataURL('image/jpeg', 0.85);
+      self._avatarDataURL = compressed;
+
+      setCharAvatar(self._avatarCharId, compressed);
+      self._renderCharAvatar();
+      self.rebuildCharList();
+      var charObj = getChar(self._avatarCharId);
+      if (charObj) charObj.avatar = compressed;
+
+      var previewImg = document.getElementById('avatar-preview-img');
+      if (previewImg) previewImg.src = compressed;
+
+      var nameEl = document.getElementById('avatar-file-name');
+      if (nameEl) nameEl.textContent = '✓ ' + self._avatarFile.name + ' (' + Math.round(compressed.length * 0.75) + ' bytes)';
+
+      var cropBox = document.getElementById('avatar-crop-box');
+      var hintEl = document.getElementById('avatar-crop-hint');
+      var btnApply = document.getElementById('btn-crop-apply');
+      var btnCancel = document.getElementById('btn-crop-cancel');
+      if (cropBox) cropBox.style.display = 'none';
+      if (hintEl) hintEl.style.display = 'none';
+      if (btnApply) btnApply.style.display = 'none';
+      if (btnCancel) btnCancel.style.display = 'none';
+
+      showToast('Avatar updated for ' + (charObj && charObj.name), 'success');
+    };
+    img.src = self._avatarOriginalUrl;
+  },
+
+  _cancelCrop: function() {
+    var cropBox = document.getElementById('avatar-crop-box');
+    var hintEl = document.getElementById('avatar-crop-hint');
+    var btnApply = document.getElementById('btn-crop-apply');
+    var btnCancel = document.getElementById('btn-crop-cancel');
+    if (cropBox) cropBox.style.display = 'none';
+    if (hintEl) hintEl.style.display = 'none';
+    if (btnApply) btnApply.style.display = 'none';
+    if (btnCancel) btnCancel.style.display = 'none';
+    this._cropPct = { x: 0, y: 0, w: 0, h: 0 };
+    this._cropDragging = false;
+    document.removeEventListener('mousemove', this._onCropDragHandler);
+    document.removeEventListener('mouseup', this._onCropEndHandler);
+    document.removeEventListener('touchmove', this._onCropDragTouchHandler);
+    document.removeEventListener('touchend', this._onCropEndHandlerTouch);
+  },
+
+  _compressImage: function(dataUrl, maxSize, callback) {
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      var w = img.width, h = img.height;
+      if (w > maxSize || h > maxSize) {
+        if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+        else { w = Math.round(w * maxSize / h); h = maxSize; }
+      }
+      canvas.width = w;
+      canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      var compressed = canvas.toDataURL('image/jpeg', 0.8);
+      callback(compressed);
+    };
+    img.src = dataUrl;
+  },
+
+  _removeAvatar: function() {
+    var self = this;
+    removeCharAvatar(self._avatarCharId);
+    var c = getChar(self._avatarCharId);
+    if (c) c.avatar = null;
+    self._closeAvatarModal();
+    self._renderCharAvatar();
+    self.rebuildCharList();
+    showToast('Avatar removed for ' + (c && c.name), 'success');
   },
 
   // ---- Session management ----
@@ -360,6 +911,25 @@ var UI = {
     var time = msg.time || this.formatTime(new Date());
     var self = this;
 
+    // Hide regenerated (superseded) messages
+    if (msg.regenerated) {
+      var fadedRow = document.createElement('div');
+      fadedRow.className = 'msg-row char faded';
+      fadedRow.dataset.msgIndex = index;
+      var avatar = document.createElement('div');
+      avatar.className = 'msg-avatar char';
+      avatar.innerHTML = '<i class="ph ph-heart"></i>';
+      var bubble = document.createElement('div');
+      bubble.className = 'msg-bubble';
+      bubble.style.opacity = '0.4';
+      bubble.style.fontStyle = 'italic';
+      bubble.style.fontSize = '12px';
+      bubble.textContent = '(Regenerated)';
+      fadedRow.appendChild(avatar);
+      fadedRow.appendChild(bubble);
+      return fadedRow;
+    }
+
     if (isSystem) {
       var el = document.createElement('div');
       el.className = 'msg-system';
@@ -374,7 +944,20 @@ var UI = {
 
     var avatar = document.createElement('div');
     avatar.className = 'msg-avatar ' + (isUser ? 'user' : 'char');
-    avatar.innerHTML = isUser ? '<i class="ph ph-user"></i>' : '<i class="ph ph-heart"></i>';
+    if (isUser) {
+      avatar.innerHTML = '<i class="ph ph-user"></i>';
+    } else {
+      // Check for custom avatar
+      var charAvatar = getCharAvatar(this.state.currentCharId) || (getChar(this.state.currentCharId) && getChar(this.state.currentCharId).avatar);
+      if (charAvatar) {
+        var avImg = document.createElement('img');
+        avImg.src = charAvatar;
+        avImg.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:var(--radius-sm)';
+        avatar.appendChild(avImg);
+      } else {
+        avatar.innerHTML = '<i class="ph ph-heart"></i>';
+      }
+    }
 
     var contentWrap = document.createElement('div');
     var bubble = document.createElement('div');
@@ -386,7 +969,10 @@ var UI = {
     textEl.textContent = msg.content;
     bubble.appendChild(textEl);
 
-    // Edit button (on hover)
+    // Edit + Regenerate buttons (on hover)
+    var btnsRow = document.createElement('div');
+    btnsRow.className = 'msg-btns';
+
     var editBtn = document.createElement('button');
     editBtn.className = 'msg-edit-btn';
     editBtn.innerHTML = '<i class="ph ph-pencil-simple"></i>';
@@ -395,7 +981,21 @@ var UI = {
       e.stopPropagation();
       self.startEditMessage(row, index, msg);
     });
-    row.appendChild(editBtn);
+    btnsRow.appendChild(editBtn);
+
+    if (!isUser && msg.role === 'assistant') {
+      var regenBtn = document.createElement('button');
+      regenBtn.className = 'msg-regen-btn';
+      regenBtn.innerHTML = '<i class="ph ph-arrows-clockwise"></i>';
+      regenBtn.title = 'Regenerate reply';
+      regenBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        self.regenerateMessage(index);
+      });
+      btnsRow.appendChild(regenBtn);
+    }
+
+    row.appendChild(btnsRow);
 
     // Collapse long historical messages
     if (!isUser && msg.content && msg.content.length > this.LONG_MSG_THRESHOLD) {
@@ -599,6 +1199,150 @@ var UI = {
     if (msg.content && msg.content.length > this.LONG_MSG_THRESHOLD && !msg.role === 'user') {
       bubble.classList.add('long-collapsed');
     }
+
+    // Restore button row
+    var btnsRow = document.createElement('div');
+    btnsRow.className = 'msg-btns';
+
+    var editBtn2 = document.createElement('button');
+    editBtn2.className = 'msg-edit-btn';
+    editBtn2.innerHTML = '<i class="ph ph-pencil-simple"></i>';
+    editBtn2.title = 'Edit message';
+    editBtn2.addEventListener('click', function(e) {
+      e.stopPropagation();
+      self.startEditMessage(row, index, msg);
+    });
+    btnsRow.appendChild(editBtn2);
+
+    if (!msg.role === 'user' && msg.role === 'assistant') {
+      var regenBtn2 = document.createElement('button');
+      regenBtn2.className = 'msg-regen-btn';
+      regenBtn2.innerHTML = '<i class="ph ph-arrows-clockwise"></i>';
+      regenBtn2.title = 'Regenerate reply';
+      regenBtn2.addEventListener('click', function(e) {
+        e.stopPropagation();
+        self.regenerateMessage(index);
+      });
+      btnsRow.appendChild(regenBtn2);
+    }
+
+    row.appendChild(btnsRow);
+  },
+
+  // ---- Regenerate ----
+  regenerateMessage: function(assistantIndex) {
+    var self = this;
+    if (this.state.streaming) return;
+
+    var msg = this.state.messages[assistantIndex];
+    if (!msg || msg.role !== 'assistant') return;
+
+    // Mark the old message as superseded (keep in history but visually hidden)
+    msg.regenerated = true;
+
+    // Find the last user/system message before this assistant message
+    // to truncate from (the user message before this assistant reply)
+    var truncateAt = assistantIndex;
+    for (var i = assistantIndex - 1; i >= 0; i--) {
+      if (this.state.messages[i].role === 'user') {
+        truncateAt = i;
+        break;
+      }
+    }
+
+    // Remove messages from truncateAt onward
+    var cutoffMsgs = this.state.messages.slice(truncateAt);
+    this.state.messages = this.state.messages.slice(0, truncateAt);
+
+    // Remove DOM elements from truncateAt onward
+    var rows = this.$messages.querySelectorAll('.msg-row');
+    var remaining = 0;
+    rows.forEach(function(row) {
+      var idx = parseInt(row.dataset.msgIndex);
+      if (idx >= truncateAt || (self.state.messages[idx] && self.state.messages[idx].regenerated)) {
+        row.remove();
+      } else {
+        remaining = idx + 1;
+      }
+    });
+
+    // Show generating indicator
+    this.showTyping();
+    this.state.streaming = true;
+    this.$sendBtn.disabled = true;
+
+    // Rebuild the messages array: keep original user message, send for regeneration
+    var replayMessages = this.state.messages.slice();
+    // Re-add the user message that triggered this assistant reply
+    var userMsg = null;
+    for (var j = assistantIndex - 1; j >= 0; j--) {
+      if (this.state.messages[j] && this.state.messages[j].role === 'user') {
+        userMsg = cutoffMsgs[0]; // First truncated message should be the user msg
+        break;
+      }
+    }
+
+    var settings = getSettings();
+    settings.characterId = self.state.currentCharId || 'natsume';
+    var currentChar = getChar(self.state.currentCharId);
+    if (currentChar && currentChar.imported && currentChar.systemPrompt) {
+      settings.systemPrompt = currentChar.systemPrompt;
+    }
+
+    // Use the user message content that led to the assistant reply
+    var regenUserMsg = null;
+    for (var k = assistantIndex - 1; k >= 0; k--) {
+      if (this.state.messages[k] && this.state.messages[k].role === 'user') {
+        regenUserMsg = this.state.messages[k];
+        break;
+      }
+    }
+
+    if (regenUserMsg) {
+      replayMessages.push({
+        role: 'assistant',
+        content: '(Regenerating: ' + this.formatTime(new Date()) + ')',
+        _regenPlaceholder: true,
+      });
+      replayMessages.push({
+        role: 'user',
+        content: 'Please reply again with a different answer.',
+      });
+    }
+
+    self.hideTyping();
+    self.createStreamBubble();
+
+    ApiClient.chatStream(
+      replayMessages,
+      settings,
+      function(token) { self.appendStreamToken(token); },
+      function(result) {
+        self.finalizeStream(result.text);
+        var parsed = self._parseMediaFromText(result.text);
+        var cleanText = parsed.cleanText;
+        var newMsg = { role: 'assistant', content: cleanText, time: self.formatTime(new Date()) };
+        if (result.media) newMsg.media = result.media;
+        else if (parsed.mediaPath) newMsg.media = self._resolveMediaPath(parsed.mediaPath);
+        self.state.messages.push(newMsg);
+        saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
+        self.state.streaming = false;
+        self.$sendBtn.disabled = false;
+        self.$input.focus();
+        showToast('Reply regenerated');
+      },
+      function(err) {
+        console.warn('Regenerate stream failed:', err.message);
+        self.hideTyping();
+        var bubble = document.getElementById('stream-bubble');
+        if (bubble) bubble.remove();
+        self.doFallback();
+        saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
+        self.state.streaming = false;
+        self.$sendBtn.disabled = false;
+        self.$input.focus();
+      }
+    );
   },
 
   // ---- Typing ----
