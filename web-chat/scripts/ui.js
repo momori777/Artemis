@@ -73,6 +73,7 @@ var UI = {
     document.getElementById('btn-live2d').addEventListener('click', function() { showToast('Live2D - action triggered'); });
     document.getElementById('btn-auto-paint').addEventListener('click', function() { self.autoPaint(); });
     document.getElementById('btn-manual-paint').addEventListener('click', function() { self.manualPaint(); });
+    document.getElementById('btn-tts-voice').addEventListener('click', function() { self.ttsVoice(); });
 
     // Llama management toggle in chat input area
     var llamaToggleLabel = document.getElementById('toggle-chat-llama-label');
@@ -378,7 +379,23 @@ var UI = {
     var contentWrap = document.createElement('div');
     var bubble = document.createElement('div');
     bubble.className = 'msg-bubble';
-    bubble.textContent = msg.content;
+
+    // Text content
+    var textEl = document.createElement('span');
+    textEl.className = 'msg-text';
+    textEl.textContent = msg.content;
+    bubble.appendChild(textEl);
+
+    // Edit button (on hover)
+    var editBtn = document.createElement('button');
+    editBtn.className = 'msg-edit-btn';
+    editBtn.innerHTML = '<i class="ph ph-pencil-simple"></i>';
+    editBtn.title = 'Edit message';
+    editBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      self.startEditMessage(row, index, msg);
+    });
+    row.appendChild(editBtn);
 
     // Collapse long historical messages
     if (!isUser && msg.content && msg.content.length > this.LONG_MSG_THRESHOLD) {
@@ -401,6 +418,27 @@ var UI = {
         img.addEventListener('click', function() { window.open(msg.media, '_blank'); });
         bubble.appendChild(img);
       }
+    }
+
+    // Paint messages: image-only, compact layout
+    if (msg.paint && msg.media) {
+      bubble.classList.add('paint-msg');
+      // Resolve media path for display
+      var paintSrc = msg.media;
+      if (!/^https?:\/\//.test(paintSrc)) {
+        paintSrc = self._resolveMediaPath(paintSrc);
+      }
+      var paintImg = document.createElement('img');
+      paintImg.className = 'msg-media paint-media';
+      paintImg.src = paintSrc;
+      paintImg.loading = 'lazy';
+      paintImg.addEventListener('click', function() { window.open(paintSrc, '_blank'); });
+      bubble.innerHTML = '';
+      bubble.appendChild(paintImg);
+      var paintLabel = document.createElement('div');
+      paintLabel.className = 'paint-label';
+      paintLabel.textContent = '🖼️ Generated';
+      bubble.appendChild(paintLabel);
     }
 
     var timeEl = document.createElement('div');
@@ -457,6 +495,110 @@ var UI = {
     if (!this.$messages) return true;
     var el = this.$messages;
     return el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  },
+
+  // ---- Message Editing ----
+  startEditMessage: function(row, index, msg) {
+    var self = this;
+    // Don't re-edit if already editing
+    if (row.classList.contains('editing')) return;
+
+    row.classList.add('editing');
+    var bubble = row.querySelector('.msg-bubble');
+    if (!bubble) return;
+
+    var originalText = msg.content || '';
+    var existingTextEl = bubble.querySelector('.msg-text');
+
+    // Replace text with textarea
+    var ta = document.createElement('textarea');
+    ta.className = 'msg-edit-textarea';
+    ta.value = originalText;
+    bubble.innerHTML = '';
+    bubble.appendChild(ta);
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+
+    // Save on Ctrl+Enter or blur
+    var save = function() {
+      var newText = ta.value;
+      if (newText === originalText) {
+        self.cancelEditMessage(row, index, msg, originalText);
+        return;
+      }
+      msg.content = newText;
+      self.state.messages[index] = msg;
+      saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
+      self.cancelEditMessage(row, index, msg, newText);
+      showToast('Message updated');
+    };
+
+    ta.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && e.ctrlKey) {
+        e.preventDefault();
+        save();
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        self.cancelEditMessage(row, index, msg, originalText);
+      }
+    });
+
+    ta.addEventListener('blur', function() {
+      // Small delay to allow click events on other UI
+      setTimeout(function() {
+        if (row.classList.contains('editing')) {
+          save();
+        }
+      }, 200);
+    });
+  },
+
+  cancelEditMessage: function(row, index, msg, text) {
+    row.classList.remove('editing');
+    var bubble = row.querySelector('.msg-bubble');
+    if (!bubble) return;
+    bubble.innerHTML = '';
+    var span = document.createElement('span');
+    span.className = 'msg-text';
+    span.textContent = text || msg.content || '';
+    bubble.appendChild(span);
+    // Re-render media if any
+    if (msg.media) {
+      if (msg.paint) {
+        var paintSrc = msg.media;
+        if (!/^https?:\/\//.test(paintSrc)) {
+          paintSrc = this._resolveMediaPath(paintSrc);
+        }
+        var paintImg = document.createElement('img');
+        paintImg.className = 'msg-media paint-media';
+        paintImg.src = paintSrc;
+        paintImg.loading = 'lazy';
+        paintImg.addEventListener('click', function() { window.open(paintSrc, '_blank'); });
+        bubble.appendChild(paintImg);
+        var paintLabel = document.createElement('div');
+        paintLabel.className = 'paint-label';
+        paintLabel.textContent = '🖼️ Generated';
+        bubble.appendChild(paintLabel);
+      } else if (msg.mediaType === 'audio' || /\.(wav|mp3|ogg)$/.test(msg.media)) {
+        var audio = document.createElement('audio');
+        audio.className = 'msg-media audio-player';
+        audio.controls = true;
+        audio.src = msg.media;
+        bubble.appendChild(audio);
+      } else {
+        var img = document.createElement('img');
+        img.className = 'msg-media';
+        img.src = msg.media;
+        img.loading = 'lazy';
+        img.addEventListener('click', function() { window.open(msg.media, '_blank'); });
+        bubble.appendChild(img);
+      }
+    }
+    // Restore long collapse
+    if (msg.content && msg.content.length > this.LONG_MSG_THRESHOLD && !msg.role === 'user') {
+      bubble.classList.add('long-collapsed');
+    }
   },
 
   // ---- Typing ----
@@ -776,7 +918,90 @@ var UI = {
     }, 100);
   },
 
-  // ---- Auto Paint (AI-driven image generation from chat context) ----
+  // ---- TTS Voice (generate speech for last assistant reply) ----
+  ttsVoice: function() {
+    var self = this;
+    if (this.state.streaming) return;
+
+    // Find the last assistant message with text content
+    var lastText = '';
+    for (var i = this.state.messages.length - 1; i >= 0; i--) {
+      var m = this.state.messages[i];
+      if (m.role === 'assistant' && m.content && m.content.trim()) {
+        lastText = m.content.trim();
+        break;
+      }
+    }
+    if (!lastText) {
+      showToast('No assistant reply to voice yet');
+      return;
+    }
+
+    this.appendSystemMsg('🎤 Generating voice...');
+    this.scrollToBottom();
+
+    var bridgeUrl = getSettings().bridgeUrl || 'http://localhost:19250';
+    fetch(bridgeUrl + '/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: lastText.substring(0, 500),
+        lang: 'ja',
+        mood: 'casual',
+        character: this.state.currentCharId || 'natsume',
+      }),
+      signal: AbortSignal.timeout(5000),
+    })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.job_id) {
+          self._pollTTS(data.job_id);
+        } else {
+          self.appendSystemMsg('🎤 TTS failed: ' + (data.error || 'unknown'));
+          self.scrollToBottom();
+        }
+      })
+      .catch(function(err) {
+        self.appendSystemMsg('🎤 TTS error: ' + err.message);
+        self.scrollToBottom();
+      });
+  },
+
+  _pollTTS: function(jobId) {
+    var self = this;
+    var bridgeUrl = getSettings().bridgeUrl || 'http://localhost:19250';
+    var attempt = 0;
+    var maxAttempts = 120;
+
+    var interval = setInterval(function() {
+      attempt++;
+      fetch(bridgeUrl + '/api/jobs/' + jobId, { signal: AbortSignal.timeout(3000) })
+        .then(function(res) { return res.json(); })
+        .then(function(job) {
+          if (job.status === 'done') {
+            clearInterval(interval);
+            var audioSrc = self._resolveMediaPath(job.path);
+            var el = document.createElement('div');
+            el.className = 'msg-system tts-done';
+            el.innerHTML = '🎤 Voice ready! <audio controls src="' + audioSrc + '"></audio>';
+            self.$messages.appendChild(el);
+            self.scrollToBottom();
+            // Also save to messages if wanted
+          } else if (job.status === 'failed') {
+            clearInterval(interval);
+            self.appendSystemMsg('🎤 TTS failed: ' + (job.error || 'unknown'));
+            self.scrollToBottom();
+          }
+        })
+        .catch(function() {});
+
+      if (attempt >= maxAttempts) {
+        clearInterval(interval);
+        self.appendSystemMsg('🎤 TTS timed out');
+        self.scrollToBottom();
+      }
+    }, 3000);
+  },
   autoPaint: function() {
     var self = this;
     if (this.state.streaming) return;
@@ -878,14 +1103,20 @@ var UI = {
         .then(function(job) {
           if (job.status === 'done') {
             clearInterval(interval);
-            // Show image in chat
-            var imgSrc = self._resolveMediaPath(job.path);
-            var imgHtml = '<br><img src="' + imgSrc + '" alt="Generated" loading="lazy">';
-            var el = document.createElement('div');
-            el.className = 'msg-system paint-done';
-            el.innerHTML = '🖼️ Done! (' + Math.round(job.elapsed || 0) + 's)' + imgHtml;
-            self.$messages.appendChild(el);
-            self.scrollToBottom();
+            // Save image as an assistant message with media field so it persists
+            var imgPath = job.path;
+            var imgSrc = self._resolveMediaPath(imgPath);
+            var imgMsg = {
+              role: 'assistant',
+              content: '',
+              media: imgPath,
+              mediaType: 'image',
+              time: self.formatTime(new Date()),
+              paint: true
+            };
+            self.state.messages.push(imgMsg);
+            saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
+            self.appendMessage(imgMsg);
           } else if (job.status === 'failed') {
             clearInterval(interval);
             self.appendSystemMsg('💔 Image generation failed: ' + (job.error || 'unknown'));
@@ -941,6 +1172,10 @@ var UI = {
             m.content = parsed.cleanText;
             self.state.messages[i] = m;
           }
+        }
+        // Paint messages: resolve local path to daemon proxy on reload
+        if (m.paint && m.media && !/^https?:\/\//.test(m.media)) {
+          m.media = self._resolveMediaPath(m.media);
         }
         var el = self.renderMessage(m, i);
         self.$messages.appendChild(el);
