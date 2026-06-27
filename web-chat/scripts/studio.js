@@ -15,6 +15,7 @@ var Studio = {
     this.initComfy();
     this.initDashboard();
     this.initBridgeStatus();
+    this.initDebug();
   },
 
   initTabs: function() {
@@ -552,5 +553,130 @@ var Studio = {
       .catch(function(err) {
         log.textContent = 'Error: ' + err.message;
       });
+  },
+
+  // ============================================================
+  // Model Debug
+  // ============================================================
+  initDebug: function() {
+    var self = this;
+
+    document.getElementById('debug-logprobs').addEventListener('change', function() {
+      var field = document.getElementById('debug-top-logprobs-field');
+      field.style.display = this.checked ? 'block' : 'none';
+    });
+
+    document.getElementById('btn-debug-send').addEventListener('click', function() {
+      self.sendDebug();
+    });
+
+    document.getElementById('btn-debug-clear').addEventListener('click', function() {
+      document.getElementById('debug-output').innerHTML = '<span class="debug-placeholder">Cleared</span>';
+    });
+
+    // Enter to send in user textarea
+    document.getElementById('debug-user').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        self.sendDebug();
+      }
+    });
+  },
+
+  sendDebug: function() {
+    var self = this;
+    var systemText = document.getElementById('debug-system').value.trim();
+    var userText = document.getElementById('debug-user').value.trim();
+    if (!userText) return;
+
+    var output = document.getElementById('debug-output');
+    var progress = document.getElementById('debug-progress');
+    var fill = document.getElementById('debug-progress-fill');
+    var progressText = document.getElementById('debug-progress-text');
+
+    progress.hidden = false;
+    fill.style.width = '30%';
+    progressText.textContent = 'Sending...';
+
+    var messages = [];
+    if (systemText) {
+      messages.push({ role: 'system', content: systemText });
+    }
+    messages.push({ role: 'user', content: userText });
+
+    var body = {
+      model: document.getElementById('debug-model').value,
+      messages: messages,
+      stream: false,
+      max_tokens: parseInt(document.getElementById('debug-max-tokens').value) || 2048,
+      temperature: parseFloat(document.getElementById('debug-temp').value) || 0.7,
+      top_p: parseFloat(document.getElementById('debug-top-p').value) || 0.9,
+      top_k: parseInt(document.getElementById('debug-top-k').value) || 40,
+      frequency_penalty: parseFloat(document.getElementById('debug-freq-pen').value) || 0.0,
+      presence_penalty: parseFloat(document.getElementById('debug-pres-pen').value) || 0.0,
+      repeat_penalty: parseFloat(document.getElementById('debug-repeat-pen').value) || 1.1,
+      min_p: parseFloat(document.getElementById('debug-min-p').value) || 0.05,
+    };
+
+    var logprobs = document.getElementById('debug-logprobs').checked;
+    if (logprobs) {
+      body.logprobs = true;
+      body.top_logprobs = parseInt(document.getElementById('debug-top-logprobs').value) || 3;
+    }
+
+    fill.style.width = '60%';
+    progressText.textContent = 'Waiting for response...';
+
+    fetch('http://127.0.0.1:19260/api/debug-llama', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60000),
+    })
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function(data) {
+        fill.style.width = '100%';
+        progressText.textContent = 'Done';
+
+        var showRaw = document.getElementById('debug-toggle-raw').checked;
+        if (showRaw) {
+          output.textContent = JSON.stringify(data, null, 2);
+        } else {
+          var text = '';
+          var usage = data.usage || {};
+          var c = (data.choices || [])[0] || {};
+          if (c.message && c.message.content) {
+            text = c.message.content;
+          } else if (c.text) {
+            text = c.text;
+          }
+          var formatted = text;
+          if (usage.prompt_tokens || usage.completion_tokens) {
+            formatted += '\n\n---\nPrompt: ' + (usage.prompt_tokens || '?') + ' | Completion: ' + (usage.completion_tokens || '?') + ' | Total: ' + (usage.total_tokens || '?') + ' tokens';
+          }
+          if (c.finish_reason) {
+            formatted += '\nStop reason: ' + c.finish_reason;
+          }
+          output.innerHTML = '<div style="color:var(--text);white-space:pre-wrap;word-break:break-word">' + self._escapeHtml(formatted) + '</div>';
+        }
+
+        setTimeout(function() { progress.hidden = true; }, 800);
+      })
+      .catch(function(err) {
+        fill.style.width = '0%';
+        progressText.textContent = 'Error: ' + err.message;
+        output.textContent = '';
+        output.innerHTML = '<div style="color:#e74c3c;font-weight:600">⚠ ' + self._escapeHtml(err.message) + '</div>';
+        setTimeout(function() { progress.hidden = true; }, 2000);
+      });
+  },
+
+  _escapeHtml: function(str) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
   },
 };
