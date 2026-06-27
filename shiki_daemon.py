@@ -652,6 +652,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._handle_gen_prompt()
             return
 
+        if path == "/api/debug-llama":
+            self._handle_debug_llama()
+            return
+
         cl = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(cl).decode("utf-8") if cl else "{}"
         try:
@@ -956,6 +960,81 @@ Conversation:
         except Exception as e:
             self.send_error(500)
             print(f"[media proxy] Error serving {file_path}: {e}")
+
+    def _handle_debug_llama(self):
+        """Debug chat endpoint — passes all params through, returns raw response."""
+        body_len = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(body_len)
+        try:
+            req_data = json.loads(body)
+        except Exception:
+            self.send_json({"error": "Invalid JSON"}, 400)
+            return
+
+        model_id = req_data.get("model", "local/qwen3.6-35b")
+        messages = req_data.get("messages", [])
+        stream = req_data.get("stream", False)
+
+        # Resolve backend
+        if model_id.startswith("local/"):
+            api_key = ""
+            base_url = "http://127.0.0.1:8080/v1"
+            backend_model = "Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf"
+        else:
+            provider_cfg = _resolve_provider_for_model(model_id)
+            if not provider_cfg:
+                self.send_json({"error": f"Unknown model: {model_id}"}, 400)
+                return
+            api_key = provider_cfg.get("apiKey", "")
+            base_url = provider_cfg.get("baseUrl", "").rstrip("/")
+            backend_model = model_id.split("/")[-1]
+
+        # Forward all llama-compatible params
+        payload = {
+            "model": backend_model,
+            "messages": messages,
+            "stream": stream,
+            "max_tokens": req_data.get("max_tokens", 2048),
+            "temperature": req_data.get("temperature", 0.7),
+            "top_p": req_data.get("top_p", 0.9),
+            "top_k": req_data.get("top_k", 40),
+            "frequency_penalty": req_data.get("frequency_penalty", 0.0),
+            "presence_penalty": req_data.get("presence_penalty", 0.0),
+            "repeat_penalty": req_data.get("repeat_penalty", 1.1),
+            "min_p": req_data.get("min_p", 0.05),
+        }
+        if req_data.get("logprobs"):
+            payload["logprobs"] = True
+            payload["top_logprobs"] = req_data.get("top_logprobs", 3)
+
+        endpoint = base_url + "/chat/completions"
+        auth_header = ("Bearer " + api_key) if api_key else ""
+
+        try:
+            import urllib.request, urllib.error
+            data = json.dumps(payload).encode("utf-8")
+            headers = {"Content-Type": "application/json"}
+            if auth_header:
+                headers["Authorization"] = auth_header
+            req = urllib.request.Request(endpoint, data=data, headers=headers)
+            resp = urllib.request.urlopen(req, timeout=120)
+
+            if stream:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream")
+                self.send_header("Cache-Control", "no-cache")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                for line_bytes in resp:
+                    line = line_bytes.decode("utf-8", errors="replace")
+                    self.wfile.write((line.rstrip("\n") + "\n").encode("utf-8"))
+                    self.wfile.flush()
+                self.wfile.write(b"data: [DONE]\n\n")
+                self.wfile.flush()
+            else:
+                self.send_json(json.loads(resp.read()))
+        except Exception as e:
+            self.send_json({"error": str(e)}, 502)
 
 import pystray
 from PIL import Image, ImageDraw
