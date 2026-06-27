@@ -1529,6 +1529,31 @@ text-align:center;
 }
 .btn-crop-apply:hover{opacity:0.9;transform:scale(1.03)}
 
+/* ===== Model Debug Panel ===== */
+.debug-output {
+  display:flex;flex-direction:column;height:100%;min-height:400px;
+  background:var(--bg-overlay);border:1px solid var(--border);border-radius:12px;overflow:hidden;
+}
+.debug-output-header {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px;border-bottom:1px solid var(--border);
+  font-size:12px;font-weight:600;color:var(--text);
+}
+.debug-output-content {
+  flex:1;overflow:auto;padding:12px;margin:0;
+  font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.5;
+  color:var(--text);background:transparent;white-space:pre-wrap;word-break:break-word;
+}
+.debug-placeholder {
+  color:var(--text-muted);font-style:italic;font-family:inherit;
+}
+.studio-field-tiny {
+  flex:0 0 80px;
+}
+.studio-checkbox-row {
+  display:flex;align-items:center;gap:12px;margin:8px 0;
+}
+
 /* Sidebar avatar hover hint */
 .char-avatar[title]{cursor:pointer}
 .char-avatar[title]:hover::before {

@@ -183,6 +183,7 @@
           <button class="studio-subtab active" data-stab="tts">TTS Voice</button>
           <button class="studio-subtab" data-stab="comfyui">ComfyUI Image</button>
           <button class="studio-subtab" data-stab="dashboard">Dashboard</button>
+          <button class="studio-subtab" data-stab="debug">Model Debug</button>
         </div>
 
         <!-- ===== TTS Panel ===== -->
@@ -347,8 +348,98 @@
           </div>
         </div>
 
+        <!-- ===== Model Debug Tab ===== -->
+        <div id="stab-debug" class="stab-panel">
+          <div class="studio-grid">
+            <div class="studio-left">
+              <div class="studio-field">
+                <label class="studio-label">System Prompt</label>
+                <textarea id="debug-system" class="studio-textarea mono" rows="6" placeholder="System prompt for the model..."></textarea>
+              </div>
+              <div class="studio-field">
+                <label class="studio-label">User Message</label>
+                <textarea id="debug-user" class="studio-textarea mono" rows="4" placeholder="Enter a test message..."></textarea>
+              </div>
+              <div class="studio-row">
+                <div class="studio-field studio-field-fill">
+                  <label class="studio-label">Model</label>
+                  <select id="debug-model" class="studio-select">
+                    <option value="local/qwen3.6-35b">Local (Qwen3.6-35B)</option>
+                    <option value="deepseek/deepseek-v4-flash">DeepSeek Flash</option>
+                    <option value="deepseek/deepseek-v4-pro">DeepSeek Pro</option>
+                  </select>
+                </div>
+                <div class="studio-field studio-field-fill">
+                  <label class="studio-label">Temperature</label>
+                  <input type="number" id="debug-temp" class="studio-input" value="0.7" min="0" max="2" step="0.05">
+                </div>
+                <div class="studio-field studio-field-fill">
+                  <label class="studio-label">Top P</label>
+                  <input type="number" id="debug-top-p" class="studio-input" value="0.9" min="0" max="1" step="0.05">
+                </div>
+              </div>
+              <div class="studio-row">
+                <div class="studio-field studio-field-fill">
+                  <label class="studio-label">Top K</label>
+                  <input type="number" id="debug-top-k" class="studio-input" value="40" min="1" max="200">
+                </div>
+                <div class="studio-field studio-field-fill">
+                  <label class="studio-label">Max Tokens</label>
+                  <input type="number" id="debug-max-tokens" class="studio-input" value="2048" min="16" max="32768">
+                </div>
+                <div class="studio-field studio-field-fill">
+                  <label class="studio-label">Min P</label>
+                  <input type="number" id="debug-min-p" class="studio-input" value="0.05" min="0" max="1" step="0.01">
+                </div>
+              </div>
+              <div class="studio-row">
+                <div class="studio-field studio-field-fill">
+                  <label class="studio-label">Freq Penalty</label>
+                  <input type="number" id="debug-freq-pen" class="studio-input" value="0.0" min="-2" max="2" step="0.05">
+                </div>
+                <div class="studio-field studio-field-fill">
+                  <label class="studio-label">Pres Penalty</label>
+                  <input type="number" id="debug-pres-pen" class="studio-input" value="0.0" min="-2" max="2" step="0.05">
+                </div>
+                <div class="studio-field studio-field-fill">
+                  <label class="studio-label">Repeat Penalty</label>
+                  <input type="number" id="debug-repeat-pen" class="studio-input" value="1.1" min="1" max="2" step="0.01">
+                </div>
+              </div>
+              <div class="studio-field" style="display:flex;align-items:center;gap:12px;margin:8px 0">
+                <label class="settings-toggle" style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+                  <span class="toggle-switch" id="toggle-debug-logprobs"></span>
+                  <input type="checkbox" id="debug-logprobs" style="display:none">
+                  Logprobs
+                </label>
+                <div class="studio-field studio-field-tiny" id="debug-top-logprobs-field" style="display:none">
+                  <label class="studio-label">Top N</label>
+                  <input type="number" id="debug-top-logprobs" class="studio-input" value="3" min="1" max="10">
+                </div>
+              </div>
+              <div class="studio-actions">
+                <button class="btn-primary" id="btn-debug-send"><i class="ph ph-paper-plane-right"></i> Send</button>
+                <button class="btn-secondary" id="btn-debug-clear"><i class="ph ph-trash"></i> Clear</button>
+              </div>
+              <div class="studio-progress" id="debug-progress" hidden>
+                <div class="progress-bar-track"><div class="progress-bar-fill" id="debug-progress-fill"></div></div>
+                <span class="progress-text" id="debug-progress-text">Sending...</span>
+              </div>
+            </div>
+            <div class="studio-right">
+              <div class="debug-output">
+                <div class="debug-output-header">
+                  <span>Response</span>
+                  <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer">
+                    <input type="checkbox" id="debug-toggle-raw"> Raw JSON
+                  </label>
+                </div>
+                <pre id="debug-output" class="debug-output-content"><span class="debug-placeholder">Send a request to see the model's response</span></pre>
+              </div>
+            </div>
           </div>
         </div>
+
       </main>
 
 <!-- Settings overlay -->
