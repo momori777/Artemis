@@ -75,7 +75,9 @@ sessions_spawn({
 
 When exec, MUST add yieldMs: 300000 (required! PS script kills llama, wait for recovery)
 
-Command (copy-paste, don't change a single character):
+Command (copy-paste, only change prompt and no-manage flag):
+
+If VRAM level is 2 (ALL_ONLINE) and GPU >= 16GB: append `--no-manage-llama` to the command.
 
 powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.openclaw\workspace\skills\comfyui\run_comfyui.ps1" -positive "$posPrompt" -negative "$negPrompt" -width 1200 -height 1500 -steps 30 -cfg 6.0 -checkpoint "WAI-Nsfw-Illustrious-17.safetensors"
 
@@ -124,7 +126,9 @@ sessions_spawn({
 
 When exec, MUST add yieldMs: 180000 (required! PS script kills llama, wait for recovery)
 
-Command (copy-paste, don't change a single character):
+Command (copy-paste, only change params and no-manage flag):
+
+If VRAM level is 2 (ALL_ONLINE) and GPU >= 16GB: append `--no-manage-llama` to the command.
 
 powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.openclaw\workspace\skills\tts\run_tts.ps1" -text "$text" -lang "$lang" -mood "$mood"
 
