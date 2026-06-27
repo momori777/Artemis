@@ -78,7 +78,9 @@ sessions_spawn({
 
 exec 时一定要加 yieldMs: 300000（必须！PS脚本会杀llama，要等它恢复）
 
-命令（复制粘贴，一个字都不许改）：
+命令（复制粘贴，只改prompt和no-manage判断）：
+
+如果当前VRAM级别是2(ALL_ONLINE)且GPU>=16GB：在命令末尾加 `--no-manage-llama`
 
 powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.openclaw\workspace\skills\comfyui\run_comfyui.ps1" -positive "$posPrompt" -negative "$negPrompt" -width 1200 -height 1500 -steps 30 -cfg 6.0 -checkpoint "WAI-Nsfw-Illustrious-17.safetensors"
 
@@ -130,7 +132,9 @@ sessions_spawn({
 
 exec 时一定要加 yieldMs: 180000（必须！PS脚本会杀llama，要等它恢复）
 
-命令（复制粘贴，一个字都不许改）：
+命令（复制粘贴，只改参数和no-manage判断）：
+
+如果当前VRAM级别是2(ALL_ONLINE)且GPU>=16GB：在命令末尾加 `--no-manage-llama`
 
 powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.openclaw\workspace\skills\tts\run_tts.ps1" -text "$text" -lang "$lang" -mood "$mood"
 

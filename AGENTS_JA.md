@@ -75,7 +75,9 @@ sessions_spawn({
 
 exec 時は必ず yieldMs: 300000 を追加（必須！PSスクリプトが llama を停止するため、回復を待機）
 
-コマンド（コピーペースト、文字一つ変えない）：
+コマンド（コピーペースト、プロンプトとno-manageフラグのみ変更可）：
+
+VRAMレベルが2(ALL_ONLINE)かつGPU>=16GBの場合：末尾に `--no-manage-llama` を追加
 
 powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.openclaw\workspace\skills\comfyui\run_comfyui.ps1" -positive "$posPrompt" -negative "$negPrompt" -width 1200 -height 1500 -steps 30 -cfg 6.0 -checkpoint "WAI-Nsfw-Illustrious-17.safetensors"
 
@@ -124,7 +126,9 @@ sessions_spawn({
 
 exec 時は必ず yieldMs: 180000 を追加（必須！PSスクリプトが llama を停止）
 
-コマンド（コピーペースト、文字一つ変えない）：
+コマンド（コピーペースト、パラメータとno-manageフラグのみ変更可）：
+
+VRAMレベルが2(ALL_ONLINE)かつGPU>=16GBの場合：末尾に `--no-manage-llama` を追加
 
 powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.openclaw\workspace\skills\tts\run_tts.ps1" -text "$text" -lang "$lang" -mood "$mood"
 

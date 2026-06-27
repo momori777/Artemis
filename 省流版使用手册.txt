@@ -52,3 +52,5 @@ Artemis 省流版使用手册
 ##别用什么傻逼DZMM、Glow、星野、筑梦岛、CharStar，举个例子，
 dzmm的代号sigma"旗舰"模型在4.17发布,而https://huggingface.co/HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive发布日期就是4.17！！！！
 所谓旗舰就是qwen3.6 35B A3B量化后的开源模型！！！连deepseek都不是，你觉得给这种厂商付钱值得吗？缺什么功能我直接给你做，别被割韭菜了！！！
+
+##小纸条，DZMM把我号封了，6.21采用了相同代号模型底座，应该是抄了我的开源项目的APEX量化方案，再次证实他们的模型底座就是qwen3.6 35B a3b,我记仇一辈子

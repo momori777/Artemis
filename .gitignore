@@ -12,6 +12,8 @@ memory/role_play/*
 !memory/role_play/natsume/
 !memory/role_play/sakura/
 
+!benchmark_projects/competitors
+
 # 生成的媒体文 ?
 media/qqbot/audio/*.wav
 media/qqbot/images/*.png
