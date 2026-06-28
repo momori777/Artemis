@@ -97,28 +97,28 @@ function Prompt-Path($label, $default, $hint) {
 # ============================================================
 $desktop = [Environment]::GetFolderPath("Desktop")
 $searchRoots = @("C:\", "D:\", "E:\", $desktop, $env:USERPROFILE, "$env:USERPROFILE\Desktop\vllm")
-$defaultWorkspace = "$env:USERPROFILE\.openclaw\workspace"
-$defaultMediaAudio = "$env:USERPROFILE\.openclaw\media\qqbot\audio"
-$defaultMediaImages = "$env:USERPROFILE\.openclaw\media\qqbot\images"
-$defaultComfyuiTemp = "$defaultWorkspace\comfyui"
-$defaultTtsTemp = $defaultMediaAudio
 $defaultLlamaLogDir = "$desktop\vllm\restart-logs"
 
 # ============================================================
-# 1. OpenClaw workspace（自动检测）
+# 1. OpenClaw workspace（手动输入）
 # ============================================================
 Write-Host "--- OpenClaw Workspace ---" -ForegroundColor Green
-$workspace = $defaultWorkspace
+Write-Host "  请输入你准备存放所有 AI 文件的「工作区」目录路径。" -ForegroundColor White
+Write-Host "  例如: D:\Artemis_demo\workspace" -ForegroundColor DarkGray
+Write-Host "  建议选一个单独的目录，不要和其他项目混用。" -ForegroundColor DarkGray
+
+# 默认建议
+$workspacePrompt = Prompt-Path "  Workspace 路径" "$env:USERPROFILE\.openclaw\workspace" "按 Enter 使用默认，或输入自定义路径"
+$workspace = $workspacePrompt
 if (-not (Test-Path $workspace)) {
-    # 尝试在当前项目目录上两级找
-    $workspace = Split-Path -Parent (Split-Path -Parent $scriptDir)
-    if ($workspace -notmatch 'workspace') { $workspace = $defaultWorkspace }
+    Write-Host "  目录不存在，自动创建..." -ForegroundColor Yellow
+    New-Item -ItemType Directory -Force -Path $workspace -ErrorAction SilentlyContinue | Out-Null
 }
 Write-Host "  workspace: $workspace" -ForegroundColor $(if (Test-Path $workspace) { 'Green' } else { 'Red' })
 
-# 媒体目录
-$mediaAudio = $defaultMediaAudio
-$mediaImages = $defaultMediaImages
+# 媒体目录（基于用户输入的 workspace）
+$mediaAudio = Join-Path $workspace "media\qqbot\audio"
+$mediaImages = Join-Path $workspace "media\qqbot\images"
 # 确保存在
 New-Item -ItemType Directory -Force -Path $mediaAudio -ErrorAction SilentlyContinue | Out-Null
 New-Item -ItemType Directory -Force -Path $mediaImages -ErrorAction SilentlyContinue | Out-Null
@@ -186,7 +186,7 @@ $llamaModel = Find-Exe "*.gguf" $searchRoots  # 可能有多个，取第一个
 $vllmDir = Find-Dir "vllm" $searchRoots
 if (-not $vllmDir) { $vllmDir = Find-Dir "vllm" @($desktop) }
 $llamaLogDir = if ($vllmDir) { Join-Path $vllmDir "restart-logs" } else { $defaultLlamaLogDir }
-$restartScript = Find-Exe "restart-llama.ps1" @($vllmDir, "$defaultWorkspace\skills\shared")
+$restartScript = Find-Exe "restart-llama.ps1" @($vllmDir, "$workspace\skills\shared")
 
 if (-not $llamaExe) {
     Write-Host "  未自动检测到 llama.cpp，请手动填写：" -ForegroundColor Yellow
@@ -274,7 +274,7 @@ media_qqbot_images: "$(& $esc $mediaImages)"
 comfyui_root: "$(& $esc $comfyuiRoot)"
 comfyui_python: "$(& $esc $comfyuiPython)"
 comfyui_checkpoints_dir: "$(& $esc $comfyuiCheckpoints)"
-comfyui_temp_output_dir: "$(& $esc $defaultComfyuiTemp)"
+comfyui_temp_output_dir: "$workspace\comfyui"
 comfyui_launcher: "$(& $esc $comfyuiConfigure)"
 
 # ============================================================
@@ -282,7 +282,7 @@ comfyui_launcher: "$(& $esc $comfyuiConfigure)"
 # ============================================================
 sovits_root: "$(& $esc $sovitsRoot)"
 sovits_python: "$(& $esc $sovitsPython)"
-tts_temp_output_dir: "$(& $esc $defaultTtsTemp)"
+tts_temp_output_dir: "$workspace\media\qqbot\audio"
 
 # ============================================================
 # llama.cpp (本地 LLM)
