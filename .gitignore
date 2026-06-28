@@ -1,9 +1,9 @@
 # 记忆文件 - 选择性提 ?
-# 只提交已知 SFW 角色（atori/enola/natsume/sakura），新导入角色默认忽略
+# 只提交已�?SFW 角色（atori/enola/natsume/sakura），新导入角色默认忽�?
 # memory/ 不用通配 ?ignore，改为精 ?ignore 运行时生成的临时文件
-# (导入新角色后如需提交，手动加 !memory/role_play/<角色名>/ 到此文件)
+# (导入新角色后如需提交，手动加 !memory/role_play/<角色�?/ 到此文件)
 
-# memory/role_play/ — 只保留 4 个 SFW 后宫，新角色忽略
+# memory/role_play/ �?只保�?4 �?SFW 后宫，新角色忽略
 memory/role_play/*
 !memory/role_play/.gitkeep
 !memory/role_play/README.md
@@ -11,44 +11,32 @@ memory/role_play/*
 !memory/role_play/enola/
 !memory/role_play/natsume/
 !memory/role_play/sakura/
-
-!benchmark_projects/competitors
-
 # 生成的媒体文 ?
 media/qqbot/audio/*.wav
 media/qqbot/images/*.png
 media/qqbot/images/*.jpg
-
 # 项目演示视频（允许）
 !media/demo_qqbot.mp4
-
 # 保留 .gitkeep 占位文件
 !media/qqbot/audio/.gitkeep
 !media/qqbot/images/.gitkeep
 !.gitkeep
-
 # 敏感配置（含 token/路径）不提交
 config-telegram.json
 config-qqbot.json
 config-patch.json
 config.yaml
-
-# OpenClaw 状 ?
+# OpenClaw �??
 .openclaw/
-
 # qqbot agent workspace (公开 AGENTS.md 配置模板)
 # 新产生的私有数据文件会由 .gitignore 的敏感配 ?媒体规则覆盖
-
 # ASR 运行时输 ?
 skills/asr/output/
-
-# benchmark_projects/
-
+!benchmark_projects/competitors/SillyTavern2/
 # Python
 __pycache__/
 *.pyc
 *.pyo
-
 # 模型文件（不提交任何模型权重 ?
 *.safetensors
 *.gguf
@@ -58,42 +46,34 @@ __pycache__/
 *.ckpt
 *.onnx
 *.engine
-
 # 临时音频（但保留参考音频）
 *.wav
 !skills/tts/ref_wavs/*.wav
 !skills/tts/ref_wavs_atri/*.wav
 !skills/tts/ref_wavs_sakura/*.wav
-
 # 压缩 ?
 *.rar
 *.zip
 *.7z
-
 # llama 运行日志（仅根目录）
 /*llama*.txt
 *.log
-
 # llama watchdog 脚本（含本地路径，不提交 ?
 llama-watchdog.ps1
-
 # 其他临时文本
+benchmark_projects/
 *.benchmark.txt
-
 # HuggingFace 临时上传目录
 hf-natsume/upload-to-huggingface.ps1
 !hf-natsume/README.md
 !hf-natsume/DISCLAIMER.txt
-
 # 系统文件
 Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
-
 # Live2D 运行 ?node_modules（大且可重建 ?
 live2d/node_modules/
 ren_pro_jp/node_modules/
-
 # Live2D Live2D (版权文件、大模型、运行时产物)
 # Cubism Core
 live2d/live2dcubismcore.min.js
@@ -111,36 +91,30 @@ live2d/_archive/
 live2d/_scratch/
 live2d/hack/
 # 运行时生 ?
-live2d/node_modules/
 live2d/media/
 # 版权说明文件（不提交 ?
 live2d/NOTICE.md
 live2d/LICENSE.md
 live2d/RedistributableFiles.txt
-
 # Live2D 测试文件（项目根目录下的临时测试 ?
 /katou_*
 /test_katou*
 /index_test.png
-
 # Node.js
 node_modules/
 package-lock.json
-
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# 后宫角色 — 只提交 4 个 SFW 角色，新导入角色默认忽略
+# 后宫角色 �?只提�?4 �?SFW 角色，新导入角色默认忽略
 skills/harem/*
 !skills/harem/atori/
 !skills/harem/enola/
 !skills/harem/natsume/
 !skills/harem/ruruka/
 !skills/harem/sakura/
-
 # Sakura 桌宠 - 运行时缓 ?
 skills/sakura/runtime/
 skills/sakura/__pycache__/
@@ -151,21 +125,17 @@ skills/sakura/data/memory_curation_state.json
 skills/sakura/data/memory/qdrant/
 skills/sakura/data/memory/mem0_history.db
 skills/sakura/playwright_browser/
-
-# 任务标志文件（子进程完成信号）
+# 任务标志文件（子进程完成信号�?
 .task_flags/
-
-# ComfyUI 运行时输出
+# ComfyUI 运行时输�?
 comfyui/
-
 # ============================================================
 # 内置推理引擎 (Python代码入库，权重不入库)
-# ============================================================
 # SoVITS 推理核心
 !skills/sovits/
 # ComfyUI 推理核心
 !skills/comfyui_core/
-# 但排除权重文件
+# 但排除权重文�?
 skills/sovits/**/*.safetensors
 skills/sovits/**/*.onnx
 skills/sovits/**/*.pth
@@ -176,23 +146,12 @@ skills/comfyui_core/**/*.onnx
 skills/comfyui_core/**/*.pth
 skills/comfyui_core/**/*.ckpt
 skills/comfyui_core/**/*.bin
-
 # Ignore embedded git repos
-benchmark_projects/AI-Vtuber/
-benchmark_projects/Chat-Haruhi-Suzumiya/
-benchmark_projects/FunASR/
-benchmark_projects/Linly-Talker/
-benchmark_projects/NextChat/
-benchmark_projects/lobe-chat/
-benchmark_projects/petercat/
-
 # Large files hosted on HuggingFace
 skills/sovits/GPT_SoVITS/pretrained_models/fast_langdetect/lid.176.bin
 media/sakura.mp4
 media/demo_qqbot.mp4
-
 # TTS debug log (contains absolute paths)
 _tts_debug.txt
-
 # Claude Code local settings (may contain tokens)
 .claude/settings.local.json

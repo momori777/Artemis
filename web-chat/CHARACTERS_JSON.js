@@ -1,7 +1,7 @@
 // Auto-generated from skills/harem/* and localStorage import
 // 6 characters: natsume, sakura, enola, atori, ruruka
 
-export const CHARACTERS_JSON = [
+const CHARACTERS_JSON = [
   {
     id: 'natsume',
     name: '四季夏目',
