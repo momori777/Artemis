@@ -1,7 +1,8 @@
 param(
     [string]$text,
     [string]$lang = 'ja',
-    [string]$mood = 'auto'
+    [string]$mood = 'auto',
+    [string]$character = ''
 )
 
 $ErrorActionPreference = 'Continue'
@@ -39,6 +40,28 @@ mkdir $mediaDir -Force -ErrorAction SilentlyContinue | Out-Null
 $env:PYTHONIOENCODING = 'utf-8'
 $env:HF_ENDPOINT = 'https://hf-mirror.com'
 
+# Pass character selection to Python (TTS_CHARACTER + REF_WAVS_DIR env vars)
+if ($character) {
+    $env:TTS_CHARACTER = $character
+    # Map frontend charId to ref_wavs directory name (some use different spelling)
+    $charToRefDir = @{
+        'natsume' = 'ref_wavs'
+        'atori'   = 'ref_wavs_atri'
+        'sakura'  = 'ref_wavs_sakura'
+        'enola'   = 'ref_wavs'
+        'ruruka'  = 'ref_wavs'
+    }
+    $charRefDirName = $charToRefDir[$character]
+    if (-not $charRefDirName) { $charRefDirName = "ref_wavs_$character" }
+    $charRefDir = Join-Path $PSScriptRoot $charRefDirName
+    if (Test-Path $charRefDir) {
+        $env:REF_WAVS_DIR = $charRefDir
+        Write-Output "[CHAR] Using ref_wavs: $charRefDir"
+    } else {
+        Write-Output "[CHAR] No $charRefDirName dir, using default"
+    }
+}
+
 # Run TTS - stderr has [LOCK]/[LLAMA] logs, stdout has the wav path
 $rawOutput = & $sovitsPython $ttsScript $text $lang $mood 2>$null
 # Extract the path from stdout — match absolute Windows paths ending in .wav
@@ -60,6 +83,17 @@ if ($wavPath -and (Test-Path $wavPath)) {
     $mediaFile = Join-Path $mediaDir ('tts_' + (Get-Date -Format 'yyyyMMddHHmmss') + '.wav')
     Copy-Item $wavPath $mediaFile -Force -ErrorAction Stop
     @{status='ok';file=$mediaFile;type='tts'} | ConvertTo-Json -Compress | Set-Content $flagFile
+
+    # === Live2D Lip-Sync: send audio to bridge for real mouth animation ===
+    $syncScript = Join-Path $PSScriptRoot 'live2d_sync.py'
+    if (Test-Path $syncScript) {
+        try {
+            $syncResult = & $sovitsPython $syncScript $mediaFile --text $text --no-wait 2>$null
+            Write-Output "[SYNC] $syncResult"
+        } catch {
+            Write-Output "[SYNC] Live2D sync skipped (bridge offline or error)"
+        }
+    }
 
     Write-Output "DONE: $mediaFile"
 } else {

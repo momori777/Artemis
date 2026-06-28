@@ -38,13 +38,27 @@ MEDIA_IMAGES = CFG.get("media_qqbot_images", os.path.join(WORKSPACE_ROOT, "media
 
 # Detect available TTS characters
 TTs_DIR = os.path.join(WORKSPACE_ROOT, "skills", "tts")
+
+# Map charId (frontend) to ref_wavs directory name (some have different spelling)
+CHAR_ID_TO_REF = {
+    "natsume": "natsume",
+    "atori": "atri",
+    "sakura": "sakura",
+    "enola": "enola",
+    "ruruka": "ruruka",
+}
+
 AVAILABLE_CHARACTERS = {}
 for entry in os.listdir(TTs_DIR):
     if entry.startswith("ref_wavs") and os.path.isdir(os.path.join(TTs_DIR, entry)):
         wavs = [f for f in os.listdir(os.path.join(TTs_DIR, entry)) if f.endswith('.wav')]
         if wavs:
             name = entry.replace("ref_wavs_", "").replace("ref_wavs", "natsume")
+            # Also register under all matching charIds
             AVAILABLE_CHARACTERS[name] = os.path.join(TTs_DIR, entry)
+            for cid, cref in CHAR_ID_TO_REF.items():
+                if cref == name and cid != name:
+                    AVAILABLE_CHARACTERS[cid] = os.path.join(TTs_DIR, entry)
 if not AVAILABLE_CHARACTERS:
     AVAILABLE_CHARACTERS["natsume"] = os.path.join(TTs_DIR, "ref_wavs")
 
@@ -192,6 +206,28 @@ def api_status():
         "characters": list(AVAILABLE_CHARACTERS.keys()),
         "checkpoints": ["WAI-Nsfw-Illustrious-17.safetensors", "miaomiaoHarem_v20.safetensors"],
     })
+
+
+@app.route("/api/status")
+def api_status():
+    import os, socket, subprocess
+    llama_status = "unknown"
+    try:
+        s = socket.socket()
+        s.settimeout(1)
+        s.connect(("127.0.0.1", 8080))
+        s.close()
+        llama_status = "online"
+    except:
+        llama_status = "offline"
+    characters = []
+    for d in os.listdir(REF_WAVS_BASE):
+        if d.startswith("ref_wavs"):
+            char = d.replace("ref_wavs_", "").replace("ref_wavs", "natsume") or "natsume"
+            if char not in characters:
+                characters.append(char)
+    from flask import jsonify
+    return jsonify({"ok": True, "llama": llama_status, "characters": characters})
 
 @app.route("/api/tts", methods=["POST"])
 def api_tts():

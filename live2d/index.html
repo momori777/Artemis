@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -32,7 +32,6 @@ canvas { display:block; }
 <!-- Only TWO truly missing classes: AMotion, PhysicsHair -->
 <script>
 (function(g){
-  // AMotion — Cubism 2 SDK, used by pixi-live2d-display internal 'extends AMotion'
   g.AMotion=function(){this._fadeIn=0;this._fadeOut=0;this._weight=1;this._offsetSeconds=0};
   g.AMotion.prototype={
     updateParam:function(){},update:function(){},
@@ -44,18 +43,12 @@ canvas { display:block; }
     setFinishedMotionHandler:function(h){this._onFinishHandler=h},
     isFinished:function(){return true},updateParamExe:function(){}
   };
-
-  // Live2D namespace — bundle checks window.Live2D for Cubism 2 runtime detection
   g.Live2D={}; g.Live2DModelWebGL=function(){}; g.Live2DMotion=function(){}; g.Live2DMotion.prototype=new g.AMotion();
   g.Live2DPhysics=function(){}; g.Live2DEyeBlink=function(){}; g.Live2DPoser=function(){};
-
-  // PhysicsHair — Cubism SDK 5 Framework, used as 'new PhysicsHair()' in cubism4 plugin
   g.PhysicsHair=function(){};
   g.PhysicsHair.prototype={setup:function(a,b,c){},update:function(){}};
   g.PhysicsHair.Src={SRC_TO_X:0,SRC_TO_Y:1,SRC_TO_G_ANGLE:2};
   g.PhysicsHair.Target={TARGET_FROM_ANGLE:0,TARGET_FROM_ANGLE_V:1};
-
-  // Float32Array — typo in Cubism SDK for Float32Array
   if(!g.Float32Array)g.Float32Array=Float32Array;
 })(window);
 </script>
@@ -65,119 +58,367 @@ canvas { display:block; }
 
 <script>
 var MODEL='/model/shiki_natsume/final/shiki_natsume.model3.json';
-var st=document.getElementById('status'), ws, app, model, lipActive=false;
+var st=document.getElementById('status'), ws, app, model;
 
-function log(s){st.textContent=s;console.log(s)}
+// ========== Real Audio-Driven Lip-Sync Engine ==========
+var audioContext = null;
+var audioSource = null;
+var analyser = null;
+var lipActive = false;
+var lipVolume = 0;          // 0-1, smoothed current volume
+var lipFrequency = 0;       // 0-1, smoothed high-freq energy (sibilants)
+var mouthOpenY = 0;         // target mouth param
+var mouthForm = 0;          // target mouth form param
+
+var audioBuffer = null;     // current audio buffer for streaming playback
+var audioStartTime = 0;     // when current audio started playing
+var audioDuration = 0;      // duration of current audio
+var lipAnalysisRaf = null;  // rAF handle for analysis loop
+
+var IDLE_MOUTH_CLOSE_SPEED = 0.15;  // how fast mouth closes when silent
+var MOUTH_SMOOTH = 0.35;            // smoothing factor (lower = smoother/slower)
+var VOLUME_THRESHOLD = 0.02;        // below this, mouth closes
+var MOUTH_OPEN_MAX = 0.85;          // max ParamMouthOpenY
+var MOUTH_FORM_MAX = 0.6;           // max ParamMouthForm
+
+function ensureAudioContext() {
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.3;
+    analyser.connect(audioContext.destination);
+  }
+  if (audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
+  return audioContext;
+}
+
+/**
+ * Load and play an audio URL with real-time lip-sync analysis.
+ * This is the main entry point — bridge sends audio URL via WS.
+ */
+function playAudioWithLipSync(audioUrl) {
+  ensureAudioContext();
+
+  // Stop any previous audio
+  stopAudio();
+
+  // Fetch and decode
+  fetch(audioUrl)
+    .then(function(response) { return response.arrayBuffer(); })
+    .then(function(arrayBuffer) { return audioContext.decodeAudioData(arrayBuffer); })
+    .then(function(decodedBuffer) {
+      audioBuffer = decodedBuffer;
+      audioDuration = decodedBuffer.duration;
+
+      // Create audio source
+      audioSource = audioContext.createBufferSource();
+      audioSource.buffer = audioBuffer;
+
+      // Connect: source → analyser → destination
+      audioSource.connect(analyser);
+
+      // Start playback
+      audioStartTime = audioContext.currentTime;
+      lipActive = true;
+      audioSource.start(0);
+
+      // Start lip-sync analysis loop
+      startLipAnalysis();
+
+      // Handle end
+      audioSource.onended = function() {
+        lipActive = false;
+        stopLipAnalysis();
+        // Notify bridge that audio finished
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'audio_ended' }));
+        }
+      };
+
+      log('🔊 playing + lip-sync');
+    })
+    .catch(function(e) {
+      log('🔊 ERR: ' + e.message);
+      lipActive = false;
+    });
+}
+
+function stopAudio() {
+  if (audioSource) {
+    try { audioSource.stop(); } catch(e) {}
+    audioSource.disconnect();
+    audioSource = null;
+  }
+  lipActive = false;
+  stopLipAnalysis();
+  audioBuffer = null;
+}
+
+function startLipAnalysis() {
+  if (lipAnalysisRaf) return;
+  function analyze() {
+    if (!lipActive || !analyser) {
+      lipAnalysisRaf = null;
+      return;
+    }
+
+    var freqData = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(freqData);
+
+    // Calculate RMS volume (0-1)
+    var sumSquares = 0;
+    for (var i = 0; i < freqData.length; i++) {
+      var normalized = freqData[i] / 255;
+      sumSquares += normalized * normalized;
+    }
+    var rms = Math.sqrt(sumSquares / freqData.length);
+
+    // Calculate high-frequency energy (sibilants/formants) for mouth form
+    // Bins above ~2kHz carry consonant/formant info
+    var highStart = Math.floor(freqData.length * 0.4);
+    var highSum = 0;
+    for (var i = highStart; i < freqData.length; i++) {
+      highSum += freqData[i] / 255;
+    }
+    var highFreq = highSum / (freqData.length - highStart);
+
+    // Smooth
+    lipVolume = lipVolume + (rms - lipVolume) * 0.2;
+    lipFrequency = lipFrequency + (highFreq - lipFrequency) * 0.15;
+
+    // Calculate target mouth params
+    if (lipVolume > VOLUME_THRESHOLD) {
+      mouthOpenY = Math.min(lipVolume * 2.5, MOUTH_OPEN_MAX);
+      mouthForm = Math.min(lipFrequency * 1.5, MOUTH_FORM_MAX);
+    } else {
+      mouthOpenY = 0;
+      mouthForm = 0;
+    }
+
+    lipAnalysisRaf = requestAnimationFrame(analyze);
+  }
+  lipAnalysisRaf = requestAnimationFrame(analyze);
+}
+
+function stopLipAnalysis() {
+  if (lipAnalysisRaf) {
+    cancelAnimationFrame(lipAnalysisRaf);
+    lipAnalysisRaf = null;
+  }
+  lipVolume = 0;
+  lipFrequency = 0;
+  mouthOpenY = 0;
+  mouthForm = 0;
+}
+
+// ========== Network ==========
+function log(s){ st.textContent = s; console.log(s); }
+
 function connectWS(){
-  ws=new WebSocket('ws://'+location.hostname+':19201');
-  ws.onopen=()=>log('ws ok');
-  ws.onmessage=e=>{try{var d=JSON.parse(e.data);if(d.type==='motion'&&model)try{model.internalModel.motionManager.startRandomMotion(d.name||'',0)}catch(_){};if(d.type==='speak_start')lipActive=true;if(d.type==='speak_end')lipActive=false;if(d.type==='speak')lipActive=(d.action==='start');if(d.type==='sovits_state'){var b=document.getElementById('sovits-btn');if(b){if(d.running){b.textContent='🔊 TTS';b.classList.add('on')}else{b.textContent='🔇 TTS';b.classList.remove('on')}}}}catch(_){}}
-  ws.onclose=()=>setTimeout(connectWS,3000)
+  ws = new WebSocket('ws://' + location.hostname + ':19201');
+  ws.onopen = function() { log('ws ok'); };
+  ws.onmessage = function(e) {
+    try {
+      var d = JSON.parse(e.data);
+
+      // Motion
+      if (d.type === 'motion' && model) {
+        try {
+          model.internalModel.motionManager.startRandomMotion(d.name || '', 0);
+        } catch(_) {}
+      }
+
+      // Legacy speak_start/end (fake random lip — keep for backward compat)
+      if (d.type === 'speak') {
+        if (d.action === 'start') {
+          // If no audio URL, fall back to legacy fake-random lip mode
+          if (!d.audio_url) {
+            lipActive = true;
+            startLipAnalysis(); // will use zero data = random-ish
+          }
+        } else {
+          if (!d.audio_url) {
+            stopAudio();
+            lipActive = false;
+            stopLipAnalysis();
+          }
+        }
+      }
+
+      // Real audio-driven lip-sync
+      if (d.type === 'speak_audio') {
+        if (d.action === 'start' && d.audio_url) {
+          playAudioWithLipSync(d.audio_url);
+        } else if (d.action === 'end') {
+          stopAudio();
+        }
+      }
+
+      // Sovits state
+      if (d.type === 'sovits_state') {
+        var b = document.getElementById('sovits-btn');
+        if (b) {
+          if (d.running) { b.textContent = '🔊 TTS'; b.classList.add('on'); }
+          else { b.textContent = '🔇 TTS'; b.classList.remove('on'); }
+        }
+      }
+    } catch(_) {}
+  };
+  ws.onclose = function() { setTimeout(connectWS, 3000); };
 }
 
 function toggleSovits(){
-  var btn=document.getElementById('sovits-btn');
-  var isOn=btn&&btn.classList.contains('on');
-  var action=isOn?'stop':'start';
+  var btn = document.getElementById('sovits-btn');
+  var isOn = btn && btn.classList.contains('on');
+  var action = isOn ? 'stop' : 'start';
   btn.classList.add('loading');
-  btn.textContent=isOn?'停止中...':'启动中...';
-  fetch('/api/sovits?action='+action).then(function(r){return r.json()}).then(function(j){
-    btn.classList.remove('loading');
-    if(j.ok){
-      if(action==='start'){btn.textContent='🔊 TTS';btn.classList.add('on')}else{btn.textContent='🔇 TTS';btn.classList.remove('on')}
-      log((action==='start'?'✅ ':'❌ ')+'GPT-SoVITS: '+j.message);
-    } else {
-      btn.textContent='🔇 TTS';
-      log('❌ '+j.message);
-    }
-  }).catch(function(e){btn.classList.remove('loading');btn.textContent='🔇 TTS';log('请求失败')});
+  btn.textContent = isOn ? '停止中...' : '启动中...';
+  fetch('/api/sovits?action=' + action)
+    .then(function(r) { return r.json(); })
+    .then(function(j) {
+      btn.classList.remove('loading');
+      if (j.ok) {
+        if (action === 'start') { btn.textContent = '🔊 TTS'; btn.classList.add('on'); }
+        else { btn.textContent = '🔇 TTS'; btn.classList.remove('on'); }
+        log((action === 'start' ? '✅ ' : '❌ ') + 'GPT-SoVITS: ' + j.message);
+      } else {
+        btn.textContent = '🔇 TTS';
+        log('❌ ' + j.message);
+      }
+    }).catch(function(e) { btn.classList.remove('loading'); btn.textContent = '🔇 TTS'; log('请求失败'); });
 }
+
+// ========== Live2D Init ==========
 function init(){
-  var L2D=window.PIXI&&window.PIXI.live2d&&window.PIXI.live2d.Live2DModel;
-  if(!L2D){log('wait plid...');setTimeout(init,500);return}
-  log('SDK ok');var ver=Live2DCubismCore.Version.csmGetVersion();log('Core v'+((ver>>>24)&0xFF)+'.'+((ver>>>16)&0xFF)+'.'+(ver&0xFFFF)+' hex=0x'+ver.toString(16));
-  var c=document.getElementById('l2d'),W=c.clientWidth||640,H=c.clientHeight||640;
-  app=new PIXI.Application({width:W,height:H,backgroundAlpha:0,antialias:true,resolution:window.devicePixelRatio||1,autoDensity:true});
+  var L2D = window.PIXI && window.PIXI.live2d && window.PIXI.live2d.Live2DModel;
+  if (!L2D) { log('wait plid...'); setTimeout(init, 500); return; }
+  log('SDK ok');
+  var ver = Live2DCubismCore.Version.csmGetVersion();
+  log('Core v' + ((ver>>>24)&0xFF) + '.' + ((ver>>>16)&0xFF) + '.' + (ver&0xFFFF) + ' hex=0x' + ver.toString(16));
+  var c = document.getElementById('l2d'), W = c.clientWidth || 640, H = c.clientHeight || 640;
+  app = new PIXI.Application({ width: W, height: H, backgroundAlpha: 0, antialias: true, resolution: window.devicePixelRatio || 1, autoDensity: true });
   c.appendChild(app.view);
   log('loading model...');
-  L2D.from(MODEL,{autoInteract:true,autoUpdate:true,autoHitTest:true}).then(function(m){
-    // Disable ExtraMotion to prevent random param changes (eyebrow opacity drift)
-    try{m.internalModel.settings.extraMotionEnabled=false}catch(_){}
-    model=m;var s=Math.min(W/model.width,H/model.height)*1.25;
-    model.scale.set(s);model.x=W/2;model.y=H*0.66;model.anchor.set(0.5);
+  L2D.from(MODEL, { autoInteract: true, autoUpdate: true, autoHitTest: true }).then(function(m) {
+    try { m.internalModel.settings.extraMotionEnabled = false; } catch(_) {}
+    model = m;
+    var s = Math.min(W / model.width, H / model.height) * 1.25;
+    model.scale.set(s);
+    model.x = W / 2;
+    model.y = H * 0.66;
+    model.anchor.set(0.5);
     app.stage.addChild(model);
-    // Reset eye params
-    var core=model.internalModel.coreModel;
-    if(core){
-      core.setParameterValueById('ParamEyeLOpen',1);
-      core.setParameterValueById('ParamEyeLOpen2',1);
-      core.setParameterValueById('Guodongyan1',0);
-      core.setParameterValueById('Guodongyan2',0);
-      // Let built-in EyeBlink work - Guodongyan locked per-frame, no more conflict
-      // Cache drawable indices for debugging
-      window._gaoguangL=3; window._gaoguangR=12;
-      window._meimaoL=0; window._meimaoR=8;
-      // Force Yanjing Part (32,33) opacity=1 to prevent fade
-      var im=model.internalModel;
-      if(im.partOpacities){im.partOpacities.setValue(32,1);im.partOpacities.setValue(33,1);}
-      console.log('Eye fix cached: Gaoguang',window._gaoguangL,window._gaoguangR,'Meimao',window._meimaoL,window._meimaoR);
+
+    var core = model.internalModel.coreModel;
+    if (core) {
+      core.setParameterValueById('ParamEyeLOpen', 1);
+      core.setParameterValueById('ParamEyeLOpen2', 1);
+      core.setParameterValueById('Guodongyan1', 0);
+      core.setParameterValueById('Guodongyan2', 0);
+      window._gaoguangL = 3; window._gaoguangR = 12;
+      window._meimaoL = 0; window._meimaoR = 8;
+      var im = model.internalModel;
+      if (im.partOpacities) { im.partOpacities.setValue(32, 1); im.partOpacities.setValue(33, 1); }
+      console.log('Eye fix cached: Gaoguang', window._gaoguangL, window._gaoguangR, 'Meimao', window._meimaoL, window._meimaoR);
     }
-    log('loaded!')
-    // 绑定 TTS 开关按钮
-    var btn=document.getElementById('sovits-btn');
-    if(btn){btn.addEventListener('click',toggleSovits);
-      // 检查初始状态
-      fetch('/api/sovits?action=status').then(function(r){return r.json()}).then(function(j){
-        if(j&&j.running){btn.textContent='🔊 TTS';btn.classList.add('on')}
-        else{btn.textContent='🔇 TTS';btn.classList.remove('on')}
-      }).catch(function(){btn.textContent='🔇 TTS'});
+    log('loaded!');
+
+    var btn = document.getElementById('sovits-btn');
+    if (btn) {
+      btn.addEventListener('click', toggleSovits);
+      fetch('/api/sovits?action=status')
+        .then(function(r) { return r.json(); })
+        .then(function(j) {
+          if (j && j.running) { btn.textContent = '🔊 TTS'; btn.classList.add('on'); }
+          else { btn.textContent = '🔇 TTS'; btn.classList.remove('on'); }
+        }).catch(function() { btn.textContent = '🔇 TTS'; });
     }
-  }).catch(function(e){log('ERR: '+(e&&e.message||e))});
-    // === MOTION CLEANUP + REPORTING ===\n  // NOTE: Ghosting (double-layer eye highlight) during certain motions (wink/disgust)\n  // is a plid-v5-bundle rendering bug for this Cubism 4 model. Param23/13/14/25 hit\n  // extreme values (+21~+30) during motion, causing Gaoguang (drawables 3/12) desync.\n  // Workaround: snapshot before motion, restore dirty params after each motion ends.\n  // Awaiting upstream plid-bundle fix for proper Cubism 4 drawable parameter sync.
-  var eyeBlinkPaused=false, paramSnapBefore=null;
-  setInterval(function(){if(!model||!model.internalModel)return;try{var cm=model.internalModel.coreModel;
-    cm.setParameterValueById('ParamMouthOpenY',lipActive?0.2+Math.random()*0.8:0);
-    cm.setParameterValueById('Guodongyan1',0);cm.setParameterValueById('Guodongyan2',0);
-    var mm=model.internalModel.motionManager;
-    var inMotion=mm&&!mm.isFinished();
-    if(inMotion&&!eyeBlinkPaused){
-      try{model.internalModel.eyeBlink.setEyeBlinkIds([])}catch(e){}
-      eyeBlinkPaused=true;
-      paramSnapBefore={};
-      var mh=cm._model||cm._cubismModel||cm;
-      if(mh.parameters)for(var pi=0;pi<mh.parameters.count;pi++){var pid=mh.parameters.ids[pi];if(pid)paramSnapBefore[pid]=cm.getParameterValueById(pid)}
-    }
-    if(!inMotion&&eyeBlinkPaused){
-      eyeBlinkPaused=false;
-      var skipSet=new Set(['ParamAngleX','ParamAngleY','ParamAngleZ','ParamBodyAngleX','ParamBodyAngleY','ParamBodyAngleZ','ParamMouthOpenY','ParamBreath']);
-      if(paramSnapBefore){
-        var mh2=cm._model||cm._cubismModel||cm;
-        if(mh2.parameters)for(var pi=0;pi<mh2.parameters.count;pi++){
-          var pid=mh2.parameters.ids[pi];if(!pid||skipSet.has(pid))continue;
-          var cur=cm.getParameterValueById(pid);var prev=paramSnapBefore[pid];
-          if(prev!==undefined&&Math.abs(cur-prev)>0.01){cm.setParameterValueById(pid,prev)}
+  }).catch(function(e) { log('ERR: ' + (e && e.message || e)); });
+
+  // ========== Per-frame update: real audio-driven lip-sync ==========
+  // Replaces the old fake random-mouth setInterval
+  var eyeBlinkPaused = false, paramSnapBefore = null;
+
+  function updateMouth() {
+    if (!model || !model.internalModel) return;
+    try {
+      var cm = model.internalModel.coreModel;
+
+      // === Real Audio-Driven Mouth ===
+      if (lipActive) {
+        // Smooth mouth params toward audio-derived targets
+        var currentMouth = cm.getParameterValueById('ParamMouthOpenY');
+        var currentForm = cm.getParameterValueById('ParamMouthForm');
+        var newMouth = currentMouth + (mouthOpenY - currentMouth) * MOUTH_SMOOTH;
+        var newForm = currentForm + (mouthForm - currentForm) * MOUTH_SMOOTH;
+        cm.setParameterValueById('ParamMouthOpenY', newMouth);
+        if (typeof cm.setParameterValueById('ParamMouthForm') !== 'undefined') {
+          cm.setParameterValueById('ParamMouthForm', newForm);
+        }
+      } else {
+        // No audio — gently close mouth
+        var currentMouth = cm.getParameterValueById('ParamMouthOpenY');
+        if (currentMouth > 0.01) {
+          cm.setParameterValueById('ParamMouthOpenY', currentMouth * (1 - IDLE_MOUTH_CLOSE_SPEED));
+        } else {
+          cm.setParameterValueById('ParamMouthOpenY', 0);
         }
       }
-      cm.setParameterValueById('ParamEyeLOpen',1);cm.setParameterValueById('ParamEyeLOpen2',1);
-      try{model.internalModel.eyeBlink.setEyeBlinkIds(['ParamEyeLOpen','ParamEyeLOpen2'])}catch(e){}
-      paramSnapBefore=null;
-    }
-    if(!inMotion){
-      var el=cm.getParameterValueById('ParamEyeLOpen');
-      if(el>1.05||el<-0.05){cm.setParameterValueById('ParamEyeLOpen',1);cm.setParameterValueById('ParamEyeLOpen2',1)}
-    }
-  }catch(_){}},60);
-  connectWS()
+
+      // === Eye fix (unchanged) ===
+      cm.setParameterValueById('Guodongyan1', 0);
+      cm.setParameterValueById('Guodongyan2', 0);
+      var mm = model.internalModel.motionManager;
+      var inMotion = mm && !mm.isFinished();
+      if (inMotion && !eyeBlinkPaused) {
+        try { model.internalModel.eyeBlink.setEyeBlinkIds([]); } catch(e) {}
+        eyeBlinkPaused = true;
+        paramSnapBefore = {};
+        var mh = cm._model || cm._cubismModel || cm;
+        if (mh.parameters) for (var pi = 0; pi < mh.parameters.count; pi++) {
+          var pid = mh.parameters.ids[pi]; if (pid) paramSnapBefore[pid] = cm.getParameterValueById(pid);
+        }
+      }
+      if (!inMotion && eyeBlinkPaused) {
+        eyeBlinkPaused = false;
+        var skipSet = new Set(['ParamAngleX','ParamAngleY','ParamAngleZ','ParamBodyAngleX','ParamBodyAngleY','ParamBodyAngleZ','ParamMouthOpenY','ParamMouthForm','ParamBreath']);
+        if (paramSnapBefore) {
+          var mh2 = cm._model || cm._cubismModel || cm;
+          if (mh2.parameters) for (var pi = 0; pi < mh2.parameters.count; pi++) {
+            var pid = mh2.parameters.ids[pi]; if (!pid || skipSet.has(pid)) continue;
+            var cur = cm.getParameterValueById(pid); var prev = paramSnapBefore[pid];
+            if (prev !== undefined && Math.abs(cur - prev) > 0.01) { cm.setParameterValueById(pid, prev); }
+          }
+        }
+        cm.setParameterValueById('ParamEyeLOpen', 1); cm.setParameterValueById('ParamEyeLOpen2', 1);
+        try { model.internalModel.eyeBlink.setEyeBlinkIds(['ParamEyeLOpen','ParamEyeLOpen2']); } catch(e) {}
+        paramSnapBefore = null;
+      }
+      if (!inMotion) {
+        var el = cm.getParameterValueById('ParamEyeLOpen');
+        if (el > 1.05 || el < -0.05) { cm.setParameterValueById('ParamEyeLOpen', 1); cm.setParameterValueById('ParamEyeLOpen2', 1); }
+      }
+    } catch(_) {}
+  }
+
+  // Run at 60fps via rAF
+  function frameLoop() {
+    updateMouth();
+    requestAnimationFrame(frameLoop);
+  }
+  requestAnimationFrame(frameLoop);
+
+  connectWS();
 }
-if(new URLSearchParams(location.search).get('embed')==='1')document.body.classList.add('embed');
+
+if (new URLSearchParams(location.search).get('embed') === '1') document.body.classList.add('embed');
 init();
-window.addEventListener('resize',()=>{if(app){var c=document.getElementById('l2d');app.renderer.resize(c.clientWidth,c.clientHeight)}});
+window.addEventListener('resize', function() {
+  if (app) { var c = document.getElementById('l2d'); app.renderer.resize(c.clientWidth, c.clientHeight); }
+});
 </script>
 </body>
 </html>
-
-
-
-
-
-

@@ -128,6 +128,11 @@ _CHARA_KEY_MAP = {
     "夜乃桜": "sakura",
     "亚托莉": "atri",
     "艾诺拉": "enola",
+    # English IDs (from frontend charId)
+    "natsume": "natsume",
+    "atori": "atri",
+    "sakura": "sakura",
+    "enola": "enola",
 }
 
 def _resolve_weight_paths():

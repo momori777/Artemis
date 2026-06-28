@@ -13,6 +13,7 @@ var UI = {
   state: {
     messages: [],
     streaming: false,
+    ttsStreaming: false,
     currentCharId: DEFAULT_CHAR_ID,
     currentSessionId: null,
   },
@@ -40,6 +41,7 @@ var UI = {
     this.setupEvents();
     this.checkGateway();
     this.$input.focus();
+    this._updateStreamingTTSVisibility();
 
     // Avatar modal
     this._initAvatarModal();
@@ -50,6 +52,7 @@ var UI = {
         self.loadCharUI();
         self.rebuildCharList();
         self.loadSessionsList();
+        self._updateStreamingTTSVisibility();
       }).catch(function (err) {
         console.warn('API character refresh failed:', err.message);
       });
@@ -77,6 +80,7 @@ var UI = {
     document.getElementById('btn-auto-paint').addEventListener('click', function() { self.autoPaint(); });
     document.getElementById('btn-manual-paint').addEventListener('click', function() { self.manualPaint(); });
     document.getElementById('btn-tts-voice').addEventListener('click', function() { self.ttsVoice(); });
+    document.getElementById('btn-tts-streaming').addEventListener('click', function() { self.ttsStreaming(); });
 
     // Llama management toggle in chat input area
     var llamaToggleLabel = document.getElementById('toggle-chat-llama-label');
@@ -163,6 +167,7 @@ var UI = {
     this.loadSessionsList();
     this.loadHistory();
     this.checkGateway();
+    this._updateStreamingTTSVisibility();
   },
 
   loadCharUI: function() {
@@ -1746,6 +1751,169 @@ var UI = {
       }
     }, 3000);
   },
+  // ---- Streaming TTS + Live2D Lip-Sync ----
+  ttsStreaming: function() {
+    var self = this;
+    if (this.state.streaming || this.state.ttsStreaming) return;
+    if (!this._hasTTSForCurrentChar()) {
+      showToast('This character has no TTS voice model yet');
+      return;
+    }
+
+    // Find the last assistant message, extract only the last 1-2 sentences
+    var lastText = '';
+    for (var i = this.state.messages.length - 1; i >= 0; i--) {
+      var m = this.state.messages[i];
+      if (m.role === 'assistant' && m.content && m.content.trim()) {
+        lastText = m.content.trim();
+        break;
+      }
+    }
+    if (!lastText) {
+      showToast('No assistant reply to voice yet');
+      return;
+    }
+    // Only use last 1-2 sentences (~100 chars max) for streaming TTS
+    lastText = extractLastSentences(lastText, 2);
+    var charCfg = getChar(charId);
+    var lang = (charCfg && charCfg.ttsLang) || 'ja';
+    var mood = (charCfg && charCfg.ttsMood) || 'casual';
+
+    // Button feedback: active state
+    this.state.ttsStreaming = true;
+    this._updateTTSStreamingButton();
+
+    this.appendSystemMsg('📢 Streaming TTS + Live2D Lip-Sync...');
+    this.scrollToBottom();
+
+    var bridgeUrl = getSettings().bridgeUrl || 'http://localhost:19250';
+
+    // Send TTS job through bridge
+    fetch(bridgeUrl + '/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: lastText.substring(0, 500),
+        lang: lang,
+        mood: mood,
+        character: charId,
+        live2d_sync: true,
+      }),
+      signal: AbortSignal.timeout(5000),
+    })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.job_id) {
+          self._pollTTSLipSync(data.job_id);
+        } else {
+          self.state.ttsStreaming = false;
+          self._updateTTSStreamingButton();
+          self.appendSystemMsg('📢 Streaming TTS failed: ' + (data.error || 'unknown'));
+          self.scrollToBottom();
+        }
+      })
+      .catch(function(err) {
+        self.state.ttsStreaming = false;
+        self._updateTTSStreamingButton();
+        self.appendSystemMsg('📢 Streaming TTS error: ' + err.message);
+        self.scrollToBottom();
+      });
+  },
+
+  _updateTTSStreamingButton: function() {
+    var btn = document.getElementById('btn-tts-streaming');
+    if (!btn) return;
+    if (this.state.ttsStreaming) {
+      btn.classList.add('active');
+      btn.style.color = '#0f0';
+      btn.style.borderColor = '#0f0';
+      btn.title = 'Streaming TTS generating...';
+    } else {
+      btn.classList.remove('active');
+      btn.style.color = '';
+      btn.style.borderColor = '';
+      btn.title = '流式TTS+Live2D口型同步';
+    }
+  },
+
+  _hasTTSForCurrentChar: function() {
+    var charId = this.state.currentCharId || 'natsume';
+    // Characters with TTS ref_wavs: natsume, sakura, atori, enola
+    var ttsChars = ['natsume', 'sakura', 'atori', 'enola'];
+    return ttsChars.indexOf(charId) >= 0;
+  },
+
+  _updateStreamingTTSVisibility: function() {
+    var btn = document.getElementById('btn-tts-streaming');
+    if (!btn) return;
+    if (this._hasTTSForCurrentChar()) {
+      btn.style.display = '';
+      btn.style.opacity = '1';
+      btn.title = '流式TTS+Live2D口型同步';
+    } else {
+      btn.style.display = 'none';
+      btn.style.opacity = '0.3';
+      btn.title = 'No TTS model for this character';
+    }
+  },
+
+  _pollTTSLipSync: function(jobId) {
+    var self = this;
+    var bridgeUrl = getSettings().bridgeUrl || 'http://localhost:19250';
+    var attempt = 0;
+    var maxAttempts = 120;
+
+    var interval = setInterval(function() {
+      attempt++;
+      fetch(bridgeUrl + '/api/jobs/' + jobId, { signal: AbortSignal.timeout(3000) })
+        .then(function(res) { return res.json(); })
+        .then(function(job) {
+          if (job.status === 'done') {
+            clearInterval(interval);
+            self.state.ttsStreaming = false;
+            self._updateTTSStreamingButton();
+            var audioSrc = self._resolveMediaPath(job.path);
+
+            // Trigger Live2D lip-sync via bridge's speak_audio API
+            var encodedPath = encodeURIComponent(job.path);
+            fetch('http://localhost:19200/api/speak_audio?action=start&audio_path=' + encodedPath + '&text=' + encodeURIComponent(job.text || ''), {
+              signal: AbortSignal.timeout(5000),
+            }).catch(function() {
+              // Bridge might be offline, that's ok - audio still plays in chat
+            });
+
+            var el = document.createElement('div');
+            el.className = 'msg-system tts-done';
+            el.innerHTML = '📢 Lip-Sync active! <audio controls src="' + audioSrc + '"></audio>';
+            self.$messages.appendChild(el);
+            self.scrollToBottom();
+
+            // Auto-stop lip-sync after estimated duration + 2s
+            var estDuration = (job.duration_sec || 8) + 2;
+            setTimeout(function() {
+              fetch('http://localhost:19200/api/speak_audio?action=end', {
+                signal: AbortSignal.timeout(5000),
+              }).catch(function() {});
+            }, estDuration * 1000);
+          } else if (job.status === 'failed') {
+            clearInterval(interval);
+            self.state.ttsStreaming = false;
+            self._updateTTSStreamingButton();
+            self.appendSystemMsg('📢 Streaming TTS failed: ' + (job.error || 'unknown'));
+            self.scrollToBottom();
+          }
+        })
+        .catch(function() {});
+
+      if (attempt >= maxAttempts) {
+        clearInterval(interval);
+        self.state.ttsStreaming = false;
+        self._updateTTSStreamingButton();
+        self.appendSystemMsg('📢 Streaming TTS timed out');
+        self.scrollToBottom();
+      }
+    }, 3000);
+  },
   autoPaint: function() {
     var self = this;
     if (this.state.streaming) return;
@@ -2151,3 +2319,15 @@ document.addEventListener('DOMContentLoaded', function() {
   Studio.init();
   UI.init();
 });
+
+// ============================================================
+// Helper: extract last N sentences from text
+// Supports Chinese (。/！/？/…) and Japanese/English (./!/?) punctuation
+// ============================================================
+function extractLastSentences(text, count) {
+  if (!text) return text;
+  // Split by sentence-ending punctuation: Chinese + Japanese + English markers
+  var sentences = text.split(/(?<=[。！？…、.!?\n])\s*/g).filter(function(s) { return s.trim().length > 0; });
+  if (sentences.length <= count) return text;
+  return sentences.slice(-count).join('').trim();
+}

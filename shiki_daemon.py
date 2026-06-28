@@ -1062,11 +1062,18 @@ def run_dashboard_server(daemon):
     server.serve_forever()
 
 def run_webchat_server():
-    """Simple file server for web-chat"""
+    """Simple file server for web-chat with no-cache headers."""
     import http.server
     os.chdir(WEBCHAT_DIR)
-    server = ThreadingWebChatServer(("127.0.0.1", WEBCHAT_PORT),
-        http.server.SimpleHTTPRequestHandler)
+
+    class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
+        def end_headers(self):
+            self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            self.send_header('Pragma', 'no-cache')
+            self.send_header('Expires', '0')
+            super().end_headers()
+
+    server = ThreadingWebChatServer(("127.0.0.1", WEBCHAT_PORT), NoCacheHandler)
     print(f"[webchat] http://127.0.0.1:{WEBCHAT_PORT}")
     server.serve_forever()
 
