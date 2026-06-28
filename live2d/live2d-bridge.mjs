@@ -11,9 +11,10 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
+import { execFile, execSync } from 'node:child_process';
 import { WebSocketServer } from 'ws';
 import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -22,6 +23,9 @@ const HTTP_PORT = 19200;
 const WS_PORT = 19201;
 const STATIC_DIR = __dirname;
 const NODE_MODULES = path.join(__dirname, 'node_modules');
+const AUDIO_CACHE_DIR = path.join(__dirname, 'audio_cache');
+const AUDIO_CACHE_MAX_FILES = 50;
+const AUDIO_CACHE_MAX_AGE_MS = 30 * 60 * 1000; // 30 min
 
 // Serve node_modules files at /node_modules/... path
 const NODE_MODULES_ALIASES = {
@@ -142,6 +146,59 @@ async function stopSovits() {
   return { ok: true, message: 'GPT-SoVITS 已停止' };
 }
 
+// ========== Audio Cache (serves TTS output for streaming lip-sync) ==========
+function ensureAudioCacheDir() {
+  if (!fs.existsSync(AUDIO_CACHE_DIR)) {
+    fs.mkdirSync(AUDIO_CACHE_DIR, { recursive: true });
+  }
+}
+
+function cleanupAudioCache() {
+  ensureAudioCacheDir();
+  const now = Date.now();
+  const files = fs.readdirSync(AUDIO_CACHE_DIR)
+    .map(name => {
+      const full = path.join(AUDIO_CACHE_DIR, name);
+      try {
+        const stat = fs.statSync(full);
+        return { path: full, name, mtime: stat.mtimeMs };
+      } catch { return null; }
+    })
+    .filter(Boolean);
+
+  // Remove expired
+  for (const f of files) {
+    if (now - f.mtime > AUDIO_CACHE_MAX_AGE_MS) {
+      try { fs.unlinkSync(f.path); } catch {}
+    }
+  }
+
+  // Trim to max files (oldest first)
+  const remaining = files
+    .filter(f => fs.existsSync(f.path))
+    .sort((a, b) => a.mtime - b.mtime);
+  for (const f of remaining.slice(0, -AUDIO_CACHE_MAX_FILES)) {
+    try { fs.unlinkSync(f.path); } catch {}
+  }
+}
+
+/** Cache an audio file (e.g., TTS output wav) and return its URL */
+function cacheAudioFile(sourcePath) {
+  ensureAudioCacheDir();
+  cleanupAudioCache();
+
+  if (!fs.existsSync(sourcePath)) {
+    throw new Error(`Audio file not found: ${sourcePath}`);
+  }
+
+  const ext = path.extname(sourcePath) || '.wav';
+  const cachedName = `${randomUUID()}${ext}`;
+  const cachedPath = path.join(AUDIO_CACHE_DIR, cachedName);
+  fs.copyFileSync(sourcePath, cachedPath);
+
+  return `/cache/audio/${cachedName}`;
+}
+
 // ========== MIME types ==========
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -157,6 +214,8 @@ const MIME = {
   '.model3.json': 'application/json',
   '.css': 'text/css; charset=utf-8',
   '.wav': 'audio/wav',
+  '.mp3': 'audio/mpeg',
+  '.ogg': 'audio/ogg',
   '.mjs': 'application/javascript; charset=utf-8',
 };
 
@@ -265,6 +324,66 @@ const httpServer = http.createServer(async (req, res) => {
     return;
   }
 
+  // /api/speak_audio — stream audio to Live2D with real lip-sync
+  // action=start&audio_path=<local file path>&text=<optional>
+  // action=end
+  if (pathname === '/api/speak_audio') {
+    const action = url.searchParams.get('action') || 'start';
+    const audioPath = url.searchParams.get('audio_path') || '';
+    const text = url.searchParams.get('text') || '';
+
+    if (action === 'start') {
+      let audioUrl = '';
+      if (audioPath) {
+        try {
+          audioUrl = cacheAudioFile(audioPath);
+        } catch (e) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: e.message }));
+          return;
+        }
+      }
+      broadcast({
+        type: 'speak_audio',
+        action: 'start',
+        audio_url: audioUrl ? `http://localhost:${HTTP_PORT}${audioUrl}` : '',
+        text: text
+      });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, audio_url: audioUrl }));
+    } else {
+      broadcast({ type: 'speak_audio', action: 'end' });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    }
+    return;
+  }
+
+  // ---- Audio Cache static serving ----
+  if (pathname.startsWith('/cache/audio/')) {
+    const fileName = pathname.replace('/cache/audio/', '');
+    // Sanitize: only allow hex UUID + safe extensions
+    if (!/^[a-f0-9-]+\.(wav|mp3|ogg|webm)$/i.test(fileName)) {
+      res.writeHead(403);
+      res.end('Forbidden');
+      return;
+    }
+    const filePath = path.join(AUDIO_CACHE_DIR, fileName);
+    if (!fs.existsSync(filePath)) {
+      res.writeHead(404);
+      res.end('Not found');
+      return;
+    }
+    const ext = path.extname(filePath).toLowerCase();
+    res.writeHead(200, {
+      'Content-Type': MIME[ext] || 'audio/wav',
+      'Cache-Control': 'public, max-age=3600',
+      'Accept-Ranges': 'bytes'
+    });
+    fs.createReadStream(filePath).pipe(res);
+    return;
+  }
+
   // ---- Static file serving ----
   let filePath;
 
@@ -354,10 +473,13 @@ httpServer.listen(HTTP_PORT, () => {
   console.log(`   GET /api/expression?name=<exp_01~05|neutral|happy|sad|angry|surprised>`);
   console.log(`   GET /api/motion?name=<idle|mtn_01|mtn_02|mtn_03>`);
   console.log(`   GET /api/message?text=<文本>&duration=<毫秒>`);
-  console.log(`   GET /api/speak?action=start|end&text=<文本>`);
+  console.log(`   GET /api/speak_audio?action=start&audio_path=<本地wav路径>&text=<文本>`);
+  console.log(`   GET /api/speak_audio?action=end`);
+  console.log(`   GET /api/speak?action=start|end&text=<文本>           (legacy)`);
   console.log(`   GET /api/emotion?expression=<>&motion=<>&text=<>&duration=<>`);
   console.log(`   GET /api/reset`);
   console.log(`   GET /api/status`);
   console.log(`   GET /api/sovits?action=start|stop|status`);
+  console.log(`   GET /cache/audio/<uuid>.wav                          (audio serving)`);
   console.log('');
 });
