@@ -179,8 +179,9 @@ if (-not $sovitsRoot) {
 Write-Host ""
 Write-Host "--- llama.cpp (本地 LLM) ---" -ForegroundColor Green
 
-$llamaExe = Find-Exe "llama-server.exe" $searchRoots
-$llamaModel = Find-Exe "*.gguf" $searchRoots  # 可能有多个，取第一个
+$llamaExe = Find-Exe "llama-server.exe" @("$scriptDir\llama-server")
+if (-not $llamaExe) { $llamaExe = Find-Exe "llama-server.exe" $searchRoots }
+$llamaModel = Find-Exe "*.gguf" @("$scriptDir\models")
 
 # 如果有 vllm 目录
 $vllmDir = Find-Dir "vllm" $searchRoots
