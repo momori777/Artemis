@@ -152,18 +152,72 @@
               <span class="paint-mode-divider">/</span>
               <button class="input-action" id="btn-tts-streaming" title="流式TTS+Live2D口型同步">
                 <i class="ph ph-broadcast"></i>
-              </button></div>
+              </button>
+              <span class="paint-mode-divider">/</span>
+              <button class="input-action" id="btn-stop-llama" title="画图时停llama释放显存">
+                <i class="ph ph-stop-circle"></i>
+                <span class="stop-llama-label" style="display:none">停llama</span>
+              </button>
+              <span class="paint-mode-divider">/</span>
+              <button class="input-action" id="btn-plugins-toggle" title="增强功能 (Mem0等)">
+                <i class="ph ph-sliders-horizontal"></i>
+              </button>
+              <select class="thinking-inline" id="thinking-inline-select" title="思考风格">
+                <option value="default">默认</option>
+                <option value="immersive">沉浸</option>
+                <option value="analytic">分析</option>
+                <option value="godview">上帝</option>
+              </select></div>
           </div>
         </div>
         <button id="send-btn" title="Send">
           <i class="ph ph-paper-plane-right"></i>
         </button>
       </div>
-      <label class="input-llama-toggle" id="toggle-chat-llama-label" title="��ͼʱ�Ƿ�ͣllama�ͷ��Դ�">
-        <span class="toggle-switch on" id="toggle-chat-llama-switch"></span>
-        <input type="checkbox" id="chat-manage-llama" checked style="display:none">
-        Stop llama for painting
-      </label>
+      
+      <!-- Plugins popup panel -->
+      <div class="plugins-popup" id="plugins-popup" style="display:none">
+        <div class="plugins-popup-inner">
+          <div class="plugin-group">
+            <div class="plugin-group-title">💬 模型</div>
+            <label class="plugin-toggle" id="toggle-reasoning-label">
+              <span class="toggle-switch on" id="toggle-reasoning-switch"></span>
+              <input type="checkbox" id="chat-reasoning" checked style="display:none">
+              <span class="plugin-toggle-text">Reasoning · 深度思考</span>
+            </label>
+            <div class="plugin-sub-row" id="rea-hint-row" style="font-size:11px;color:var(--text-muted);padding:2px 0 0 44px">
+              ⚠ 开关会重启llama，需等待~30秒
+            </div>
+            <div class="plugin-sub-row" id="thinking-mode-row" style="display:none">
+              <span class="plugin-sub-label">思考风格</span>
+              <select id="thinking-mode-select" class="plugin-select">
+                <option value="default">默认自动</option>
+                <option value="immersive">角色沉浸</option>
+                <option value="analytic">纯分析</option>
+                <option value="godview">上帝视角</option>
+              </select>
+            </div>
+          </div>
+          <div class="plugin-group">
+            <div class="plugin-group-title">🧠 记忆 (Mem0)</div>
+            <label class="plugin-toggle" id="toggle-mem0-label">
+              <span class="toggle-switch" id="toggle-mem0-switch"></span>
+              <input type="checkbox" id="chat-mem0-enhanced" style="display:none">
+              <span class="plugin-toggle-text">每轮搜索记忆</span>
+            </label>
+            <label class="plugin-toggle" id="toggle-mem0-write-label" style="padding-left:16px">
+              <span class="toggle-switch" id="toggle-mem0-write-switch"></span>
+              <input type="checkbox" id="chat-mem0-write" style="display:none">
+              <span class="plugin-toggle-text">自动写入记忆</span>
+            </label>
+            <div class="plugin-sub-row" id="mem0-interval-row" style="display:none">
+              <span class="plugin-sub-label">写入间隔</span>
+              <input type="number" id="mem0-write-interval" class="plugin-number-input" value="10" min="1" max="99">
+              <span class="plugin-sub-suffix">轮</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ===== STUDIO TAB ===== -->
@@ -474,6 +528,35 @@
         <input type="checkbox" id="setting-stream" checked style="display:none">
         Stream responses
       </label>
+    </div>
+
+    <div class="settings-group">
+      <label class="settings-toggle" id="toggle-setting-reasoning-label">
+        <span class="toggle-switch on" id="toggle-setting-reasoning-switch"></span>
+        <input type="checkbox" id="setting-reasoning" checked style="display:none">
+        Reasoning (深度思考)
+      </label>
+    </div>
+
+    <div class="settings-group">
+      <label class="settings-toggle" id="toggle-setting-mem0-label">
+        <span class="toggle-switch" id="toggle-setting-mem0-switch"></span>
+        <input type="checkbox" id="setting-mem0" style="display:none">
+        Mem0 记忆增强 (每轮搜索长期记忆)
+      </label>
+    </div>
+
+    <div class="settings-group">
+      <label class="settings-toggle" id="toggle-setting-mem0-write-label">
+        <span class="toggle-switch" id="toggle-setting-mem0-write-switch"></span>
+        <input type="checkbox" id="setting-mem0-write" style="display:none">
+        Mem0 自动写入
+      </label>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">写入间隔 (每N轮对话)</div>
+      <input class="settings-input" id="setting-mem0-interval" type="number" value="10" min="1" max="99">
     </div>
 
     <div class="settings-actions">

@@ -49,6 +49,11 @@ var ApiClient = {
       stream: true,
       max_tokens: 4096,
       characterId: characterId,
+      reasoning: settings.reasoningEnabled !== false ? 'on' : 'off',
+      thinkingMode: settings.thinkingMode || 'default',
+      mem0Enhanced: settings.mem0Enhanced === true,
+      mem0WriteEnabled: settings.mem0WriteEnabled === true,
+      mem0WriteInterval: settings.mem0WriteInterval || 10,
     };
     if (settings.systemPrompt) body.systemPrompt = settings.systemPrompt;
     try {
@@ -62,6 +67,12 @@ var ApiClient = {
       if (!res.ok) {
         var errText = '';
         try { var ej = await res.json(); errText = ej.error || res.statusText; } catch (_) {}
+        // Auto retry on llama restart (503)
+        if (res.status === 503 && errText.includes('Restarting llama')) {
+          showToast('llama 正在切换思考模式，稍等重试...');
+          await new Promise(function(r) { setTimeout(r, 30000); });
+          return this.chatStream(messages, settings, onToken, onComplete, onError);
+        }
         throw new Error('API ' + res.status + ': ' + errText);
       }
 
@@ -69,10 +80,15 @@ var ApiClient = {
       if (contentType.includes('text/event-stream')) {
         await this._readSSE(res, onToken, onComplete, onError);
       } else {
+        // Non-streaming mode — collect reasoning_content as well
         var data = await res.json();
-        var text = data.choices?.[0]?.message?.content || '';
-        onToken(text);
-        onComplete({ text: text, media: null });
+        var msg = data.choices?.[0]?.message || {};
+        var text = msg.content || '';
+        var reasonText = msg.reasoning_content || '';
+        var showReasoning = getSettings().reasoningEnabled !== false;
+        if (reasonText && showReasoning) onToken(reasonText, 'reasoning');
+        if (text) onToken(text, 'content');
+        onComplete({ text: text, reasoningText: reasonText, media: null });
       }
     } catch (err) {
       if (onError) onError(err);
@@ -84,7 +100,9 @@ var ApiClient = {
     var reader = response.body.getReader();
     var decoder = new TextDecoder('utf-8');
     var fullText = '';
+    var reasoningText = '';
     var buffer = '';
+    var showReasoning = getSettings().reasoningEnabled !== false;
 
     try {
       while (true) {
@@ -104,25 +122,31 @@ var ApiClient = {
           if (trimmed.startsWith('data: ')) {
             var raw = trimmed.slice(6);
             if (raw === '[DONE]') {
-              onComplete({ text: fullText, media: null });
+              onComplete({ text: fullText, reasoningText: reasoningText, media: null });
               return;
             }
             try {
               var json = JSON.parse(raw);
-              var delta = json.choices?.[0]?.delta?.content;
-              if (delta) {
-                fullText += delta;
-                onToken(delta);
+              var delta = json.choices?.[0]?.delta;
+              var reasoningDelta = delta?.reasoning_content;
+              var contentDelta = delta?.content;
+              if (reasoningDelta) {
+                reasoningText += reasoningDelta;
+                if (showReasoning) onToken(reasoningDelta, 'reasoning');
+              }
+              if (contentDelta) {
+                fullText += contentDelta;
+                onToken(contentDelta, 'content');
               }
               if (json.choices?.[0]?.finish_reason) {
-                onComplete({ text: fullText, media: null });
+                onComplete({ text: fullText, reasoningText: reasoningText, media: null });
                 return;
               }
             } catch (_) {}
           }
         }
       }
-      onComplete({ text: fullText, media: null });
+      onComplete({ text: fullText, reasoningText: reasoningText, media: null });
     } catch (err) {
       if (onError) onError(err);
     } finally {
@@ -139,6 +163,11 @@ var ApiClient = {
       stream: false,
       max_tokens: 4096,
       characterId: characterId,
+      reasoning: settings.reasoningEnabled !== false ? 'on' : 'off',
+      thinkingMode: settings.thinkingMode || 'default',
+      mem0Enhanced: settings.mem0Enhanced === true,
+      mem0WriteEnabled: settings.mem0WriteEnabled === true,
+      mem0WriteInterval: settings.mem0WriteInterval || 10,
     };
     if (settings.systemPrompt) body.systemPrompt = settings.systemPrompt;
     return fetch('http://localhost:19260/api/chat', {
