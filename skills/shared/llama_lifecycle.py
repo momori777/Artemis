@@ -359,7 +359,7 @@ def stop_llama(port=8080, wait_vram_stable=True):
 
 
 def start_llama(port=8080, exe_path=None, model_path=None,
-                log_dir=None, timeout=180, use_mmap=False):
+                log_dir=None, timeout=180, use_mmap=False, rea_mode="auto"):
     """
     启动 llama-server 并等待就绪。
 
@@ -454,7 +454,7 @@ def start_llama(port=8080, exe_path=None, model_path=None,
         "--ubatch-size", str(ubatch_size),
         "--threads", "24",
 
-        "-rea", "off",
+        "-rea", rea_mode, "--reasoning-format", "deepseek",
         "--jinja",
         "--cache-ram", "5000",
         "--parallel", "1",
@@ -599,3 +599,25 @@ def register_cleanup_handlers(lock_file, llama_port=None,
         signal.signal(signal.SIGTERM, _signal_handler)
     except (OSError, ValueError):
         pass
+
+
+# ── CLI entry point ──────────────────────────────────────────
+if __name__ == "__main__":
+    action = sys.argv[1] if len(sys.argv) > 1 else ""
+    port = int(sys.argv[2]) if len(sys.argv) > 2 else 8080
+
+    if action == "stop":
+        stop_llama(port)
+        print("[OK] llama stopped")
+    elif action == "start":
+        # args: start <port> <exe> <model> <log_dir> [rea_mode]
+        exe = sys.argv[3] if len(sys.argv) > 3 else None
+        model = sys.argv[4] if len(sys.argv) > 4 else None
+        log_dir = sys.argv[5] if len(sys.argv) > 5 else None
+        rea_mode = sys.argv[6] if len(sys.argv) > 6 else "auto"
+        # Temporarily patch START_ARGS rea for this run
+        start_llama(port, exe_path=exe, model_path=model, log_dir=log_dir, rea_mode=rea_mode)
+        print(f"[OK] llama started with -rea {rea_mode}")
+    else:
+        print(f"Usage: {sys.argv[0]} stop|start <port> [exe] [model] [log_dir] [rea_mode]")
+        sys.exit(1)

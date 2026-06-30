@@ -669,6 +669,25 @@ html,body{
 .input-action:hover{background:var(--bg-elevated);color:var(--text-secondary)}
 .input-action i{font-size:18px}
 
+.thinking-inline {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: 6px;
+  height: 28px;
+  transition: all var(--dur-fast);
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: center;
+}
+.thinking-inline:hover { background: var(--bg-elevated); color: var(--text-secondary); }
+.thinking-inline:focus { outline: none; background: var(--accent-soft); color: var(--accent); }
+.thinking-inline option { background: var(--bg-surface); color: var(--text-primary); font-size: 13px; }
+
 #btn-auto-paint{color:var(--accent);opacity:0.7}
 #btn-auto-paint:hover{color:var(--accent-hover);opacity:1}
 
@@ -677,6 +696,12 @@ html,body{
   border:1px solid #0f0 !important;
   background:rgba(0,255,0,0.08) !important;
   animation:pulse-glow 1.5s ease-in-out infinite;
+}
+
+#btn-stop-llama.active{
+  color:#f75 !important;
+  border:1px solid #f75 !important;
+  background:rgba(255,119,85,0.1) !important;
 }
 
 @keyframes pulse-glow{
@@ -692,6 +717,93 @@ html,body{
 }
 
 .input-llama-toggle:hover{color:var(--text-secondary)}
+
+/* ── Plugins popup panel ── */
+.plugins-popup{
+  position:absolute;bottom:100%;left:12px;right:60px;
+  background:var(--surface-elevated);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  box-shadow:0 -4px 24px rgba(0,0,0,0.12);
+  padding:8px 0;
+  z-index:50;
+  max-width:280px;
+}
+
+.plugins-popup-inner{
+  display:flex;flex-direction:column;gap:2px;
+}
+
+.plugin-group{
+  padding:4px 0;
+}
+
+.plugin-group-title{
+  font-size:10px;font-weight:600;color:var(--text-muted);
+  text-transform:uppercase;letter-spacing:0.5px;
+  padding:4px 16px 6px;
+  opacity:0.7;
+}
+
+.plugin-toggle{
+  display:flex;align-items:center;gap:8px;
+  padding:5px 16px;
+  cursor:pointer;user-select:none;
+  transition:background var(--dur-fast);
+}
+
+.plugin-toggle:hover{
+  background:var(--surface-hover);
+}
+
+.plugin-toggle-text{
+  font-size:12px;color:var(--text);
+}
+
+.plugin-sub-row{
+  display:flex;align-items:center;gap:6px;
+  padding:3px 16px 3px 56px;
+}
+
+.plugin-sub-label{
+  font-size:11px;color:var(--text-muted);
+}
+
+.plugin-number-input{
+  width:40px;padding:2px 4px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:4px;
+  color:var(--text);
+  font-size:12px;text-align:center;
+  font-family:inherit;
+}
+
+.plugin-number-input::-webkit-inner-spin-button{opacity:1}
+
+.plugin-sub-suffix{
+  font-size:11px;color:var(--text-muted);
+}
+
+.plugin-select{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:4px;
+  color:var(--text);
+  font-size:11px;font-family:inherit;
+  padding:2px 6px;
+  cursor:pointer;
+}
+
+.plugin-select:focus{
+  outline:none;
+  border-color:var(--accent);
+}
+
+/* ── Remove old inline toggle rows ── */
+.mem0-write-row,.mem0-interval-wrap,.mem0-interval-input,.mem0-interval-input::-webkit-inner-spin-button{
+  /* replaced by plugins popup */
+}
 
 #send-btn{
   width:44px;height:44px;border-radius:var(--radius-md);
@@ -1280,10 +1392,19 @@ html,body{
 }
 .paint-param input:focus { border-color: var(--accent); }
 .paint-modal-footer {
-  display: flex; justify-content: flex-end; gap: 10px;
+  display: flex; justify-content: flex-end; align-items:center; gap: 10px;
   padding: 14px 20px;
   border-top: 1px solid var(--border-subtle);
 }
+
+.paint-stop-llama{
+  margin-right:auto;
+  font-size:12px;color:var(--text-muted);
+  display:flex;align-items:center;gap:6px;
+  cursor:pointer;user-select:none;
+}
+
+.paint-stop-llama input[type="checkbox"]{accent-color:var(--accent)}
 
 /* ============================================================
    Message Editing
@@ -1578,4 +1699,50 @@ text-align:center;
   white-space:nowrap;
   pointer-events:none;
   z-index:10;
+}
+
+/* msg-bubble-wrap: reasoning block + bubble in column */
+.msg-bubble-wrap{
+  display:flex;flex-direction:column;
+  flex:1;min-width:0;
+}
+
+/* ── Reasoning block (deep think) ── */
+.reasoning-block{
+  margin-bottom:6px;
+  border-radius:var(--radius-sm);
+  overflow:hidden;
+  background:var(--surface);
+  border:1px solid var(--border);
+  max-width:100%;
+}
+
+.reasoning-header{
+  font-size:11px;color:var(--text-muted);
+  padding:6px 12px;
+  cursor:pointer;
+  display:flex;align-items:center;gap:6px;
+  user-select:none;
+  transition:color var(--dur-fast);
+}
+
+.reasoning-header:hover{color:var(--text-secondary)}
+
+.reasoning-header i{font-size:14px}
+
+.reasoning-expand{
+  margin-left:auto;
+  font-size:10px;
+  opacity:0.7;
+}
+
+.reasoning-content{
+  padding:8px 12px 10px;
+  font-size:11px;line-height:1.55;
+  color:var(--text-muted);
+  border-top:1px solid var(--border);
+  white-space:pre-wrap;
+  word-break:break-word;
+  max-height:300px;
+  overflow-y:auto;
 }
