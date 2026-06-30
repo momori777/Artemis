@@ -30,6 +30,11 @@ function createDefaultStore() {
       apiBase: '',
       model: 'local-model',
       streamEnabled: true,
+      reasoningEnabled: true,
+      thinkingMode: 'default',
+      mem0Enhanced: false,
+      mem0WriteEnabled: false,
+      mem0WriteInterval: 10,
       bridgeUrl: 'http://localhost:19250',
     },
     // { [charId]: { [sessionId]: { name, messages[], createdAt } } }

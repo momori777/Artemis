@@ -82,18 +82,169 @@ var UI = {
     document.getElementById('btn-tts-voice').addEventListener('click', function() { self.ttsVoice(); });
     document.getElementById('btn-tts-streaming').addEventListener('click', function() { self.ttsStreaming(); });
 
-    // Llama management toggle in chat input area
+    // Stop llama toggle button (persistent)
+    var btnStopLlama = document.getElementById('btn-stop-llama');
+    var btnStopLlamaIcon = btnStopLlama.querySelector('i');
+    var btnStopLlamaLabel = btnStopLlama.querySelector('.stop-llama-label');
+    btnStopLlama.addEventListener('click', function() {
+      var isActive = this.classList.toggle('active');
+      btnStopLlamaIcon.className = isActive ? 'ph ph-stop-circle-fill' : 'ph ph-stop-circle';
+      btnStopLlamaLabel.style.display = isActive ? 'inline' : 'none';
+    });
+
+    // (画图停 llama 改为每次弹窗决定，不再用全局 toggle)
     var llamaToggleLabel = document.getElementById('toggle-chat-llama-label');
     var llamaToggleCheck = document.getElementById('chat-manage-llama');
     var llamaToggleSwitch = document.getElementById('toggle-chat-llama-switch');
-    llamaToggleLabel.addEventListener('click', function() {
-      llamaToggleCheck.checked = !llamaToggleCheck.checked;
-      if (llamaToggleCheck.checked) {
-        llamaToggleSwitch.classList.add('on');
-      } else {
-        llamaToggleSwitch.classList.remove('on');
+    if (llamaToggleLabel && llamaToggleCheck && llamaToggleSwitch) {
+      llamaToggleLabel.addEventListener('click', function() {
+        llamaToggleCheck.checked = !llamaToggleCheck.checked;
+        if (llamaToggleCheck.checked) {
+          llamaToggleSwitch.classList.add('on');
+        } else {
+          llamaToggleSwitch.classList.remove('on');
+        }
+      });
+    }
+
+    // Reasoning (deep think) toggle
+    var reasoningLabel = document.getElementById('toggle-reasoning-label');
+    var reasoningCheck = document.getElementById('chat-reasoning');
+    var reasoningSwitch = document.getElementById('toggle-reasoning-switch');
+    var thinkingModeRow = document.getElementById('thinking-mode-row');
+    var thinkingInline = document.getElementById('thinking-inline-select');
+    if (reasoningLabel && reasoningCheck && reasoningSwitch) {
+      // Init from settings
+      var s = getSettings();
+      reasoningCheck.checked = s.reasoningEnabled !== false;
+      if (!reasoningCheck.checked) reasoningSwitch.classList.remove('on');
+      if (thinkingModeRow) thinkingModeRow.style.display = reasoningCheck.checked ? '' : 'none';
+      if (thinkingInline) thinkingInline.value = s.thinkingMode || 'default';
+
+      reasoningLabel.addEventListener('click', function(e) {
+        e.preventDefault();
+        reasoningCheck.checked = !reasoningCheck.checked;
+        var enabled = reasoningCheck.checked;
+        if (enabled) {
+          reasoningSwitch.classList.add('on');
+        } else {
+          reasoningSwitch.classList.remove('on');
+        }
+        if (thinkingModeRow) thinkingModeRow.style.display = enabled ? '' : 'none';
+        saveSettings({ reasoningEnabled: enabled });
+        var rea = enabled ? 'on' : 'off';
+        showToast(enabled ? 'Reasoning ON — 重启llama中，等~30s' : 'Reasoning OFF — 重启llama中，等~30s');
+        // Trigger restart immediately
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'http://localhost:19260/api/exec-script?script=restart_llama_rea.ps1&args=' + rea);
+        xhr.timeout = 3000;
+        try { xhr.send(); } catch(_) {}
+      });
+    }
+
+    // Inline thinking mode select (always visible next to input)
+    if (thinkingInline) {
+      var s2 = getSettings();
+      thinkingInline.value = s2.thinkingMode || 'default';
+      thinkingInline.addEventListener('change', function() {
+        var val = thinkingInline.value;
+        saveSettings({ thinkingMode: val });
+        // Sync plugins popup select
+        var popupSelect = document.getElementById('thinking-mode-select');
+        if (popupSelect) popupSelect.value = val;
+        showToast('思考风格: ' + thinkingInline.options[thinkingInline.selectedIndex].text);
+      });
+    }
+
+    // Mem0 memory enhancement toggle
+    var mem0Label = document.getElementById('toggle-mem0-label');
+    var mem0Check = document.getElementById('chat-mem0-enhanced');
+    var mem0Switch = document.getElementById('toggle-mem0-switch');
+    var mem0WriteRow = document.getElementById('mem0-interval-row');
+    if (mem0Label && mem0Check && mem0Switch) {
+      var s = getSettings();
+      mem0Check.checked = s.mem0Enhanced === true;
+      if (mem0Check.checked) mem0Switch.classList.add('on');
+      self._updateMem0SubVisibility();
+
+      mem0Label.addEventListener('click', function() {
+        mem0Check.checked = !mem0Check.checked;
+        var enabled = mem0Check.checked;
+        if (enabled) {
+          mem0Switch.classList.add('on');
+        } else {
+          mem0Switch.classList.remove('on');
+        }
+        saveSettings({ mem0Enhanced: enabled });
+        self._updateMem0SubVisibility();
+        showToast(enabled ? 'Mem0 记忆增强: ON' : 'Mem0 记忆增强: OFF');
+      });
+    }
+
+    // Mem0 auto-write toggle
+    var mem0WriteLabel = document.getElementById('toggle-mem0-write-label');
+    var mem0WriteCheck = document.getElementById('chat-mem0-write');
+    var mem0WriteSwitch = document.getElementById('toggle-mem0-write-switch');
+    if (mem0WriteLabel && mem0WriteCheck && mem0WriteSwitch) {
+      var s2 = getSettings();
+      mem0WriteCheck.checked = s2.mem0WriteEnabled === true;
+      if (mem0WriteCheck.checked) mem0WriteSwitch.classList.add('on');
+
+      mem0WriteLabel.addEventListener('click', function() {
+        mem0WriteCheck.checked = !mem0WriteCheck.checked;
+        var enabled = mem0WriteCheck.checked;
+        if (enabled) {
+          mem0WriteSwitch.classList.add('on');
+        } else {
+          mem0WriteSwitch.classList.remove('on');
+        }
+        saveSettings({ mem0WriteEnabled: enabled });
+        showToast(enabled ? 'Mem0 自动写入: ON' : 'Mem0 自动写入: OFF');
+      });
+    }
+
+    // Mem0 write interval input
+    var intervalInput = document.getElementById('mem0-write-interval');
+    if (intervalInput) {
+      var s3 = getSettings();
+      intervalInput.value = s3.mem0WriteInterval || 10;
+      intervalInput.addEventListener('change', function() {
+        var val = parseInt(intervalInput.value) || 10;
+        val = Math.max(1, Math.min(99, val));
+        intervalInput.value = val;
+        saveSettings({ mem0WriteInterval: val });
+      });
+    }
+
+    // Plugins popup toggle
+    var pluginsBtn = document.getElementById('btn-plugins-toggle');
+    var pluginsPopup = document.getElementById('plugins-popup');
+    if (pluginsBtn && pluginsPopup) {
+      // Init thinking mode select
+      var thinkingSelect = document.getElementById('thinking-mode-select');
+      if (thinkingSelect) {
+        var s5 = getSettings();
+        thinkingSelect.value = s5.thinkingMode || 'default';
+        thinkingSelect.addEventListener('change', function() {
+          saveSettings({ thinkingMode: thinkingSelect.value });
+          // Sync inline select
+          var inlineSelect = document.getElementById('thinking-inline-select');
+          if (inlineSelect) inlineSelect.value = thinkingSelect.value;
+          showToast('思考模式: ' + thinkingSelect.options[thinkingSelect.selectedIndex].text);
+        });
       }
-    });
+
+      pluginsBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var visible = pluginsPopup.style.display !== 'none';
+        pluginsPopup.style.display = visible ? 'none' : '';
+      });
+      document.addEventListener('click', function(e) {
+        if (!pluginsPopup.contains(e.target) && e.target !== pluginsBtn && !pluginsBtn.contains(e.target)) {
+          pluginsPopup.style.display = 'none';
+        }
+      });
+    }
 
     // New chat button in sessions list
     document.getElementById('btn-new-chat').addEventListener('click', function() { self.createSession(); });
@@ -1321,7 +1472,7 @@ var UI = {
     ApiClient.chatStream(
       replayMessages,
       settings,
-      function(token) { self.appendStreamToken(token); },
+      function(token, type) { self.appendStreamToken(token, type); },
       function(result) {
         self.finalizeStream(result.text);
         var parsed = self._parseMediaFromText(result.text);
@@ -1382,6 +1533,13 @@ var UI = {
     // Remove any stale stream-bubble from previous reply
     var old = document.getElementById('stream-bubble');
     if (old) { old.removeAttribute('id'); old.querySelector('#stream-bubble-text')?.removeAttribute('id'); }
+    // Also clean stale reasoning blocks from old bubbles
+    var oldReasoning = document.getElementById('stream-reasoning');
+    if (oldReasoning && oldReasoning.parentElement && !oldReasoning.parentElement.querySelector('#stream-bubble')) {
+      oldReasoning.removeAttribute('id');
+      var oldReasonContent = document.getElementById('stream-reasoning-content');
+      if (oldReasonContent) oldReasonContent.removeAttribute('id');
+    }
 
     var row = document.createElement('div');
     row.className = 'msg-row char';
@@ -1389,14 +1547,41 @@ var UI = {
     var avatar = document.createElement('div');
     avatar.className = 'msg-avatar char';
     avatar.innerHTML = '<i class="ph ph-heart"></i>';
+    var wrap = document.createElement('div');
+    wrap.className = 'msg-bubble-wrap';
+
+    // Reasoning block (hidden until reasoning arrives)
+    var reasonBlock = document.createElement('div');
+    reasonBlock.className = 'reasoning-block';
+    reasonBlock.id = 'stream-reasoning';
+    reasonBlock.style.display = 'none';
+    var reasonHeader = document.createElement('div');
+    reasonHeader.className = 'reasoning-header';
+    reasonHeader.innerHTML = '<i class="ph ph-brain"></i> 思考过程 <span class="reasoning-expand">展开</span>';
+    reasonHeader.onclick = function() {
+      var content = document.getElementById('stream-reasoning-content');
+      var isVisible = content.style.display !== 'none';
+      content.style.display = isVisible ? 'none' : '';
+      reasonHeader.querySelector('.reasoning-expand').textContent = isVisible ? '展开' : '收起';
+    };
+    var reasonContent = document.createElement('div');
+    reasonContent.className = 'reasoning-content';
+    reasonContent.id = 'stream-reasoning-content';
+    reasonContent.style.display = 'none';
+    reasonBlock.appendChild(reasonHeader);
+    reasonBlock.appendChild(reasonContent);
+    wrap.appendChild(reasonBlock);
+
     var bubble = document.createElement('div');
     bubble.className = 'msg-bubble';
     bubble.id = 'stream-bubble-text';
     var cursor = document.createElement('span');
     cursor.className = 'stream-cursor';
     bubble.appendChild(cursor);
+    wrap.appendChild(bubble);
+
     row.appendChild(avatar);
-    row.appendChild(bubble);
+    row.appendChild(wrap);
     this.$messages.appendChild(row);
 
     // Reset scroll state on new message
@@ -1425,7 +1610,17 @@ var UI = {
     this.$messages.addEventListener('scroll', onScroll, { passive: true });
   },
 
-  appendStreamToken: function(text) {
+  appendStreamToken: function(text, type) {
+    type = type || 'content';
+    if (type === 'reasoning') {
+      var reasoningBlock = document.getElementById('stream-reasoning');
+      var reasoningContent = document.getElementById('stream-reasoning-content');
+      if (reasoningBlock && reasoningContent) {
+        reasoningBlock.style.display = '';
+        reasoningContent.appendChild(document.createTextNode(text));
+      }
+      return;
+    }
     var bubble = document.getElementById('stream-bubble-text');
     if (!bubble) return;
     var cursor = bubble.querySelector('.stream-cursor');
@@ -1445,6 +1640,13 @@ var UI = {
   },
 
   finalizeStream: function(text) {
+    // Remove reasoning block if empty
+    var reasoningBlock = document.getElementById('stream-reasoning');
+    var reasoningContent = document.getElementById('stream-reasoning-content');
+    if (reasoningBlock && reasoningContent && !reasoningContent.textContent.trim()) {
+      reasoningBlock.remove();
+    }
+
     var bubble = document.getElementById('stream-bubble-text');
     if (!bubble) return;
     var cursor = bubble.querySelector('.stream-cursor');
@@ -1534,7 +1736,7 @@ var UI = {
       ApiClient.chatStream(
         self.state.messages,
         settings,
-        function(token) { self.appendStreamToken(token); },
+        function(token, type) { self.appendStreamToken(token, type); },
         function(result) {
           self.finalizeStream(result.text);
           var parsed = self._parseMediaFromText(result.text);
@@ -1625,6 +1827,7 @@ var UI = {
           '</div>' +
         '</div>' +
         '<div class="paint-modal-footer">' +
+          '<span style="margin-right:auto;font-size:12px;color:var(--text-muted);align-self:center" id="paint-stop-llama-status"></span>' +
           '<button class="btn-secondary" id="paint-cancel">Cancel</button>' +
           '<button class="btn-primary" id="paint-generate"><i class="ph ph-image"></i> Generate</button>' +
         '</div>' +
@@ -1653,11 +1856,13 @@ var UI = {
       var height = parseInt(overlay.querySelector('#paint-height').value) || 1500;
       var steps = parseInt(overlay.querySelector('#paint-steps').value) || 30;
       var cfg = parseFloat(overlay.querySelector('#paint-cfg').value) || 6.0;
+      var manage_llama = document.getElementById('btn-stop-llama').classList.contains('active');
+      if (manage_llama) self.appendSystemMsg('🎨 Stopping llama for painting...');
       closeModal();
 
       self.appendSystemMsg('🎨 Generating from manual prompt...');
       self.scrollToBottom();
-      self._submitPaintJob(pos, neg, width, height, steps, cfg);
+      self._submitPaintJob(pos, neg, width, height, steps, cfg, manage_llama);
     });
 
     // Focus the input
@@ -1857,6 +2062,15 @@ var UI = {
     }
   },
 
+  _updateMem0SubVisibility: function() {
+    var enhanced = document.getElementById('chat-mem0-enhanced');
+    var writeLabel = document.getElementById('toggle-mem0-write-label');
+    var intervalRow = document.getElementById('mem0-interval-row');
+    var show = enhanced && enhanced.checked;
+    if (writeLabel) writeLabel.style.display = show ? '' : 'none';
+    if (intervalRow) intervalRow.style.display = show ? '' : 'none';
+  },
+
   _pollTTSLipSync: function(jobId) {
     var self = this;
     var bridgeUrl = getSettings().bridgeUrl || 'http://localhost:19250';
@@ -1922,8 +2136,10 @@ var UI = {
       return;
     }
 
+    var manage_llama = document.getElementById('btn-stop-llama').classList.contains('active');
+    if (manage_llama) self.appendSystemMsg('🎨 Stopping llama for painting...');
+
     // Show generating indicator in chat
-    this.appendSystemMsg('🎨 Generating illustration from conversation context...');
     this.scrollToBottom();
 
     var charId = this.state.currentCharId || 'natsume';
@@ -1944,7 +2160,7 @@ var UI = {
         if (data.prompt) {
           self.appendSystemMsg('✨ Prompt: ' + data.prompt.substring(0, 80) + '...');
           self.scrollToBottom();
-          self._submitPaintJob(data.prompt, data.negative || 'bad quality, worst quality, blurry, distorted, lowres, bad anatomy, extra fingers, watermark, text');
+          self._submitPaintJob(data.prompt, data.negative || 'bad quality, worst quality, blurry, distorted, lowres, bad anatomy, extra fingers, watermark, text', undefined, undefined, undefined, undefined, manage_llama);
         } else {
           self.appendSystemMsg('⚠️ Failed to generate paint prompt: ' + (data.error || 'unknown'));
           self.scrollToBottom();
@@ -1956,8 +2172,10 @@ var UI = {
       });
   },
 
-  _submitPaintJob: function(prompt, negative, width, height, steps, cfg) {
+  _submitPaintJob: function(prompt, negative, width, height, steps, cfg, manage_llama) {
     var self = this;
+    // manage_llama defaults to false (keep llama running)
+    if (manage_llama === undefined) manage_llama = false;
     // Prepend quality tags if not already present
     var qualityPrefix = 'masterpiece, best quality, highly detailed,';
     var hasQuality = /masterpiece|best.quality/i.test(prompt);
@@ -1974,7 +2192,7 @@ var UI = {
       steps: steps || 30,
       cfg: cfg || 6.0,
       checkpoint: 'WAI-Nsfw-Illustrious-17.safetensors',
-      manage_llama: document.getElementById('chat-manage-llama').checked,
+      manage_llama: manage_llama,
     };
 
     var bridgeUrl = getSettings().bridgeUrl || 'http://localhost:19250';
@@ -2188,10 +2406,37 @@ var UI = {
       s.bridgeUrl = document.getElementById('setting-bridge-url').value.trim() || 'http://localhost:19250';
       s.model = document.getElementById('setting-model-select').value || 'local/qwen3.6-35b';
       s.streamEnabled = document.getElementById('setting-stream').checked;
+      s.reasoningEnabled = document.getElementById('setting-reasoning').checked;
+      s.mem0Enhanced = document.getElementById('setting-mem0') ? document.getElementById('setting-mem0').checked : s.mem0Enhanced;
+      s.mem0WriteEnabled = document.getElementById('setting-mem0-write') ? document.getElementById('setting-mem0-write').checked : s.mem0WriteEnabled;
+      s.mem0WriteInterval = document.getElementById('setting-mem0-interval') ? parseInt(document.getElementById('setting-mem0-interval').value) || 10 : s.mem0WriteInterval;
       saveSettings(s);
       ApiClient.init(s.apiBase);
       Studio.bridgeUrl = s.bridgeUrl;
       overlay.classList.remove('open');
+      // Sync chat toggle with settings
+      var chatReasoningCheck = document.getElementById('chat-reasoning');
+      var chatReasoningSwitch = document.getElementById('toggle-reasoning-switch');
+      if (chatReasoningCheck) chatReasoningCheck.checked = s.reasoningEnabled;
+      if (chatReasoningSwitch) chatReasoningSwitch.classList.toggle('on', s.reasoningEnabled);
+      // Sync thinking mode
+      var thinkingModeRow = document.getElementById('thinking-mode-row');
+      var thinkingSelect = document.getElementById('thinking-mode-select');
+      if (thinkingModeRow) thinkingModeRow.style.display = s.reasoningEnabled ? '' : 'none';
+      if (thinkingSelect) thinkingSelect.value = s.thinkingMode || 'default';
+      // Sync mem0 chat toggle
+      var chatMem0Check = document.getElementById('chat-mem0-enhanced');
+      var chatMem0Switch = document.getElementById('toggle-mem0-switch');
+      var mem0WriteRow = document.getElementById('mem0-interval-row');
+      if (chatMem0Check) chatMem0Check.checked = s.mem0Enhanced;
+      if (chatMem0Switch) chatMem0Switch.classList.toggle('on', s.mem0Enhanced);
+      UI._updateMem0SubVisibility();
+      var chatMem0WriteCheck = document.getElementById('chat-mem0-write');
+      var chatMem0WriteSwitch = document.getElementById('toggle-mem0-write-switch');
+      if (chatMem0WriteCheck) chatMem0WriteCheck.checked = s.mem0WriteEnabled;
+      if (chatMem0WriteSwitch) chatMem0WriteSwitch.classList.toggle('on', s.mem0WriteEnabled);
+      var intervalInput = document.getElementById('mem0-write-interval');
+      if (intervalInput) intervalInput.value = s.mem0WriteInterval || 10;
       showToast('Settings saved');
       UI.checkGateway();
     });
@@ -2205,6 +2450,39 @@ var UI = {
     if (streamCheckbox && streamToggle) streamCheckbox.addEventListener('change', function(e) {
       streamToggle.classList.toggle('on', e.target.checked);
     });
+
+    // Settings reasoning toggle
+    var settingReasoningCheck = document.getElementById('setting-reasoning');
+    var settingReasoningToggle = document.getElementById('toggle-setting-reasoning-switch');
+    var settingReasoningLabel = document.getElementById('toggle-setting-reasoning-label');
+    if (settingReasoningLabel && settingReasoningCheck && settingReasoningToggle) {
+      settingReasoningLabel.addEventListener('click', function() {
+        settingReasoningCheck.checked = !settingReasoningCheck.checked;
+        settingReasoningToggle.classList.toggle('on', settingReasoningCheck.checked);
+      });
+    }
+
+    // Settings mem0 enhanced toggle
+    var settingMem0Check = document.getElementById('setting-mem0');
+    var settingMem0Toggle = document.getElementById('toggle-setting-mem0-switch');
+    var settingMem0Label = document.getElementById('toggle-setting-mem0-label');
+    if (settingMem0Label && settingMem0Check && settingMem0Toggle) {
+      settingMem0Label.addEventListener('click', function() {
+        settingMem0Check.checked = !settingMem0Check.checked;
+        settingMem0Toggle.classList.toggle('on', settingMem0Check.checked);
+      });
+    }
+
+    // Settings mem0 write toggle
+    var settingMem0WriteCheck = document.getElementById('setting-mem0-write');
+    var settingMem0WriteToggle = document.getElementById('toggle-setting-mem0-write-switch');
+    var settingMem0WriteLabel = document.getElementById('toggle-setting-mem0-write-label');
+    if (settingMem0WriteLabel && settingMem0WriteCheck && settingMem0WriteToggle) {
+      settingMem0WriteLabel.addEventListener('click', function() {
+        settingMem0WriteCheck.checked = !settingMem0WriteCheck.checked;
+        settingMem0WriteToggle.classList.toggle('on', settingMem0WriteCheck.checked);
+      });
+    }
 
     if (overlay) overlay.addEventListener('click', function(e) {
       if (e.target.id === 'settings-overlay') {
@@ -2248,12 +2526,27 @@ var UI = {
     var bridgeUrl = document.getElementById('setting-bridge-url');
     var streamCheckbox = document.getElementById('setting-stream');
     var streamToggle = document.getElementById('toggle-stream-switch');
+    var reasoningCheckbox = document.getElementById('setting-reasoning');
+    var reasoningToggle = document.getElementById('toggle-setting-reasoning-switch');
     var overlay = document.getElementById('settings-overlay');
 
     if (apiBase) apiBase.value = s.apiBase || 'http://localhost:18789';
     if (bridgeUrl) bridgeUrl.value = s.bridgeUrl || 'http://localhost:19250';
     if (streamCheckbox) streamCheckbox.checked = s.streamEnabled !== false;
     if (streamToggle) streamToggle.classList.toggle('on', s.streamEnabled !== false);
+    if (reasoningCheckbox) reasoningCheckbox.checked = s.reasoningEnabled !== false;
+    if (reasoningToggle) reasoningToggle.classList.toggle('on', s.reasoningEnabled !== false);
+    // Mem0 settings
+    var mem0Check = document.getElementById('setting-mem0');
+    var mem0Toggle = document.getElementById('toggle-setting-mem0-switch');
+    var mem0WriteCheck = document.getElementById('setting-mem0-write');
+    var mem0WriteToggle = document.getElementById('toggle-setting-mem0-write-switch');
+    var mem0Interval = document.getElementById('setting-mem0-interval');
+    if (mem0Check) mem0Check.checked = s.mem0Enhanced === true;
+    if (mem0Toggle) mem0Toggle.classList.toggle('on', s.mem0Enhanced === true);
+    if (mem0WriteCheck) mem0WriteCheck.checked = s.mem0WriteEnabled === true;
+    if (mem0WriteToggle) mem0WriteToggle.classList.toggle('on', s.mem0WriteEnabled === true);
+    if (mem0Interval) mem0Interval.value = s.mem0WriteInterval || 10;
     if (overlay) overlay.classList.add('open');
 
     // Populate model dropdown from Gateway

@@ -14,7 +14,7 @@ Usage:
 """
 
 import sys, os, json, time, threading, subprocess
-import socket, signal, webbrowser
+import socket, signal, webbrowser, hashlib
 import http.server
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
@@ -38,6 +38,192 @@ BRIDGE_SCRIPT = os.path.join(WORKSPACE, "artemis_bridge.py")
 WEBCHAT_DIR = os.path.join(WORKSPACE, "web-chat")
 DASHBOARD_PORT = 19260
 WEBCHAT_PORT = 19270
+
+# ── Mem0 per-character write counters ───────────────────────
+_mem0_write_counters = {}  # {character_id: count}
+_mem0_write_lock = threading.Lock()
+
+# ── Llama reasoning state tracking ─────────────────────────
+_llama_rea_state = "auto"  # current llama -rea setting
+
+# ── DeepSeek V4 thinking-mode markers ───────────────────────
+# Thinking-mode markers injected at end of first user message.
+# Qwen/DeepSeek use reasoning_content field (not <think> tags), so avoid mentioning <think>.
+# From: https://github.com/victorchen96/deepseek_v4_rolepaly_instruct (adapted)
+_THINKING_MARKERS = {
+    "immersive": (
+        "\n\n【角色沉浸要求】在你的推理过程中，请遵守以下规则：\n"
+        "1. 请以角色第一人称进行内心独白，用括号包裹内心活动，例如\"（心想：……）\"或\"(内心OS：……)\"\n"
+        "2. 用第一人称描写角色的内心感受，例如\"我心想\"\"我觉得\"\"我暗自\"等\n"
+        "3. 思考内容应沉浸在角色中，通过内心独白分析剧情和规划回复"
+    ),
+    "analytic": (
+        "\n\n【思维模式要求】在你的推理过程中，请遵守以下规则：\n"
+        "1. 禁止使用圆括号包裹内心独白，例如\"（心想：……）\"或\"(内心OS：……)\"，所有分析内容直接陈述即可\n"
+        "2. 禁止以角色第一人称描写内心活动，例如\"我心想\"\"我觉得\"\"我暗自\"等，请用分析性语言替代\n"
+        "3. 思考内容应聚焦于剧情走向分析和回复内容规划，不要在思考中进行角色扮演式的内心戏表演"
+    ),
+    "godview": (
+        "\n\n【上帝视角要求】在你的推理过程中，请遵守以下规则：\n"
+        "1. 以第三人称上帝视角进行思考，例如\"根据场景分析，角色A当前……\"或\"从剧情发展来看……\"\n"
+        "2. 客观分析角色动机、环境背景、未来剧情走向，不代入任何角色第一人称\n"
+        "3. 可以将思考分为【剧情背景】【角色动机】【回复策略】三段式结构\n"
+        "4. 语气保持冷静克制，类似导演评论或编剧笔记风格"
+    ),
+}
+
+
+def _get_thinking_marker(mode):
+    """Return the thinking-mode marker string for DeepSeek V4."""
+    return _THINKING_MARKERS.get(mode)
+
+
+def _inject_thinking_marker(messages, marker):
+    """Inject thinking-mode marker at the end of the first user message.
+    This matches the training injection position for DeepSeek V4."""
+    if not marker:
+        return messages
+    result = list(messages)
+    for i, msg in enumerate(result):
+        if msg.get("role") == "user":
+            content = msg.get("content", "")
+            # Append marker if not already present
+            if marker not in content:
+                result[i] = {**msg, "content": content + marker}
+            break  # only first user message
+    return result
+
+
+def _mem0_search_context(character_id, query, limit=5):
+    """Search mem0 Qdrant and return formatted context string for system prompt."""
+    try:
+        # Import from skills/mem0-bridge (standalone), fallback skills/shared
+        if WORKSPACE not in sys.path:
+            sys.path.insert(0, WORKSPACE)
+        try:
+            from skills.mem0_bridge.mem0_bridge import search_mem0_qdrant, CHARACTERS
+        except ImportError:
+            from skills.shared.mem0_bridge import search_mem0_qdrant, CHARACTERS
+        if character_id not in CHARACTERS:
+            return None
+        results = search_mem0_qdrant(character_id, query, limit=limit)
+        if not results:
+            return None
+        # Filter low-score results
+        relevant = [r for r in results if r.get("score", 0) > 0.3]
+        if not relevant:
+            return None
+        lines = [
+            "\n\n## 长期记忆（Mem0）\n",
+            "以下是与你、与当前对话相关的长期记忆，请自然地融入对话中，不必逐条复述：\n",
+        ]
+        for r in relevant:
+            score = r.get("score", 0)
+            mem = r["memory"]
+            if score > 0.7:
+                lines.append(f"- [高相关] {mem}")
+            elif score > 0.5:
+                lines.append(f"- {mem}")
+            else:
+                lines.append(f"- (弱相关) {mem}")
+        return "\n".join(lines)
+    except Exception as e:
+        print(f"[mem0] search error: {e}", file=sys.stderr, flush=True)
+        return None
+
+
+def _set_llama_rea(rea_mode):
+    """Restart llama-server with a different -rea setting."""
+    global _llama_rea_state
+    if _llama_rea_state == rea_mode:
+        return
+    import subprocess, time
+    print(f"[DAEMON] Switching llama -rea {_llama_rea_state} -> {rea_mode}...", flush=True)
+    # Use llama_lifecycle's stop + start
+    lifecycle = os.path.join(WORKSPACE, "skills", "shared", "llama_lifecycle.py")
+    subprocess.run([PYTHON, lifecycle, "stop", str(LLAMA_PORT)], timeout=60)
+    for _ in range(30):
+        if not is_port_open(LLAMA_PORT):
+            break
+        time.sleep(0.5)
+    subprocess.run([PYTHON, lifecycle, "start", str(LLAMA_PORT),
+                    LLAMA_EXE, LLAMA_MODEL,
+                    os.path.dirname(LLAMA_LOG),
+                    rea_mode], timeout=300)
+    for _ in range(180):
+        if is_port_open(LLAMA_PORT):
+            _llama_rea_state = rea_mode
+            print(f"[DAEMON] llama ready with -rea {rea_mode}", flush=True)
+            return
+        time.sleep(0.5)
+    print(f"[DAEMON] WARNING: llama did not come back with -rea {rea_mode}", flush=True)
+
+
+def _mem0_write_context(character_id, messages):
+    """Extract important facts from recent conversation and write to mem0.
+    Uses a lightweight keyword-based extraction (no extra LLM call)."""
+    try:
+        if WORKSPACE not in sys.path:
+            sys.path.insert(0, WORKSPACE)
+        try:
+            from skills.mem0_bridge.mem0_bridge import add_memory, CHARACTERS
+        except ImportError:
+            from skills.shared.mem0_bridge import add_memory, CHARACTERS
+        if character_id not in CHARACTERS:
+            return
+        # Extract last few exchanges
+        recent = messages[-6:]  # last 3 pairs
+        facts = _extract_facts_from_messages(recent)
+        for fact in facts:
+            add_memory(character_id, fact)
+            print(f"[mem0] wrote for {character_id}: {fact[:60]}...", file=sys.stderr, flush=True)
+    except Exception as e:
+        print(f"[mem0] write error: {e}", file=sys.stderr, flush=True)
+
+
+def _extract_facts_from_messages(messages):
+    """Simple keyword-based fact extraction from conversation messages.
+    Looks for patterns like '我叫...', '我喜欢...', '我的...是...', etc."""
+    facts = []
+    import re
+    patterns = [
+        (r'我(?:的名字)?(?:叫|是)([^，。,.]{1,30})', '用户名字'),
+        (r'我(?:喜欢|爱|讨厌|想)([^，。,.]{1,60})', '用户偏好'),
+        (r'我(?:的|在|是|有)([^，。,.]{2,60})', '用户信息'),
+        (r'(?:记住|别忘了)[：:]?(.{3,80})', '待记忆'),
+        (r'(?:今天|昨天|上周|刚刚)(.{3,80})', '事件'),
+    ]
+    seen_hashes = set()
+    for msg in messages:
+        if msg.get("role") != "user":
+            continue
+        text = msg.get("content", "")
+        for pattern, category in patterns:
+            for match in re.finditer(pattern, text):
+                fact = match.group(1).strip()
+                if len(fact) < 3 or len(fact) > 80:
+                    continue
+                # Dedup
+                h = hashlib.md5(fact.encode()).hexdigest()
+                if h in seen_hashes:
+                    continue
+                seen_hashes.add(h)
+                full_fact = f"{category}: {fact}"
+                facts.append(full_fact)
+    return facts
+
+
+def _maybe_write_mem0(character_id, messages, write_interval):
+    """Check counter and trigger mem0 write if interval reached."""
+    with _mem0_write_lock:
+        current = _mem0_write_counters.get(character_id, 0) + 1
+        _mem0_write_counters[character_id] = current
+        should_write = (current % write_interval == 0)
+    if should_write:
+        t = threading.Thread(target=_mem0_write_context, args=(character_id, messages), daemon=True)
+        t.start()
+        print(f"[mem0] triggered write for {character_id} (round {current})", file=sys.stderr, flush=True)
+
 
 SERVICES = [
     {"name": "llama-server",    "port": LLAMA_PORT,  "enabled": True},
@@ -92,7 +278,7 @@ def start_llama():
         "-ngl", "41", "--cpu-moe",
         "--batch-size", "2048", "--ubatch-size", "1024",
         "--threads", "24",
-        "-rea", "off", "--jinja", "--cache-ram", "3000",
+        "-rea", "auto", "--reasoning-format", "deepseek", "--jinja", "--cache-ram", "3000",
         "--parallel", "1", "--kv-unified", "--no-mmap",
         "--port", str(LLAMA_PORT), "--timeout", "600",
     ]
@@ -517,17 +703,25 @@ def _build_system_prompt(character_id):
     return "\n\n---\n\n".join(parts)
 
 
-def _inject_system_prompt(messages, character_id, custom_system_prompt=None):
+def _inject_system_prompt(messages, character_id, custom_system_prompt=None, mem0_context=None):
     """Ensure a system message is first in the messages list.
     If the first message is already a system message, replace it.
     Otherwise, insert a new system message at the beginning.
     
     Priority: custom_system_prompt > harem file > root SOUL.md
+    If mem0_context is provided, append it to the system prompt.
     """
     if custom_system_prompt:
         prompt = custom_system_prompt.strip()
     else:
         prompt = _build_system_prompt(character_id)
+    
+    if not prompt and not mem0_context:
+        return messages
+    
+    # Append mem0 context to system prompt
+    if mem0_context:
+        prompt = (prompt or "") + mem0_context
     
     if not prompt:
         return messages
@@ -602,6 +796,16 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_json(daemon_instance.get_status())
             return
 
+        if path == "/api/set-rea":
+            qs = parse_qs(urlparse(self.path).query)
+            mode = qs.get("mode", ["auto"])[0]
+            if mode not in ("on", "off"):
+                self.send_json({"error": "mode must be on or off"}, 400)
+                return
+            self.send_json({"ok": True, "message": f"Restarting llama with -rea {mode}"})
+            threading.Thread(target=_set_llama_rea, args=(mode,), daemon=True).start()
+            return
+
         if path == "/api/start":
             results = daemon_instance.start_all_services()
             self.send_json({"ok": True, "results": results})
@@ -643,6 +847,36 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
+
+        if path == "/api/set-rea":
+            qs = parse_qs(urlparse(self.path).query)
+            mode = qs.get("mode", ["auto"])[0]
+            if mode not in ("on", "off"):
+                self.send_json({"error": "mode must be on or off"}, 400)
+                return
+            self.send_json({"ok": True, "message": f"Restarting llama with -rea {mode}"})
+            threading.Thread(target=_set_llama_rea, args=(mode,), daemon=True).start()
+            return
+
+        if path == "/api/exec-script":
+            qs = parse_qs(urlparse(self.path).query)
+            script = qs.get("script", [""])[0]
+            args = qs.get("args", [])
+            script_path = os.path.join(WORKSPACE, script)
+            if not os.path.isfile(script_path):
+                self.send_json({"error": f"Script not found: {script}"}, 404)
+                return
+            if script == "restart_llama_rea.ps1":
+                # Pass paths from config, not hardcoded in script
+                args = args + [LLAMA_EXE, LLAMA_MODEL, os.path.dirname(LLAMA_LOG)]
+            self.send_json({"ok": True, "message": f"Running {script} {' '.join(args)}"})
+            if script.endswith(".ps1"):
+                cmd = ["powershell", "-ExecutionPolicy", "Bypass", "-File", script_path] + args
+            else:
+                cmd = [script_path] + args
+            subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
 
         if path == "/api/chat":
             self._handle_chat_proxy()
@@ -745,14 +979,51 @@ class DashboardHandler(BaseHTTPRequestHandler):
         from threading import Thread, Event
 
         model_id = req_data.get("model", "local/qwen3.6-35b")
+
+        # Reasoning toggle — restart llama in background, return error for now
+        if model_id.startswith("local/"):
+            reasoning_on = req_data.get("reasoning", "off") == "on"
+            desired = "on" if reasoning_on else "off"
+            if _llama_rea_state != desired:
+                self.send_json({"error": f"Restarting llama with -rea {desired}, please retry in ~30s"}, 503)
+                threading.Thread(target=_set_llama_rea, args=(desired,), daemon=True).start()
+                return
+
         messages = req_data.get("messages", [])
         stream = req_data.get("stream", False)
         max_tokens = req_data.get("max_tokens", 4096)
         character_id = req_data.get("characterId", "natsume")
         custom_system_prompt = req_data.get("systemPrompt", None)  # imported characters pass their own prompt
+        mem0_enhanced = req_data.get("mem0Enhanced", False)
+        mem0_write_enabled = req_data.get("mem0WriteEnabled", False)
+        mem0_write_interval = max(1, req_data.get("mem0WriteInterval", 10))
+        thinking_mode = req_data.get("thinkingMode", "default")
+        reasoning_on = req_data.get("reasoning", "off") == "on"
+
+        # Inject thinking-mode marker only when reasoning is enabled.
+        # Works on any model that supports reasoning_content / thinking tags.
+        thinking_marker = None
+        if reasoning_on and thinking_mode in ("immersive", "analytic", "godview"):
+            thinking_marker = _get_thinking_marker(thinking_mode)
+            if thinking_marker:
+                messages = _inject_thinking_marker(messages, thinking_marker)
+
+        # Mem0: search relevant memories before building messages
+        mem0_context = None
+        if mem0_enhanced:
+            try:
+                last_user_msg = ""
+                for m in reversed(messages):
+                    if m.get("role") == "user":
+                        last_user_msg = m.get("content", "")
+                        break
+                if last_user_msg:
+                    mem0_context = _mem0_search_context(character_id, last_user_msg)
+            except Exception as e:
+                print(f"[mem0] search error for {character_id}: {e}", file=sys.stderr)
 
         # Inject system prompt from custom/harem/SOUL.md
-        messages = _inject_system_prompt(messages, character_id, custom_system_prompt)
+        messages = _inject_system_prompt(messages, character_id, custom_system_prompt, mem0_context)
 
         # Local llama: skip provider lookup, use hardcoded endpoint
         if model_id.startswith("local/"):
@@ -819,6 +1090,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self.wfile.flush()
             else:
                 self.send_json(json.loads(resp.read()))
+
+            # Mem0: trigger write after response (non-blocking)
+            if mem0_write_enabled:
+                self._maybe_write_mem0(character_id, messages, mem0_write_interval)
+
         except Exception as e:
             self.send_json({"error": str(e)}, 502)
 
@@ -856,6 +1132,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         # Build the instruction for LLM
         instruction = f"""You are an AI prompt engineer for image generation. Based on the conversation context below, generate a ComfyUI/Stable Diffusion prompt for the character "{char_name}".
 
+IMPORTANT: Do NOT think or reason. Output your answer directly.
+
 Rules:
 - Output ONLY a JSON object with "prompt" and "negative" fields, nothing else.
 - The prompt should be in English, detailed, include character appearance, clothing, setting, mood, lighting.
@@ -884,7 +1162,7 @@ Conversation:
                 "model": "Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf",
                 "messages": [{"role": "user", "content": instruction}],
                 "stream": False,
-                "max_tokens": 300,
+                "max_tokens": 800,
                 "temperature": 0.7,
             }
             data = json.dumps(payload).encode("utf-8")
@@ -895,7 +1173,8 @@ Conversation:
             )
             resp = urllib.request.urlopen(req, timeout=30)
             result = json.loads(resp.read())
-            content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+            msg = result.get("choices", [{}])[0].get("message", {})
+            content = msg.get("content", "") or msg.get("reasoning_content", "")
 
             # Parse JSON from response
             # Try to find JSON block
