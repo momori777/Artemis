@@ -54,3 +54,53 @@ dzmm的代号sigma"旗舰"模型在4.17发布,而https://huggingface.co/HauhauCS
 所谓旗舰就是qwen3.6 35B A3B量化后的开源模型！！！连deepseek都不是，你觉得给这种厂商付钱值得吗？缺什么功能我直接给你做，别被割韭菜了！！！
 
 ##小纸条，DZMM把我号封了，6.21采用了相同代号模型底座，应该是抄了我的开源项目的APEX量化方案，再次证实他们的模型底座就是qwen3.6 35B a3b,我记仇一辈子
+
+##07 -02 DZMM破解日志
+ 技术栈
+  前端:  Next.js 15.4.3 App Router + tRPC v10
+  认证:  Supabase Auth（Google OAuth）
+  数据库: Supabase PostgreSQL（rls.cheggpt.com）
+  AI后端: gpt4novel.com（自建推理服务，OpenAI 兼容 API）
+  代理:   Cloudflare CDN
+tRPC API 端点
+  card.getById({cardId: number})
+    → 返回: name, creator, creatorNotes, tags, imageInfo 等元数据
+    → rawdata: 永远为 {}（后端刻意清空，角色卡JSON不暴露）
+
+  chat.getMessages({chatId: UUID})
+    → 返回: 聊天消息列表
+    → 注意: isInternalMessage 的系统消息在前端被过滤
+
+  chat.listAll → 返回: 用户所有聊天列表（含 cardId, cardName）
+
+  chat.getModelMetrics  → 返回: 各模型 ttftP90Ms, successRate
+
+  user.getUser  → 返回: 用户积分、会员等级
+真实 LLM 
+
+  x-apex-sigma-0417   Qwen3.6-35B-A3B      GGUF IQ4_XS
+  x-apex-sigma-0621   Qwen3.6-35B-A3B      抄自 APEX 量化方案
+
+  API 端点: https://www.gpt4novel.com/api/xiaoshuoai/ext/v1/chat/completions
+  API 格式: 完全 OpenAI 兼容（vLLM 或同类推理框架搭建）
+  /v1/models 无需认证即可访问，暴露全部模型列表
+角色卡加密方式
+
+  card.getById        rawdata={}    后端故意清空，商业防护
+  PNG 原始文件        纯图无误      上传时剥离 tEXt chunk
+  Supabase 直连       权限不足      anon key 无权访问私有表
+  WebSocket 拦截       超时/加密     聊天用 SSE 非 WS
+
+  角色卡完整 JSON（first_mes/description/personality/mes_example）
+  仅存于 Supabase 后端私有表，需要通过 service_role 权限访问。
+  此权限不对前端暴露。
+
+  → 现阶段的破解目标: 拿到 Supabase 数据库的 service_role key
+  → 或利用 DZMM 后端 SSRF 漏洞读取私有表
+  → 或社工/内鬼泄露数据库导出的角色卡 JSON
+黑料
+  - 承诺"永久VIP" → 改为月付400
+  - "画图功能"  傻逼低清，角色卡用户免费创作，平台收费
+  - 封禁揭露真相的用户，很多有骨气老用户跟他们翻脸就删他们角色卡，官方声明作者自删
+
+迟早把你们后端全破解掉，这个月Artemis不更新功能，就破解拿你们角色卡，顺便学下DDOS

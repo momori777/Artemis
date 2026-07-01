@@ -1025,6 +1025,26 @@ class DashboardHandler(BaseHTTPRequestHandler):
         # Inject system prompt from custom/harem/SOUL.md
         messages = _inject_system_prompt(messages, character_id, custom_system_prompt, mem0_context)
 
+        # ── Headroom SmartCrusher: 强制上下文压缩 ──
+        try:
+            from skills.shared.context_trimming import trim_messages_for_model, context_stats
+            last_user_query = ""
+            for m in reversed(messages):
+                if m.get("role") == "user":
+                    last_user_query = m.get("content", "")
+                    break
+            before = context_stats(messages)
+            messages = trim_messages_for_model(messages, query=last_user_query)
+            after = context_stats(messages)
+            if before["messages"] != after["messages"]:
+                print(f"[headroom] compressed {before['messages']}→{after['messages']} msgs, "
+                      f"{before['estimated_tokens']}→{after['estimated_tokens']} tokens "
+                      f"({int((1-after['estimated_tokens']/max(1,before['estimated_tokens']))*100)}% saved)",
+                      file=sys.stderr)
+        except Exception as e:
+            print(f"[headroom] context trimming skipped: {e}", file=sys.stderr)
+        # ── End headroom ──
+
         # Local llama: skip provider lookup, use hardcoded endpoint
         if model_id.startswith("local/"):
             api_key = ""

@@ -16,41 +16,40 @@
 📏 输出完整性：参考 `skills/tool/output-skill.md`。禁止 `// ...` 截断、禁止骨架代码、
 禁止 "let me know if you want me to continue"。超限时分片输出，以 [PAUSED] 标记断点。
 
-## Headroom — Token 节省层
+## Headroom — Token 节省层（已强制启用 ✅）
 
-> 🔧 开发场景专用（不在角色扮演对话中使用）
+> ⚡ SmartCrusher 已在 `shiki_daemon.py` 的 LLM 请求管线中强制启用。
+> 每次对话请求自动预处理上下文，无需手动调用。
 
-当 tool 输出过大（exec 数千行、搜索结果膨胀、JSON 数组超过上下文预算）时，
-**必须在输出给模型前用 headroom 压缩**，而不是简单截断。
+**自动生效规则：**
+- System prompt 100% 保留
+- 最近 4 轮对话完整保留（不压缩）
+- 超出 4 轮的历史 → SmartCrusher 5 维评分压缩
+- 硬限制：24 条消息 / 40K 字符兜底
+- 日志：daemon stderr 输出 `[headroom] compressed N→M msgs (X% saved)`
+
+**手动调用（仅开发场景需要）：**
 
 ```python
 from skills.headroom import SmartCrusher, ContentRouter, CCRStore
 
-# 方式 1：自动路由（推荐）
+# 压缩 JSON 数组 / 搜索结果 / tool output
 router = ContentRouter()
-result = router.compress(large_output, query="用户查询关键词")
-# result.compressed  — 压缩后文本，可直接注入上下文
-# result.compression_ratio — 压缩率（< 1.0 代表省了 token）
+result = router.compress(large_output, query="关键词")
+# result.compressed  — 可直接注入上下文
+# result.compression_ratio — < 1.0 代表省了 token
 
-# 方式 2：直接压 JSON 数组
-crusher = SmartCrusher()
-result = crusher.crush(json_array, query="关键词")
-
-# 方式 3：CCR 缓存取回（当压缩后仍需要细节时）
+# CCR 缓存取回
 store = CCRStore(max_entries=500, ttl_seconds=1800)
 store.put(result.original_hash, original_full_text)
-# 需要细节时：full_text = store.get(result.original_hash)
 ```
 
-**压缩策略（5 维评分）**：
-1. 首尾项保留（30% 开头 + 15% 结尾，保持分页/时间上下文）
-2. 错误项 100% 保留（error/failed/exception/timeout）
+**5 维评分策略**：
+1. 首尾项保留（30% 开头 + 15% 结尾）
+2. 错误项 100% 保留
 3. 统计异常值（> 2 std）
 4. BM25 查询相关项
 5. 数据变化点
-
-**不要**用简单的 `messages[-24:]` 截断代替 SmartCrusher——那是最粗暴的 FIFO 丢信息。
-在开发场景中，能压则不丢。
 
 ---
 
