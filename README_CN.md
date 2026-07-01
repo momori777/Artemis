@@ -137,6 +137,45 @@ q群： 580322386
 | 内存 | 32 GB DDR5 |
 | 系统 | Windows 11 |
 
+
+## 🔮 未来：Cosmos 物理世界模型
+
+> 📖 详细设计：[`imagination.md`](imagination.md) | 桥接参考：[`skills/cosmos/BRIDGE_REFERENCE.md`](skills/cosmos/BRIDGE_REFERENCE.md)
+
+**NVIDIA Cosmos**（社区 FP8 量化版入 `skills/cosmos/`）是一个物理世界基础模型，能根据文本/图像生成符合物理规律的场景视频，理解空间关系与物体交互。
+
+### 为什么需要 Cosmos？
+
+当前四项核心能力（LLM + TTS + ComfyUI + Live2D）彼此**割裂**——LLM 不知道 Live2D 的动作，ComfyUI 感知不到对话情绪。Cosmos 补齐**物理常识层**：
+
+```
+Qwen3.6-35B (语言心智) ←→ Cosmos 3 Nano (物理心智)
+    语言理解 + 情感         空间认知 + 场景生成
+```
+
+### 双 Compact 架构
+
+| 组件 | 模型 | 参数量 | VRAM |
+|------|------|--------|------|
+| 🧠 语言心智 | Qwen3.6-35B-A3B (MoE) | 35B 总 / 3B 激活 | ~8 GB |
+| 🌍 物理心智 | Cosmos 3 Nano FP8 | 15.75B | ~16 GB |
+
+### 硬件路线图
+
+| 年代 | GPU | Cosmos 状态 |
+|------|-----|-------------|
+| 2026 | RTX 5070 (8-12GB) | ❌ 存档，硬件检测就位 |
+| 2027-28 | RTX 5090 (32GB) | ⚠️ Nano FP8 推理可行 |
+| 2029-30 | Rubin 工作站 (96GB) | ✅ LLM + Cosmos 同时常驻 |
+
+### 当前进度
+
+- ✅ 仓库已存档 `skills/cosmos/`
+- ✅ 桥接设计 `imagination.md` + `cosmos_check.py` 就位
+- ✅ Qwen ↔ Cosmos 双层心智架构设计完成
+- 📋 等硬件达到 ~24GB+ VRAM
+
+
 ## 功能特性
 
 - 🔄 **多角色热切换** - 一键切换 AI 女友（夏目 ⇄ 亚托莉 ⇄ 夜乃樜）；SOUL/IDENTITY/TTS 权重/Live2D 模型全部自动切换，记忆按角色隔离
@@ -175,6 +214,8 @@ q群： 580322386
 | **夜乃桜 SoVITS 语音权重** | TTS 语音合成（桜声线） | ~313 MB |
 | **all-MiniLM-L6-v2** | 英文/跨语言 Embedding（mem0 记忆） | ~80 MB |
 | **BGE-small-zh-v1.5** | 中文 Embedding（mem0 记忆） | ~91 MB |
+| **Cosmos 3 Nano FP8** 🔮 | 物理世界模型（社区量化，未来硬件） | ~16 GB |
+
 |  | → 路径：`embedding/all-MiniLM-L6-v2/` + `embedding/bge-small-zh-v1.5/`（HF 仓库） | |
 | **四季夏目 Live2D 模型** | Live2D 角色渲染 | ~180 MB (压缩包) |
 

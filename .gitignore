@@ -65,6 +65,7 @@ llama-server/
 llama-watchdog.ps1
 # 其他临时文本
 benchmark_projects/
+!benchmark_projects/*.md
 *.benchmark.txt
 # HuggingFace 临时上传目录
 hf-natsume/upload-to-huggingface.ps1
