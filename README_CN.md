@@ -335,6 +335,7 @@ AI_Girlfriend/                        # OpenClaw 工作区根目录
 ├── HEARTBEAT.md                      # 心跳配置
 ├── TOOLS.md                          # 工具速查表
 ├── models.yaml                       # 模型目录 + 下载链接
+├── imagination.md                    # 🔮 Cosmos 物理世界模型联动构想（未来）
 ├── README.md                         # 英文读我（本文件）
 ├── README_CN.md                      # 中文读我
 ├── .gitignore
@@ -393,6 +394,11 @@ AI_Girlfriend/                        # OpenClaw 工作区根目录
     │   ├── install.bat               # Windows 依赖安装
     │   ├── start.bat                 # Windows 启动器
     │   └── app/                      # 源代码
+    ├── cosmos/                       # 🔮 NVIDIA Cosmos 物理世界模型（未来）
+    │   ├── BRIDGE_REFERENCE.md       # Cosmos ↔ AI Girlfriend 桥接设计
+    │   ├── cosmos_check.py           # 硬件 VRAM 检测脚本
+    │   ├── cookbooks/                # 官方教程范例
+    │   └── README.md                 # 上游文档
     ├── llama-management.md           # 显存管理架构文档
     ├── llama-watchdog.ps1            # Llama 健康检查
     ├── cleanup_orphans.ps1           # 孤儿进程清理
@@ -775,3 +781,4 @@ schtasks /create /tn "cleanup-orphans" `
 - [AgentRQ](https://github.com/agentrq/agentrq) - AgentRQ 兼容任务队列 + MCP 工具接口设计灵感来源
 - [headroom](https://github.com/chopratejas/headroom) - SmartCrusher 上下文压缩 + CCR（整理-合并-检索）记忆管线灵感来源
 - [mem0](https://github.com/mem0ai/mem0) - Qdrant 向量记忆架构 + 混合搜索设计灵感来源
+- [NVIDIA Cosmos](https://github.com/NVIDIA/cosmos) - 物理世界基础模型，[社区 FP8 量化版](https://huggingface.co/benjiaiplayground/Cosmos3-Nano_fp8) 已存档 `skills/cosmos/`
