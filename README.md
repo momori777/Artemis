@@ -341,6 +341,7 @@ AI_Girlfriend/                        # OpenClaw workspace root
 ├── HEARTBEAT.md                      # Heartbeat config
 ├── TOOLS.md                          # Tool quick reference
 ├── models.yaml                       # Model catalog + download links
+├── imagination.md                    # 🔮 Cosmos WFM integration vision (future)
 ├── README.md                         # This file
 ├── .gitignore
 ├── live2d/                           # Live2D character model (Cubism 4 Core)
@@ -398,6 +399,11 @@ AI_Girlfriend/                        # OpenClaw workspace root
     │  ├── install.bat               # Windows dependency installer
     │  ├── start.bat                 # Windows launcher
     │  └── app/                      # Source code
+    ├── cosmos/                       # 🔮 NVIDIA Cosmos WFM (future hardware)
+    │  ├── BRIDGE_REFERENCE.md       # Cosmos ↔ AI Girlfriend bridge design
+    │  ├── cosmos_check.py           # Hardware VRAM detection script
+    │  ├── cookbooks/                # Official tutorial examples
+    │  └── README.md                 # Upstream documentation
     ├── llama-management.md           # VRAM management architecture doc
     ├── llama-watchdog.ps1            # Llama health check
     ├── cleanup_orphans.ps1           # Orphan process cleanup
@@ -780,3 +786,4 @@ A complete web-based AI girlfriend chat interface, served locally at `http://127
 - [AgentRQ](https://github.com/agentrq/agentrq) -Inspiration for the AgentRQ-compatible task queue and MCP tool interface design
 - [headroom](https://github.com/chopratejas/headroom) -Inspiration for SmartCrusher context compression + CCR (Curate-Consolidate-Retrieve) memory pipeline
 - [mem0](https://github.com/mem0ai/mem0) -Inspiration for Qdrant vector memory architecture + hybrid search design
+- [NVIDIA Cosmos](https://github.com/NVIDIA/cosmos) -World Foundation Model, [community FP8 quant](https://huggingface.co/benjiaiplayground/Cosmos3-Nano_fp8) archived at `skills/cosmos/`
