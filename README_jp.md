@@ -137,6 +137,45 @@ OpenClaw + QQ Bot + Telegram Bot + llama.cpp + GPT-SoVITS + ComfyUI + Sakura デ
 | RAM | 32 GB DDR5 |
 | OS | Windows 11 |
 
+
+## 🔮 将来：Cosmos 物理世界モデル
+
+> 📖 詳細設計：[`imagination.md`](imagination.md) | 橋渡し：[`skills/cosmos/BRIDGE_REFERENCE.md`](skills/cosmos/BRIDGE_REFERENCE.md)
+
+**NVIDIA Cosmos**（コミュニティ FP8 量子化版、`skills/cosmos/` にアーカイブ）は物理世界基礎モデルで、物理法則に従ったシーンビデオ生成と空間理解を実現します。
+
+### なぜ Cosmos か？
+
+4 つのコア能力（LLM + TTS + ComfyUI + Live2D）は現在**分断**されています——LLM は Live2D の動きを知らず、ComfyUI は会話の感情を認識しません。Cosmos が**物理的常識層**を補完します：
+
+```
+Qwen3.6-35B（言語の心）  ←→  Cosmos 3 Nano（物理の心）
+   言語理解＋感情              空間認識＋シーン生成
+```
+
+### デュアルコンパクトアーキテクチャ
+
+| コンポーネント | モデル | パラメータ | VRAM |
+|----------------|--------|------------|------|
+| 🧠 言語の心 | Qwen3.6-35B-A3B (MoE) | 35B 総 / 3B 活性化 | ~8 GB |
+| 🌍 物理の心 | Cosmos 3 Nano FP8 | 15.75B | ~16 GB |
+
+### ハードウェアロードマップ
+
+| 年 | GPU | Cosmos 状態 |
+|----|-----|-------------|
+| 2026 | RTX 5070 (8-12GB) | ❌ アーカイブ済、検出準備完了 |
+| 2027-28 | RTX 5090 (32GB) | ⚠️ Nano FP8 推論可能 |
+| 2029-30 | Rubin WS (96GB) | ✅ LLM + Cosmos 同時常駐 |
+
+### 現在の状態
+
+- ✅ リポジトリを `skills/cosmos/` にアーカイブ済
+- ✅ 橋渡し設計 `imagination.md` + `cosmos_check.py` 準備完了
+- ✅ Qwen ↔ Cosmos デュアルマインド設計完了
+- 📋 ~24GB+ VRAM ハードウェアを待機中
+
+
 ## 機能
 
 - ?? **マルチキャラクターホットスワップ** - AIガールフレンド間のワンクリック切替（夏目 ↔ アトリ ↔ 桜）; SOUL/IDENTITY/TTS 重み/Live2D モデルが自動切替、メモリはキャラクターごとに分離
@@ -177,6 +216,8 @@ OpenClaw + QQ Bot + Telegram Bot + llama.cpp + GPT-SoVITS + ComfyUI + Sakura デ
 | **桜 SoVITS 重み** | TTS 音声合成（桜の声） | ~313 MB |
 | **all-MiniLM-L6-v2** | 英語/多言語埋め込み（mem0） | ~80 MB |
 | **BGE-small-zh-v1.5** | 中国語埋め込み（mem0） | ~91 MB |
+| **Cosmos 3 Nano FP8** 🔮 | 物理世界モデル（コミュニティ量子化、将来ハード用） | ~16 GB |
+
 |  | →パス: `embedding/all-MiniLM-L6-v2/` + `embedding/bge-small-zh-v1.5/` (HFリポジトリ) | |
 | **四季 夏目 Live2D モデル** | Live2D キャラクターレンダリング | ~180 MB (アーカイブ) |
 

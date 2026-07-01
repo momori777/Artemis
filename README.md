@@ -137,6 +137,45 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 | RAM | 32 GB DDR5 |
 | OS | Windows 11 |
 
+
+## 🔮 Future: Cosmos World Foundation Model
+
+> 📖 Full design: [`imagination.md`](imagination.md) | Bridge ref: [`skills/cosmos/BRIDGE_REFERENCE.md`](skills/cosmos/BRIDGE_REFERENCE.md)
+
+**NVIDIA Cosmos** (community FP8 quant archived at `skills/cosmos/`) is a World Foundation Model that generates physics-consistent scene videos and understands spatial relationships.
+
+### Why Cosmos?
+
+The four core capabilities (LLM + TTS + ComfyUI + Live2D) are currently **disconnected** — the LLM doesn't know what Live2D is doing, ComfyUI doesn't sense conversational emotion. Cosmos fills the **physical common-sense layer**:
+
+```
+Qwen3.6-35B (Language Mind) ←→ Cosmos 3 Nano (Physical Mind)
+   Language + Emotion             Spatial + Scene Generation
+```
+
+### Dual Compact Architecture
+
+| Component | Model | Params | VRAM |
+|-----------|-------|--------|------|
+| 🧠 Language Mind | Qwen3.6-35B-A3B (MoE) | 35B total / 3B active | ~8 GB |
+| 🌍 Physical Mind | Cosmos 3 Nano FP8 | 15.75B | ~16 GB |
+
+### Hardware Roadmap
+
+| Year | GPU | Cosmos Status |
+|------|-----|---------------|
+| 2026 | RTX 5070 (8-12GB) | ❌ Archived, detection ready |
+| 2027-28 | RTX 5090 (32GB) | ⚠️ Nano FP8 inference feasible |
+| 2029-30 | Rubin Workstation (96GB) | ✅ LLM + Cosmos co-resident |
+
+### Current Status
+
+- ✅ Repo archived at `skills/cosmos/`
+- ✅ Bridge design `imagination.md` + `cosmos_check.py` ready
+- ✅ Qwen ↔ Cosmos dual-mind architecture designed
+- 📋 Waiting for ~24GB+ VRAM hardware
+
+
 ## Features
 
 
@@ -178,6 +217,8 @@ See [`models.yaml`](models.yaml) for full details.
 | **Sakura SoVITS weights** | TTS voice synthesis (Sakura voice) | ~313 MB |
 | **all-MiniLM-L6-v2** | English/cross-lingual embedding (mem0) | ~80 MB |
 | **BGE-small-zh-v1.5** | Chinese embedding (mem0) | ~91 MB |
+| **Cosmos 3 Nano FP8** 🔮 | World Foundation Model (community FP8 quant, future HW) | ~16 GB |
+
 |  | →Path: `embedding/all-MiniLM-L6-v2/` + `embedding/bge-small-zh-v1.5/` (HF repo) | |
 | **Shiki Natsume Live2D Model** | Live2D character rendering | ~180 MB (archive) |
 
