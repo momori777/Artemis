@@ -340,6 +340,7 @@ AI_Girlfriend/                        # OpenClaw ワークスペースルート
 ├── HEARTBEAT.md                      # ハートビート設定
 ├── TOOLS.md                          # ツール高速リファレンス
 ├── models.yaml                       # モデルカタログ + ダウンロードリンク
+├── imagination.md                    # 🔮 Cosmos WFM 統合ビジョン（将来）
 ├── README.md                         # このファイル
 ├── .gitignore
 ├── live2d/                           # Live2D キャラクターモデル（Cubism 4 Core）
@@ -397,6 +398,11 @@ AI_Girlfriend/                        # OpenClaw ワークスペースルート
     │  ├── install.bat               # Windows 依存関係インストーラー
     │  ├── start.bat                 # Windows ランチャー
     │  └── app/                      # ソースコード
+    ├── cosmos/                       # 🔮 NVIDIA Cosmos WFM（将来のハードウェア用）
+    │  ├── BRIDGE_REFERENCE.md       # Cosmos ↔ AI Girlfriend ブリッジ設計
+    │  ├── cosmos_check.py           # ハードウェア VRAM 検出スクリプト
+    │  ├── cookbooks/                # 公式チュートリアル例
+    │  └── README.md                 # 上流ドキュメント
     ├── llama-management.md           # VRAM 管理アーキテクチャドキュメント
     ├── llama-watchdog.ps1            # Llama 健康チェック
     ├── cleanup_orphans.ps1           # 孤児プロセスクリーンアップ
@@ -788,3 +794,4 @@ schtasks /create /tn "cleanup-orphans" `
 - [AgentRQ](https://github.com/agentrq/agentrq) - AgentRQ 互換タスクキューと MCP ツールインターフェースデザインのインスピレーション
 - [headroom](https://github.com/chopratejas/headroom) - SmartCrusher コンテキスト圧縮 + CCR（収集-統合-取得）メモリパイプラインのインスピレーション
 - [mem0](https://github.com/mem0ai/mem0) - Qdrant ベクターメモリアーキテクチャ + 複合検索デザインのインスピレーション
+- [NVIDIA Cosmos](https://github.com/NVIDIA/cosmos) - 物理世界基礎モデル、[コミュニティ FP8 量子化版](https://huggingface.co/benjiaiplayground/Cosmos3-Nano_fp8) を `skills/cosmos/` にアーカイブ
