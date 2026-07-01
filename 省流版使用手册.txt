@@ -1,4 +1,4 @@
-Artemis 省流版使用手册
+正常用户看命令就行，后面是我气话
 ====================
 
 一、启动 — 两条通道，选一个
@@ -32,7 +32,7 @@ Artemis 省流版使用手册
    Windows: 双击 shiki-stop.cmd
    Linux:   参考 start.sh 停止脚本
 
-三、调试（四层，从下往上查）
+三、调试（七层，从下往上查）
 
     1.GPU层   → 浏览器打开 http://127.0.0.1:8080/health 看llama活着没
     2.桌宠层  → Live2D看 http://localhost:19200/api/status ；Sakura直接看桌面
