@@ -36,8 +36,10 @@ function createDefaultStore() {
       mem0WriteEnabled: false,
       mem0WriteInterval: 10,
       bridgeUrl: 'http://localhost:19250',
+      // Tree mode: 'on' = always, 'off' = never, 'auto' = new sessions
+      treeMode: 'auto',
     },
-    // { [charId]: { [sessionId]: { name, messages[], createdAt } } }
+    // { [charId]: { [sessionId]: { name, messages[], tree?, createdAt } } }
     chats: {},
     // { [charId]: sessionId }
     activeSession: {},
@@ -70,12 +72,16 @@ function ensureDefaultSession(charId) {
   var keys = Object.keys(sessions);
   if (keys.length === 0) {
     var sid = generateSessionId();
-    var char = getChar(charId);
-    sessions[sid] = {
+    var s0 = {
       name: 'Chat 1',
       messages: [],
       createdAt: new Date().toISOString(),
     };
+    var treeMode = (store.settings && store.settings.treeMode) || 'auto';
+    if (treeMode !== 'off') {
+      s0.tree = migrateToTree([]);
+    }
+    sessions[sid] = s0;
     store.activeSession[charId] = sid;
     saveStore(store);
     return sid;
@@ -92,11 +98,17 @@ function createSession(charId, name) {
   var store = loadStore();
   if (!store.chats[charId]) store.chats[charId] = {};
   var sid = generateSessionId();
-  store.chats[charId][sid] = {
+  var s = {
     name: name || ('Chat ' + (Object.keys(store.chats[charId]).length + 1)),
     messages: [],
     createdAt: new Date().toISOString(),
   };
+  // Initialize tree for new sessions if treeMode is not 'off'
+  var treeMode = (store.settings && store.settings.treeMode) || 'auto';
+  if (treeMode !== 'off') {
+    s.tree = migrateToTree([]);
+  }
+  store.chats[charId][sid] = s;
   store.activeSession[charId] = sid;
   saveStore(store);
   return sid;
@@ -113,12 +125,16 @@ function deleteSession(charId, sessionId) {
     delete store.activeSession[charId];
     // create a default
     var sid = generateSessionId();
-    var char = getChar(charId);
-    sessions[sid] = {
+    var s2 = {
       name: 'Chat 1',
       messages: [],
       createdAt: new Date().toISOString(),
     };
+    var treeMode = (store.settings && store.settings.treeMode) || 'auto';
+    if (treeMode !== 'off') {
+      s2.tree = migrateToTree([]);
+    }
+    sessions[sid] = s2;
     store.activeSession[charId] = sid;
   } else {
     store.activeSession[charId] = keys[keys.length - 1];
@@ -139,7 +155,8 @@ function getSessions(charId) {
   var sessions = store.chats[charId] || {};
   // sorted newest first
   return Object.keys(sessions).map(function(k) {
-    return { id: k, name: sessions[k].name, createdAt: sessions[k].createdAt, count: sessions[k].messages.length };
+    var s = sessions[k];
+    return { id: k, name: s.name, createdAt: s.createdAt, count: sessionMessageCount(s) };
   }).sort(function(a, b) {
     return (b.createdAt || '').localeCompare(a.createdAt || '');
   });
@@ -166,10 +183,36 @@ function saveChatHistory(charId, sessionId, messages) {
   var store = loadStore();
   if (!store.chats[charId]) store.chats[charId] = {};
   if (!store.chats[charId][sessionId]) return;
+  var s = store.chats[charId][sessionId];
+  // If using tree mode, save tree only (messages param is ignored)
+  if (s.tree) {
+    saveStore(store);
+    return;
+  }
   var m = messages;
   if (m.length > 500) m = m.slice(m.length - 500);
-  store.chats[charId][sessionId].messages = m;
+  s.messages = m;
   saveStore(store);
+}
+
+/**
+ * Save tree changes back to session.
+ */
+function saveSessionTree(charId, sessionId, tree) {
+  var store = loadStore();
+  if (!store.chats[charId]) store.chats[charId] = {};
+  var s = store.chats[charId][sessionId];
+  if (!s) return;
+  s.tree = tree;
+  saveStore(store);
+}
+
+/**
+ * Get message count for session (tree or flat).
+ */
+function sessionMessageCount(s) {
+  if (s.tree) return treeNodeCount(s.tree);
+  return (s.messages || []).length;
 }
 
 function saveSettings(settings) {

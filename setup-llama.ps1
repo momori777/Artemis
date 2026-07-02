@@ -231,7 +231,7 @@ $llamaArgs = @(
     '-m', "`"$ModelPath`"",
     '-c', $realContext.ToString(),
     '--flash-attn', 'on',
-    '-ngl', $ngl.ToString(),
+    '--no-mmap',
     '--batch-size', $batchSize.ToString(),
     '--ubatch-size', $ubatch.ToString(),
     '--threads', $threads.ToString()$ApiKey`"",
@@ -435,7 +435,7 @@ $report = @"
 ## Generated Parameters
 | Parameter | Value | Reasoning |
 |-----------|-------|-----------|
-| -ngl       | $ngl   | Based on $vramGB GB VRAM |
+| --no-mmap  | (always) | Reduce memory pressure |
 | --threads  | $threads | $cpuCores logical cores |
 | --batch-size | $batchSize | Balanced for CPU + GPU |
 | --ubatch-size | $ubatch | Half batch-size |

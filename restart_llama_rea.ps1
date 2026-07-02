@@ -24,7 +24,7 @@ $args = @(
     "-m", $Model,
     "-c", "120000", "--flash-attn", "on",
     "-ctk", "q8_0", "-ctv", "q8_0",
-    "-ngl", "41", "--cpu-moe",
+    "--no-mmap", "--cpu-moe",
     "--batch-size", "2048", "--ubatch-size", "1024",
     "--threads", "24",
     "-rea", $Mode, "--reasoning-format", "deepseek", "--jinja",

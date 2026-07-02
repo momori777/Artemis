@@ -351,7 +351,6 @@ def stop_llama(port=8080, wait_vram_stable=True):
               file=sys.stderr, flush=True)
 
     # CUDA VRAM 稳定检测 — 仅记录，不做硬阻塞
-    # --no-mmap 需要 ~7.5GB，8GB 卡上窗口极窄，靠 llama 自己的 -fit 自适应
     if wait_vram_stable:
         _wait_for_vram_stable(min_free_mb=None, max_wait=10)
 
@@ -407,52 +406,23 @@ def start_llama(port=8080, exe_path=None, model_path=None,
                 break
             time.sleep(0.5)
 
-    # VRAM 自适应 — ngl 固定 41，降 batch/ubatch 省 VRAM
-    try:
-        ngl = 41
-        batch_size = 4096
-        ubatch_size = 2048
-        import torch
-        if torch.cuda.is_available():
-            torch.cuda.synchronize()
-            torch.cuda.empty_cache()
-            free = torch.cuda.mem_get_info()[0] / (1024 ** 2)
-            if free < 7500:
-                batch_size = 2048
-                ubatch_size = 1024
-                print(f"[LLAMA] VRAM 仅 {free:.0f} MiB，降 batch 4096→2048",
-                      file=sys.stderr, flush=True)
-            if free < 5500:
-                batch_size = 1024
-                ubatch_size = 512
-                print(f"[LLAMA] VRAM 仅 {free:.0f} MiB，降 batch→1024",
-                      file=sys.stderr, flush=True)
-            if free < 4000:
-                batch_size = 512
-                ubatch_size = 256
-                print(f"[LLAMA] VRAM 仅 {free:.0f} MiB，降 batch→512",
-                      file=sys.stderr, flush=True)
-    except Exception:
-        ngl = 41
-        batch_size = 4096
-        ubatch_size = 2048
+    # Build args — use --no-mmap, let llama.cpp manage memory automatically.
+    # q4_0 on KV halves VRAM usage while stable up to 50K+ tokens.
+    batch_size = 4096
+    ubatch_size = 2048
 
-    # Build args — use mmap mode after ComfyUI restart to avoid
-    # host RAM fragmentation from large model load/unload cycles.
-    # --no-mmap requires pristine contiguous address space.
     args = [
         exe_path or "llama-server.exe",
         "-m", model_path or "",
         "-c", "120000",
         "--flash-attn", "on",
-        "-ctk", "q8_0",
-        "-ctv", "q8_0",
-        "-ngl", str(ngl),
+        "-ctk", "q4_0",
+        "-ctv", "q4_0",
+        "--no-mmap",
         "--cpu-moe",
         "--cpu-mask", "0xFFFFFFFF",
         "--batch-size", str(batch_size),
         "--ubatch-size", str(ubatch_size),
-        "--threads", "24",
 
         "-rea", rea_mode, "--reasoning-format", "deepseek",
         "--jinja",
@@ -461,8 +431,6 @@ def start_llama(port=8080, exe_path=None, model_path=None,
         "--kv-unified",
         "--no-warmup",
     ]
-    if not use_mmap:
-        args.append("--no-mmap")
 
     if log_dir:
         os.makedirs(log_dir, exist_ok=True)

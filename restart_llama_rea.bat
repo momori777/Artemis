@@ -22,7 +22,7 @@ start "" /B D:\AI_Girlfriend\llama-server\llama-server.exe ^
   -m C:\Users\TK\Desktop\vllm\models\Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf ^
   -c 120000 --flash-attn on ^
   -ctk q8_0 -ctv q8_0 ^
-  -ngl 41 --cpu-moe ^
+  --no-mmap --cpu-moe ^
   --batch-size 2048 --ubatch-size 1024 ^
   --threads 24 ^
   -rea %REA_MODE% --reasoning-format deepseek --jinja ^

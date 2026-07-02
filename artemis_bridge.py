@@ -128,7 +128,6 @@ def _ensure_llama_running():
                 model_path=LLAMA_MODEL,
                 log_dir=LLAMA_LOG_DIR,
                 timeout=180,
-                use_mmap=True,  # after ComfyUI, avoid --no-mmap fragmentation
             )
             if ok:
                 print("[Bridge] llama-server: restarted successfully", flush=True)
@@ -199,6 +198,8 @@ def _release_vram_before_llama():
         except Exception:
             pass
 
+
+@app.route("/api/status")
 def api_status():
     return jsonify({
         "ok": True,
@@ -206,28 +207,6 @@ def api_status():
         "characters": list(AVAILABLE_CHARACTERS.keys()),
         "checkpoints": ["WAI-Nsfw-Illustrious-17.safetensors", "miaomiaoHarem_v20.safetensors"],
     })
-
-
-@app.route("/api/status")
-def api_status():
-    import os, socket, subprocess
-    llama_status = "unknown"
-    try:
-        s = socket.socket()
-        s.settimeout(1)
-        s.connect(("127.0.0.1", 8080))
-        s.close()
-        llama_status = "online"
-    except:
-        llama_status = "offline"
-    characters = []
-    for d in os.listdir(REF_WAVS_BASE):
-        if d.startswith("ref_wavs"):
-            char = d.replace("ref_wavs_", "").replace("ref_wavs", "natsume") or "natsume"
-            if char not in characters:
-                characters.append(char)
-    from flask import jsonify
-    return jsonify({"ok": True, "llama": llama_status, "characters": characters})
 
 @app.route("/api/tts", methods=["POST"])
 def api_tts():

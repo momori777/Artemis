@@ -260,13 +260,15 @@ llama.cpp (b8851-b9222) 経由で Qwen3.6-35B-A3B (MoE, Q4_K, 16.10 GiB, 34.66B 
 llama-server.exe `
   -m "Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf" `
   -c 120000 `
-  --flash-attn on -ctk q8_0 -ctv q8_0 `
-  -ngl 41 --cpu-moe --cpu-mask 0xFFFFFFFF `
-  --batch-size 4096 --ubatch-size 2048 --threads 24 `
+  --flash-attn on -ctk q4_0 -ctv q4_0 `
+  --cpu-moe --cpu-mask 0xFFFFFFFF `
+  --batch-size 4096 --ubatch-size 2048 `
    -rea off --jinja `
   --cache-ram 2048 --parallel 1 `
   --kv-unified --no-mmap
 ```
+
+> 💡 **`--no-mmap` vs `-ngl` について：** `--no-mmap` は llama.cpp にメモリ管理を任せ、手動で `-ngl` 層数を指定するよりはるかに効率的です。`-ngl` で GPU 層を強制すると速度が半減する可能性がありますが、`--no-mmap` は実際の VRAM に応じて動的割り当てを行い、RTX 5070 8GB で 50~60 t/s を達成します。KV キャッシュに `q4_0` を使用すると VRAM 使用量が半減し、16K コンテキストで q4 は 50K+ トークンまで安定動作します。
 
 ### 主要指標
 
@@ -620,7 +622,7 @@ powershell -File start.ps1
 
 起動シーケンス:
 ```
-[1/7] llama-server        （8080、Qwen3.6-35B、ngl=41）
+[1/7] llama-server        （8080、Qwen3.6-35B、--no-mmap）
 [2/7] 埋め込みサーバー    （9999、all-MiniLM + BGE 二重モデル、CPU、~100MB RAM）
 [3/7] VRAM テア検出      （TTS/ComfyUI が llama を停止するかどうかを自動選択）
 [4/7] Live2D ブリッジ    （19200、pixi-live2d-display）
