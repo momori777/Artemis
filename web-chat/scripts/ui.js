@@ -1491,10 +1491,21 @@ var UI = {
         settings.systemPrompt = currentChar.systemPrompt;
       }
 
-      // Replay messages: get parent chain + new branch node as pending
-      var replayMsgs = getCurrentChain(this.state.tree)
+      // Replay messages: only send history up to (and including) the trigger user msg
+      // The pending branch node should NOT be sent to the API
+      var allMsgs = getCurrentChain(this.state.tree);
+      // Find the last non-pending, non-regenerated message index
+      var lastGoodIdx = -1;
+      for (var ri = allMsgs.length - 1; ri >= 0; ri--) {
+        if (!allMsgs[ri].regenerated && !allMsgs[ri]._pending && allMsgs[ri].role !== 'system') {
+          lastGoodIdx = ri;
+          break;
+        }
+      }
+      var replayMsgs = allMsgs
+        .slice(0, lastGoodIdx + 1)
         .filter(function(n) { return n.role !== 'system' && !n.regenerated; })
-        .map(function(n) { return { role: n.role, content: n._pending ? 'Please reply again with a different answer.' : n.content }; });
+        .map(function(n) { return { role: n.role, content: n.content }; });
 
       self.hideTyping();
       self.createStreamBubble();
@@ -1516,6 +1527,14 @@ var UI = {
           else if (parsed.mediaPath) tree.nodes[newId].media = self._resolveMediaPath(parsed.mediaPath);
           self.state.messages = getChainMessages(tree);
           saveSessionTree(charId, sessionId, tree);
+          // Re-render DOM to show the new response and update branch indicators
+          self.$messages.innerHTML = '';
+          self.appendSystemMsg('Branch: regenerated - ' + self.formatDate(new Date()));
+          getCurrentChain(tree).forEach(function(cn, ci) {
+            if (cn.role === 'system' || cn.regenerated) return;
+            var cel = self._renderTreeNode(cn, ci, tree);
+            self.$messages.appendChild(cel);
+          });
           self.state.streaming = false;
           self.$sendBtn.disabled = false;
           self.$input.focus();
@@ -2474,6 +2493,21 @@ var UI = {
       this._userScrolledUp = false;
       this.scrollToBottom(true);
       return;
+    }
+
+    // Tree mode forced on for old sessions: migrate
+    var settings = getSettings();
+    if (settings.treeMode === 'on') {
+      var store = loadStore();
+      var s = (store.chats[charId] || {})[sessionId];
+      if (s && s.messages && s.messages.length > 0) {
+        var migrated = migrateToTree(s.messages);
+        s.tree = migrated;
+        s.messages = [];
+        saveStore(store);
+        // Reload with tree
+        return this.loadHistory();
+      }
     }
 
     // Flat message mode
