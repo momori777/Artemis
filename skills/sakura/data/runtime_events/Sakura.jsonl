@@ -1,0 +1,4 @@
+{"event_type": "app.started", "timestamp": "2026-07-02T11:37:56+08:00", "source": "startup", "metadata": {}, "priority": 0}
+{"event_type": "pet.hidden", "timestamp": "2026-07-02T11:57:44+08:00", "source": "tray", "metadata": {}, "priority": 0}
+{"event_type": "pet.reopened", "timestamp": "2026-07-02T11:57:45+08:00", "source": "tray", "metadata": {"hidden_duration": 0}, "priority": 0}
+{"event_type": "app.closed", "timestamp": "2026-07-02T11:57:55+08:00", "source": "shutdown", "metadata": {"interrupted_reply": false}, "priority": 0}
