@@ -274,12 +274,11 @@ def start_llama():
     args = [
         LLAMA_EXE, "-m", LLAMA_MODEL,
         "-c", "120000", "--flash-attn", "on",
-        "-ctk", "q8_0", "-ctv", "q8_0",
-        "-ngl", "41", "--cpu-moe",
+        "-ctk", "q4_0", "-ctv", "q4_0",
+        "--no-mmap", "--cpu-moe",
         "--batch-size", "2048", "--ubatch-size", "1024",
-        "--threads", "24",
         "-rea", "auto", "--reasoning-format", "deepseek", "--jinja", "--cache-ram", "3000",
-        "--parallel", "1", "--kv-unified", "--no-mmap",
+        "--parallel", "1", "--kv-unified",
         "--port", str(LLAMA_PORT), "--timeout", "600",
     ]
     os.makedirs(os.path.dirname(LLAMA_LOG), exist_ok=True)

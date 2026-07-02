@@ -153,7 +153,7 @@ if (Test-Online $llamaPort "llama-server") {
         '--flash-attn', 'on',
         '-ctk', 'q8_0',
         '-ctv', 'q8_0',
-        '-ngl', '41',
+        '--no-mmap',
         '--cpu-moe',
         '--batch-size', '2048',
         '--ubatch-size', '1024',
