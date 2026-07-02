@@ -255,13 +255,15 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-d
 llama-server.exe `
   -m "Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf" `
   -c 120000 `
-  --flash-attn on -ctk q8_0 -ctv q8_0 `
-  -ngl 41 --cpu-moe --cpu-mask 0xFFFFFFFF `
-  --batch-size 4096 --ubatch-size 2048 --threads 24 `
+  --flash-attn on -ctk q4_0 -ctv q4_0 `
+  --cpu-moe --cpu-mask 0xFFFFFFFF `
+  --batch-size 4096 --ubatch-size 2048 `
    -rea off --jinja `
   --cache-ram 2048 --parallel 1 `
   --kv-unified --no-mmap
 ```
+
+> 💡 **关于 `--no-mmap` 与 `-ngl`：** `--no-mmap` 让 llama.cpp 自行管理内存分配，比手动指定 `-ngl` 层数效率更高。`-ngl` 强制锁定指定层数到 GPU，可能导致一半速度损失；而 `--no-mmap` 让引擎根据实际显存动态调度，实测在 RTX 5070 8GB 上可达 50~60 t/s。KV 缓存用 `q4_0` 量化可节省一半显存，16K 上下文下 q4 可稳定运行 50K+ token。
 
 ### 关键指标
 
@@ -617,7 +619,7 @@ powershell -File start.ps1
 
 启动顺序：
 ```
-[1/7] llama-server        (8080, Qwen3.6-35B, ngl=41)
+[1/7] llama-server        (8080, Qwen3.6-35B, --no-mmap)
 [2/7] Embedding Server    (9999, all-MiniLM + BGE 双模型, CPU, ~100MB 内存)
 [3/7] VRAM 分档检测       (自动判断 TTS/ComfyUI 是否停 llama)
 [4/7] Live2D Bridge       (19200, pixi-live2d-display)

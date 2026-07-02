@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Satoshi:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="styles/main.css?v=37">
-<link rel="stylesheet" href="styles/polish.css?v=26">
+<link rel="stylesheet" href="styles/polish.css?v=27">
 </head>
 <body>
 
@@ -559,6 +559,18 @@
       <input class="settings-input" id="setting-mem0-interval" type="number" value="10" min="1" max="99">
     </div>
 
+    <div class="settings-group">
+      <div class="settings-label">对话树模式 (Conversation Tree)</div>
+      <select class="settings-input settings-select" id="setting-tree-mode">
+        <option value="auto">自动 (Auto)</option>
+        <option value="on">开启 (On)</option>
+        <option value="off">关闭 (Off)</option>
+      </select>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+        开启后重新回复会创建分支，保留历史版本
+      </div>
+    </div>
+
     <div class="settings-actions">
       <button class="btn-secondary" id="settings-cancel">Cancel</button>
       <button class="btn-primary" id="settings-save">Save</button>
@@ -648,10 +660,11 @@
 })();
 </script>
 <script>window.addEventListener('error',function(e){document.title='JS ERR: '+e.message;console.error(e);});</script>
-<script src="scripts/store.js?v=25"></script>
+<script src="scripts/store.js?v=26"></script>
+<script src="scripts/tree.js?v=1"></script>
 <script src="scripts/api.js?v=25"></script>
 <script src="scripts/importer.js?v=25"></script>
-<script src="scripts/ui.js?v=36"></script>
+<script src="scripts/ui.js?v=37"></script>
 <script src="scripts/studio.js?v=25"></script>
 </body>
 </html>

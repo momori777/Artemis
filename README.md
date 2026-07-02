@@ -261,13 +261,15 @@ Running Qwen3.6-35B-A3B (MoE, Q4_K, 16.10 GiB, 34.66B params) via llama.cpp (b88
 llama-server.exe `
   -m "Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf" `
   -c 120000 `
-  --flash-attn on -ctk q8_0 -ctv q8_0 `
-  -ngl 41 --cpu-moe --cpu-mask 0xFFFFFFFF `
-  --batch-size 4096 --ubatch-size 2048 --threads 24 `
+  --flash-attn on -ctk q4_0 -ctv q4_0 `
+  --cpu-moe --cpu-mask 0xFFFFFFFF `
+  --batch-size 4096 --ubatch-size 2048 `
    -rea off --jinja `
   --cache-ram 2048 --parallel 1 `
   --kv-unified --no-mmap
 ```
+
+> 💡 **About `--no-mmap` vs `-ngl`:** `--no-mmap` lets llama.cpp manage memory on its own, which is far more efficient than manually specifying layers with `-ngl`. Forcing GPU layers via `-ngl` can cut speed in half; `--no-mmap` allows the engine to dynamically allocate based on actual VRAM, yielding 50~60 t/s on RTX 5070 8GB. Using `q4_0` for KV cache halves VRAM usage — at 16K context, q4 runs stably for 50K+ tokens.
 
 ### Key Metrics
 
@@ -622,7 +624,7 @@ powershell -File start.ps1
 
 Startup sequence:
 ```
-[1/7] llama-server        (8080, Qwen3.6-35B, ngl=41)
+[1/7] llama-server        (8080, Qwen3.6-35B, --no-mmap)
 [2/7] Embedding Server    (9999, all-MiniLM + BGE dual models, CPU, ~100MB RAM)
 [3/7] VRAM Tier Detection (auto-selects whether TTS/ComfyUI stops llama)
 [4/7] Live2D Bridge       (19200, pixi-live2d-display)

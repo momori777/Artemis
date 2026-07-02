@@ -652,7 +652,7 @@ class GPTSoVITSTTSProvider(QObject):
                 "text_split_method": "cut1",
                 "batch_size": 1,
                 "media_type": "wav",
-                "streaming_mode": False,
+                "streaming_mode": 2,
                 "top_k": 15,
                 "top_p": 1,
                 "temperature": 1,

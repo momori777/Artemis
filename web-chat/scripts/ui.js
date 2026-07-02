@@ -1061,6 +1061,76 @@ var UI = {
   },
 
   // ---- Message rendering ----
+  _renderTreeNode: function(node, index, tree) {
+    var el = this.renderMessage(node, index);
+    // Add branch indicator if parent has multiple children
+    if (tree && node.parentId) {
+      var parent = tree.nodes[node.parentId];
+      if (parent && parent.childrenIds.length > 1) {
+        // Show branch indicator on each child after a branch point
+        var branchBar = document.createElement('div');
+        branchBar.className = 'msg-branch-info';
+
+        // Figure out current branch number
+        var curBranchIdx = -1;
+        var walk = tree.currentNodeId;
+        while (walk) {
+          var idx = parent.childrenIds.indexOf(walk);
+          if (idx >= 0) { curBranchIdx = idx; break; }
+          var wn = tree.nodes[walk];
+          walk = wn ? wn.parentId : null;
+        }
+
+        var label = 'Branch ' + (curBranchIdx >= 0 ? (curBranchIdx + 1) : '?') + '/' + parent.childrenIds.length;
+        branchBar.innerHTML = '<span class="branch-dot">↳</span> <span class="branch-label">' + label + '</span>';
+
+        // Branch switcher buttons
+        var branchBtns = document.createElement('span');
+        branchBtns.className = 'branch-switcher';
+        var siblings = parent.childrenIds.map(function(id) { return tree.nodes[id]; });
+        var self = this;
+        siblings.forEach(function(sib, si) {
+          var btn = document.createElement('button');
+          btn.textContent = '#' + (si + 1);
+          btn.title = (sib.regenerated ? '[Old] ' : '') + 'Branch ' + (si + 1) + ': ' + (sib.content || '').slice(0, 40);
+          btn.className = 'branch-btn';
+          if (sib.regenerated) btn.classList.add('old');
+
+          // Is this branch on the current path?
+          var onPath = false;
+          var w = tree.currentNodeId;
+          while (w) {
+            if (w === sib.id) { onPath = true; break; }
+            var wnode = tree.nodes[w];
+            w = wnode ? wnode.parentId : null;
+          }
+          if (onPath) btn.classList.add('active');
+
+          (function(targetId, branchIdx) {
+            btn.addEventListener('click', function(e) {
+              e.stopPropagation();
+              jumpToNode(tree, targetId);
+              saveSessionTree(self.state.currentCharId, self.state.currentSessionId, tree);
+              self.state.messages = getChainMessages(tree);
+              self.$messages.innerHTML = '';
+              self.appendSystemMsg('Jumped to branch #' + (branchIdx + 1) + ' - ' + self.formatTime(new Date()));
+              getCurrentChain(tree).forEach(function(cn, ci) {
+                if (cn.role === 'system' || cn.regenerated) return;
+                var cel = self._renderTreeNode(cn, ci, tree);
+                self.$messages.appendChild(cel);
+              });
+              self.scrollToBottom(true);
+            });
+          })(sib.id, si);
+          branchBtns.appendChild(btn);
+        });
+        branchBar.appendChild(branchBtns);
+        el.insertBefore(branchBar, el.firstChild);
+      }
+    }
+    return el;
+  },
+
   renderMessage: function(msg, index) {
     var isUser = msg.role === 'user';
     var isSystem = msg.role === 'system';
@@ -1390,53 +1460,108 @@ var UI = {
     var self = this;
     if (this.state.streaming) return;
 
+    var charId = this.state.currentCharId;
+    var sessionId = this.state.currentSessionId;
+
+    // ── Tree mode: create a branch ────
+    if (this._useTree && this.state.tree) {
+      var newId = branchRegenerate(this.state.tree, assistantIndex);
+      if (!newId) return;
+
+      // Re-render from tree
+      this.state.messages = getChainMessages(this.state.tree);
+      this.$messages.innerHTML = '';
+      this.appendSystemMsg('Branch: regenerating - ' + this.formatDate(new Date()));
+      var chain = getCurrentChain(this.state.tree);
+      chain.forEach(function(n, i) {
+        if (n.role === 'system' || n.regenerated) return;
+        var el = self._renderTreeNode(n, i, self.state.tree);
+        self.$messages.appendChild(el);
+      });
+      saveSessionTree(charId, sessionId, this.state.tree);
+
+      this.state.streaming = true;
+      this.$sendBtn.disabled = true;
+      this.showTyping();
+
+      var settings = getSettings();
+      settings.characterId = charId || 'natsume';
+      var currentChar = getChar(charId);
+      if (currentChar && currentChar.imported && currentChar.systemPrompt) {
+        settings.systemPrompt = currentChar.systemPrompt;
+      }
+
+      // Replay messages: get parent chain + new branch node as pending
+      var replayMsgs = getCurrentChain(this.state.tree)
+        .filter(function(n) { return n.role !== 'system' && !n.regenerated; })
+        .map(function(n) { return { role: n.role, content: n._pending ? 'Please reply again with a different answer.' : n.content }; });
+
+      self.hideTyping();
+      self.createStreamBubble();
+
+      ApiClient.chatStream(
+        replayMsgs,
+        settings,
+        function(token, type) { self.appendStreamToken(token, type); },
+        function(result) {
+          self.finalizeStream(result.text);
+          var parsed = self._parseMediaFromText(result.text);
+          var cleanText = parsed.cleanText;
+          var tree = self.state.tree;
+          // Update the pending placeholder node with real content
+          tree.nodes[newId].content = cleanText;
+          tree.nodes[newId].time = self.formatTime(new Date());
+          tree.nodes[newId]._pending = false;
+          if (result.media) tree.nodes[newId].media = result.media;
+          else if (parsed.mediaPath) tree.nodes[newId].media = self._resolveMediaPath(parsed.mediaPath);
+          self.state.messages = getChainMessages(tree);
+          saveSessionTree(charId, sessionId, tree);
+          self.state.streaming = false;
+          self.$sendBtn.disabled = false;
+          self.$input.focus();
+          self.loadSessionsList();
+          showToast('Reply regenerated (new branch)');
+        },
+        function(err) {
+          console.warn('Regenerate stream failed:', err.message);
+          self.finalizeStream('');
+          var bubble = document.getElementById('stream-bubble');
+          if (bubble) bubble.remove();
+          self.doFallback(err.message);
+          self.state.streaming = false;
+          self.$sendBtn.disabled = false;
+          self.$input.focus();
+        }
+      );
+      return;
+    }
+
+    // ── Flat mode (original logic) ────
     var msg = this.state.messages[assistantIndex];
     if (!msg || msg.role !== 'assistant') return;
 
-    // Mark the old message as superseded (keep in history but visually hidden)
-    msg.regenerated = true;
-
-    // Find the last user/system message before this assistant message
-    // to truncate from (the user message before this assistant reply)
-    var truncateAt = assistantIndex;
-    for (var i = assistantIndex - 1; i >= 0; i--) {
-      if (this.state.messages[i].role === 'user') {
-        truncateAt = i;
-        break;
-      }
+    var triggerUserIdx = assistantIndex - 1;
+    if (triggerUserIdx < 0 || this.state.messages[triggerUserIdx].role !== 'user') {
+      console.warn('No user message immediately before assistant index', assistantIndex);
+      return;
     }
 
-    // Remove messages from truncateAt onward
-    var cutoffMsgs = this.state.messages.slice(truncateAt);
-    this.state.messages = this.state.messages.slice(0, truncateAt);
+    msg.regenerated = true;
+    this.state.messages.splice(assistantIndex, 1);
 
-    // Remove DOM elements from truncateAt onward
     var rows = this.$messages.querySelectorAll('.msg-row');
-    var remaining = 0;
     rows.forEach(function(row) {
       var idx = parseInt(row.dataset.msgIndex);
-      if (idx >= truncateAt || (self.state.messages[idx] && self.state.messages[idx].regenerated)) {
+      if (idx === assistantIndex) {
         row.remove();
-      } else {
-        remaining = idx + 1;
       }
     });
 
-    // Show generating indicator
     this.showTyping();
     this.state.streaming = true;
     this.$sendBtn.disabled = true;
 
-    // Rebuild the messages array: keep original user message, send for regeneration
-    var replayMessages = this.state.messages.slice();
-    // Re-add the user message that triggered this assistant reply
-    var userMsg = null;
-    for (var j = assistantIndex - 1; j >= 0; j--) {
-      if (this.state.messages[j] && this.state.messages[j].role === 'user') {
-        userMsg = cutoffMsgs[0]; // First truncated message should be the user msg
-        break;
-      }
-    }
+    var replayMessages = this.state.messages.slice(0, triggerUserIdx + 1);
 
     var settings = getSettings();
     settings.characterId = self.state.currentCharId || 'natsume';
@@ -1445,16 +1570,7 @@ var UI = {
       settings.systemPrompt = currentChar.systemPrompt;
     }
 
-    // Use the user message content that led to the assistant reply
-    var regenUserMsg = null;
-    for (var k = assistantIndex - 1; k >= 0; k--) {
-      if (this.state.messages[k] && this.state.messages[k].role === 'user') {
-        regenUserMsg = this.state.messages[k];
-        break;
-      }
-    }
-
-    if (regenUserMsg) {
+    if (this.state.messages[triggerUserIdx]) {
       replayMessages.push({
         role: 'assistant',
         content: '(Regenerating: ' + this.formatTime(new Date()) + ')',
@@ -1480,7 +1596,11 @@ var UI = {
         var newMsg = { role: 'assistant', content: cleanText, time: self.formatTime(new Date()) };
         if (result.media) newMsg.media = result.media;
         else if (parsed.mediaPath) newMsg.media = self._resolveMediaPath(parsed.mediaPath);
-        self.state.messages.push(newMsg);
+        self.state.messages.splice(triggerUserIdx + 1, 0, newMsg);
+        self.$messages.innerHTML = '';
+        for (var mi = 0; mi < self.state.messages.length; mi++) {
+          self.$messages.appendChild(self.renderMessage(self.state.messages[mi], mi));
+        }
         saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
         self.state.streaming = false;
         self.$sendBtn.disabled = false;
@@ -1712,9 +1832,20 @@ var UI = {
     this.$input.value = '';
     this.autoResize();
 
+    var charId = this.state.currentCharId;
+    var sessionId = this.state.currentSessionId;
+
     var userMsg = { role: 'user', content: content, time: this.formatTime(new Date()) };
     this.appendMessage(userMsg);
-    this.state.messages.push(userMsg);
+
+    if (this._useTree && this.state.tree) {
+      appendTreeNode(this.state.tree, userMsg);
+      this.state.messages = getChainMessages(this.state.tree);
+      saveSessionTree(charId, sessionId, this.state.tree);
+    } else {
+      this.state.messages.push(userMsg);
+      saveChatHistory(charId, sessionId, this.state.messages);
+    }
 
     this.showTyping();
     this.state.streaming = true;
@@ -1722,19 +1853,20 @@ var UI = {
 
     var settings = getSettings();
     settings.characterId = self.state.currentCharId || 'natsume';
-    // Pass custom system prompt for imported characters
     var currentChar = getChar(self.state.currentCharId);
     if (currentChar && currentChar.imported && currentChar.systemPrompt) {
       settings.systemPrompt = currentChar.systemPrompt;
     }
 
-    // Always try API (daemon proxy). Fallback if it fails.
     if (settings.streamEnabled !== false) {
       self.hideTyping();
       self.createStreamBubble();
 
+      // Use tree messages or flat messages
+      var apiMessages = self._useTree && self.state.tree ? getChainMessages(self.state.tree) : self.state.messages;
+
       ApiClient.chatStream(
-        self.state.messages,
+        apiMessages,
         settings,
         function(token, type) { self.appendStreamToken(token, type); },
         function(result) {
@@ -1744,11 +1876,19 @@ var UI = {
           var charMsg = { role: 'assistant', content: cleanText, time: self.formatTime(new Date()) };
           if (result.media) charMsg.media = result.media;
           else if (parsed.mediaPath) charMsg.media = self._resolveMediaPath(parsed.mediaPath);
-          self.state.messages.push(charMsg);
-          saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
+
+          if (self._useTree && self.state.tree) {
+            appendTreeNode(self.state.tree, charMsg);
+            self.state.messages = getChainMessages(self.state.tree);
+            saveSessionTree(charId, sessionId, self.state.tree);
+          } else {
+            self.state.messages.push(charMsg);
+            saveChatHistory(charId, sessionId, self.state.messages);
+          }
           self.state.streaming = false;
           self.$sendBtn.disabled = false;
           self.$input.focus();
+          self.loadSessionsList();
         },
         function(err) {
           console.warn('Stream failed:', err.message);
@@ -1756,29 +1896,45 @@ var UI = {
           var bubble = document.getElementById('stream-bubble');
           if (bubble) bubble.remove();
           self.doFallback(err.message);
-          saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
+          if (self._useTree && self.state.tree) {
+            saveSessionTree(charId, sessionId, self.state.tree);
+          } else {
+            saveChatHistory(charId, sessionId, self.state.messages);
+          }
           self.state.streaming = false;
           self.$sendBtn.disabled = false;
           self.$input.focus();
         }
       );
     } else {
-      ApiClient.nonStreamChat(self.state.messages, settings).then(function(reply) {
+      var apiMsgs = self._useTree && self.state.tree ? getChainMessages(self.state.tree) : self.state.messages;
+      ApiClient.nonStreamChat(apiMsgs, settings).then(function(reply) {
         self.hideTyping();
         var parsed = self._parseMediaFromText(reply);
         var charMsg = { role: 'assistant', content: parsed.cleanText, time: self.formatTime(new Date()) };
         if (parsed.mediaPath) charMsg.media = self._resolveMediaPath(parsed.mediaPath);
         self.appendMessage(charMsg);
-        self.state.messages.push(charMsg);
-        saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
+        if (self._useTree && self.state.tree) {
+          appendTreeNode(self.state.tree, charMsg);
+          self.state.messages = getChainMessages(self.state.tree);
+          saveSessionTree(charId, sessionId, self.state.tree);
+        } else {
+          self.state.messages.push(charMsg);
+          saveChatHistory(charId, sessionId, self.state.messages);
+        }
         self.state.streaming = false;
         self.$sendBtn.disabled = false;
         self.$input.focus();
+        self.loadSessionsList();
       }).catch(function(err) {
         console.warn('Non-stream failed:', err.message);
         self.hideTyping();
         self.doFallback(err.message);
-        saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
+        if (self._useTree && self.state.tree) {
+          saveSessionTree(charId, sessionId, self.state.tree);
+        } else {
+          saveChatHistory(charId, sessionId, self.state.messages);
+        }
         self.state.streaming = false;
         self.$sendBtn.disabled = false;
         self.$input.focus();
@@ -2286,15 +2442,50 @@ var UI = {
   loadHistory: function() {
     if (!this.$messages) return;
     this.$messages.innerHTML = '';
-    var msgs = getChatHistory(this.state.currentCharId, this.state.currentSessionId);
-    this.state.messages = msgs.slice();
     var self = this;
+    var charId = this.state.currentCharId;
+    var sessionId = this.state.currentSessionId;
+
+    // Tree mode
+    if (isTreeSession(charId, sessionId)) {
+      this._useTree = true;
+      var tree = this.state.tree = getSessionTree(charId, sessionId);
+      if (!tree) {
+        this.appendSystemMsg('Chat started - ' + this.formatDate(new Date()));
+        this._userScrolledUp = false;
+        this.scrollToBottom(true);
+        return;
+      }
+      var chain = getCurrentChain(tree);
+      var msgCount = chain.filter(function(n) { return n.role !== 'system'; }).length;
+      if (msgCount === 0) {
+        this.appendSystemMsg('Chat started - ' + this.formatDate(new Date()));
+      } else {
+        // Also store flat message array for API calls
+        this.state.messages = getChainMessages(tree);
+        this.appendSystemMsg('Resumed (' + msgCount + ' messages) - ' + this.formatDate(new Date()));
+        chain.forEach(function(n, i) {
+          if (n.role === 'system') return;
+          if (n.regenerated) return; // skip superseded branches in current path
+          var el = self._renderTreeNode(n, i, tree);
+          self.$messages.appendChild(el);
+        });
+      }
+      this._userScrolledUp = false;
+      this.scrollToBottom(true);
+      return;
+    }
+
+    // Flat message mode
+    this._useTree = false;
+    this.state.tree = null;
+    var msgs = getChatHistory(charId, sessionId);
+    this.state.messages = msgs.slice();
     if (msgs.length === 0) {
       this.appendSystemMsg('Chat started - ' + this.formatDate(new Date()));
     } else {
       this.appendSystemMsg('Resumed (' + msgs.length + ' messages) - ' + this.formatDate(new Date()));
       msgs.forEach(function(m, i) {
-        // Re-extract MEDIA: from stored text on load (just in case media wasn't saved separately)
         if (!m.media && m.content && m.role === 'assistant') {
           var parsed = self._parseMediaFromText(m.content);
           if (parsed.mediaPath) {
@@ -2303,7 +2494,6 @@ var UI = {
             self.state.messages[i] = m;
           }
         }
-        // Paint messages: resolve local path to daemon proxy on reload
         if (m.paint && m.media && !/^https?:\/\//.test(m.media)) {
           m.media = self._resolveMediaPath(m.media);
         }
@@ -2324,9 +2514,20 @@ var UI = {
 
   // ---- Session reset ----
   resetSession: function() {
-    if (this.state.messages.length === 0) return;
-    this.state.messages = [];
-    saveChatHistory(this.state.currentCharId, this.state.currentSessionId, []);
+    var charId = this.state.currentCharId;
+    var sessionId = this.state.currentSessionId;
+    var hasContent = this._useTree && this.state.tree
+      ? treeNodeCount(this.state.tree) > 1
+      : this.state.messages.length > 0;
+    if (!hasContent) return;
+    
+    if (this._useTree && this.state.tree) {
+      this.state.tree = migrateToTree([]);
+      saveSessionTree(charId, sessionId, this.state.tree);
+    } else {
+      this.state.messages = [];
+      saveChatHistory(charId, sessionId, []);
+    }
     this.$messages.innerHTML = '';
     this.appendSystemMsg('Session reset - ' + this.formatTime(new Date()));
     showToast('Session reset');
@@ -2334,9 +2535,16 @@ var UI = {
   },
 
   clearMessages: function() {
-    this.state.messages = [];
+    var charId = this.state.currentCharId;
+    var sessionId = this.state.currentSessionId;
+    if (this._useTree && this.state.tree) {
+      this.state.tree = migrateToTree([]);
+      saveSessionTree(charId, sessionId, this.state.tree);
+    } else {
+      this.state.messages = [];
+      saveChatHistory(charId, sessionId, []);
+    }
     this.$messages.innerHTML = '';
-    saveChatHistory(this.state.currentCharId, this.state.currentSessionId, []);
     this.appendSystemMsg('Cleared - ' + this.formatTime(new Date()));
     showToast('Messages cleared');
     this.loadSessionsList();
@@ -2410,10 +2618,14 @@ var UI = {
       s.mem0Enhanced = document.getElementById('setting-mem0') ? document.getElementById('setting-mem0').checked : s.mem0Enhanced;
       s.mem0WriteEnabled = document.getElementById('setting-mem0-write') ? document.getElementById('setting-mem0-write').checked : s.mem0WriteEnabled;
       s.mem0WriteInterval = document.getElementById('setting-mem0-interval') ? parseInt(document.getElementById('setting-mem0-interval').value) || 10 : s.mem0WriteInterval;
+      s.treeMode = document.getElementById('setting-tree-mode') ? document.getElementById('setting-tree-mode').value : (s.treeMode || 'auto');
       saveSettings(s);
       ApiClient.init(s.apiBase);
       Studio.bridgeUrl = s.bridgeUrl;
       overlay.classList.remove('open');
+      // Refresh session after tree mode change
+      self.loadHistory();
+      showToast('Settings saved');
       // Sync chat toggle with settings
       var chatReasoningCheck = document.getElementById('chat-reasoning');
       var chatReasoningSwitch = document.getElementById('toggle-reasoning-switch');
@@ -2547,6 +2759,9 @@ var UI = {
     if (mem0WriteCheck) mem0WriteCheck.checked = s.mem0WriteEnabled === true;
     if (mem0WriteToggle) mem0WriteToggle.classList.toggle('on', s.mem0WriteEnabled === true);
     if (mem0Interval) mem0Interval.value = s.mem0WriteInterval || 10;
+    // Tree mode
+    var treeModeSelect = document.getElementById('setting-tree-mode');
+    if (treeModeSelect) treeModeSelect.value = s.treeMode || 'auto';
     if (overlay) overlay.classList.add('open');
 
     // Populate model dropdown from Gateway

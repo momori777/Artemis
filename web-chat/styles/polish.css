@@ -171,3 +171,51 @@
 }
 .theme-toggle:hover { background:var(--bg-elevated); color:var(--text-primary); }
 .theme-toggle i { font-size:14px; }
+
+/* ===== Branch Tree UI ===== */
+.msg-branch-info {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:2px 0 4px;
+  font-size:11px;
+  color:var(--text-muted);
+  font-family:var(--font-mono);
+}
+.branch-dot { color:var(--accent); font-size:14px; line-height:1; }
+.branch-label { font-weight:500; opacity:0.7; }
+.branch-switcher {
+  display:flex;
+  gap:3px;
+  margin-left:4px;
+}
+.branch-btn {
+  width:24px;
+  height:20px;
+  border-radius:4px;
+  border:1px solid var(--border-subtle);
+  background:var(--bg-elevated);
+  color:var(--text-muted);
+  font-size:10px;
+  font-weight:600;
+  cursor:pointer;
+  font-family:var(--font-mono);
+  transition:all var(--dur-fast) var(--ease-out-expo);
+  padding:0;
+  line-height:18px;
+  text-align:center;
+}
+.branch-btn:hover {
+  background:var(--bg-elevated);
+  color:var(--text-primary);
+  border-color:var(--border);
+}
+.branch-btn.active {
+  background:var(--accent);
+  color:#fff;
+  border-color:var(--accent);
+}
+.branch-btn.old {
+  opacity:0.4;
+  text-decoration:line-through;
+}

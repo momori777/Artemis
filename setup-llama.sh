@@ -406,7 +406,7 @@ LLAMA_ARGS=(
     '-m' "\"${MODEL_PATH}\""
     '-c' "${REAL_CONTEXT}"
     '--flash-attn' 'on'
-    '-ngl' "${NGL}"
+    '--no-mmap'
     '--batch-size' "${BATCH_SIZE}"
     '--ubatch-size' "${UBATCH}"
     '--threads' "${THREADS}"
@@ -452,7 +452,7 @@ cat > "$OUTPUT_DIR/hardware-report.md" << EOF
 ## Generated Parameters
 | Parameter | Value | Reasoning |
 |-----------|-------|-----------|
-| -ngl       | ${NGL}   | Based on ${VRAM_GB} GB VRAM |
+| --no-mmap  | (always) | Reduce memory pressure |
 | --threads  | ${THREADS} | ${CPU_CORES} logical cores |
 | --batch-size | ${BATCH_SIZE} | Balanced for CPU + GPU |
 | --ubatch-size | ${UBATCH} | Half batch-size |
