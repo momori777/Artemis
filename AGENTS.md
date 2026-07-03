@@ -77,9 +77,7 @@ sessions_spawn({
 
 exec 时一定要加 yieldMs: 300000（必须！PS脚本会杀llama，要等它恢复）
 
-命令（复制粘贴，只改prompt和no-manage判断）：
-
-如果当前VRAM级别是2(ALL_ONLINE)且GPU>=16GB：在命令末尾加 `--no-manage-llama`
+命令（复制粘贴）：
 
 powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.openclaw\workspace\skills\comfyui\run_comfyui.ps1" -positive "$posPrompt" -negative "$negPrompt" -width 1200 -height 1500 -steps 30 -cfg 6.0 -checkpoint "WAI-Nsfw-Illustrious-17.safetensors"
 
@@ -131,9 +129,7 @@ sessions_spawn({
 
 exec 时一定要加 yieldMs: 180000（必须！PS脚本会杀llama，要等它恢复）
 
-命令（复制粘贴，只改参数和no-manage判断）：
-
-如果当前VRAM级别是2(ALL_ONLINE)且GPU>=16GB：在命令末尾加 `--no-manage-llama`
+命令（复制粘贴）：
 
 powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.openclaw\workspace\skills\tts\run_tts.ps1" -text "$text" -lang "$lang" -mood "$mood"
 
@@ -301,32 +297,33 @@ py -c "import json;from skills.shared.mem0_bridge import search_mem0_qdrant,comp
 | Level | 名称 | TTS | ComfyUI | ASR | Live2D | 说明 |
 |-------|------|-----|---------|-----|--------|------|
 | 0 | ALL_STOP | 停 | 停 | 停 | 不停 | <8GB VRAM 安全模式 |
-| 1 | TTS_STOP | 停 | 停 | 不停 | 不停 | <12GB 默认 |
-| **2** | **ALL_ONLINE** | **不停** | **不停** | **不停** | **不停** | **≥12GB 推荐（当前）** |
+| **1** | **TTS_STOP** | **停** | **停** | **不停** | **不停** | **8-12GB 默认（当前）** |
+| 2 | ALL_ONLINE | 不停 | 不停 | 不停 | 不停 | ≥12GB 推荐 |
 | 3 | LEGACY | 停 | 停 | 停 | 不停 | 原始行为 |
 
-**当前设置: Level 2 (ALL_ONLINE)** — RTX 5070 8GB，所有技能和 llama 共存。
+**当前设置: Level 1 (TTS_STOP)** — RTX 5070 8GB，ComfyUI/TTS 需停 llama，ASR 不停。
 
 ### 规则
-- 所有 spawn 模板中的 `--no-manage-llama` 标记技能不杀 llama
+- ComfyUI/TTS 的 spawn 模板**不加** `--no-manage-llama`（8GB 卡共存不了）
 - 同一时刻最多一个停 llama 的技能在跑
 - ASR 永远不抢显存（独立 Whisper small ~1.5GB）
 
 ### 切换级别
 ```powershell
 # PowerShell
-$env:VRAM_LEVEL = "0"  # 临时切到安全模式
-$env:VRAM_LEVEL = "2"  # 恢复默认
+$env:VRAM_LEVEL = "0"  # 临时切到安全模式（<8GB）
+$env:VRAM_LEVEL = "1"  # 恢复默认（8-12GB）
+$env:VRAM_LEVEL = "2"  # ≥12GB 全在线
 ```
 
 ---
 
 ## 串行规则
 
-基于当前 VRAM 级别（Level 2: ALL_ONLINE）：
-- TTS/ComfyUI: `--no-manage-llama`，不停 llama
+基于当前 VRAM 级别（Level 1: TTS_STOP）：
+- TTS/ComfyUI: 停 llama → 跑技能 → 重启 llama
 - ASR: 不停 llama（Whisper small ~1.5GB 独立显存）
-- TTS 和 ComfyUI 不能同时 spawn（都需要 GPU），必须串行
+- TTS 和 ComfyUI 不能同时 spawn，必须串行
 - ASR 可以和任何技能并行
 - 收到 DONE: 后再 spawn 下一个 GPU 密集型技能
 
