@@ -1,59 +1,31 @@
-# Artemis Python Dependencies
-# =============================
-# Install with: pip install -r requirements.txt
+# ============================================================
+# AI Girlfriend 项目自包含依赖
+# 安装: pip install -r requirements.txt
 #
-# Covers ALL skills: root scripts, ASR, TTS (GPT-SoVITS), ComfyUI, Sakura, shared utils.
-# For Chinese users, add mirror:
-#   pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
+# 项目内模块 (skills/xxx) 不需要 pip 安装，PYTHONPATH 自动处理。
+# ComfyUI (comfy, folder_paths, nodes) 和 GPT-SoVITS (GPT_SoVITS)
+# 是外部推理框架，由 config.yaml 的 comfyui_root / sovits_root 指向。
+# torch 版本需匹配 CUDA 驱动 + GPU 架构（RTX 5070 Blackwell 需 >=2.7+cu130）。
+# ============================================================
 
-# --- Core: Root scripts ---
-psutil>=5.9
+# --- 核心（项目 .py 直接 import）---
+numpy>=1.24.0
+pyyaml>=6.0
+Pillow>=10.0.0
+scipy>=1.10.0
 
-# --- ASR (Speech-to-Text) ---
-faster-whisper>=1.0.0
+# --- shiki_daemon.py ---
+pystray>=0.19.0
 
-# --- TTS (GPT-SoVITS v2Pro) ---
-# GPT-SoVITS engine is vendored under skills/sovits/GPT_SoVITS/
-# Core deps (torch, torchaudio installed separately for CUDA)
-torch>=2.0
-torchaudio>=2.0
-transformers>=4.43
-ffmpeg-python
-einops
-soundfile
-librosa
-jieba
-jieba_fast
-pykakasi>=1.2
-numpy>=1.24
-scipy>=1.10
-onnxruntime
-openai-whisper
-av>=11
-# pyopenjtalk is optional (preferred for Japanese G2P; pykakasi fallback works)
-# pyopenjtalk  # uncomment if you can build it (requires C++ toolchain on Windows)
+# --- embedding_server.py ---
+flask>=2.0.0
 
-# --- ComfyUI ---
-# ComfyUI is installed separately (E:\comfyui\ComfyUI-aki-v3)
-# This project only calls its API. No extra deps needed.
+# --- mem0_bridge（向量记忆）---
+# 运行时可选，不安装则记忆搜索功能降级
+# qdrant-client>=1.7.0
+# sentence-transformers>=2.2.0
 
-# --- Sakura Desktop Pet (optional) ---
-# See skills/sakura/requirements.txt for full list
-# Core subset included here for convenience:
-PySide6>=6.7
-PySide6-Addons>=6.7
-playwright>=1.40
-openai>=1.90.0
-pydantic>=2.7.3
-
-# --- Character Card Importer ---
-PyYAML>=6.0
-
-# --- Shared utilities (character archive, memory tools) ---
-qdrant-client>=1.12.0
-sentence-transformers>=5.0.0
-
-# --- Live2D bridge (optional, Node.js-based, no Python deps) ---
-
-# --- OpenClaw Gateway + mem0 (installed by setup-openclaw.ps1) ---
-# sqlalchemy, protobuf, etc. — use setup-openclaw.ps1
+# --- 以下由外部环境提供，不通过 pip 安装 ---
+# torch (ComfyUI 自带的 python 环境已包含)
+# GPT_SoVITS (sovits_root 指向外部目录)
+# ComfyUI (comfyui_root / skills/comfyui_core/)

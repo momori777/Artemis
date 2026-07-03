@@ -45,9 +45,11 @@ $rawOutput = & $comfyuiPython $comfyuiScript $positive $negative $seed $width $h
 # Extract the path from stdout — match absolute Windows paths only
 $imgPath = ($rawOutput | Where-Object { $_ -match '^[A-Za-z]:\\' -and $_ -match '\.png$' } | Select-Object -Last 1) -replace '^\s+|\s+$',''
 
-# Fallback: if extraction failed but Python exited ok, find newest png in media dir
+# Fallback: if extraction failed but Python exited ok, find newest png in comfyui temp output dir
 if ((-not $imgPath) -and ($LASTEXITCODE -eq 0)) {
-    $fallback = Get-ChildItem $mediaDir -Filter '*.png' -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $comfyuiTempDir = Get-YamlValue $configRaw 'comfyui_temp_output_dir'
+    if (-not $comfyuiTempDir) { $comfyuiTempDir = Join-Path $workspaceRoot 'comfyui' }
+    $fallback = Get-ChildItem $comfyuiTempDir -Filter '*.png' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if ($fallback) {
         $imgAge = [int]((Get-Date) - $fallback.LastWriteTime).TotalSeconds
         if ($imgAge -lt 300) {
