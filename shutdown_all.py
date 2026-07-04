@@ -102,10 +102,10 @@ def _get_pid_by_port(port):
 
 
 def _force_kill_pid(pid, name, force=False):
-    flag = "/f" if force else ""
+    # Always use /f — most services don't respond to graceful SIGTERM
     try:
         subprocess.run(
-            ["taskkill", flag, "/pid", str(pid)],
+            ["taskkill", "/f", "/pid", str(pid)],
             capture_output=True, timeout=5
         )
     except Exception:
