@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
 Artemis Graceful Shutdown
-=======================
+========================
 Closes ALL project processes: llama-server, Live2D bridge, ComfyUI,
-OpenClaw Gateway, and runs cleanup_orphans.ps1 to kill stuck child
-processes + stale locks.
+OpenClaw Gateway, Artemis Bridge, Task Board, WebChat, Sakura Desktop Pet,
+Embedding Server, and runs cleanup_orphans.ps1.
 
 Usage:
-    python shutdown_all.py
+    python shutdown_all.py           # full output
+    python shutdown_all.py --quiet   # minimal output
 
 Exit codes:
     0 = all clean
@@ -21,7 +22,6 @@ import socket
 import time
 import argparse
 
-# Force UTF-8 on Windows to avoid CJK garbled output in console
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
@@ -43,31 +43,82 @@ def port_open(host, port, timeout=1):
         s.close()
 
 
-def run_ps1(script_path, args=""):
-    """Run a PowerShell script and return (ok, output)."""
+def kill_by_port(port, name, wait_sec=3):
+    """Kill the process owning a local port via netstat + taskkill (no admin needed)."""
+    if not port_open("127.0.0.1", port):
+        print(f"[shutdown] {name}: not running")
+        return True
+
+    print(f"[shutdown] {name}: stopping (port {port})...")
+
+    # Find PID via netstat (works without admin)
+    pid = _get_pid_by_port(port)
+    if pid:
+        _force_kill_pid(pid, name)
+    else:
+        # Fallback: taskkill by port
+        subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             f"Get-NetTCPConnection -LocalPort {port} -ErrorAction SilentlyContinue | "
+             "ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"],
+            capture_output=True, text=True, timeout=8
+        )
+
+    for i in range(wait_sec * 2):
+        time.sleep(0.5)
+        if not port_open("127.0.0.1", port):
+            print(f"[shutdown] {name}: stopped ({(i+1)*0.5:.0f}s)")
+            return True
+
+    # Aggressive: try again with taskkill
+    pid = _get_pid_by_port(port)
+    if pid:
+        _force_kill_pid(pid, name, force=True)
+        time.sleep(1)
+        if not port_open("127.0.0.1", port):
+            print(f"[shutdown] {name}: force killed")
+            return True
+
+    print(f"[shutdown] {name}: STILL RUNNING — manual kill needed")
+    return False
+
+
+def _get_pid_by_port(port):
+    """Get PID listening on port using netstat (no admin required)."""
     try:
         result = subprocess.run(
-            ["powershell", "-ExecutionPolicy", "Bypass", "-NoProfile",
-             "-File", script_path] + (args.split() if args else []),
-            capture_output=True, text=True, timeout=120
+            ["netstat", "-ano"], capture_output=True, text=True, timeout=5,
+            encoding="utf-8", errors="replace"
         )
-        return result.returncode == 0, result.stdout.strip()
-    except subprocess.TimeoutExpired:
-        return False, "TIMEOUT"
-    except Exception as e:
-        return False, str(e)
+        for line in result.stdout.splitlines():
+            if f":{port}" in line and "LISTENING" in line:
+                parts = line.strip().split()
+                pid = parts[-1]
+                if pid.isdigit():
+                    return int(pid)
+    except Exception:
+        pass
+    return None
 
 
-# ---- Kill functions ----
+def _force_kill_pid(pid, name, force=False):
+    flag = "/f" if force else ""
+    try:
+        subprocess.run(
+            ["taskkill", flag, "/pid", str(pid)],
+            capture_output=True, timeout=5
+        )
+    except Exception:
+        pass
+
+
+# ---- Service-specific killers ----
 
 def kill_llama():
-    """Stop llama-server on port 8080 with graceful shutdown first."""
     if not port_open("127.0.0.1", 8080):
         print("[shutdown] llama-server: not running")
         return True
-
     print("[shutdown] llama-server: stopping...")
-    # graceful HTTP shutdown
     try:
         import urllib.request
         urllib.request.urlopen("http://127.0.0.1:8080/shutdown", timeout=3)
@@ -75,17 +126,13 @@ def kill_llama():
     except Exception:
         print("[shutdown] llama-server: HTTP shutdown failed, force killing")
 
-    # wait for port release (graceful path)
     for i in range(15):
         time.sleep(0.5)
         if not port_open("127.0.0.1", 8080):
             print(f"[shutdown] llama-server: stopped ({i*0.5:.0f}s)")
             return True
 
-    # force kill
-    print("[shutdown] llama-server: force killing...")
-    subprocess.run(["taskkill", "/f", "/im", "llama-server.exe"],
-                   capture_output=True)
+    subprocess.run(["taskkill", "/f", "/im", "llama-server.exe"], capture_output=True)
     time.sleep(1)
     ok = not port_open("127.0.0.1", 8080)
     if ok:
@@ -96,54 +143,14 @@ def kill_llama():
 
 
 def kill_live2d():
-    """Stop Live2D bridge on port 19200."""
-    if not port_open("127.0.0.1", 19200):
-        print("[shutdown] live2d bridge: not running")
-        return True
-
-    print("[shutdown] live2d bridge: stopping...")
-
-    # Gentle: kill the node process serving port 19200
-    try:
-        result = subprocess.run(
-            ["powershell", "-NoProfile", "-Command",
-             "$conn = Get-NetTCPConnection -LocalPort 19200 -ErrorAction SilentlyContinue; "
-             "if ($conn) { $conn | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } }"],
-            capture_output=True, text=True, timeout=10
-        )
-    except Exception:
-        pass
-
-    for i in range(10):
-        time.sleep(0.3)
-        if not port_open("127.0.0.1", 19200):
-            print(f"[shutdown] live2d bridge: stopped ({i*0.3:.0f}s)")
-            return True
-
-    # Fallback: kill node on that port
-    subprocess.run(
-        ["powershell", "-NoProfile", "-Command",
-         "Get-NetTCPConnection -LocalPort 19200 -ErrorAction SilentlyContinue | "
-         "ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }"],
-        capture_output=True
-    )
-    time.sleep(1)
-    ok = not port_open("127.0.0.1", 19200)
-    if ok:
-        print("[shutdown] live2d bridge: force killed")
-    else:
-        print("[shutdown] live2d bridge: STILL RUNNING — manual kill needed")
-    return ok
+    return kill_by_port(19200, "live2d bridge", wait_sec=3)
 
 
 def kill_comfyui():
-    """Stop ComfyUI if running."""
     if not port_open("127.0.0.1", 8188):
         print("[shutdown] ComfyUI: not running")
         return True
-
     print("[shutdown] ComfyUI: stopping...")
-    # Kill python processes with comfyui in command line
     try:
         subprocess.run(
             ["powershell", "-NoProfile", "-Command",
@@ -154,38 +161,16 @@ def kill_comfyui():
         )
     except Exception:
         pass
-
     for i in range(15):
         time.sleep(0.5)
         if not port_open("127.0.0.1", 8188):
             print(f"[shutdown] ComfyUI: stopped ({i*0.5:.0f}s)")
             return True
-
     print("[shutdown] ComfyUI: STILL RUNNING — manual kill needed")
     return False
 
 
-def _find_openclaw():
-    """Return full path to openclaw CLI, or None."""
-    candidates = [
-        os.path.expandvars(r"%APPDATA%\npm\openclaw.cmd"),
-        os.path.expandvars(r"%ProgramFiles%\nodejs\openclaw.cmd"),
-    ]
-    for c in candidates:
-        if os.path.exists(c):
-            return c
-    # Try 'where' as last resort
-    try:
-        r = subprocess.run(["where", "openclaw"], capture_output=True, text=True, timeout=5)
-        if r.returncode == 0 and r.stdout.strip():
-            return r.stdout.strip().splitlines()[0]
-    except Exception:
-        pass
-    return None
-
-
 def kill_gateway():
-    """Stop OpenClaw Gateway."""
     cli = _find_openclaw()
     if cli:
         try:
@@ -194,10 +179,7 @@ def kill_gateway():
                 capture_output=True, text=True, timeout=30
             )
             out = (result.stdout.strip() + " " + result.stderr.strip()).strip()
-            if out:
-                print(f"[shutdown] gateway: {out}")
-            else:
-                print("[shutdown] gateway: stopped")
+            print(f"[shutdown] gateway: {out}" if out else "[shutdown] gateway: stopped")
             return True
         except subprocess.TimeoutExpired:
             print("[shutdown] gateway: TIMEOUT")
@@ -207,105 +189,107 @@ def kill_gateway():
             return False
     else:
         print("[shutdown] gateway: CLI not found, trying process kill...")
-
-    # Fallback: kill node openclaw gateway process directly
     try:
         subprocess.run(
             ["powershell", "-NoProfile", "-Command",
              "Get-Process node -ErrorAction SilentlyContinue | "
-             "Where-Object { $_.CommandLine -match 'gateway' } | "
-             "Stop-Process -Force"],
+             "Where-Object { $_.CommandLine -match 'gateway' } | Stop-Process -Force"],
             capture_output=True, timeout=10
         )
-        print("[shutdown] gateway: force killed")
         return True
-    except Exception as e:
-        print(f"[shutdown] gateway: error: {e}")
+    except Exception:
         return False
 
 
+def kill_webchat():
+    return kill_by_port(19270, "webchat", wait_sec=3)
+
+
 def kill_bridge():
-    """Stop Artemis Bridge on port 19250."""
-    if not port_open("127.0.0.1", 19250):
-        print("[shutdown] artemis bridge: not running")
-        return True
-    print("[shutdown] artemis bridge: stopping...")
-    try:
-        subprocess.run(
-            ["powershell", "-NoProfile", "-Command",
-             "$conn = Get-NetTCPConnection -LocalPort 19250 -ErrorAction SilentlyContinue; "
-             "if ($conn) { $conn | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } }"],
-            capture_output=True, text=True, timeout=10
-        )
-    except Exception:
-        pass
-    for i in range(10):
-        time.sleep(0.3)
-        if not port_open("127.0.0.1", 19250):
-            print(f"[shutdown] artemis bridge: stopped ({i*0.3:.0f}s)")
-            return True
-    print("[shutdown] artemis bridge: STILL RUNNING - manual kill needed")
-    return False
+    return kill_by_port(19250, "artemis bridge", wait_sec=3)
 
 
 def kill_taskboard():
-    """Stop Task Board on port 19280."""
-    if not port_open("127.0.0.1", 19280):
-        print("[shutdown] task board: not running")
-        return True
-    print("[shutdown] task board: stopping...")
-    try:
-        subprocess.run(
-            ["powershell", "-NoProfile", "-Command",
-             "$conn = Get-NetTCPConnection -LocalPort 19280 -ErrorAction SilentlyContinue; "
-             "if ($conn) { $conn | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } }"],
-            capture_output=True, text=True, timeout=10
-        )
-    except Exception:
-        pass
-    for i in range(5):
-        time.sleep(0.3)
-        if not port_open("127.0.0.1", 19280):
-            print(f"[shutdown] task board: stopped ({i*0.3:.0f}s)")
-            return True
-    print("[shutdown] task board: STILL RUNNING - manual kill needed")
-    return False
+    return kill_by_port(19280, "task board", wait_sec=3)
 
 
-def kill_webchat():
-    """Stop webchat server on port 19270."""
-    if not port_open("127.0.0.1", 19270):
-        print("[shutdown] webchat: not running")
-        return True
-    print("[shutdown] webchat: stopping...")
+def kill_embedding_server():
+    return kill_by_port(9999, "embedding server", wait_sec=3)
+
+
+def kill_sakura():
+    """Stop Sakura Desktop Pet (PySide6 GUI)."""
+    pidFile = os.path.join(WORKSPACE, "skills", "sakura", ".sakura_pid.txt")
+    if os.path.exists(pidFile):
+        try:
+            with open(pidFile) as f:
+                pid = int(f.read().strip())
+            import signal
+            os.kill(pid, signal.SIGTERM)
+            print(f"[shutdown] Sakura: sent SIGTERM to PID={pid}")
+            time.sleep(1)
+            try:
+                os.kill(pid, 0)
+                subprocess.run(["taskkill", "/f", "/pid", str(pid)], capture_output=True)
+                print(f"[shutdown] Sakura: force killed")
+            except OSError:
+                print(f"[shutdown] Sakura: stopped")
+            os.remove(pidFile)
+            return True
+        except Exception as e:
+            print(f"[shutdown] Sakura: PID file error: {e}")
+
+    # Method 2: taskkill known python processes with sakura in args (faster)
     try:
-        subprocess.run(
-            ["powershell", "-NoProfile", "-Command",
-             "$conn = Get-NetTCPConnection -LocalPort 19270 -ErrorAction SilentlyContinue; "
-             "if ($conn) { $conn | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } }"],
-            capture_output=True, text=True, timeout=10
+        result = subprocess.run(
+            ["wmic", "process", "where", "name='python.exe'", "get", "processid,commandline"],
+            capture_output=True, text=True, timeout=5,
+            encoding="utf-8", errors="replace"
         )
+        pids_to_kill = []
+        for line in result.stdout.splitlines():
+            if "sakura" in line.lower() or "Sakura" in line:
+                parts = line.strip().split()
+                if parts:
+                    maybe_pid = parts[-1]
+                    if maybe_pid.isdigit():
+                        pids_to_kill.append(maybe_pid)
+        if pids_to_kill:
+            for p in pids_to_kill:
+                subprocess.run(["taskkill", "/f", "/pid", p], capture_output=True)
+            print(f"[shutdown] Sakura: killed {len(pids_to_kill)} process(es)")
+            return True
     except Exception:
         pass
-    for i in range(5):
-        time.sleep(0.3)
-        if not port_open("127.0.0.1", 19270):
-            print(f"[shutdown] webchat: stopped ({i*0.3:.0f}s)")
-            return True
-    print("[shutdown] webchat: STILL RUNNING - manual kill needed")
-    return False
+
+    print("[shutdown] Sakura: not running")
+    return True
+
+
+def _find_openclaw():
+    candidates = [
+        os.path.expandvars(r"%APPDATA%\npm\openclaw.cmd"),
+        os.path.expandvars(r"%ProgramFiles%\nodejs\openclaw.cmd"),
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    try:
+        r = subprocess.run(["where", "openclaw"], capture_output=True, text=True, timeout=5)
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout.strip().splitlines()[0]
+    except Exception:
+        pass
+    return None
+
 
 def run_cleanup():
-    """Run cleanup_orphans.ps1 to kill stuck children and clean locks."""
     ps1 = os.path.join(WORKSPACE, "skills", "cleanup_orphans.ps1")
-
     if not os.path.exists(ps1):
         print("[shutdown] cleanup_orphans: script not found, skipping")
         return True
-
     print("[shutdown] cleanup_orphans: running...")
     try:
-        # Use UTF-8 to avoid GBK decode errors
         result = subprocess.run(
             ["powershell", "-ExecutionPolicy", "Bypass", "-NoProfile",
              "-File", ps1, "-MaxAgeSeconds", "0"],
@@ -315,10 +299,7 @@ def run_cleanup():
         lines = [l for l in result.stdout.splitlines() if l.strip()]
         for line in lines[-6:]:
             print(f"  {line}")
-        if result.returncode != 0:
-            print(f"[shutdown] cleanup_orphans: exit code {result.returncode}")
-        else:
-            print("[shutdown] cleanup_orphans: done")
+        print("[shutdown] cleanup_orphans: done")
         return True
     except subprocess.TimeoutExpired:
         print("[shutdown] cleanup_orphans: TIMEOUT")
@@ -330,101 +311,9 @@ def run_cleanup():
 
 # ---- Main ----
 
-def kill_embedding_server():
-    """Stop embedding server on port 9999."""
-    if not port_open("127.0.0.1", 9999):
-        print("[shutdown] embedding server: not running")
-        return True
-
-    print("[shutdown] embedding server: stopping...")
-    try:
-        subprocess.run(
-            ["powershell", "-NoProfile", "-Command",
-             "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | "
-             "Where-Object { $_.CommandLine -match 'embedding_server\\.py' } | "
-             "Select-Object -ExpandProperty ProcessId"],
-            capture_output=True, text=True, timeout=10
-        )
-    except Exception:
-        pass
-
-    for i in range(10):
-        time.sleep(0.3)
-        if not port_open("127.0.0.1", 9999):
-            print(f"[shutdown] embedding server: stopped ({i*0.3:.0f}s)")
-            return True
-
-    try:
-        result = subprocess.run(
-            ["powershell", "-NoProfile", "-Command",
-             "$conn = Get-NetTCPConnection -LocalPort 9999 -ErrorAction SilentlyContinue; "
-             "if ($conn) { $conn | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } }"],
-            capture_output=True, text=True, timeout=10
-        )
-    except Exception:
-        pass
-    time.sleep(1)
-    ok = not port_open("127.0.0.1", 9999)
-    if ok:
-        print("[shutdown] embedding server: force killed")
-    else:
-        print("[shutdown] embedding server: STILL RUNNING — manual kill needed")
-    return ok
-
-
-def kill_sakura():
-    """Stop Sakura Desktop Pet (PySide6 GUI)."""
-    pidFile = os.path.join(WORKSPACE, "skills", "sakura", ".sakura_pid.txt")
-    
-    # Method 1: PID file from start.ps1
-    if os.path.exists(pidFile):
-        try:
-            with open(pidFile) as f:
-                pid = int(f.read().strip())
-            import signal
-            os.kill(pid, signal.SIGTERM)
-            print(f"[shutdown] Sakura: sent SIGTERM to PID={pid}")
-            time.sleep(1)
-            # Verify
-            try:
-                os.kill(pid, 0)
-                # Still alive, force kill
-                subprocess.run(["taskkill", "/f", "/pid", str(pid)], capture_output=True)
-                print(f"[shutdown] Sakura: force killed PID={pid}")
-            except OSError:
-                print(f"[shutdown] Sakura: stopped")
-            os.remove(pidFile)
-            return True
-        except Exception as e:
-            print(f"[shutdown] Sakura: PID file error: {e}")
-    
-    # Method 2: find by process name (Python with Sakura/skills/sakura in args)
-    try:
-        result = subprocess.run(
-            ["powershell", "-NoProfile", "-Command",
-             "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | "
-             "Where-Object { $_.CommandLine -match 'sakura|Sakura|main\\.py' } | "
-             "Select-Object -ExpandProperty ProcessId"],
-            capture_output=True, text=True, timeout=10
-        )
-        pids = [line.strip() for line in result.stdout.splitlines() if line.strip().isdigit()]
-        if pids:
-            for pid_str in pids:
-                subprocess.run(["taskkill", "/f", "/pid", pid_str], capture_output=True)
-            print(f"[shutdown] Sakura: killed {len(pids)} process(es)")
-            return True
-        else:
-            print("[shutdown] Sakura: not running")
-            return True
-    except Exception as e:
-        print(f"[shutdown] Sakura: error: {e}")
-        return True  # non-fatal
-
-
 def main():
     parser = argparse.ArgumentParser(description="Artemis Graceful Shutdown")
-    parser.add_argument("--quiet", action="store_true",
-                        help="Suppress non-essential output")
+    parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args()
 
     if not args.quiet:
@@ -435,7 +324,7 @@ def main():
 
     results = {}
 
-    # Order: startables first (can't kill if deps are down), then infra
+    # Order: thread-level (daemon-managed) first, then standalone processes
     results["webchat"] = kill_webchat()
     results["taskboard"] = kill_taskboard()
     results["bridge"] = kill_bridge()
