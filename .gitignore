@@ -105,15 +105,7 @@ package-lock.json
 .idea/
 *.swp
 *.swo
-# 后宫角色  ?只提 ?4  ?SFW 角色，新导入角色默认忽略
-skills/harem/*
-!skills/harem/atori/
-!skills/harem/enola/
-!skills/harem/natsume/
-!skills/harem/qiaoer/
-!skills/harem/ruruka/
-!skills/harem/sakura/
-!skills/harem/SOUL.json
+
 # Sakura 桌宠 - 运行时缓 ?
 skills/sakura/runtime/
 skills/sakura/__pycache__/
