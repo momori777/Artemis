@@ -161,10 +161,16 @@ var FALLBACK_REPLIES = {
 
 var DEFAULT_CHAR_ID = 'natsume';
 
+// ---- name-based dedup map (e.g. yanqiaoer vs qiaoer for 燕巧儿) ----
+var NAME_ALIASES = {
+  '燕巧儿': 'yanqiaoer',
+};
+
 // ---- Single source of truth: merge all sources into CHARACTERS ----
 function mergeAllCharacters(apiData) {
   var result = [];
-  var seen = {};
+  var seenId = {};
+  var seenName = {};
 
   // 1. Load imported chars from localStorage first (they survive everything)
   try {
@@ -175,7 +181,8 @@ function mergeAllCharacters(apiData) {
         c.imported = true;
         ensureDefaults(c);
         result.push(c);
-        seen[c.id] = true;
+        seenId[c.id] = true;
+        seenName[c.name] = true;
       });
     }
   } catch (e) {}
@@ -185,8 +192,12 @@ function mergeAllCharacters(apiData) {
     apiData.forEach(function(c) {
       var fb = CHAR_FALLBACKS[c.id] || {};
       var id = c.id || fb.id;
-      if (seen[id]) return; // already imported
-      seen[id] = true;
+      // Resolve name alias to canonical id
+      if (NAME_ALIASES[c.name]) id = NAME_ALIASES[c.name];
+      if (seenId[id]) return; // already imported
+      if (c.name && seenName[c.name]) return; // same name already exists
+      seenId[id] = true;
+      seenName[c.name] = true;
       result.push({
         id: id,
         name: c.name || fb.name,
@@ -207,9 +218,11 @@ function mergeAllCharacters(apiData) {
 
   // 3. Fill in any missing fallback chars (not already in result)
   Object.keys(CHAR_FALLBACKS).forEach(function(id) {
-    if (seen[id]) return;
-    seen[id] = true;
+    if (seenId[id]) return;
     var fb = CHAR_FALLBACKS[id];
+    if (fb.name && seenName[fb.name]) return; // name already in result (e.g. yanqiaoer already covered by qiaoer from API)
+    seenId[id] = true;
+    if (fb.name) seenName[fb.name] = true;
     result.push(Object.assign({}, fb, {
       fallbackReplies: FALLBACK_REPLIES[id] || ['I\'m here.'],
     }));

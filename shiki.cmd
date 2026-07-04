@@ -9,8 +9,12 @@ set PYTHONUTF8=1
 
 echo.
 echo   ========================================
-echo     Shiki Daemon Launcher
+echo     Shiki Daemon (legacy) — use shiki-start.cmd
 echo   ========================================
+echo.
+echo   This is the original launcher. For clarity, use:
+echo     shiki-start.cmd  (start services + tray icon)
+echo     shiki-stop.cmd   (stop all services)
 echo.
 echo   Close this window to STOP all services.
 echo.

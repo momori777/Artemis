@@ -41,10 +41,16 @@
         </div>
       </div>
 
-      <button class="btn-import-char" id="btn-import-char" title="Import character card (.png/.json)">
-        <i class="ph ph-plus-circle"></i>
-      </button>
+      <div class="import-buttons">
+        <button class="btn-import-char" id="btn-import-char" title="Import character card (.png/.json/.txt)">
+          <i class="ph ph-plus-circle"></i>
+        </button>
+        <button class="btn-import-char" id="btn-import-worldbook" title="Import world book / lore (.md/.txt/.json)">
+          <i class="ph ph-book-open-text"></i>
+        </button>
+      </div>
       <input type="file" id="import-char-file" accept=".png,.json,.txt,application/json,text/plain" style="display:none">
+      <input type="file" id="import-worldbook-file" accept=".md,.txt,.json,text/markdown,text/plain,application/json" style="display:none">
 
       <div class="status-row">
         <span class="status-label" id="status-label">Checking...</span>
@@ -580,6 +586,42 @@
 
 <div id="toast-container"></div>
 
+<!-- World Book Modal -->
+<div id="worldbook-modal">
+  <div id="worldbook-modal-panel">
+    <div class="worldbook-modal-header">
+      <h3><i class="ph ph-books"></i> World Books</h3>
+      <button class="worldbook-modal-close" id="worldbook-modal-close">&times;</button>
+    </div>
+    <div class="worldbook-modal-body">
+      <div id="worldbook-status">
+        No world books loaded.
+      </div>
+      <div class="worldbook-upload-area">
+        <div class="worldbook-drop-zone" id="worldbook-drop-zone">
+          <i class="ph ph-upload-simple" style="font-size:28px"></i>
+          <span>Click or drag files here (.md / .txt / .json)</span>
+          <span style="font-size:11px;color:var(--text-muted)">Supports multiple files at once</span>
+        </div>
+      </div>
+      <div id="worldbook-list" class="wb-list"></div>
+      <div id="worldbook-preview" style="display:none">
+        <div class="wb-preview-header">
+          <span id="worldbook-preview-label" style="font-size:12px;font-weight:500;color:var(--text-secondary)"></span>
+        </div>
+        <pre id="worldbook-preview-text"></pre>
+      </div>
+    </div>
+    <div class="worldbook-modal-footer">
+      <button class="btn-remove-avatar" id="btn-remove-all-worldbook">
+        <i class="ph ph-trash"></i> Remove All
+      </button>
+      <div style="flex:1"></div>
+      <button class="btn-secondary" id="worldbook-modal-cancel">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Avatar Upload Modal -->
 <div id="avatar-modal">
   <div id="avatar-modal-panel">
@@ -664,6 +706,7 @@
 <script src="scripts/tree.js?v=1"></script>
 <script src="scripts/api.js?v=25"></script>
 <script src="scripts/importer.js?v=25"></script>
+<script src="scripts/worldbook.js?v=1"></script>
 <script src="scripts/ui.js?v=37"></script>
 <script src="scripts/studio.js?v=25"></script>
 </body>

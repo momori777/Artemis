@@ -651,6 +651,17 @@ def _build_system_prompt(character_id):
     AGENTS.md is intentionally excluded — it's for the Gateway agent, not the chat model."""
     parts = []
 
+    # 0. World Book (global lore, injected before character) — from harem root
+    wb_path = os.path.join(WORKSPACE, "skills", "harem", "_worldbook.md")
+    if os.path.isfile(wb_path):
+        try:
+            with open(wb_path, "r", encoding="utf-8") as f:
+                wb_content = f.read().strip()
+            if wb_content:
+                parts.append("# WORLD BOOK / LORE\n\n" + wb_content)
+        except Exception:
+            pass
+
     # 1. SOUL.md — prefer character-specific from harem, fallback to root
     if character_id:
         char_soul = os.path.join(WORKSPACE, "skills", "harem", character_id, "SOUL.md")
@@ -815,6 +826,19 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_json({"ok": True, "message": msg})
             return
 
+        if path == "/api/worldbook":
+            wb_path = os.path.join(WORKSPACE, "skills", "harem", "_worldbook.md")
+            if os.path.isfile(wb_path):
+                try:
+                    with open(wb_path, "r", encoding="utf-8") as f:
+                        content = f.read()
+                    self.send_json({"worldbook": content, "name": "_worldbook.md", "exists": True})
+                except Exception:
+                    self.send_json({"worldbook": None, "exists": False})
+            else:
+                self.send_json({"worldbook": None, "exists": False})
+            return
+
         if path == "/api/restart-service":
             qs = parse_qs(urlparse(self.path).query)
             name = qs.get("name", [""])[0]
@@ -846,6 +870,25 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
+
+        if path == "/api/worldbook":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(length) if length > 0 else b"{}"
+                data = json.loads(body)
+                wb = data.get("worldbook")
+                wb_path = os.path.join(WORKSPACE, "skills", "harem", "_worldbook.md")
+                if wb and isinstance(wb, dict) and wb.get("content"):
+                    with open(wb_path, "w", encoding="utf-8") as f:
+                        f.write(wb["content"])
+                    self.send_json({"ok": True, "name": wb.get("name", "_worldbook.md")})
+                else:
+                    if os.path.isfile(wb_path):
+                        os.remove(wb_path)
+                    self.send_json({"ok": True, "cleared": True})
+            except Exception as e:
+                self.send_json({"error": str(e)}, 500)
+            return
 
         if path == "/api/set-rea":
             qs = parse_qs(urlparse(self.path).query)
@@ -1131,22 +1174,71 @@ class DashboardHandler(BaseHTTPRequestHandler):
         messages = req_data.get("messages", [])
 
         # Get character name for the prompt instruction
-        char_name = character_id.capitalize()
-        # Try to get display name from harem
+        char_name = character_id
+        # Try to get display name from harem (supports both Chinese + English folder names)
         identity_path = os.path.join(WORKSPACE, "skills", "harem", character_id, "IDENTITY.md")
         if os.path.isfile(identity_path):
             try:
                 with open(identity_path, "r", encoding="utf-8") as f:
                     for line in f:
-                        if line.strip().startswith("- Name:") or line.strip().startswith("* **Name:**"):
-                            # Extract name
-                            char_name = line.split(":", 1)[1].strip()
-                            # Remove parenthetical English
+                        stripped = line.strip()
+                        # Match both "- Name: XXX" and "* **Name:** XXX" formats
+                        if stripped.startswith("- Name:"):
+                            char_name = stripped.split(":", 1)[1].strip()
+                            break
+                        if stripped.startswith("* **Name:**"):
+                            char_name = stripped.split(":", 1)[1].strip() if ":" in stripped else stripped.replace("* **Name:**", "").strip()
+                            break
+                # Remove parenthetical English
+                import re
+                char_name = re.sub(r"\s*[（(][^)）]*[)）]", "", char_name).strip()
+            except Exception:
+                pass
+        # Fallback: try fuzzy match in harem dir (for Chinese folder names)
+        if char_name == character_id:
+            harem_root = os.path.join(WORKSPACE, "skills", "harem")
+            if os.path.isdir(harem_root):
+                for d in os.listdir(harem_root):
+                    idd = os.path.join(harem_root, d, "IDENTITY.md")
+                    if d == character_id or (os.path.isfile(idd) and d in character_id):
+                        try:
+                            with open(idd, "r", encoding="utf-8") as f:
+                                for line in f:
+                                    stripped = line.strip()
+                                    if stripped.startswith("- Name:"):
+                                        char_name = stripped.split(":", 1)[1].strip()
+                                        break
+                                    if stripped.startswith("* **Name:**"):
+                                        char_name = stripped.split(":", 1)[1].strip() if ":" in stripped else stripped.replace("* **Name:**", "").strip()
+                                        break
                             import re
                             char_name = re.sub(r"\s*[（(][^)）]*[)）]", "", char_name).strip()
                             break
+                        except Exception:
+                            pass
+
+        # Build character appearance context from SOUL.md if available
+        char_context = ""
+        soul_path = os.path.join(WORKSPACE, "skills", "harem", character_id, "SOUL.md")
+        if os.path.isfile(soul_path):
+            try:
+                with open(soul_path, "r", encoding="utf-8") as f:
+                    soul_text = f.read()
+                # Extract appearance section
+                import re
+                app_match = re.search(r'【总体】(.*?)(?:【|$)', soul_text, re.DOTALL)
+                if not app_match:
+                    app_match = re.search(r'1\.5.*?外貌.*?【总体】(.*?)(?:【|$)', soul_text, re.DOTALL)
+                if app_match:
+                    char_context = app_match.group(1).strip()[:300]
+                else:
+                    # Use first 400 chars
+                    char_context = soul_text.strip()[:400]
             except Exception:
                 pass
+
+        if char_context:
+            char_context = f"\nCharacter description:\n{char_name}: {char_context}\n"
 
         # Build the instruction for LLM
         instruction = f"""You are an AI prompt engineer for image generation. Based on the conversation context below, generate a ComfyUI/Stable Diffusion prompt for the character "{char_name}".
@@ -1156,11 +1248,11 @@ IMPORTANT: Do NOT think or reason. Output your answer directly.
 Rules:
 - Output ONLY a JSON object with "prompt" and "negative" fields, nothing else.
 - The prompt should be in English, detailed, include character appearance, clothing, setting, mood, lighting.
-- Use tags like: masterpiece, best quality, 1girl, {character_id}, highly detailed, etc.
+- Use tags like: masterpiece, best quality, 1girl, highly detailed, etc.
 - Describe the current scene/mood based on the conversation. If no specific scene is mentioned, create a beautiful portrait.
 - The negative prompt should cover common issues: bad quality, worst quality, blurry, distorted, lowres, bad anatomy, extra fingers, watermark, text, ugly, deformed.
 - Keep the prompt under 300 characters.
-
+{char_context}
 Conversation:
 """
         # Format messages as conversation text

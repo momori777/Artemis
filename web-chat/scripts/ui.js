@@ -33,6 +33,7 @@ var UI = {
     // CHARACTERS already loaded with fallback via chars.js IIFE boot.
     // UI renders immediately; API refresh happens asynchronously.
     CharacterImporter.init();
+    WorldBook.init();
     this.state.currentCharId = getActiveCharId();
     this.state.currentSessionId = ensureDefaultSession(this.state.currentCharId);
     this.loadCharUI();
@@ -2312,15 +2313,16 @@ var UI = {
     }
 
     var manage_llama = document.getElementById('btn-stop-llama').classList.contains('active');
-    if (manage_llama) self.appendSystemMsg('🎨 Stopping llama for painting...');
-
-    // Show generating indicator in chat
+    
+    // Show generating indicator
+    var indicatorMsg = manage_llama ? '🎨 Generating prompt (will stop llama after)...' : '🎨 Generating prompt...';
+    self.appendSystemMsg(indicatorMsg);
     this.scrollToBottom();
 
     var charId = this.state.currentCharId || 'natsume';
     var recentMessages = this.state.messages.slice(-10);
 
-    // Ask daemon to generate a paint prompt via LLM
+    // Step 1: Ask daemon to generate a paint prompt via LLM (needs llama running)
     fetch('http://localhost:19260/api/gen-prompt', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2328,13 +2330,15 @@ var UI = {
         characterId: charId,
         messages: recentMessages,
       }),
-      signal: AbortSignal.timeout(60000),
+      signal: AbortSignal.timeout(120000),
     })
       .then(function(res) { return res.json(); })
       .then(function(data) {
         if (data.prompt) {
           self.appendSystemMsg('✨ Prompt: ' + data.prompt.substring(0, 80) + '...');
           self.scrollToBottom();
+          // Step 2: Now submit the job (bridge will stop llama if manage_llama is set)
+          if (manage_llama) self.appendSystemMsg('🎨 Submitting paint job (stopping llama)...');
           self._submitPaintJob(data.prompt, data.negative || 'bad quality, worst quality, blurry, distorted, lowres, bad anatomy, extra fingers, watermark, text', undefined, undefined, undefined, undefined, manage_llama);
         } else {
           self.appendSystemMsg('⚠️ Failed to generate paint prompt: ' + (data.error || 'unknown'));
