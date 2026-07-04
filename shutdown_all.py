@@ -224,6 +224,54 @@ def kill_gateway():
         return False
 
 
+def kill_bridge():
+    """Stop Artemis Bridge on port 19250."""
+    if not port_open("127.0.0.1", 19250):
+        print("[shutdown] artemis bridge: not running")
+        return True
+    print("[shutdown] artemis bridge: stopping...")
+    try:
+        subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "$conn = Get-NetTCPConnection -LocalPort 19250 -ErrorAction SilentlyContinue; "
+             "if ($conn) { $conn | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } }"],
+            capture_output=True, text=True, timeout=10
+        )
+    except Exception:
+        pass
+    for i in range(10):
+        time.sleep(0.3)
+        if not port_open("127.0.0.1", 19250):
+            print(f"[shutdown] artemis bridge: stopped ({i*0.3:.0f}s)")
+            return True
+    print("[shutdown] artemis bridge: STILL RUNNING - manual kill needed")
+    return False
+
+
+def kill_taskboard():
+    """Stop Task Board on port 19280."""
+    if not port_open("127.0.0.1", 19280):
+        print("[shutdown] task board: not running")
+        return True
+    print("[shutdown] task board: stopping...")
+    try:
+        subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "$conn = Get-NetTCPConnection -LocalPort 19280 -ErrorAction SilentlyContinue; "
+             "if ($conn) { $conn | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } }"],
+            capture_output=True, text=True, timeout=10
+        )
+    except Exception:
+        pass
+    for i in range(5):
+        time.sleep(0.3)
+        if not port_open("127.0.0.1", 19280):
+            print(f"[shutdown] task board: stopped ({i*0.3:.0f}s)")
+            return True
+    print("[shutdown] task board: STILL RUNNING - manual kill needed")
+    return False
+
+
 def kill_webchat():
     """Stop webchat server on port 19270."""
     if not port_open("127.0.0.1", 19270):
@@ -387,11 +435,14 @@ def main():
 
     results = {}
 
-    results["llama"] = kill_llama()
-    results["live2d"] = kill_live2d()
-    results["sakura"] = kill_sakura()
+    # Order: startables first (can't kill if deps are down), then infra
     results["webchat"] = kill_webchat()
+    results["taskboard"] = kill_taskboard()
+    results["bridge"] = kill_bridge()
+    results["sakura"] = kill_sakura()
+    results["live2d"] = kill_live2d()
     results["embedding"] = kill_embedding_server()
+    results["llama"] = kill_llama()
     results["comfyui"] = kill_comfyui()
     results["gateway"] = kill_gateway()
     results["cleanup"] = run_cleanup()

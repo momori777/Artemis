@@ -9,14 +9,8 @@ set PYTHONUTF8=1
 
 echo.
 echo   ========================================
-echo     Shiki Daemon (legacy) — use shiki-start.cmd
+echo     Shiki AI Girlfriend — Startup
 echo   ========================================
-echo.
-echo   This is the original launcher. For clarity, use:
-echo     shiki-start.cmd  (start services + tray icon)
-echo     shiki-stop.cmd   (stop all services)
-echo.
-echo   Close this window to STOP all services.
 echo.
 
 REM  Find python (prefer py launcher, avoid Windows Store stub)
@@ -37,14 +31,14 @@ for /f "delims=" %%i in ('where python 2^>nul') do (
 )
 :found
 if "%PEXE%"=="" (
-    echo ERROR: Python not found in PATH
-    echo Install Python from https://python.org
+    echo   ERROR: Python not found in PATH
+    echo   Install Python from https://python.org
     pause
     exit /b 1
 )
 echo   Python: %PEXE%
 
-REM  Check pystray
+REM  Check pystray (needed for tray icon)
 %PEXE% -c "import pystray" >nul 2>&1
 if errorlevel 1 (
     echo   Installing pystray + pillow...
@@ -52,13 +46,20 @@ if errorlevel 1 (
 )
 
 echo.
-echo   Starting daemon...
+echo   Starting Shiki Daemon (tray icon + auto-start services)...
+echo   Services: llama-server, Embedding, Live2D, Artemis Bridge, Gateway, Task Board, WebChat
+echo.
+echo   --- Close this window or right-click tray ^> Quit to stop ---
+echo.
+
+REM  Launch daemon (runs with tray icon, auto-starts all services)
+REM  Pass all arguments through (e.g. --no-auto-start, --no-llama)
 %PEXE% "%~dp0shiki_daemon.py" %*
 set DAEMON_EXIT=%errorlevel%
 
 echo.
 echo   Shutting down services...
 %PEXE% "%~dp0shutdown_all.py" --quiet
-echo   Done.
+echo   All services stopped. Goodbye~
 
 exit /b %DAEMON_EXIT%

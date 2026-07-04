@@ -1,5 +1,5 @@
 // Auto-generated from skills/harem/* and localStorage import
-// 7 characters: natsume, sakura, enola, atori, ruruka, yanqiaoer
+// 7 core characters (canonical ids): natsume, sakura, enola, atori, ruruka, yanqiaoer
 
 const CHARACTERS_JSON = [
   {
