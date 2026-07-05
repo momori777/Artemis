@@ -324,11 +324,22 @@ def api_comfyui():
                     img_path = max(candidates, key=os.path.getmtime)
 
             if img_path and os.path.exists(img_path):
+                # Copy to media dir so it persists and is accessible via daemon proxy
+                import shutil
+                media_images = MEDIA_IMAGES if os.path.isdir(MEDIA_IMAGES) else os.path.join(WORKSPACE_ROOT, "media", "qqbot", "images")
+                os.makedirs(media_images, exist_ok=True)
+                media_name = "comfyui_" + job_id + ".png"
+                media_path = os.path.join(media_images, media_name)
+                try:
+                    shutil.copy2(img_path, media_path)
+                    persist_path = media_path  # Use persistent copy for frontend
+                except Exception:
+                    persist_path = img_path  # Fallback to original if copy fails
                 # After successful image generation, check llama health
                 if manage_llama:
                     _ensure_llama_running()
                 with jobs_lock:
-                    jobs[job_id] = {"status": "done", "type": "comfyui", "path": img_path,
+                    jobs[job_id] = {"status": "done", "type": "comfyui", "path": persist_path,
                                     "elapsed": time.time() - jobs[job_id]["created"]}
             else:
                 # Don't leak full stderr to frontend — find last error line
