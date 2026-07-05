@@ -1243,6 +1243,13 @@ var UI = {
         img.src = msg.media;
         img.loading = 'lazy';
         img.addEventListener('click', function() { window.open(msg.media, '_blank'); });
+        img.addEventListener('error', function() {
+          img.style.display = 'none';
+          var placeholder = document.createElement('div');
+          placeholder.className = 'media-placeholder';
+          placeholder.innerHTML = '<i class="ph ph-image-broken"></i><span>Image unavailable</span>';
+          img.parentNode.insertBefore(placeholder, img);
+        });
         bubble.appendChild(img);
       }
     }
@@ -1260,6 +1267,13 @@ var UI = {
       paintImg.src = paintSrc;
       paintImg.loading = 'lazy';
       paintImg.addEventListener('click', function() { window.open(paintSrc, '_blank'); });
+      paintImg.addEventListener('error', function() {
+        paintImg.style.display = 'none';
+        var placeholder = document.createElement('div');
+        placeholder.className = 'media-placeholder';
+        placeholder.innerHTML = '<i class="ph ph-image-broken"></i><span>Image unavailable (daemon offline)</span>';
+        bubble.appendChild(placeholder);
+      });
       bubble.innerHTML = '';
       bubble.appendChild(paintImg);
       var paintLabel = document.createElement('div');
@@ -2330,7 +2344,7 @@ var UI = {
         characterId: charId,
         messages: recentMessages,
       }),
-      signal: AbortSignal.timeout(120000),
+      signal: AbortSignal.timeout(60000),
     })
       .then(function(res) { return res.json(); })
       .then(function(data) {
