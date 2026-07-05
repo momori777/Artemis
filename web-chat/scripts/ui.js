@@ -2546,7 +2546,8 @@ var UI = {
             self.state.messages[i] = m;
           }
         }
-        if (m.paint && m.media && !/^https?:\/\//.test(m.media)) {
+        // Convert any local file path media to daemon proxy URL
+        if (m.media && !/^https?:\/\//.test(m.media)) {
           m.media = self._resolveMediaPath(m.media);
         }
         var el = self.renderMessage(m, i);
