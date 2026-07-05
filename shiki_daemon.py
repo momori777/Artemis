@@ -568,6 +568,41 @@ CHARACTER_TTS = {
     "atori": {"lang": "ja", "mood": "casual"},
 }
 
+# ================================================================
+# Fallback paint prompts — used when LLM is offline (ComfyUI needs VRAM)
+# ================================================================
+FALLBACK_PROMPTS = {
+    "natsume": {
+        "prompt": "masterpiece, best quality, highly detailed, (shiki natsume:1.2), 1girl, solo, long black hair, yellow eyes, cold expression, black dress, elegant, cinematic lighting, beautiful detailed background, soft lighting, japanese aesthetic, (atmosphere:0.8)",
+        "negative": "worst quality, bad quality, low quality, blurry, lowres, bad anatomy, extra fingers, missing fingers, extra limbs, deformed, disfigured, watermark, text, signature, jpeg artifacts, ugly, censored",
+    },
+    "sakura": {
+        "prompt": "masterpiece, best quality, highly detailed, (yono sakura:1.2), 1girl, solo, long silver hair, pink-tipped hair, wavy hair, light blue eyes, white and black school uniform, blue skirt, yellow necktie, moonlight, night sky, starry sky, cinematic lighting, detailed face, (atmosphere:0.8)",
+        "negative": "worst quality, bad quality, low quality, blurry, lowres, bad anatomy, extra fingers, missing fingers, extra limbs, deformed, disfigured, watermark, text, signature, jpeg artifacts, ugly, censored",
+    },
+    "atori": {
+        "prompt": "masterpiece, best quality, highly detailed, (atri:1.2), 1girl, solo, silver hair, long hair, ruby red eyes, bright smile, mechanical ear accessories, white dress, flowing skirt, barefoot, seaside sunset, golden hour, warm light, detailed face, (atmosphere:0.8)",
+        "negative": "worst quality, bad quality, low quality, blurry, lowres, bad anatomy, extra fingers, missing fingers, extra limbs, deformed, disfigured, watermark, text, signature, jpeg artifacts, ugly, censored",
+    },
+    "enola": {
+        "prompt": "masterpiece, best quality, highly detailed, 1girl, solo, brown hair, gentle smile, casual clothes, soft lighting, warm atmosphere, cozy room, beautiful detailed background, detailed face, (atmosphere:0.8)",
+        "negative": "worst quality, bad quality, low quality, blurry, lowres, bad anatomy, extra fingers, missing fingers, extra limbs, deformed, disfigured, watermark, text, signature, jpeg artifacts, ugly, censored",
+    },
+}
+
+def _make_fallback_prompt(character_id, char_name, messages):
+    """Generate a prompt without LLM when llama is offline.
+    Returns a dict suitable for json response: with 'prompt' and 'negative' keys.
+    Tries character-specific preset; falls back to conversation context."""
+    fb = FALLBACK_PROMPTS.get(character_id)
+    if fb:
+        return {"prompt": fb["prompt"], "negative": fb["negative"]}
+    # Generic fallback
+    return {
+        "prompt": f"masterpiece, best quality, highly detailed, 1girl, solo, {char_name}, beautiful detailed background, cinematic lighting, soft lighting, (atmosphere:0.8)",
+        "negative": "worst quality, bad quality, low quality, blurry, lowres, bad anatomy, extra fingers, missing fingers, extra limbs, deformed, disfigured, watermark, text, signature, jpeg artifacts, ugly, censored",
+    }
+
 def _parse_identity_md(path):
     """Parse IDENTITY.md to extract name, emoji, creature, vibe."""
     result = {}
@@ -1266,6 +1301,12 @@ Conversation:
                 conv_lines.append(f"{char_name}: {content}")
         instruction += "\n".join(conv_lines)
 
+        # Check if llama is online; if not, use fallback prompt immediately
+        if not is_port_open(LLAMA_PORT):
+            fallback = _make_fallback_prompt(character_id, char_name, messages)
+            self.send_json(fallback)
+            return
+
         # Call local LLM (non-streaming)
         try:
             import urllib.request, urllib.error
@@ -1307,9 +1348,9 @@ Conversation:
                     "negative": "bad quality, worst quality, blurry, distorted, lowres, bad anatomy, extra fingers, watermark, text",
                 })
         except Exception as e:
-            import traceback
-            tb = traceback.format_exc()
-            self.send_json({"error": f"LLM prompt generation failed: {e}\n{tb[-500:]}"}, 502)
+            # LLM failed - use fallback prompt instead of returning error
+            fallback = _make_fallback_prompt(character_id, char_name, messages)
+            self.send_json(fallback)
 
     def _handle_media_proxy(self):
         """Proxy local file paths so the browser can load generated images."""
