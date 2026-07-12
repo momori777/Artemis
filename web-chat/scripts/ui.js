@@ -1168,6 +1168,10 @@ var UI = {
               self.appendSystemMsg('Jumped to branch #' + (branchIdx + 1) + ' - ' + self.formatTime(new Date()));
               getCurrentChain(tree).forEach(function(cn, ci) {
                 if (cn.role === 'system' || cn.regenerated) return;
+                // Resolve local filesystem media paths to daemon proxy URLs
+                if (cn.media && !/^https?:\/\//.test(cn.media)) {
+                  cn.media = self._resolveMediaPath(cn.media);
+                }
                 var cel = self._renderTreeNode(cn, ci, tree);
                 self.$messages.appendChild(cel);
               });
@@ -1598,6 +1602,10 @@ var UI = {
           self.appendSystemMsg('Branch: regenerated - ' + self.formatDate(new Date()));
           getCurrentChain(tree).forEach(function(cn, ci) {
             if (cn.role === 'system' || cn.regenerated) return;
+            // Resolve local filesystem media paths to daemon proxy URLs
+            if (cn.media && !/^https?:\/\//.test(cn.media)) {
+              cn.media = self._resolveMediaPath(cn.media);
+            }
             var cel = self._renderTreeNode(cn, ci, tree);
             self.$messages.appendChild(cel);
           });
@@ -2489,7 +2497,14 @@ var UI = {
               paint: true
             };
             self.state.messages.push(imgMsg);
-            saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
+            // Persist: use tree-aware save to avoid losing paint images in tree sessions
+            if (self._useTree && self.state.tree) {
+              appendTreeNode(self.state.tree, imgMsg);
+              self.state.messages = getChainMessages(self.state.tree);
+              saveSessionTree(self.state.currentCharId, self.state.currentSessionId, self.state.tree);
+            } else {
+              saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
+            }
             self.appendMessage(imgMsg);
           } else if (job.status === 'failed') {
             clearInterval(interval);
@@ -2555,6 +2570,10 @@ var UI = {
         chain.forEach(function(n, i) {
           if (n.role === 'system') return;
           if (n.regenerated) return; // skip superseded branches in current path
+          // Resolve local filesystem media paths to daemon proxy URLs
+          if (n.media && !/^https?:\/\//.test(n.media)) {
+            n.media = self._resolveMediaPath(n.media);
+          }
           var el = self._renderTreeNode(n, i, tree);
           self.$messages.appendChild(el);
         });
