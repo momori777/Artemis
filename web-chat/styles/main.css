@@ -30,6 +30,9 @@
   --success: #7eb8a0;
   --error: #d4787a;
 
+  --icon-color: var(--text-muted);
+  --icon-size: 14px;
+
   --radius-sm: 8px;
   --radius-md: 14px;
   --radius-lg: 20px;
@@ -81,6 +84,9 @@ html,body{
   --border-moderate: rgba(0,0,0,0.12);
   --success: #4a9a7a;
   --error: #c05a5c;
+
+  --icon-color: var(--text-muted);
+  --icon-size: 14px;
 }
 
 /* Light mode surface adjustments for glass effects */
@@ -805,6 +811,143 @@ html,body{
 .plugin-select:focus{
   outline:none;
   border-color:var(--accent);
+}
+
+/* ── Memory source toggle ── */
+.memory-source-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.memory-source-btn {
+  flex: 1;
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all var(--dur-fast) ease;
+  font-family: inherit;
+}
+
+.memory-source-btn:hover {
+  border-color: var(--border-moderate);
+  color: var(--text-secondary);
+}
+
+.memory-source-btn.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Memory viewer overlay ── */
+#memory-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+#memory-viewer-overlay.open { display: flex; }
+
+.memory-viewer-panel {
+  background: var(--surface-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  width: min(600px, 90vw);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.memory-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.memory-viewer-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.memory-viewer-close:hover { background: var(--surface-secondary); color: var(--text-primary); }
+
+.memory-viewer-body {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.memory-viewer-body .mem-entry {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--surface-secondary);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--accent);
+}
+
+.memory-viewer-body .mem-entry .mem-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.memory-viewer-body .mem-entry .mem-source {
+  font-size: 10px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.memory-viewer-body .mem-entry .mem-content {
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.memory-viewer-body .mem-entry.user-msg .mem-content { color: var(--text-secondary); }
+.memory-viewer-body .mem-entry.assistant-msg .mem-content { color: var(--accent); }
+
+.memory-viewer-footer {
+  padding: 8px 16px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.memory-viewer-loading {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 32px;
+}
+
+.memory-viewer-empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 32px;
+  font-style: italic;
 }
 
 /* ── Remove old inline toggle rows ── */

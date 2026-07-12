@@ -967,6 +967,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._handle_debug_llama()
             return
 
+        if path == "/api/session-history":
+            self._handle_session_history()
+            return
+
+        if path == "/api/mem0-search":
+            self._handle_mem0_search()
+            return
+
         cl = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(cl).decode("utf-8") if cl else "{}"
         try:
@@ -1041,6 +1049,84 @@ class DashboardHandler(BaseHTTPRequestHandler):
 # ================================================================
 # Tray App (Windows)
 # ================================================================
+
+    def _handle_session_history(self):
+        """Read OpenClaw session history for a character/session."""
+        qs = parse_qs(urlparse(self.path).query)
+        session_key = qs.get("sessionKey", [""])[0] or "main"
+        limit = int(qs.get("limit", ["10"])[0])
+        
+        # Find the sessions.json path for this agent
+        import glob
+        agents_dir = os.path.join(os.path.dirname(os.path.expanduser("~")), ".openclaw", "agents")
+        session_files = []
+        for agent_dir in glob.glob(os.path.join(agents_dir, "*", "sessions")):
+            sf = os.path.join(agent_dir, "sessions.json")
+            if os.path.isfile(sf):
+                session_files.append(sf)
+        
+        if not session_files:
+            self.send_json({"error": "No sessions.json found", "history": []})
+            return
+        
+        try:
+            # Read all session files, find matching session
+            all_messages = []
+            for sf in session_files:
+                try:
+                    with open(sf, "r", encoding="utf-8") as f:
+                        sessions_data = json.load(f)
+                    if not isinstance(sessions_data, dict):
+                        continue
+                    # Look for the session
+                    target_key = session_key
+                    if target_key == "main":
+                        target_key = "agent:main:main"
+                    elif not target_key.startswith("agent:"):
+                        target_key = f"agent:main:{target_key}"
+                    
+                    if target_key in sessions_data:
+                        session = sessions_data[target_key]
+                        msgs = session.get("messages", [])
+                        for m in msgs[-limit:]:
+                            all_messages.append({
+                                "role": m.get("role", ""),
+                                "content": m.get("content", ""),
+                                "time": m.get("timestamp", m.get("time", ""))
+                            })
+                except Exception as e:
+                    print(f"[session-history] error reading {sf}: {e}", file=sys.stderr)
+            
+            # Sort by time if available
+            if all_messages:
+                all_messages.sort(key=lambda x: x.get("time", ""))
+            
+            self.send_json({"ok": True, "history": all_messages[-limit:], "source": "session-history"})
+        except Exception as e:
+            self.send_json({"error": str(e), "history": []})
+            return
+
+    def _handle_mem0_search(self):
+        """Search mem0 memories and return raw results for frontend display."""
+        qs = parse_qs(urlparse(self.path).query)
+        character_id = qs.get("characterId", [""])[0] or "natsume"
+        query = qs.get("query", [""])[0] or ""
+        limit = int(qs.get("limit", ["20"])[0])
+        
+        try:
+            results = search_mem0_qdrant(character_id, query if query else "所有记忆", limit=limit)
+            formatted = []
+            for r in results:
+                formatted.append({
+                    "content": r.get("memory", ""),
+                    "score": r.get("score", 0),
+                    "timestamp": r.get("metadata", {}).get("created_at", "")
+                })
+            self.send_json({"ok": True, "results": formatted, "source": "mem0"})
+        except Exception as e:
+            print(f"[mem0-search] error: {e}", file=sys.stderr)
+            self.send_json({"error": str(e), "results": []})
+            return
 
     def _handle_chat_proxy(self):
         body_len = int(self.headers.get('Content-Length', 0))
