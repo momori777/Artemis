@@ -217,6 +217,31 @@ var UI = {
       });
     }
 
+    // Memory source toggle (Mem0 vs Session History)
+    var memSourceMem0 = document.getElementById('mem-source-mem0');
+    var memSourceSession = document.getElementById('mem-source-session');
+    if (memSourceMem0 && memSourceSession) {
+      var currentMemSource = getSettings().memorySource || 'mem0';
+      memSourceMem0.classList.toggle('active', currentMemSource === 'mem0');
+      memSourceSession.classList.toggle('active', currentMemSource === 'session');
+
+      memSourceMem0.addEventListener('click', function() {
+        currentMemSource = 'mem0';
+        memSourceMem0.classList.add('active');
+        memSourceSession.classList.remove('active');
+        saveSettings({ memorySource: 'mem0' });
+        showToast('记忆源: Mem0');
+      });
+
+      memSourceSession.addEventListener('click', function() {
+        currentMemSource = 'session';
+        memSourceSession.classList.add('active');
+        memSourceMem0.classList.remove('active');
+        saveSettings({ memorySource: 'session' });
+        showToast('记忆源: Session History');
+      });
+    }
+
     // Plugins popup toggle
     var pluginsBtn = document.getElementById('btn-plugins-toggle');
     var pluginsPopup = document.getElementById('plugins-popup');
@@ -249,6 +274,32 @@ var UI = {
 
     // New chat button in sessions list
     document.getElementById('btn-new-chat').addEventListener('click', function() { self.createSession(); });
+
+    // Memory viewer panel
+    var memViewerOverlay = document.getElementById('memory-viewer-overlay');
+    var memViewerBody = document.getElementById('memory-viewer-body');
+    var memViewerFooter = document.getElementById('memory-viewer-footer');
+    var memViewerTitle = document.getElementById('memory-viewer-title');
+    var memViewerClose = document.getElementById('memory-viewer-close');
+    var btnViewMemory = document.getElementById('btn-view-memory');
+    if (memViewerOverlay && memViewerBody && memViewerFooter && btnViewMemory) {
+      // Open memory viewer
+      btnViewMemory.addEventListener('click', function() {
+        self._openMemoryViewer();
+      });
+      // Close button
+      if (memViewerClose) {
+        memViewerClose.addEventListener('click', function() {
+          memViewerOverlay.classList.remove('open');
+        });
+      }
+      // Click outside to close
+      memViewerOverlay.addEventListener('click', function(e) {
+        if (e.target === memViewerOverlay) {
+          memViewerOverlay.classList.remove('open');
+        }
+      });
+    }
 
     // Character selector
     this.initCharSelector();
@@ -2852,6 +2903,109 @@ var UI = {
     return date.getFullYear() + '-' +
       String(date.getMonth() + 1).padStart(2, '0') + '-' +
       String(date.getDate()).padStart(2, '0');
+  },
+
+  // ---- Memory Viewer ----
+  _openMemoryViewer: function() {
+    var self = this;
+    var memViewerOverlay = document.getElementById('memory-viewer-overlay');
+    var memViewerBody = document.getElementById('memory-viewer-body');
+    var memViewerFooter = document.getElementById('memory-viewer-footer');
+    var memViewerTitle = document.getElementById('memory-viewer-title');
+    if (!memViewerOverlay) return;
+
+    // Clear and show loading
+    memViewerBody.innerHTML = '<div class="memory-viewer-loading">Loading memory...</div>';
+    memViewerFooter.textContent = '';
+    var memSource = getSettings().memorySource || 'mem0';
+    memViewerTitle.textContent = memSource === 'mem0' ? '🧠 Mem0 记忆' : '🧠 OpenClaw 会话历史';
+
+    // Open overlay
+    memViewerOverlay.classList.add('open');
+
+    // Fetch based on current memory source
+    if (memSource === 'mem0') {
+      // Use existing mem0 search
+      var mem0Data = this._mem0SearchResult;
+      if (mem0Data && mem0Data.length > 0) {
+        self._renderMem0Viewer(mem0Data);
+      } else {
+        // Try to fetch from mem0 if cached result is empty
+        memViewerBody.innerHTML = '<div class="memory-viewer-empty">No memories found in Mem0</div>';
+      }
+    } else {
+      // Fetch session history from backend
+      memViewerBody.innerHTML = '<div class="memory-viewer-loading">Loading session history...</div>';
+      var limit = 20;
+      fetch('http://localhost:19260/api/session-history?sessionKey=main&limit=' + limit)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.ok && data.history && data.history.length > 0) {
+            self._renderSessionViewer(data.history);
+            memViewerFooter.textContent = 'Showing ' + data.history.length + ' of ' + limit + ' recent messages';
+          } else {
+            memViewerBody.innerHTML = '<div class="memory-viewer-empty">No session history available</div>';
+            memViewerFooter.textContent = '';
+          }
+        })
+        .catch(function(err) {
+          memViewerBody.innerHTML = '<div class="memory-viewer-empty">Failed to load session history: ' + escapeHtml(err.message) + '</div>';
+          memViewerFooter.textContent = '';
+        });
+    }
+  },
+
+  _renderMem0Viewer: function(results) {
+    var memViewerBody = document.getElementById('memory-viewer-body');
+    if (!memViewerBody) return;
+
+    var html = '';
+    results.forEach(function(mem) {
+      var timeStr = mem.timestamp || '';
+      if (timeStr) {
+        try {
+          var d = new Date(mem.timestamp);
+          timeStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+        } catch(e) {}
+      }
+      html += '<div class="mem-entry">';
+      if (timeStr) html += '<div class="mem-time">' + escapeHtml(timeStr) + '</div>';
+      html += '<div class="mem-source">Mem0 · score: ' + (mem.score ? mem.score.toFixed(2) : 'N/A') + '</div>';
+      html += '<div class="mem-content">' + escapeHtml(mem.content) + '</div>';
+      html += '</div>';
+    });
+
+    memViewerBody.innerHTML = html;
+  },
+
+  _renderSessionViewer: function(history) {
+    var memViewerBody = document.getElementById('memory-viewer-body');
+    if (!memViewerBody) return;
+
+    var html = '';
+    // Reverse to show oldest first
+    var reversed = history.slice().reverse();
+    reversed.forEach(function(msg) {
+      var roleClass = msg.role === 'user' ? 'user-msg' : 'assistant-msg';
+      var roleLabel = msg.role === 'user' ? '👤 User' : '🤖 Assistant';
+      var timeStr = msg.timestamp || '';
+      if (timeStr) {
+        try {
+          var d = new Date(msg.timestamp);
+          timeStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+        } catch(e) {}
+      }
+      var content = msg.content || '';
+      if (content.length > 500) content = content.substring(0, 500) + '...';
+
+      html += '<div class="mem-entry ' + roleClass + '">';
+      if (timeStr) html += '<div class="mem-time">' + escapeHtml(timeStr) + '</div>';
+      html += '<div class="mem-source">' + escapeHtml(roleLabel) + '</div>';
+      html += '<div class="mem-content">' + escapeHtml(content) + '</div>';
+      html += '</div>';
+    });
+
+    memViewerBody.innerHTML = html;
   },
 };
 

@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Satoshi:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=JetBrains+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="styles/phosphor-icons.css">
 <link rel="stylesheet" href="styles/main.css?v=37">
 <link rel="stylesheet" href="styles/polish.css?v=27">
 </head>
@@ -205,7 +205,17 @@
             </div>
           </div>
           <div class="plugin-group">
-            <div class="plugin-group-title">🧠 记忆 (Mem0)</div>
+            <div class="plugin-group-title">🧠 记忆</div>
+            <div class="plugin-sub-row" style="margin-bottom:8px">
+              <span class="plugin-sub-label">记忆源</span>
+              <div class="memory-source-row">
+                <button class="memory-source-btn active" id="mem-source-mem0" title="Mem0 向量记忆">Mem0</button>
+                <button class="memory-source-btn" id="mem-source-session" title="OpenClaw 会话历史">Session</button>
+              </div>
+            </div>
+            <button class="memory-view-btn" id="btn-view-memory" title="查看记忆内容">
+              <i class="ph ph-eye"></i> 查看记忆
+            </button>
             <label class="plugin-toggle" id="toggle-mem0-label">
               <span class="toggle-switch" id="toggle-mem0-switch"></span>
               <input type="checkbox" id="chat-mem0-enhanced" style="display:none">
@@ -669,6 +679,20 @@
   </div>
 </div>
 
+</div>
+
+<!-- Memory Viewer Overlay -->
+<div id="memory-viewer-overlay">
+  <div class="memory-viewer-panel">
+    <div class="memory-viewer-header">
+      <span id="memory-viewer-title">🧠 记忆查看</span>
+      <button class="memory-viewer-close" id="memory-viewer-close">&times;</button>
+    </div>
+    <div class="memory-viewer-body" id="memory-viewer-body">
+      <div class="memory-viewer-empty">点击"查看记忆"按钮加载</div>
+    </div>
+    <div class="memory-viewer-footer" id="memory-viewer-footer"></div>
+  </div>
 </div>
 
 <script src="CHARACTERS_JSON.js"></script>

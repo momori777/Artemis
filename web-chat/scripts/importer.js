@@ -431,12 +431,37 @@ var CharacterImporter = {
   },
 
   removeCharacter: function(id) {
+    // Track deleted IDs to prevent API re-merge
+    var deletedIds = [];
+    try { var raw = localStorage.getItem('ai-gf-deleted-ids'); if (raw) deletedIds = JSON.parse(raw); } catch(e) {}
+    deletedIds = deletedIds.filter(function(d) { return d !== id; });
+    deletedIds.push(id);
+    try { localStorage.setItem('ai-gf-deleted-ids', JSON.stringify(deletedIds)); } catch(e) {}
+
     var idx = -1;
     for (var i = 0; i < CHARACTERS.length; i++) {
       if (CHARACTERS[i].id === id && CHARACTERS[i].imported) { idx = i; break; }
     }
-    if (idx >= 0) { CHARACTERS.splice(idx, 1); this._saveImported(); return true; }
-    return false;
+    if (idx >= 0) {
+      CHARACTERS.splice(idx, 1);
+      this._saveImported();
+      return true;
+    }
+    // Force delete from localStorage even if not in current array
+    try {
+      var raw2 = localStorage.getItem('ai-gf-imported-chars');
+      var list2 = [];
+      if (raw2) list2 = JSON.parse(raw2);
+      list2 = list2.filter(function(c) { return c.id !== id; });
+      localStorage.setItem('ai-gf-imported-chars', JSON.stringify(list2));
+      // Force remove from global array
+      for (var j = 0; j < CHARACTERS.length; j++) {
+        if (CHARACTERS[j].id === id) { CHARACTERS.splice(j, 1); break; }
+      }
+      return true;
+    } catch(e) {
+      return false;
+    }
   },
 
   init: function() {

@@ -172,6 +172,13 @@ function mergeAllCharacters(apiData) {
   var seenId = {};
   var seenName = {};
 
+  // Load deleted-ids tracker
+  var deletedIds = [];
+  try {
+    var delRaw = localStorage.getItem('ai-gf-deleted-ids');
+    if (delRaw) deletedIds = JSON.parse(delRaw);
+  } catch (e) {}
+
   // 1. Load imported chars from localStorage first (they survive everything)
   try {
     var raw = localStorage.getItem('ai-gf-imported-chars');
@@ -180,6 +187,8 @@ function mergeAllCharacters(apiData) {
       imported.forEach(function(c) {
         c.imported = true;
         ensureDefaults(c);
+        // Filter out deleted chars
+        if (deletedIds.indexOf(c.id) !== -1) return;
         result.push(c);
         seenId[c.id] = true;
         seenName[c.name] = true;
@@ -194,6 +203,8 @@ function mergeAllCharacters(apiData) {
       var id = c.id || fb.id;
       // Resolve name alias to canonical id
       if (NAME_ALIASES[c.name]) id = NAME_ALIASES[c.name];
+      // Filter deleted
+      if (deletedIds.indexOf(id) !== -1) return;
       if (seenId[id]) return; // already imported
       if (c.name && seenName[c.name]) return; // same name already exists
       seenId[id] = true;
