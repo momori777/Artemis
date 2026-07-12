@@ -192,4 +192,54 @@ var ApiClient = {
       .then(function (r) { return r.ok; })
       .catch(function () { return false; });
   },
+
+  /**
+   * Fetch session history from OpenClaw session store.
+   * @param {string} sessionKey - e.g. "main", "qqbot", etc.
+   * @param {number} limit - number of recent messages
+   * @returns {Promise<{ok: boolean, history: Array}>}
+   */
+  fetchSessionHistory: function (sessionKey, limit) {
+    sessionKey = sessionKey || 'main';
+    limit = limit || 10;
+    return fetch(
+      'http://localhost:19260/api/session-history?sessionKey=' + encodeURIComponent(sessionKey) + '&limit=' + limit,
+      {
+        signal: AbortSignal.timeout(10000),
+      }
+    )
+      .then(function (r) {
+        if (!r.ok) throw new Error('Session history returned ' + r.status);
+        return r.json();
+      })
+      .catch(function (err) {
+        console.warn('Session history fetch failed:', err.message);
+        return { ok: false, history: [], source: 'session-history', error: err.message };
+      });
+  },
+
+  /**
+   * Search mem0 memories.
+   * @param {string} query - search query
+   * @param {number} limit - number of results
+   * @returns {Promise<{ok: boolean, results: Array}>}
+   */
+  mem0Search: function (query, limit) {
+    query = query || '';
+    limit = limit || 20;
+    return fetch(
+      'http://localhost:19260/api/mem0-search?query=' + encodeURIComponent(query) + '&limit=' + limit,
+      {
+        signal: AbortSignal.timeout(10000),
+      }
+    )
+      .then(function (r) {
+        if (!r.ok) throw new Error('Mem0 search returned ' + r.status);
+        return r.json();
+      })
+      .catch(function (err) {
+        console.warn('Mem0 search fetch failed:', err.message);
+        return { ok: false, results: [], source: 'mem0', error: err.message };
+      });
+  },
 };
