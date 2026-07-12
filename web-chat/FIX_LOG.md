@@ -50,6 +50,25 @@
 
 ---
 
+## 修复 3：Tree 模式下 ComfyUI 生图重启后消失 ✅ 已修复 (2026-07-13)
+
+### 根因
+`_pollAutoPaint()` 在 ComfyUI 生图完成后调用 `saveChatHistory()` 保存 messages，
+但 `saveChatHistory()` 在 session 已迁移为 tree 格式时不写入新消息：
+```js
+if (s.tree) { saveStore(store); return; }  // 直接返回，新消息丢失！
+```
+所以 tree 模式下生成的图片只存在于内存，刷新页面后消失。
+
+### 修复
+1. `_pollAutoPaint()`: 改为 tree-aware 保存，用 `appendTreeNode()` + `saveSessionTree()`
+2. `loadHistory()` tree 分支: 渲染前解析本地文件路径为 daemon proxy URL
+3. `_renderTreeNode()` 分支跳转: 同上，添加 media 路径解析
+4. `branchRegenerate` 完成后重渲染: 同上
+
+---
+
 ## 下一步
 1. ✅ Phosphor Icons 已本地化 — 刷新页面验证图标显示
-2. 确认角色卡删除持久化是否生效
+2. ✅ Tree 模式生图持久化已修复 — 刷新页面验证
+3. 确认角色卡删除持久化是否生效
