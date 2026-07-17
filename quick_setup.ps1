@@ -270,19 +270,24 @@ media_qqbot_audio: "$(& $esc $mediaAudio)"
 media_qqbot_images: "$(& $esc $mediaImages)"
 
 # ============================================================
-# ComfyUI 文生图
+# ComfyUI 文生图 (推理引擎已内置 skills/comfyui_core/)
 # ============================================================
-comfyui_root: "$(& $esc $comfyuiRoot)"
+# comfyui_root: 留空使用内置引擎 (已注释掉外部路径)
 comfyui_python: "$(& $esc $comfyuiPython)"
 comfyui_checkpoints_dir: "$(& $esc $comfyuiCheckpoints)"
+# ComfyUI推理过程中的临时输出; PS脚本会将成品copy到 media_qqbot_images
 comfyui_temp_output_dir: "$workspace\comfyui"
+# comfyui_launcher: 秋叶整合包启动器 (可选, 用于独立运行ComfyUI UI)
 comfyui_launcher: "$(& $esc $comfyuiConfigure)"
 
 # ============================================================
-# GPT-SoVITS v2 Pro (TTS)
+# GPT-SoVITS v2 Pro (TTS) (推理引擎已内置 skills/sovits/)
 # ============================================================
-sovits_root: "$(& $esc $sovitsRoot)"
+# sovits_root: 留空使用内置引擎 (已注释掉外部路径)
 sovits_python: "$(& $esc $sovitsPython)"
+# sovits_weights_dir: 训练好的模型权重目录 (.ckpt/.pth) - 必填!
+sovits_weights_dir: "$(& $esc $sovitsRoot)"
+# TTS输出wav后,PS脚本会将成品copy到 media_qqbot_audio
 tts_temp_output_dir: "$workspace\media\qqbot\audio"
 
 # ============================================================
@@ -337,7 +342,7 @@ $checks = @(
     @{Label="ComfyUI python";  Path=$comfyuiPython},
     @{Label="ComfyUI ckpt";    Path=$comfyuiCheckpoints},
     @{Label="ComfyUI launcher";Path=$comfyuiConfigure},
-    @{Label="SovITS root";     Path=$sovitsRoot},
+    @{Label="SovITS weights";  Path=$sovitsRoot},
     @{Label="SovITS python";   Path=$sovitsPython},
     @{Label="llama exe";       Path=$llamaExe},
     @{Label="llama model";     Path=$llamaModel},
