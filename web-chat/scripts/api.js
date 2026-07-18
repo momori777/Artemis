@@ -43,11 +43,23 @@ var ApiClient = {
   chatStream: async function (messages, settings, onToken, onComplete, onError) {
     var model = settings.model || 'local/qwen3.6-35b';
     var characterId = settings.characterId || 'natsume';
+    // Merge sampler params from sampler panel (SillyTavern-style permanent overrides)
+    var samplerParams = {};
+    if (typeof getSamplerParams === 'function') {
+      samplerParams = getSamplerParams();
+    }
     var body = {
       model: model,
       messages: messages,
       stream: true,
-      max_tokens: 4096,
+      max_tokens: samplerParams.max_tokens || 4096,
+      temperature: samplerParams.temperature ?? 0.7,
+      top_p: samplerParams.top_p ?? 0.9,
+      top_k: samplerParams.top_k ?? 40,
+      min_p: samplerParams.min_p ?? 0.05,
+      frequency_penalty: samplerParams.frequency_penalty ?? 0.0,
+      presence_penalty: samplerParams.presence_penalty ?? 0.0,
+      repeat_penalty: samplerParams.repeat_penalty ?? 1.1,
       characterId: characterId,
       reasoning: settings.reasoningEnabled !== false ? 'on' : 'off',
       thinkingMode: settings.thinkingMode || 'default',
