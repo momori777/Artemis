@@ -6,7 +6,8 @@ setlocal enabledelayedexpansion
 set "REA_MODE=%1"
 if "%REA_MODE%"=="" set "REA_MODE=auto"
 
-echo [%date% %time%] Switching llama to -rea %REA_MODE% >> D:\AI_Girlfriend\rea_switch.log
+set "PROJECT_DIR=%~dp0"
+echo [%date% %time%] Switching llama to -rea %REA_MODE% >> %PROJECT_DIR%\rea_switch.log
 
 REM 关掉 llama
 taskkill /f /im llama-server.exe >nul 2>&1
@@ -18,8 +19,8 @@ if not errorlevel 1 goto wait_stop
 echo Port 8080 released.
 
 REM 启动 llama
-start "" /B D:\AI_Girlfriend\llama-server\llama-server.exe ^
-  -m C:\Users\TK\Desktop\vllm\models\Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf ^
+start "" /B %PROJECT_DIR%\llama-server\llama-server.exe ^
+  -m E:\LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf ^
   -c 120000 --flash-attn on ^
   -ctk q8_0 -ctv q8_0 ^
   --no-mmap --cpu-moe ^
@@ -38,5 +39,5 @@ timeout /t 2 /nobreak >nul
 curl -s http://127.0.0.1:8080/health | findstr "ok" >nul 2>&1
 if errorlevel 1 goto wait_ready
 
-echo [%date% %time%] llama ready with -rea %REA_MODE% >> D:\AI_Girlfriend\rea_switch.log
+echo [%date% %time%] llama ready with -rea %REA_MODE% >> %PROJECT_DIR%\rea_switch.log
 echo DONE: -rea %REA_MODE%

@@ -43,6 +43,12 @@ WEBCHAT_PORT = 19270
 _mem0_write_counters = {}  # {character_id: count}
 _mem0_write_lock = threading.Lock()
 
+# ── World Book per-entry storage (new format) ────────────────
+# In-memory store of per-entry worldbook entries.
+# Each entry: { id, key, content, priority(0-4), enabled, source, updatedAt }
+_wb_entries = []  # list of entry dicts
+_wb_entries_lock = threading.Lock()
+
 # ── Llama reasoning state tracking ─────────────────────────
 _llama_rea_state = "auto"  # current llama -rea setting
 
@@ -686,16 +692,48 @@ def _build_system_prompt(character_id):
     AGENTS.md is intentionally excluded — it's for the Gateway agent, not the chat model."""
     parts = []
 
-    # 0. World Book (global lore, injected before character) — from harem root
-    wb_path = os.path.join(WORKSPACE, "skills", "harem", "_worldbook.md")
-    if os.path.isfile(wb_path):
-        try:
-            with open(wb_path, "r", encoding="utf-8") as f:
-                wb_content = f.read().strip()
-            if wb_content:
-                parts.append("# WORLD BOOK / LORE\n\n" + wb_content)
-        except Exception:
-            pass
+    # 0. World Book (global lore, injected before character)
+    #    New entries-based format: each entry has key, content, priority(0-4), enabled
+    wb_entries = []
+    with _wb_entries_lock:
+        wb_entries = list(_wb_entries)
+
+    # Filter: only enabled entries with priority >= 1
+    enabled_entries = [e for e in wb_entries if e.get("enabled") and e.get("priority", 0) >= 1]
+    # Sort by priority descending (high priority first)
+    enabled_entries.sort(key=lambda e: e.get("priority", 0), reverse=True)
+
+    if enabled_entries:
+        lines = ["# WORLD BOOK / LORE"]
+        for entry in enabled_entries:
+            key = entry.get("key", "")
+            content = entry.get("content", "")
+            priority = entry.get("priority", 2)
+            if key and content:
+                # Priority label: [E]ssential / [H]igh / [M]edium / [L]ow
+                if priority == 4:
+                    label = "[E]"
+                elif priority == 3:
+                    label = "[H]"
+                elif priority == 2:
+                    label = "[M]"
+                else:
+                    label = "[L]"
+                lines.append(f"\n## {label} {key}")
+                lines.append(content.strip())
+        parts.append("\n\n".join(lines))
+
+    # Fallback: legacy _worldbook.md file if no entries
+    if not enabled_entries:
+        wb_path = os.path.join(WORKSPACE, "skills", "harem", "_worldbook.md")
+        if os.path.isfile(wb_path):
+            try:
+                with open(wb_path, "r", encoding="utf-8") as f:
+                    wb_content = f.read().strip()
+                if wb_content:
+                    parts.append("# WORLD BOOK / LORE\n\n" + wb_content)
+            except Exception:
+                pass
 
     # 1. SOUL.md — prefer character-specific from harem, fallback to root
     if character_id:
@@ -862,6 +900,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/worldbook":
+            # New entries-based format
+            with _wb_entries_lock:
+                entries_snapshot = list(_wb_entries)
+            if entries_snapshot:
+                self.send_json({"entries": entries_snapshot, "count": len(entries_snapshot)})
+                return
+            # Fallback to legacy single-file format
             wb_path = os.path.join(WORKSPACE, "skills", "harem", "_worldbook.md")
             if os.path.isfile(wb_path):
                 try:
@@ -871,7 +916,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 except Exception:
                     self.send_json({"worldbook": None, "exists": False})
             else:
-                self.send_json({"worldbook": None, "exists": False})
+                self.send_json({"entries": [], "count": 0})
             return
 
         if path == "/api/restart-service":
@@ -909,8 +954,19 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/worldbook":
             try:
                 length = int(self.headers.get("Content-Length", 0))
-                body = self.rfile.read(length) if length > 0 else b"{}"
-                data = json.loads(body)
+                body = self.rfile.read(length if length > 0 else 0)
+                data = json.loads(body) if body else {}
+
+                # New format: { entries: [...] }
+                entries = data.get("entries")
+                if isinstance(entries, list):
+                    with _wb_entries_lock:
+                        _wb_entries.clear()
+                        _wb_entries.extend(entries)
+                    self.send_json({"ok": True, "count": len(entries)})
+                    return
+
+                # Legacy format: { worldbook: { content, name } }
                 wb = data.get("worldbook")
                 wb_path = os.path.join(WORKSPACE, "skills", "harem", "_worldbook.md")
                 if wb and isinstance(wb, dict) and wb.get("content"):
@@ -1214,7 +1270,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             auth_header = ""  # no auth needed (--api-key breaks llama-server)
             base_url = "http://127.0.0.1:8080/v1"
             # llama.cpp server's model name is the full gguf filename
-            backend_model = "Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf"
+            backend_model = "LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf"
         else:
             provider_cfg = _resolve_provider_for_model(model_id)
             if not provider_cfg:
@@ -1397,7 +1453,7 @@ Conversation:
         try:
             import urllib.request, urllib.error
             payload = {
-                "model": "Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf",
+                "model": "LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf",
                 "messages": [{"role": "user", "content": instruction}],
                 "stream": False,
                 "max_tokens": 800,
@@ -1496,7 +1552,7 @@ Conversation:
         if model_id.startswith("local/"):
             api_key = ""
             base_url = "http://127.0.0.1:8080/v1"
-            backend_model = "Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf"
+            backend_model = "LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf"
         else:
             provider_cfg = _resolve_provider_for_model(model_id)
             if not provider_cfg:

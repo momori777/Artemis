@@ -2,7 +2,6 @@
 # 交互式 PySide6 GUI — TTS + ComfyUI，完全不走 llama 生命周期管理
 #
 # 使用方式:
-#   cd D:\AI_Girlfriend
 #   .\artemis_studio.ps1
 #   或直接双击运行
 
