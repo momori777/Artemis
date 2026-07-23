@@ -238,6 +238,7 @@ SERVICES = [
     {"name": "Artemis Bridge",  "port": 19250,        "enabled": True},
     {"name": "OpenClaw Gateway","port": 18789,        "enabled": True},
     {"name": "Task Board",      "port": 19280,        "enabled": True,  "note": "AgentRQ-style task queue UI"},
+    {"name": "Llama Debugger",  "port": 8765,         "enabled": True,  "note": "llama-server parameter tuning"},
     {"name": "Claude Code MCP", "port": None,          "enabled": False, "note": "Run claude-code.ps1 manually"},
     {"name": "WebChat",         "port": 19270,        "enabled": True},
 ]
@@ -342,6 +343,25 @@ def start_bridge():
         time.sleep(2)
     return "timeout"
 
+def start_llama_debugger():
+    if is_port_open(8765):
+        return "already running"
+    server_path = os.path.join(WORKSPACE, "skills", "llama_debugger", "server.py")
+    if not os.path.isfile(server_path):
+        return "script not found"
+    subprocess.Popen(
+        [PYTHON, server_path, "8765"],
+        cwd=os.path.join(WORKSPACE, "skills", "llama_debugger"),
+        creationflags=subprocess.CREATE_NO_WINDOW,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    for _ in range(5):
+        if is_port_open(8765):
+            return "ready"
+        time.sleep(1)
+    return "timeout"
+
 def start_task_board():
     TASK_PORT = 19280
     if is_port_open(TASK_PORT):
@@ -424,6 +444,7 @@ SERVICE_STARTERS = {
     "Artemis Bridge": start_bridge,
     "OpenClaw Gateway": start_gateway,
     "Task Board": start_task_board,
+    "Llama Debugger": start_llama_debugger,
     "WebChat": start_webchat,
 }
 
@@ -434,6 +455,7 @@ SERVICE_KILLERS = {
     "Artemis Bridge": "python.exe",
     "OpenClaw Gateway": "node.exe",
     "Task Board": "python.exe",
+    "Llama Debugger": "python.exe",
     "WebChat": None,  # WebChat runs in daemon thread, can't kill separately
 }
 
