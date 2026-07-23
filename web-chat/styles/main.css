@@ -1910,11 +1910,11 @@ text-align:center;
   background:var(--bg-root);
   border:1px solid var(--border-moderate);
   border-radius:var(--radius-lg);
-  width:min(1400px,98vw);
+  width:min(1600px,100vw);
+  height:100vh;
   animation:fadeIn var(--dur-normal) var(--ease-out-expo);
   display:flex;
   flex-direction:column;
-  max-height:92vh;
   overflow:hidden;
 }
 .worldbook-modal-header {
@@ -1991,7 +1991,7 @@ text-align:center;
   flex-direction:column;
   gap:6px;
   min-width:0;
-  max-height:50vh;
+  max-height:65vh;
   overflow-y:auto;
 }
 .wb-list::-webkit-scrollbar,
@@ -2055,7 +2055,7 @@ text-align:center;
   padding:10px;
   font-size:11px;
   font-family:var(--font-mono);
-  max-height:180px;
+  max-height:55vh;
   overflow:auto;
   white-space:pre-wrap;
   word-break:break-word;
