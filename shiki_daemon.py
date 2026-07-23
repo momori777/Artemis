@@ -1270,7 +1270,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             auth_header = ""  # no auth needed (--api-key breaks llama-server)
             base_url = "http://127.0.0.1:8080/v1"
             # llama.cpp server's model name is the full gguf filename
-            backend_model = "LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf"
+            backend_model = "Hermes3.6-35B-A3B-Uncensored-Genesis-V5-APEX-Compact.gguf"
         else:
             provider_cfg = _resolve_provider_for_model(model_id)
             if not provider_cfg:
@@ -1453,7 +1453,7 @@ Conversation:
         try:
             import urllib.request, urllib.error
             payload = {
-                "model": "LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf",
+                "model": "Hermes3.6-35B-A3B-Uncensored-Genesis-V5-APEX-Compact.gguf",
                 "messages": [{"role": "user", "content": instruction}],
                 "stream": False,
                 "max_tokens": 800,
@@ -1552,7 +1552,7 @@ Conversation:
         if model_id.startswith("local/"):
             api_key = ""
             base_url = "http://127.0.0.1:8080/v1"
-            backend_model = "LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf"
+            backend_model = "Hermes3.6-35B-A3B-Uncensored-Genesis-V5-APEX-Compact.gguf"
         else:
             provider_cfg = _resolve_provider_for_model(model_id)
             if not provider_cfg:

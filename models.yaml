@@ -22,7 +22,7 @@ models:
   # =========================================================================
   - name: LuffyTheFox Qwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3
     type: GGUF (Q4_K, ~17 GB, 34.66B MoE, 8/256 experts)
-    local_path: "E:/LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf"
+    local_path: "E:/Hermes3.6-35B-A3B-Uncensored-Genesis-V5-APEX-Compact.gguf"
     note: 当前活跃模型，Hermes V3 架构，Uncensored 变体
 
   # =========================================================================
