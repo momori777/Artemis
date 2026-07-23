@@ -315,7 +315,7 @@ def _wait_for_llama_ready(port=8080, timeout=180, label="[LLAMA]"):
     # 阶段 4: /v1/chat/completions 端点验证（OpenClaw 用这个）
     v1_deadline = min(time.time() + 60, deadline + 10)
     chat_payload = _json.dumps({
-        "model": "LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf",
+        "model": "Hermes3.6-35B-A3B-Uncensored-Genesis-V5-APEX-Compact.gguf",
         "messages": [{"role": "user", "content": "hi"}],
         "max_tokens": 1,
         "temperature": 0,
