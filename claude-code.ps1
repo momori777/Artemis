@@ -96,13 +96,14 @@ Write-Host ""
 Start-TaskBoard
 
 Write-Host ""
-Write-Host "📂 Project: D:\AI_Girlfriend" -ForegroundColor Cyan
+$PROJECT_DIR = $PSScriptRoot
+Write-Host "📂 Project: $PROJECT_DIR" -ForegroundColor Cyan
 Write-Host "🧩 MCP tools: 14 total (8 Artemis + 6 Task Queue)" -ForegroundColor DarkGray
 Write-Host "🔄 Task loop: getNextTask → ongoing → execute → reply → completed" -ForegroundColor DarkGray
 Write-Host ""
 
 # Launch Claude Code
-Push-Location D:\AI_Girlfriend
+Push-Location $PROJECT_DIR
 try {
     if ($Prompt) {
         Write-Host "🚀 Launching Claude Code with prompt..." -ForegroundColor Magenta
