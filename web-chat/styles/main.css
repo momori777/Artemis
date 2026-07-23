@@ -1910,11 +1910,11 @@ text-align:center;
   background:var(--bg-root);
   border:1px solid var(--border-moderate);
   border-radius:var(--radius-lg);
-  width:min(1200px,96vw);
+  width:min(1400px,98vw);
   animation:fadeIn var(--dur-normal) var(--ease-out-expo);
   display:flex;
   flex-direction:column;
-  max-height:85vh;
+  max-height:92vh;
   overflow:hidden;
 }
 .worldbook-modal-header {
@@ -1933,10 +1933,10 @@ text-align:center;
 }
 .worldbook-modal-close:hover{color:var(--text-primary);background:var(--bg-elevated)}
 .worldbook-modal-body {
-  padding:20px;
+  padding:16px 20px;
   display:flex;
   flex-direction:column;
-  gap:12px;
+  gap:10px;
   flex:1 1 0;
   overflow-y:auto;
   min-height:0;
@@ -1991,6 +1991,8 @@ text-align:center;
   flex-direction:column;
   gap:6px;
   min-width:0;
+  max-height:50vh;
+  overflow-y:auto;
 }
 .wb-list::-webkit-scrollbar,
 #wb-list::-webkit-scrollbar,
