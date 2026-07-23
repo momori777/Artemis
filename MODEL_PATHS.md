@@ -6,7 +6,7 @@
 
 | 文件 | 大小 | 放哪（相对根目录） |
 |------|------|-------------------|
-| LuffyTheFox Qwen3.6-35B GGUF | 16GB | `E:\Hermes3.6-35B-A3B-Uncensored-Genesis-V5-APEX-Compact.gguf` |
+| LuffyTheFox Qwen3.6-35B Genesis Hermes V5 | 16GB | `E:\Hermes3.6-35B-A3B-Uncensored-Genesis-V5-APEX-Compact.gguf` |
 | WAI-Nsfw-Illustrious-17 | 6.5GB | `comfyui-checkpoints\WAI-Nsfw-Illustrious-17.safetensors` |
 | miaomiaoHarem_v20 | 6.5GB | `comfyui-checkpoints\miaomiaoHarem_v20.safetensors` |
 | SoVITS ckpt (夏目) | 155MB | `gpt-sovits-weights\GPT_weights_v2Pro\xxx-e30.ckpt` |
