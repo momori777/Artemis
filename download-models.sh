@@ -75,7 +75,7 @@ echo ""
 
 # Model file list: repo_path|local_path|description
 MODELS=(
-    "llm/Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf|llm/Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf|LLM GGUF (16.11 GB)"
+    "llm/LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf|LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf|LLM GGUF — LuffyTheFox Genesis Hermes V3 (16.11 GB)"
     "comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors|comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors|ComfyUI Checkpoint — WAI (6.46 GB)"
     "comfyui-checkpoints/miaomiaoHarem_v20.safetensors|comfyui-checkpoints/miaomiaoHarem_v20.safetensors|ComfyUI Checkpoint — Miaomiao (6.46 GB)"
     "gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt|gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt|GPT-SoVITS ckpt (~155 MB)"

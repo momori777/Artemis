@@ -125,9 +125,9 @@ Write-Host "[2/5] Detecting model..." -ForegroundColor Yellow
 
 if (-not $ModelPath) {
     $defaults = @(
-        ".\llm\Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf",
-        ".\models\llm\Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf",
-        "llm\Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf"
+        "E:\LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf",
+        ".\models\LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf",
+        "LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf"
     )
     foreach ($p in $defaults) {
         if (Test-Path $p) {

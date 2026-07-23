@@ -151,9 +151,9 @@ echo -e "${YELLOW}[2/5] Detecting model...${NC}"
 
 if [[ -z "$MODEL_PATH" ]]; then
     for p in \
-        "./llm/Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf" \
-        "./models/llm/Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf" \
-        "llm/Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf"; do
+        "/e/LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf" \
+        "./models/LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf" \
+        "LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf"; do
         if [[ -f "$p" ]]; then
             MODEL_PATH="$(realpath "$p")"
             break

@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Satoshi:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="styles/phosphor-icons.css">
-<link rel="stylesheet" href="styles/main.css?v=37">
+<link rel="stylesheet" href="styles/main.css?v=38">
 <link rel="stylesheet" href="styles/polish.css?v=27">
 </head>
 <body>
@@ -605,7 +605,18 @@
     </div>
     <div class="worldbook-modal-body">
       <div id="worldbook-status">
-        No world books loaded.
+        No world book entries loaded.
+      </div>
+      <div class="wb-toolbar" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+        <button class="btn-sm wb-toolbar-btn" id="btn-new-worldbook-entry" title="Add new entry manually">
+          <i class="ph ph-plus"></i> New Entry
+        </button>
+        <button class="btn-sm wb-toolbar-btn" id="btn-enable-all-worldbook">
+          <i class="ph ph-toggle-left"></i> Enable All
+        </button>
+        <button class="btn-sm wb-toolbar-btn" id="btn-disable-all-worldbook">
+          <i class="ph ph-toggle-right"></i> Disable All
+        </button>
       </div>
       <div class="worldbook-upload-area">
         <div class="worldbook-drop-zone" id="worldbook-drop-zone">
@@ -614,7 +625,7 @@
           <span style="font-size:11px;color:var(--text-muted)">Supports multiple files at once</span>
         </div>
       </div>
-      <div id="worldbook-list" class="wb-list"></div>
+      <div id="worldbook-list"></div>
       <div id="worldbook-preview" style="display:none">
         <div class="wb-preview-header">
           <span id="worldbook-preview-label" style="font-size:12px;font-weight:500;color:var(--text-secondary)"></span>

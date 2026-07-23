@@ -87,7 +87,7 @@ Write-Host ""
 
 # 模型文件清单 (repo_path, local_path, description)
 $Models = @(
-    @{RepoPath="llm/Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf"; LocalPath="$BaseDir\llm\Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf"; Desc="LLM GGUF (16.11 GB)"},
+    @{RepoPath="llm/LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf"; LocalPath="E:\LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf"; Desc="LLM GGUF — LuffyTheFox Genesis Hermes V3 (16.11 GB)"},
     @{RepoPath="comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors"; LocalPath="$BaseDir\comfyui-checkpoints\WAI-Nsfw-Illustrious-17.safetensors"; Desc="ComfyUI Checkpoint — WAI (6.46 GB)"},
     @{RepoPath="comfyui-checkpoints/miaomiaoHarem_v20.safetensors"; LocalPath="$BaseDir\comfyui-checkpoints\miaomiaoHarem_v20.safetensors"; Desc="ComfyUI Checkpoint — Miaomiao (6.46 GB)"},
     @{RepoPath="gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt"; LocalPath="$BaseDir\gpt-sovits-weights\GPT_weights_v2Pro\xxx-e30.ckpt"; Desc="GPT-SoVITS ckpt (155 MB)"},

@@ -1,7 +1,7 @@
 ﻿Fourth girlfriend voting in progress - please vote on Issues.
 
 Baidu Netdisk: https://pan.baidu.com/s/1sLeSyVp76yzWcR3Q4pX0kA?pwd=0721
-You don’t actually need Baidu Netdisk - HuggingFace mirrors work fine in China. Use it only if you really don’t want to configure hf-mirror.
+You don't actually need Baidu Netdisk - HuggingFace mirrors work fine in China. Use it only if you really don't want to configure hf-mirror.
 
 > ⚠️ Default scripts are for NVIDIA GPUs. AMD GPU users: see the `AMD_GPU/` folder.
 
@@ -48,7 +48,7 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 > **⚠️ First step: Run `quick_setup.ps1` to configure paths and language.**
 >
 > This wizard will:
-> 1. **Let you choose the default Agent language** (Chinese / Japanese / English) — copies the corresponding `AGENTS_*.md` to `DEFAULT_AGENT.md`
+> 1. **Let you choose the default Agent language** (Chinese / Japanese / English) - copies the corresponding `AGENTS_*.md` to `DEFAULT_AGENT.md`
 > 2. Auto-detect your installed tools (ComfyUI, GPT-SoVITS, llama.cpp, embedding models)
 > 3. Prompt you for any paths it can't find
 > 4. Generate `config.yaml` with all paths, ready for `download-models.ps1`
@@ -95,7 +95,7 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 
 ![Web Chat Demo](media/webchat-demo.gif)
 
-> 👆 **Web Chat**: browser-based chat interface at `http://127.0.0.1:19270` — an alternative to QQ/Telegram bots. Connects directly to local daemon proxy → llama.cpp server.no thing stop and running well even in 8GB VRAM!!!!!
+> 👆 **Web Chat**: browser-based chat interface at `http://127.0.0.1:19270` - an alternative to QQ/Telegram bots. Connects directly to local daemon proxy → llama.cpp server.no thing stop and running well even in 8GB VRAM!!!!!
 
 ### 🎙️ TTS Voice Workshop
 
@@ -146,7 +146,7 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 
 ### Why Cosmos?
 
-The four core capabilities (LLM + TTS + ComfyUI + Live2D) are currently **disconnected** — the LLM doesn't know what Live2D is doing, ComfyUI doesn't sense conversational emotion. Cosmos fills the **physical common-sense layer**:
+The four core capabilities (LLM + TTS + ComfyUI + Live2D) are currently **disconnected** - the LLM doesn't know what Live2D is doing, ComfyUI doesn't sense conversational emotion. Cosmos fills the **physical common-sense layer**:
 
 ```
 Qwen3.6-35B (Language Mind) ←→ Cosmos 3 Nano (Physical Mind)
@@ -210,7 +210,7 @@ See [`models.yaml`](models.yaml) for full details.
 
 | Model | Purpose | Size |
 |-|-|-|
-| **Qwen3.6-35B-A3B-APEX-I-Compact** (Q4_K GGUF) | Chat LLM | 16.11 GB |
+| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V3** (GGUF) | Chat LLM | 16.11 GB |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI generation (default) | 6.46 GB |
 | **miaomiaoHarem_v20** | ComfyUI generation (backup) | 6.46 GB |
 | **GPT-SoVITS voice weights** | TTS voice synthesis | ~303 MB |
@@ -253,13 +253,13 @@ All Python/PS scripts read paths from `config.yaml` -no hardcoded paths to edit.
 
 ## Local LLM Performance
 
-Running Qwen3.6-35B-A3B (MoE, Q4_K, 16.10 GiB, 34.66B params) via llama.cpp (b8851-b9222).
+Running LuffyTheFox Qwen3.6-35B-A3B (MoE, 16.10 GiB, 34.66B params) via llama.cpp (b8851-b9222).
 
 ### Launch Command
 
 ```powershell
 llama-server.exe `
-  -m "Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf" `
+  -m "LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf" `
   -c 120000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
   --cpu-moe --cpu-mask 0xFFFFFFFF `
@@ -269,7 +269,7 @@ llama-server.exe `
   --kv-unified --no-mmap
 ```
 
-> 💡 **About `--no-mmap` vs `-ngl`:** `--no-mmap` lets llama.cpp manage memory on its own, which is far more efficient than manually specifying layers with `-ngl`. Forcing GPU layers via `-ngl` can cut speed in half; `--no-mmap` allows the engine to dynamically allocate based on actual VRAM, yielding 50~60 t/s on RTX 5070 8GB. Using `q4_0` for KV cache halves VRAM usage — at 16K context, q4 runs stably for 50K+ tokens.
+> 💡 **About `--no-mmap` vs `-ngl`:** `--no-mmap` lets llama.cpp manage memory on its own, which is far more efficient than manually specifying layers with `-ngl`. Forcing GPU layers via `-ngl` can cut speed in half; `--no-mmap` allows the engine to dynamically allocate based on actual VRAM, yielding 50~60 t/s on RTX 5070 8GB. Using `q4_0` for KV cache halves VRAM usage - at 16K context, q4 runs stably for 50K+ tokens.
 
 ### Key Metrics
 
@@ -321,7 +321,7 @@ The system auto-detects GPU VRAM and selects the optimal run mode - no manual co
 ## Directory Structure
 
 ```
-AI_Girlfriend/                        # OpenClaw workspace root
+<PROJECT_DIR>/                                               # OpenClaw workspace root
 ├── start.ps1                         # 🚀 One-click launch: llama + Live2D + Gateway
 ├── quick_setup.ps1                     # 🛠 Interactive path config wizard
 ├── config.yaml                       # Generated config
@@ -414,7 +414,7 @@ AI_Girlfriend/                        # OpenClaw workspace root
 
 ## 🤖 Claude Code + AgentRQ-Style Task Board (NEW)
 
-Artemis now supports **Claude Code** as a parallel agent runtime alongside OpenClaw. Claude Code connects via MCP to access all Artemis capabilities — **with a built-in AgentRQ-compatible task queue** for human-agent collaboration.
+Artemis now supports **Claude Code** as a parallel agent runtime alongside OpenClaw. Claude Code connects via MCP to access all Artemis capabilities - **with a built-in AgentRQ-compatible task queue** for human-agent collaboration.
 
 ### How it works
 
@@ -436,12 +436,12 @@ Artemis now supports **Claude Code** as a parallel agent runtime alongside OpenC
 ### AgentRQ-Style Task Loop
 
 Claude Code automatically runs a task loop on startup:
-1. `getWorkspace()` — check workspace status
-2. `getNextTask()` — dequeue next pending task
-3. `updateTaskStatus(taskId, "ongoing")` — claim it
+1. `getWorkspace()` - check workspace status
+2. `getNextTask()` - dequeue next pending task
+3. `updateTaskStatus(taskId, "ongoing")` - claim it
 4. Execute using Artemis tools (TTS, ComfyUI, etc.)
-5. `reply(taskId, "Done!")` — report result
-6. `updateTaskStatus(taskId, "completed")` — mark done
+5. `reply(taskId, "Done!")` - report result
+6. `updateTaskStatus(taskId, "completed")` - mark done
 7. Loop back to `getNextTask()`
 
 ### Launch
@@ -460,7 +460,7 @@ Claude Code automatically runs a task loop on startup:
 .\claude-code.ps1 -KillBoard
 ```
 
-Then open **http://127.0.0.1:19280** — create tasks, watch Claude Code pick them up.
+Then open **http://127.0.0.1:19280** - create tasks, watch Claude Code pick them up.
 
 ### MCP Tools (15 total)
 
@@ -624,7 +624,7 @@ powershell -File start.ps1
 
 Startup sequence:
 ```
-[1/7] llama-server        (8080, Qwen3.6-35B, --no-mmap)
+[1/7] llama-server        (8080, LuffyTheFox Qwen3.6-35B, --no-mmap)
 [2/7] Embedding Server    (9999, all-MiniLM + BGE dual models, CPU, ~100MB RAM)
 [3/7] VRAM Tier Detection (auto-selects whether TTS/ComfyUI stops llama)
 [4/7] Live2D Bridge       (19200, pixi-live2d-display)
@@ -722,23 +722,23 @@ Immutable capability instructions with per-character memory isolation:
 
 > Recall priority: Vector long-term memories > handwritten daily notes > SOUL base persona
 
-### WebChat — Built-in Browser Client
+### WebChat - Built-in Browser Client
 
 A complete web-based AI girlfriend chat interface, served locally at `http://127.0.0.1:19270` by the shiki daemon.
 
 | Feature | Description |
 |-|-|
-| **Multi-character Tabs** | Switch between Shiki Natsume, ATRI, and Yono Sakura — each with isolated conversation history, SOUL.md, and long-term memory |
+| **Multi-character Tabs** | Switch between Shiki Natsume, ATRI, and Yono Sakura - each with isolated conversation history, SOUL.md, and long-term memory |
 | **Streaming Chat** | Real-time token streaming with character-tailored system prompt injection (role persona + user profile) |
-| **Auto Paint** 🎨 | One-click button in the chat input area — LLM generates a ComfyUI prompt from conversation context, then triggers local image generation. Results appear inline in the chat flow |
+| **Auto Paint** 🎨 | One-click button in the chat input area - LLM generates a ComfyUI prompt from conversation context, then triggers local image generation. Results appear inline in the chat flow |
 | **Live2D Integration** | Control the Live2D desktop pet directly: tap head, poke, play idle animations |
 | **TTS Voice** | Generate character voice replies from chat text via GPT-SoVITS |
 | **Studio Panel** | Side panel for manual TTS synthesis and ComfyUI image generation with full parameter control (prompt, negative, size, steps, CFG, checkpoint) |
-| **Dashboard** | Service health dashboard showing llama-server, Embedding, Live2D Bridge, Artemis Bridge, OpenClaw Gateway, and WebChat status — with per-service Start / Stop / Restart controls |
+| **Dashboard** | Service health dashboard showing llama-server, Embedding, Live2D Bridge, Artemis Bridge, OpenClaw Gateway, and WebChat status - with per-service Start / Stop / Restart controls |
 | **Llama Lifecycle Toggle** | Toggle whether to stop llama-server before ComfyUI image generation (frees VRAM for 8GB GPUs, default ON) |
-| **Dual Model Support** | Choose between local llama-server or remote DeepSeek models — switch in settings, config persists |
+| **Dual Model Support** | Choose between local llama-server or remote DeepSeek models - switch in settings, config persists |
 
-> The WebChat talks directly to the shiki daemon (:19260) which proxies to llama-server or OpenAI-compatible APIs. Character-switching is instant — each tab loads its own SOUL.md + IDENTITY.md + USER.md as the system prompt.
+> The WebChat talks directly to the shiki daemon (:19260) which proxies to llama-server or OpenAI-compatible APIs. Character-switching is instant - each tab loads its own SOUL.md + IDENTITY.md + USER.md as the system prompt.
 
 ### Skills Detail
 

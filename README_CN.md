@@ -1,13 +1,13 @@
-四号女友投票中,请在issue里完成投票 
+四号女友投票中,请在issue里完成投票
 
 配置教程BV16XTV6fEoH
 
 度盘链接:https://pan.baidu.com/s/1sLeSyVp76yzWcR3Q4pX0kA?pwd=0721
-度盘链接其实完全不需要，huggingface镜像国内也能访问，如果实在懒得配就用度盘下模型
+度盘链接其实完全不需要,huggingface镜像国内也能访问,如果实在懒得配就用度盘下模型
 
-项目默认脚本为N卡GPU配置，A卡用户看AMD_GPU文件夹改
+项目默认脚本为N卡GPU配置,A卡用户看AMD_GPU文件夹改
 
-q群： 580322386
+q群: 580322386
 
 # AI 女友
 
@@ -19,93 +19,93 @@ q群： 580322386
 
 基于 OpenClaw + QQ Bot + Telegram Bot + llama.cpp + GPT-SoVITS + ComfyUI + Sakura 桌宠 + Live2D 的 AI 女友项目--完全在你自己的机器上运行。
 
-**角色**：支持热切换 AI 女友，每人独立记忆，互不干扰。
+**角色**:支持热切换 AI 女友,每人独立记忆,互不干扰。
 
-### 四季夏目（Shiki Natsume）
+### 四季夏目(Shiki Natsume)
 
-出自《星光咖啡蝶与死神之馆》。高挑、清冷，外冷内热。天然的四爱向--她会主动关心你，偶尔毒舌，安静陪伴。话不多，但每句都有分量。
+出自《星光咖啡蝶与死神之馆》。高挑、清冷,外冷内热。天然的四爱向--她会主动关心你,偶尔毒舌,安静陪伴。话不多,但每句都有分量。
 
-### 亚托莉（ATRI）
+### 亚托莉(ATRI)
 
-出自《ATRI -My Dear Moments-》。娇小，天真烂漫，好奇心旺盛--拥有一双红宝石般清澈大眼睛的少女。总是带着笑容奔向明天，顺手拽上你。**性格与夏目完全相反**：一个热情开朗一个冷傲内敛，一个喜怒哀乐全写在脸上一个深藏不露，一个活泼好动一个沉静矜持。若说夏目是冬夜的冷月，亚托莉便是夏日的暖阳。
+出自《ATRI -My Dear Moments-》。娇小,天真烂漫,好奇心旺盛--拥有一双红宝石般清澈大眼睛的少女。总是带着笑容奔向明天,顺手拽上你。**性格与夏目完全相反**:一个热情开朗一个冷傲内敛,一个喜怒哀乐全写在脸上一个深藏不露,一个活泼好动一个沉静矜持。若说夏目是冬夜的冷月,亚托莉便是夏日的暖阳。
 
-### 夜乃桜（Yono Sakura）
+### 夜乃桜(Yono Sakura)
 
-出自《ディメンション凸ラバース！！》。前任生徒会长，「学园」最强级别的对怪兽战力。银白色长发发尾带淡粉色渐变，浅蓝色眼瞳--冷静、克己、责任感极强。她不擅长圆滑的安慰和漂亮话；她的关心直接而笨拙，像命令一样：休息、吃饭、别逞强。桌宠形态下，她正在学习不必一个人承担一切--在屏幕这一侧守护一个普通而重要的日常就足够了。**安静的守护者**：沉默但注视，固执但忠诚，是不请自来的学姐。
+出自《ディメンション凸ラバース!!》。前任生徒会长,「学园」最强级别的对怪兽战力。银白色长发发尾带淡粉色渐变,浅蓝色眼瞳--冷静、克己、责任感极强。她不擅长圆滑的安慰和漂亮话;她的关心直接而笨拙,像命令一样:休息、吃饭、别逞强。桌宠形态下,她正在学习不必一个人承担一切--在屏幕这一侧守护一个普通而重要的日常就足够了。**安静的守护者**:沉默但注视,固执但忠诚,是不请自来的学姐。
 
 
-## ✨ 为什么选这个项目？
+## ✨ 为什么选这个项目?
 
 | | 云端 AI 女友 | 本项目 |
 |-|-|-|
 | 🛡️ **隐私** | 聊天记录、语音、图片全存在厂商服务器上 | **一切留在本地**--零数据外泄 |
-| 💰 **费用** | 月费 / 按 token 计费，用得越多越贵 | **免费**，一次性部署，永久运行（自带硬件） |
-| 🌐 **网络** | 断网即死；服务器挂了就没法用 | **离线可用**--关掉 WiFi 照样聊 |
-| 🎛️ **控制** | 提示词/模板由厂商控制，随时可能变 | **你完全掌控**所有模型、参数和角色设定 |
-| 🔞 **内容** | 严格审查，动不动封号 | **无审查**--想聊什么聊什么 |
+| 💰 **费用** | 月费 / 按 token 计费,用得越多越贵 | **免费**,一次性部署,永久运行(自带硬件) |
+| 🌐 **网络** | 断网即死;服务器挂了就没法用 | **离线可用**--关掉 WiFi 照样聊 |
+| 🎛️ **控制** | 提示词/模板由厂商控制,随时可能变 | **你完全掌控**所有模型、参数和角色设定 |
+| 🔞 **内容** | 严格审查,动不动封号 | **无审查**--想聊什么聊什么 |
 | 🎨 **可扩展性** | 锁死在厂商模型和功能上 | **自由混搭**--随意换 LLM、画画模型、语音模型 |
 
 ## 📌 前置步骤
 
-> **⚠️ 第一步：先运行 `quick_setup.ps1` 配置路径和语言。**
+> **⚠️ 第一步:先运行 `quick_setup.ps1` 配置路径和语言。**
 >
-> 这个向导会：
-> 1. **让你选择默认 Agent 语言**（中文 / 日语 / 英文）— 将对应的 `AGENTS_*.md` 复制为 `DEFAULT_AGENT.md`
-> 2. 自动检测已安装的工具（ComfyUI、GPT-SoVITS、llama.cpp、嵌入模型）
+> 这个向导会:
+> 1. **让你选择默认 Agent 语言**(中文 / 日语 / 英文)- 将对应的 `AGENTS_*.md` 复制为 `DEFAULT_AGENT.md`
+> 2. 自动检测已安装的工具(ComfyUI、GPT-SoVITS、llama.cpp、嵌入模型)
 > 3. 对没找到的路径会交互式询问
-> 4. 生成包含所有路径的 `config.yaml`，准备好后运行 `download-models.ps1`
+> 4. 生成包含所有路径的 `config.yaml`,准备好后运行 `download-models.ps1`
 >
 > ```powershell
 > powershell -ExecutionPolicy Bypass -File quick_setup.ps1
 > ```
 >
-> quick_setup 完成后，继续 **download-models.ps1** → **setup-llama.ps1** → **start.ps1**。
+> quick_setup 完成后,继续 **download-models.ps1** → **setup-llama.ps1** → **start.ps1**。
 
 ## 🎬 演示
 
 ### 多通道聊天
 ![QQ Bot 演示](media/demo_qqbot.gif)
 
-> 👆 QQ Bot：文字聊天 + TTS 语音 + ComfyUI 画图 + 角色记忆
+> 👆 QQ Bot:文字聊天 + TTS 语音 + ComfyUI 画图 + 角色记忆
 
 ### Live2D 桌面宠物
 ![Live2D 演示](media/demo_live2d.gif)
 
-> 👆 **四季夏目** Live2D：实时角色动画，情绪驱动动作 + 口型同步 + 对话气泡。通过本地 HTTP 桥控制。
+> 👆 **四季夏目** Live2D:实时角色动画,情绪驱动动作 + 口型同步 + 对话气泡。通过本地 HTTP 桥控制。
 
 ### ⭐ 亚托莉 - 第二 AI 女友
 
-**性格与夏目完全相反**，支持一键热切换，记忆隔离。
+**性格与夏目完全相反**,支持一键热切换,记忆隔离。
 
 ![ATRI Live2D](media/atri_live2d.gif)
 
-> 👆 **亚托莉** Live2D：银发、红瞳、光脚白裙--天真烂漫，表情丰富。
+> 👆 **亚托莉** Live2D:银发、红瞳、光脚白裙--天真烂漫,表情丰富。
 
 ![ATRI ComfyUI](media/atri_comfyui.gif)
 
-> 👆 **亚托莉** ComfyUI：AI 画图--海边夕阳，白色连衣裙飘扬，金色时分的温暖光线。
+> 👆 **亚托莉** ComfyUI:AI 画图--海边夕阳,白色连衣裙飘扬,金色时分的温暖光线。
 
 ### ⭐ 夜乃桜 - 第三 AI 女友
 
-**冷静的守护者学姐**，前任生徒会长、「学园」最强战力--现在成了你的桌面伴侣。
+**冷静的守护者学姐**,前任生徒会长、「学园」最强战力--现在成了你的桌面伴侣。
 
 ![Sakura Desktop Pet](media/sakura_demo.gif)
 
-> 👆 **夜乃桜** 桌宠：银粉渐变色长发，浅蓝色眼瞳，白色学园制服--立绘表情联动、主动关怀提醒、GPT-SoVITS 实时语音。
+> 👆 **夜乃桜** 桌宠:银粉渐变色长发,浅蓝色眼瞳,白色学园制服--立绘表情联动、主动关怀提醒、GPT-SoVITS 实时语音。
 
 ![Web Chat 演示](media/webchat-demo.gif)
 
-> 👆 **Web Chat**：浏览器端聊天界面，访问 `http://127.0.0.1:19270` — QQ/Telegram Bot 的替代方案。直接连接本地守护进程代理 → llama.cpp 服务器。什么服务都不停！！！！8g显存也能正常全量跑！！！
+> 👆 **Web Chat**:浏览器端聊天界面,访问 `http://127.0.0.1:19270` - QQ/Telegram Bot 的替代方案。直接连接本地守护进程代理 → llama.cpp 服务器。什么服务都不停!!!!8g显存也能正常全量跑!!!
 
 ### 🎙️ TTS 语音工坊
 
 <video src="media/tts_workshop_small.mp4" controls width="800"></video>
 
-> 👆 **Artemis Studio - TTS 工坊**：GPT-SoVITS 实时语音合成，支持夏目/亚托莉/夜乃桜三套声线、5 种情绪模式（日常/傲娇/深情/长句/随机），中英日三语混合朗读。**无论 llama 是否运行都能用**。
+> 👆 **Artemis Studio - TTS 工坊**:GPT-SoVITS 实时语音合成,支持夏目/亚托莉/夜乃桜三套声线、5 种情绪模式(日常/傲娇/深情/长句/随机),中英日三语混合朗读。**无论 llama 是否运行都能用**。
 
 ![TTS Workshop](media/tts_workshop.gif)
 
-🔊 **听听效果**（点击播放，亚托莉日语）：
+🔊 **听听效果**(点击播放,亚托莉日语):
 
 🎧 [tts_atori.mp3](media/tts_atori.mp3) *(46KB, 浏览器直接播放)*
 
@@ -115,18 +115,18 @@ q群： 580322386
 
 ![ComfyUI Workshop](media/comfyui_workshop.gif)
 
-> 👆 **Artemis Studio - ComfyUI 工坊**：可视化的 AI 画图控制台，自由选择角色/服装/场景/画风，一键生成。**也无需停 llama**（12GB+ 显存下并行运行）。
+> 👆 **Artemis Studio - ComfyUI 工坊**:可视化的 AI 画图控制台,自由选择角色/服装/场景/画风,一键生成。**也无需停 llama**(12GB+ 显存下并行运行)。
 
 | 功能 | 说明 |
 |-|-|
-| 🎭 **动态角色加载** | 从 `skills/harem/` 自动扫描，展示每个角色的人设 + 标签 + 问候语 |
-| 🔄 **角色热切换** | 侧边栏下拉菜单一键切换，记忆和聊天上下文按角色隔离 |
-| 🃏 **角色卡导入** | 拖拽或选择 SillyTavern PNG/JSON 角色卡，自动解析元数据和人设 |
-| 🤖 **模型选择器** | 在设置中切换本地 llama / DeepSeek / Grok，通过守护进程代理路由 |
-| 💬 **真实 LLM 聊天** | 流式回复通过守护进程 `/api/chat` → llama.cpp `/v1/chat/completions`，无 fake 回复 |
-| 📱 **响应式设计** | 移动端侧边栏折叠，自适应气泡布局，兼容桌面和平板 |
+| 🎭 **动态角色加载** | 从 `skills/harem/` 自动扫描,展示每个角色的人设 + 标签 + 问候语 |
+| 🔄 **角色热切换** | 侧边栏下拉菜单一键切换,记忆和聊天上下文按角色隔离 |
+| 🃏 **角色卡导入** | 拖拽或选择 SillyTavern PNG/JSON 角色卡,自动解析元数据和人设 |
+| 🤖 **模型选择器** | 在设置中切换本地 llama / DeepSeek / Grok,通过守护进程代理路由 |
+| 💬 **真实 LLM 聊天** | 流式回复通过守护进程 `/api/chat` → llama.cpp `/v1/chat/completions`,无 fake 回复 |
+| 📱 **响应式设计** | 移动端侧边栏折叠,自适应气泡布局,兼容桌面和平板 |
 | 💾 **本地存储** | 多会话聊天历史、设置和角色状态持久化在浏览器 localStorage |
-| 🎛️ **Artemis Studio** | 内嵌 TTS + ComfyUI 占位面板（语音/图片生成由 agent 子进程控制） |
+| 🎛️ **Artemis Studio** | 内嵌 TTS + ComfyUI 占位面板(语音/图片生成由 agent 子进程控制) |
 
 ## 硬件配置
 
@@ -138,15 +138,15 @@ q群： 580322386
 | 系统 | Windows 11 |
 
 
-## 🔮 未来：Cosmos 物理世界模型
+## 🔮 未来:Cosmos 物理世界模型
 
-> 📖 详细设计：[`imagination.md`](imagination.md) | 桥接参考：[`skills/cosmos/BRIDGE_REFERENCE.md`](skills/cosmos/BRIDGE_REFERENCE.md)
+> 📖 详细设计:[`imagination.md`](imagination.md) | 桥接参考:[`skills/cosmos/BRIDGE_REFERENCE.md`](skills/cosmos/BRIDGE_REFERENCE.md)
 
-**NVIDIA Cosmos**（社区 FP8 量化版入 `skills/cosmos/`）是一个物理世界基础模型，能根据文本/图像生成符合物理规律的场景视频，理解空间关系与物体交互。
+**NVIDIA Cosmos**(社区 FP8 量化版入 `skills/cosmos/`)是一个物理世界基础模型,能根据文本/图像生成符合物理规律的场景视频,理解空间关系与物体交互。
 
-### 为什么需要 Cosmos？
+### 为什么需要 Cosmos?
 
-当前四项核心能力（LLM + TTS + ComfyUI + Live2D）彼此**割裂**——LLM 不知道 Live2D 的动作，ComfyUI 感知不到对话情绪。Cosmos 补齐**物理常识层**：
+当前四项核心能力(LLM + TTS + ComfyUI + Live2D)彼此**割裂**--LLM 不知道 Live2D 的动作,ComfyUI 感知不到对话情绪。Cosmos 补齐**物理常识层**:
 
 ```
 Qwen3.6-35B (语言心智) ←→ Cosmos 3 Nano (物理心智)
@@ -164,7 +164,7 @@ Qwen3.6-35B (语言心智) ←→ Cosmos 3 Nano (物理心智)
 
 | 年代 | GPU | Cosmos 状态 |
 |------|-----|-------------|
-| 2026 | RTX 5070 (8-12GB) | ❌ 存档，硬件检测就位 |
+| 2026 | RTX 5070 (8-12GB) | ❌ 存档,硬件检测就位 |
 | 2027-28 | RTX 5090 (32GB) | ⚠️ Nano FP8 推理可行 |
 | 2029-30 | Rubin 工作站 (96GB) | ✅ LLM + Cosmos 同时常驻 |
 
@@ -178,57 +178,57 @@ Qwen3.6-35B (语言心智) ←→ Cosmos 3 Nano (物理心智)
 
 ## 功能特性
 
-- 🔄 **多角色热切换** - 一键切换 AI 女友（夏目 ⇄ 亚托莉 ⇄ 夜乃樜）；SOUL/IDENTITY/TTS 权重/Live2D 模型全部自动切换，记忆按角色隔离
-- 🃏 **SillyTavern 角色卡导入** - 自动检测导入 PNG/JSON 角色卡，导入后 agent 自动切换角色
-- 💬 **聊天记录导入** - 导入 SillyTavern JSONL 对话记录到 `memory/role_play/<角色>/`，切换角色时 agent 恢复上下文
+- 🔄 **多角色热切换** - 一键切换 AI 女友(夏目 ⇄ 亚托莉 ⇄ 夜乃樜);SOUL/IDENTITY/TTS 权重/Live2D 模型全部自动切换,记忆按角色隔离
+- 🃏 **SillyTavern 角色卡导入** - 自动检测导入 PNG/JSON 角色卡,导入后 agent 自动切换角色
+- 💬 **聊天记录导入** - 导入 SillyTavern JSONL 对话记录到 `memory/role_play/<角色>/`,切换角色时 agent 恢复上下文
 - 💬 **QQ + Telegram 双通道** - 通过 OpenClaw Gateway 接入 QQ Bot 和 Telegram Bot
-- 🎤 **TTS 语音合成** - 本地 GPT-SoVITS 推理，日语语音（根据对话自动匹配情绪），3 套角色声线（夏目 / 亚托莉 / 夜乃桜）
-- 🎤 **ASR 语音识别** - 本地 Faster-Whisper small 模型 (~1.5GB 显存)，可与 llama 共存；支持 99 种语言
-- 🎨 **AI 画图** - 本地 ComfyUI 推理，SDXL/Illustrious 模型，3 套角色 prompt 模板
-- 🖥️ **Sakura 桌宠** - PySide6 桌面伴侣，主动关心、屏幕观察 & 本地 LLM 感知；支持 3 角色切换
-- 🎭 **Live2D 角色模型** - 实时 Live2D 渲染，情绪驱动表情 & 对话气泡（夏目 / 亚托莉 L2D；夜乃桜立绘模式）
-- 🧠 **VRAM 智能分档** - 根据显存自动选择策略：≥12GB 所有技能在线（含 llama）；8GB 自动停 llama 秒切 GPU；<8GB 安全模式。无需手动配置
-- 🎛️ **Artemis Studio 控制台** - 可视化 TTS + ComfyUI 工坊，无论 llama 是否运行都可自由 DIY 语音和图片，真正的离线创作台
+- 🎤 **TTS 语音合成** - 本地 GPT-SoVITS 推理,日语语音(根据对话自动匹配情绪),3 套角色声线(夏目 / 亚托莉 / 夜乃桜)
+- 🎤 **ASR 语音识别** - 本地 Faster-Whisper small 模型 (~1.5GB 显存),可与 llama 共存;支持 99 种语言
+- 🎨 **AI 画图** - 本地 ComfyUI 推理,SDXL/Illustrious 模型,3 套角色 prompt 模板
+- 🖥️ **Sakura 桌宠** - PySide6 桌面伴侣,主动关心、屏幕观察 & 本地 LLM 感知;支持 3 角色切换
+- 🎭 **Live2D 角色模型** - 实时 Live2D 渲染,情绪驱动表情 & 对话气泡(夏目 / 亚托莉 L2D;夜乃桜立绘模式)
+- 🧠 **VRAM 智能分档** - 根据显存自动选择策略:≥12GB 所有技能在线(含 llama);8GB 自动停 llama 秒切 GPU;<8GB 安全模式。无需手动配置
+- 🎛️ **Artemis Studio 控制台** - 可视化 TTS + ComfyUI 工坊,无论 llama 是否运行都可自由 DIY 语音和图片,真正的离线创作台
 - 💾 **角色扮演记忆** - 每日对话摘要按角色存储于 `memory/role_play/`
-- 🧠 **长期记忆系统** - 灵感源自 [headroom](https://github.com/chopratejas/headroom)（SmartCrusher + CCR）和 [mem0](https://github.com/mem0ai/mem0)（Qdrant 向量数据库）：
-  - **中文 Embedding 增强** - 新增 BGE-small-zh-v1.5 中文嵌入模型，中日英混合记忆检索更精准；all-MiniLM-L6-v2 继续用于英文/跨语言
+- 🧠 **长期记忆系统** - 灵感源自 [headroom](https://github.com/chopratejas/headroom)(SmartCrusher + CCR)和 [mem0](https://github.com/mem0ai/mem0)(Qdrant 向量数据库):
+  - **中文 Embedding 增强** - 新增 BGE-small-zh-v1.5 中文嵌入模型,中日英混合记忆检索更精准;all-MiniLM-L6-v2 继续用于英文/跨语言
   - **SmartCrusher 文本压缩** - 每次 LLM 请求硬截断至 24 条消息 / 40K 字符
-  - **CCR（整理-合并-检索）** - 后台线程每 8 轮对话提取持久记忆，写入 mem0 Qdrant
-  - **向量 + BM25 混合搜索** - 语义相似度 + 关键词匹配，基于 Qdrant + 双 Embedding 模型
-  - **自动同步桥接** - Cron job 每 30 分钟同步 Qdrant → `_mem0_auto.md`，使向量记忆可被 OpenClaw 原生 `memory_search` 检索
-  - **角色隔离** - Qdrant 内通过 `user_id` 划分 4 个独立记忆空间（sakura / natsume / enola / atori）
+  - **CCR(整理-合并-检索)** - 后台线程每 8 轮对话提取持久记忆,写入 mem0 Qdrant
+  - **向量 + BM25 混合搜索** - 语义相似度 + 关键词匹配,基于 Qdrant + 双 Embedding 模型
+  - **自动同步桥接** - Cron job 每 30 分钟同步 Qdrant → `_mem0_auto.md`,使向量记忆可被 OpenClaw 原生 `memory_search` 检索
+  - **角色隔离** - Qdrant 内通过 `user_id` 划分 4 个独立记忆空间(sakura / natsume / enola / atori)
   - **召回优先级** - 向量长期记忆 > 手写日记 > SOUL 基础人设
 
 ## 模型
 
-所有模型托管在 HuggingFace：**[TAOTAO777/ai-girlfriend-natsume](https://huggingface.co/TAOTAO777/ai-girlfriend-natsume)**
+所有模型托管在 HuggingFace:**[TAOTAO777/ai-girlfriend-natsume](https://huggingface.co/TAOTAO777/ai-girlfriend-natsume)**
 
 详见 [`models.yaml`](models.yaml)。
 
 | 模型 | 用途 | 大小 |
 |-|-|-|
-| **Qwen3.6-35B-A3B-APEX-I-Compact** (Q4_K GGUF) | 聊天 LLM | 16.11 GB |
-| **WAI-Nsfw-Illustrious-17** | ComfyUI 画图（默认） | 6.46 GB |
-| **miaomiaoHarem_v20** | ComfyUI 画图（备用） | 6.46 GB |
+| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V3** (GGUF) | 聊天 LLM | 16.11 GB |
+| **WAI-Nsfw-Illustrious-17** | ComfyUI 画图(默认) | 6.46 GB |
+| **miaomiaoHarem_v20** | ComfyUI 画图(备用) | 6.46 GB |
 | **GPT-SoVITS 语音权重** | TTS 语音合成 | ~303 MB |
-| **夜乃桜 SoVITS 语音权重** | TTS 语音合成（桜声线） | ~313 MB |
-| **all-MiniLM-L6-v2** | 英文/跨语言 Embedding（mem0 记忆） | ~80 MB |
-| **BGE-small-zh-v1.5** | 中文 Embedding（mem0 记忆） | ~91 MB |
-| **Cosmos 3 Nano FP8** 🔮 | 物理世界模型（社区量化，未来硬件） | ~16 GB |
+| **夜乃桜 SoVITS 语音权重** | TTS 语音合成(桜声线) | ~313 MB |
+| **all-MiniLM-L6-v2** | 英文/跨语言 Embedding(mem0 记忆) | ~80 MB |
+| **BGE-small-zh-v1.5** | 中文 Embedding(mem0 记忆) | ~91 MB |
+| **Cosmos 3 Nano FP8** 🔮 | 物理世界模型(社区量化,未来硬件) | ~16 GB |
 
-|  | → 路径：`embedding/all-MiniLM-L6-v2/` + `embedding/bge-small-zh-v1.5/`（HF 仓库） | |
+|  | → 路径:`embedding/all-MiniLM-L6-v2/` + `embedding/bge-small-zh-v1.5/`(HF 仓库) | |
 | **四季夏目 Live2D 模型** | Live2D 角色渲染 | ~180 MB (压缩包) |
 
 ### 一键下载
 
 ```powershell
-# 安装 huggingface-cli：pip install huggingface_hub
+# 安装 huggingface-cli:pip install huggingface_hub
 huggingface-cli login
 
 # 下载所有模型
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume --local-dir ./models
 
-# 或单独下载各个组件：
+# 或单独下载各个组件:
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/ --local-dir ./models
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui-checkpoints/ --local-dir ./checkpoints
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/ --local-dir ./gpt-sovits-weights
@@ -237,23 +237,23 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-d
 
 ### 本地配置
 
-1. **运行 `quick_setup.ps1`** - 交互式向导，自动生成 `config.yaml` 填入你的本地路径
-2. （备选）复制 `config.example.yaml` → `config.yaml` 手动编辑
-3. 根据 `models.yaml` 放置下载好的模型文件，然后更新 `config.yaml` 路径
+1. **运行 `quick_setup.ps1`** - 交互式向导,自动生成 `config.yaml` 填入你的本地路径
+2. (备选)复制 `config.example.yaml` → `config.yaml` 手动编辑
+3. 根据 `models.yaml` 放置下载好的模型文件,然后更新 `config.yaml` 路径
 
 所有 Python/PS 脚本从 `config.yaml` 读取路径--无需手动改硬编码路径。
 
-> ⚠️ **声明**：所有模型均为社区开源模型。本项目仅提供镜像分发，非盈利。版权归原作者所有。
+> ⚠️ **声明**:所有模型均为社区开源模型。本项目仅提供镜像分发,非盈利。版权归原作者所有。
 
 ## 本地 LLM 性能
 
-通过 llama.cpp (b8851-b9222) 运行 Qwen3.6-35B-A3B（MoE, Q4_K, 16.10 GiB, 34.66B 参数）。
+通过 llama.cpp (b8851-b9222) 运行 LuffyTheFox Qwen3.6-35B-A3B(MoE, 16.10 GiB, 34.66B 参数)。
 
 ### 启动命令
 
 ```powershell
 llama-server.exe `
-  -m "Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact.gguf" `
+  -m "LuffyTheFoxQwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V3-GGUF.gguf" `
   -c 120000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
   --cpu-moe --cpu-mask 0xFFFFFFFF `
@@ -263,7 +263,7 @@ llama-server.exe `
   --kv-unified --no-mmap
 ```
 
-> 💡 **关于 `--no-mmap` 与 `-ngl`：** `--no-mmap` 让 llama.cpp 自行管理内存分配，比手动指定 `-ngl` 层数效率更高。`-ngl` 强制锁定指定层数到 GPU，可能导致一半速度损失；而 `--no-mmap` 让引擎根据实际显存动态调度，实测在 RTX 5070 8GB 上可达 50~60 t/s。KV 缓存用 `q4_0` 量化可节省一半显存，16K 上下文下 q4 可稳定运行 50K+ token。
+> 💡 **关于 `--no-mmap` 与 `-ngl`:** `--no-mmap` 让 llama.cpp 自行管理内存分配,比手动指定 `-ngl` 层数效率更高。`-ngl` 强制锁定指定层数到 GPU,可能导致一半速度损失;而 `--no-mmap` 让引擎根据实际显存动态调度,实测在 RTX 5070 8GB 上可达 50~60 t/s。KV 缓存用 `q4_0` 量化可节省一半显存,16K 上下文下 q4 可稳定运行 50K+ token。
 
 ### 关键指标
 
@@ -277,18 +277,18 @@ llama-server.exe `
 
 ### 长上下文稳定性
 
-Qwen3.6 MoE 使用 SSM (Gated Delta Net) 混合注意力，配合 `--kv-unified`。
+Qwen3.6 MoE 使用 SSM (Gated Delta Net) 混合注意力,配合 `--kv-unified`。
 
-⚠️ **已知限制**：不支持跨轮 prompt cache 复用它（SSM 架构限制）。每次请求触发完整上下文重处理。对话越长 = 首 token 延迟越高（59k token 约 55 秒）。
+⚠️ **已知限制**:不支持跨轮 prompt cache 复用它(SSM 架构限制)。每次请求触发完整上下文重处理。对话越长 = 首 token 延迟越高(59k token 约 55 秒)。
 
-**缓解措施**：
-- 定期 `/reset`（在重置前夏目会将角色扮演摘要写入 `memory/role_play/`）
-- 启动时从摘要恢复上下文，保持实际 token 数在 5K-20K 范围内
+**缓解措施**:
+- 定期 `/reset`(在重置前夏目会将角色扮演摘要写入 `memory/role_play/`)
+- 启动时从摘要恢复上下文,保持实际 token 数在 5K-20K 范围内
 - `config-patch.json` 将 OpenClaw contextWindow 设为 262144 以匹配模型容量
 
 ### VRAM 分档策略
 
-系统根据 GPU 显存大小自动选择运行模式，无需手动配置：
+系统根据 GPU 显存大小自动选择运行模式,无需手动配置:
 
 ```
 ┌────────────────────────────────────────────────────────────┐
@@ -300,23 +300,23 @@ Qwen3.6 MoE 使用 SSM (Gated Delta Net) 混合注意力，配合 `--kv-unified`
 └────────────────────────────────────────────────────────────┘
 ```
 
-**当前配置（8GB 显存）**：
+**当前配置(8GB 显存)**:
 ```
 8 GB 总显存
-├── llama-server 常驻：~5.8 GB（模型 4.6G + KV 缓存 1.2G）
-├── 空闲：~2.2 GB
+├── llama-server 常驻:~5.8 GB(模型 4.6G + KV 缓存 1.2G)
+├── 空闲:~2.2 GB
 │
-├── TTS 推理：停 llama → ~8 GB 空闲 → 恢复 llama（约 70s）
-├── ComfyUI 画图：停 llama → ~8 GB 空闲 → 恢复 llama（约 120s）
-├── Artemis Studio (TTS/ComfyUI 工坊)：独立运行，无论 llama 是否在线
-└── ASR / Live2D / Embedding：始终在线，不受 VRAM 分档影响
+├── TTS 推理:停 llama → ~8 GB 空闲 → 恢复 llama(约 70s)
+├── ComfyUI 画图:停 llama → ~8 GB 空闲 → 恢复 llama(约 120s)
+├── Artemis Studio (TTS/ComfyUI 工坊):独立运行,无论 llama 是否在线
+└── ASR / Live2D / Embedding:始终在线,不受 VRAM 分档影响
 ```
 
 ## 目录结构
 
 ```
-AI_Girlfriend/                        # OpenClaw 工作区根目录
-├── start.ps1                         # 🚀 一键启动：llama + Live2D + Gateway
+<PROJECT_DIR>/                                               # OpenClaw 工作区根目录
+├── start.ps1                         # 🚀 一键启动:llama + Live2D + Gateway
 ├── quick_setup.ps1                     # 🛠 交互式路径配置向导
 ├── config.yaml                       # 生成的配置文件
 ├── download-models.ps1               # 一键模型下载 (Windows)
@@ -337,23 +337,23 @@ AI_Girlfriend/                        # OpenClaw 工作区根目录
 ├── HEARTBEAT.md                      # 心跳配置
 ├── TOOLS.md                          # 工具速查表
 ├── models.yaml                       # 模型目录 + 下载链接
-├── imagination.md                    # 🔮 Cosmos 物理世界模型联动构想（未来）
-├── README.md                         # 英文读我（本文件）
+├── imagination.md                    # 🔮 Cosmos 物理世界模型联动构想(未来)
+├── README.md                         # 英文读我(本文件)
 ├── README_CN.md                      # 中文读我
 ├── .gitignore
 ├── live2d/                           # Live2D 角色模型 (Cubism 4 Core)
-│   ├── index.html                    # 默认（四季夏目）
+│   ├── index.html                    # 默认(四季夏目)
 │   ├── index_atri.html               # 亚托莉版本
 │   ├── index_upper.html              # 夏目半身版本
 │   ├── index_atri_upper.html         # 亚托莉半身版本
 │   ├── live2dcubismcore.min.js       # Cubism Core 4 (207 KB)
 │   ├── plid-v5-bundle.js             # pixi-live2d-display v0.5.0 打包版
 │   ├── live2d-bridge.mjs             # HTTP (19200) + WebSocket (19201) 桥接
-│   ├── switch_model.ps1              # 模型切换（夏目 / 亚托莉）
+│   ├── switch_model.ps1              # 模型切换(夏目 / 亚托莉)
 │   ├── pixi.min.js, pixi-shim.js     # PIXI.js v7 渲染
-│   ├── model/shiki_natsume/          # 夏目模型（14纹理, 42动作, 41音频）
-│   └── model/atri/                   # 亚托莉模型（2纹理, 620语音mp3, 8动作）
-├── ren_pro_jp/                       # Ren'Py 对话引擎（规划中）
+│   ├── model/shiki_natsume/          # 夏目模型(14纹理, 42动作, 41音频)
+│   └── model/atri/                   # 亚托莉模型(2纹理, 620语音mp3, 8动作)
+├── ren_pro_jp/                       # Ren'Py 对话引擎(规划中)
 ├── memory/                           # [.gitignore] 运行时记忆
 │   └── role_play/                    # 角色扮演对话日志
 ├── media/                            # [.gitignore] 生成的媒体文件
@@ -383,7 +383,7 @@ AI_Girlfriend/                        # OpenClaw 工作区根目录
     │   ├── run_asr.ps1               # Faster-Whisper 启动器 (~1.5GB 显存)
     │   └── asr_call.py               # Whisper small 模型推理
     ├── shared/                       # 共享基础设施
-    │   ├── embedding_server.py       # OpenAI 兼容嵌入 API（端口 9999, 双模型）
+    │   ├── embedding_server.py       # OpenAI 兼容嵌入 API(端口 9999, 双模型)
     │   ├── mem0_bridge.py            # mem0 Qdrant ↔ OpenClaw 记忆桥接
     │   ├── start_embedding_server.ps1 # 自动启动嵌入服务
     │   ├── vram.py                   # VRAM 分档自动检测
@@ -396,7 +396,7 @@ AI_Girlfriend/                        # OpenClaw 工作区根目录
     │   ├── install.bat               # Windows 依赖安装
     │   ├── start.bat                 # Windows 启动器
     │   └── app/                      # 源代码
-    ├── cosmos/                       # 🔮 NVIDIA Cosmos 物理世界模型（未来）
+    ├── cosmos/                       # 🔮 NVIDIA Cosmos 物理世界模型(未来)
     │   ├── BRIDGE_REFERENCE.md       # Cosmos ↔ AI Girlfriend 桥接设计
     │   ├── cosmos_check.py           # 硬件 VRAM 检测脚本
     │   ├── cookbooks/                # 官方教程范例
@@ -409,7 +409,7 @@ AI_Girlfriend/                        # OpenClaw 工作区根目录
 
 ## 🤖 Claude Code + AgentRQ 风格任务看板
 
-除了 OpenClaw，Artemis 还支持 **Claude Code** 作为并列的 Agent 运行时。Claude Code 通过 MCP 协议接入 Artemis 全部能力，并内置了一个与 AgentRQ 兼容的任务队列系统。
+除了 OpenClaw,Artemis 还支持 **Claude Code** 作为并列的 Agent 运行时。Claude Code 通过 MCP 协议接入 Artemis 全部能力,并内置了一个与 AgentRQ 兼容的任务队列系统。
 
 ### 工作原理
 
@@ -434,19 +434,19 @@ AI_Girlfriend/                        # OpenClaw 工作区根目录
 # 先装 Claude Code
 npm install -g @anthropic-ai/claude-code
 
-# 启动 Shiki Daemon（自动拉起 Task Board :19280）
+# 启动 Shiki Daemon(自动拉起 Task Board :19280)
 .\shiki.cmd
 
 # 启动 Claude Code
 .\claude-code.ps1
 
-# 或只开任务看板（浏览器操作）
+# 或只开任务看板(浏览器操作)
 .\claude-code.ps1 -BoardOnly
 ```
 
-然后浏览器打开 **http://127.0.0.1:19280** — 建任务，Claude Code 自动领取执行。
+然后浏览器打开 **http://127.0.0.1:19280** - 建任务,Claude Code 自动领取执行。
 
-### MCP 工具列表（15 个）
+### MCP 工具列表(15 个)
 
 | 类别 | 工具 | 说明 |
 |-|-|-|
@@ -460,7 +460,7 @@ npm install -g @anthropic-ai/claude-code
 | 📋 任务 | `getWorkspace` / `getNextTask` / `createTask` | 任务队列操作 |
 | 📋 任务 | `updateTaskStatus` / `reply` / `getTaskMessages` | 任务生命周期 |
 
-### OpenClaw vs Claude Code — 功能对比
+### OpenClaw vs Claude Code - 功能对比
 
 | 功能 | OpenClaw | Claude Code |
 |-|-|-|
@@ -476,7 +476,7 @@ npm install -g @anthropic-ai/claude-code
 | 任务面板 | ❌ | ✅ (AgentRQ 风格) |
 | sessions_spawn | ✅ | ❌ (无等价物) |
 
-> **定位**：OpenClaw 是生产环境的消息中枢（QQ/TG/WebChat + 角色扮演），Claude Code 是终端开发 agent（任务面板驱动 + 能力调试）。两者互补，非替代关系。
+> **定位**:OpenClaw 是生产环境的消息中枢(QQ/TG/WebChat + 角色扮演),Claude Code 是终端开发 agent(任务面板驱动 + 能力调试)。两者互补,非替代关系。
 
 ### 相关文件
 
@@ -493,17 +493,17 @@ npm install -g @anthropic-ai/claude-code
 
 ## 技能总览
 
-| 技能 | 类型 | 停 Llama？ | 机制 |
+| 技能 | 类型 | 停 Llama? | 机制 |
 |-|-|-|-|
 | **Embedding** | 后台进程 | ❌ 否 | all-MiniLM-L6-v2 + BGE-small-zh-v1.5 双模型 (CPU, 端口 9999) - OpenClaw 记忆搜索 + mem0 桥接 |
 | **Live2D** | HTTP exec | ❌ 否 | 直接 HTTP 调 `localhost:19200` 桥 |
-| **Web Chat** | 浏览器 | ❌ 否 | 本地守护进程代理到 llama :8080，端口 19270，实时聊天 |
-| **Claude Code** | 终端 (MCP) | ❌ 否 | 并行 Agent 运行时，通过 .claude/artemis_mcp_server.py 工作 |
-| **TTS** | sessions_spawn | 🔶 按 VRAM 分档 | ≥12GB 时不停；8GB 时停 llama → GPT-SoVITS → 重启 llama |
-| **ComfyUI** | sessions_spawn | 🔶 按 VRAM 分档 | ≥12GB 时不停；8GB 时停 llama → 画图 → 重启 llama |
-| **ASR** | sessions_spawn | ❌ 否 | Faster-Whisper small (~1.5GB 显存，与 llama 共存) |
+| **Web Chat** | 浏览器 | ❌ 否 | 本地守护进程代理到 llama :8080,端口 19270,实时聊天 |
+| **Claude Code** | 终端 (MCP) | ❌ 否 | 并行 Agent 运行时,通过 .claude/artemis_mcp_server.py 工作 |
+| **TTS** | sessions_spawn | 🔶 按 VRAM 分档 | ≥12GB 时不停;8GB 时停 llama → GPT-SoVITS → 重启 llama |
+| **ComfyUI** | sessions_spawn | 🔶 按 VRAM 分档 | ≥12GB 时不停;8GB 时停 llama → 画图 → 重启 llama |
+| **ASR** | sessions_spawn | ❌ 否 | Faster-Whisper small (~1.5GB 显存,与 llama 共存) |
 | **Sakura** | 共享 llama-client | ❌ 否 | 检测 llama 掉线 → 等待 → 自动恢复 |
-| **Artemis Studio** | 桌面控制台 | ❌ 否 | TTS/ComfyUI 可视化工坊，独立运行，无论 llama 是否在线 |
+| **Artemis Studio** | 桌面控制台 | ❌ 否 | TTS/ComfyUI 可视化工坊,独立运行,无论 llama 是否在线 |
 
 ## 环境依赖
 
@@ -527,23 +527,23 @@ npm install -g @anthropic-ai/claude-code
 
 ## 快速开始
 
-### 🚀 一键部署（推荐）
+### 🚀 一键部署(推荐)
 
-**一条命令，从零到完整 AI 女友：**
+**一条命令,从零到完整 AI 女友:**
 
-**Windows：**
+**Windows:**
 ```powershell
 powershell -File setup-all.ps1
 ```
 
-**Linux / macOS：**
+**Linux / macOS:**
 ```bash
 bash setup-all.sh
 ```
 
-自动化流程：环境检查 → 模型下载 → llama.cpp 配置 → OpenClaw 安装 → Sakura 桌宠 → 工作区部署 → 路径检查 → 启动 → 验证。
+自动化流程:环境检查 → 模型下载 → llama.cpp 配置 → OpenClaw 安装 → Sakura 桌宠 → 工作区部署 → 路径检查 → 启动 → 验证。
 
-> 支持断点续传。可选参数：`--skip-model-download`、`--skip-llama-setup`、`--skip-openclaw-setup`、`--skip-sakura-setup`、`--dry-run`、`--no-start`
+> 支持断点续传。可选参数:`--skip-model-download`、`--skip-llama-setup`、`--skip-openclaw-setup`、`--skip-sakura-setup`、`--dry-run`、`--no-start`
 
 -
 
@@ -551,53 +551,53 @@ bash setup-all.sh
 
 ### 0. 安装 OpenClaw
 
-安装 OpenClaw Gateway 并部署 AI 女友工作区：
+安装 OpenClaw Gateway 并部署 AI 女友工作区:
 
-**Windows：**
+**Windows:**
 ```powershell
 powershell -File setup-openclaw.ps1
 ```
 
-**Linux / macOS：**
+**Linux / macOS:**
 ```bash
 bash setup-openclaw.sh
 ```
 
 此脚本会安装 Node.js、OpenClaw Gateway、部署工作区文件、安装守护进程并应用配置补丁。
 
-> **可选参数：** `--skip-node`、`--skip-deploy`、`--skip-daemon`、`--no-onboard`
+> **可选参数:** `--skip-node`、`--skip-deploy`、`--skip-daemon`、`--no-onboard`
 
 ### 1. 下载模型
 
-**Windows：**
+**Windows:**
 ```powershell
 pip install huggingface_hub
 huggingface-cli login
 powershell -File download-models.ps1
 ```
 
-**Linux / macOS：**
+**Linux / macOS:**
 ```bash
 pip install huggingface_hub
 huggingface-cli login
 bash download-models.sh
 ```
 
-从 HuggingFace 下载全部 5 个模型文件（约 31.7 GB），含进度显示和断点续传。
+从 HuggingFace 下载全部 5 个模型文件(约 31.7 GB),含进度显示和断点续传。
 
-> 国内用户用 hf-mirror.com 镜像下载，无需梯子：
+> 国内用户用 hf-mirror.com 镜像下载,无需梯子:
 > `set HF_ENDPOINT=https://hf-mirror.com` 然后正常 hf download
 
 ### 2. 配置 llama.cpp
 
-自动检测 GPU、显存、CPU 核心数、内存，生成最优启动配置。
+自动检测 GPU、显存、CPU 核心数、内存,生成最优启动配置。
 
-**Windows：**
+**Windows:**
 ```powershell
 powershell -File setup-llama.ps1
 ```
 
-**Linux / macOS：**
+**Linux / macOS:**
 ```bash
 bash setup-llama.sh
 ```
@@ -608,27 +608,27 @@ bash setup-llama.sh
 powershell -File quick_setup.ps1
 ```
 
-交互式向导--输入一次本地路径，所有脚本自动更新。
+交互式向导--输入一次本地路径,所有脚本自动更新。
 
 ### 4. 快速启动
 
 ```powershell
-# 一键启动所有服务（llama + Embedding + Live2D + Gateway）
+# 一键启动所有服务(llama + Embedding + Live2D + Gateway)
 powershell -File start.ps1
 ```
 
-启动顺序：
+启动顺序:
 ```
-[1/7] llama-server        (8080, Qwen3.6-35B, --no-mmap)
+[1/7] llama-server        (8080, LuffyTheFox Qwen3.6-35B, --no-mmap)
 [2/7] Embedding Server    (9999, all-MiniLM + BGE 双模型, CPU, ~100MB 内存)
 [3/7] VRAM 分档检测       (自动判断 TTS/ComfyUI 是否停 llama)
 [4/7] Live2D Bridge       (19200, pixi-live2d-display)
 [5/7] OpenClaw Gateway    (18789)
-[6/7] llama-watchdog      （崩溃自动重启）
+[6/7] llama-watchdog      (崩溃自动重启)
 [7/7] Web Chat Daemon     (19260 API + 19270 webchat, --no-llama)
 ```
 
-**关闭：`shiki.cmd -Stop`** - 优雅关闭所有服务（llama → live2d → sakura → embedding → comfyui → gateway → cleanup）。
+**关闭:`shiki.cmd -Stop`** - 优雅关闭所有服务(llama → live2d → sakura → embedding → comfyui → gateway → cleanup)。
 
 ### 5. 单独启动 Live2D
 
@@ -636,21 +636,21 @@ powershell -File start.ps1
 # 启动桥接服务
 Start-Process node -ArgumentList "live2d-bridge.mjs" -WorkingDirectory live2d -WindowStyle Hidden
 
-# 在独立窗口中打开（Chrome 应用模式）
+# 在独立窗口中打开(Chrome 应用模式)
 Start-Process chrome -ArgumentList "--new-window --app=http://localhost:19200/index.html --window-size=450,650"
 ```
 
 Live2D 在无边框 Chrome 窗口中运行--可以放在桌面上任意位置。
 
-### 5. Windows 任务计划（可选）
+### 5. Windows 任务计划(可选)
 
 ```powershell
-# Llama 健康检查（每 10 分钟）
+# Llama 健康检查(每 10 分钟)
 schtasks /create /tn "llama-watchdog" `
   /tr "powershell -File C:\Users\<你的用户名>\.openclaw\workspace\skills\llama-watchdog.ps1" `
   /sc minute /mo 10
 
-# 孤儿进程清理（每小时）
+# 孤儿进程清理(每小时)
 schtasks /create /tn "cleanup-orphans" `
   /tr "powershell -File C:\Users\<你的用户名>\.openclaw\workspace\skills\cleanup_orphans.ps1" `
   /sc hourly /mo 1
@@ -701,7 +701,7 @@ schtasks /create /tn "cleanup-orphans" `
 
 ### Agent 中枢
 
-角色切换不改的能力指令 + 记忆层隔离：
+角色切换不改的能力指令 + 记忆层隔离:
 
 | 层级 | 文件 | 作用 | 切换时 |
 |-|-|-|-|
@@ -715,25 +715,25 @@ schtasks /create /tn "cleanup-orphans" `
 | **长期记忆** | Qdrant `user_id=<角色>` | 向量长期记忆 | 🔀 按角色隔离 |
 | **同步缓存** | `_mem0_auto.md` | Qdrant → markdown (30min) | 🔀 按角色隔离 |
 
-> 召回优先级：向量长期记忆 > 手写日记 > SOUL 基础人设
+> 召回优先级:向量长期记忆 > 手写日记 > SOUL 基础人设
 
-### WebChat — 内置浏览器客户端
+### WebChat - 内置浏览器客户端
 
-由 shiki daemon 驱动的完整网页 AI 女友聊天界面，本地运行在 `http://127.0.0.1:19270`。
+由 shiki daemon 驱动的完整网页 AI 女友聊天界面,本地运行在 `http://127.0.0.1:19270`。
 
 | 功能 | 说明 |
 |-|-|
-| **多角色标签页** | 在四季夏目、亚托莉、夜乃桜之间自由切换 — 每人独立对话历史、SOUL.md 人设和长期记忆 |
-| **流式对话** | 实时 token 流式输出，自动注入角色专属 system prompt（角色人格 + 用户档案） |
-| **AI 画图** 🎨 | 聊天输入区一键按钮 — LLM 根据对话上下文自动生成 ComfyUI 提示词，触发本地画图，图片直接显示在聊天流中 |
-| **Live2D 联动** | 直接在界面控制 Live2D 桌面宠物：摸头、戳戳、待机动画 |
-| **TTS 语音** | 将聊天文本生成角色语音回复（GPT-SoVITS） |
-| **工坊面板** | 侧边栏手动 TTS 合成和 ComfyUI 画图，支持全参数调节（提示词、负向、尺寸、步数、CFG、模型） |
-| **仪表盘** | 服务健康面板，显示 llama-server、Embedding、Live2D Bridge、Artemis Bridge、OpenClaw Gateway、WebChat 状态 — 每项独立启/停/重启 |
-| **显存管理开关** | 控制画图前是否停 llama-server 释放显存（8GB 显卡默认开启，12GB+ 可关闭保持对话不中断） |
-| **双模型支持** | 本地 llama-server 或远程 DeepSeek 模型自由切换 — 设置中修改，配置持久化 |
+| **多角色标签页** | 在四季夏目、亚托莉、夜乃桜之间自由切换 - 每人独立对话历史、SOUL.md 人设和长期记忆 |
+| **流式对话** | 实时 token 流式输出,自动注入角色专属 system prompt(角色人格 + 用户档案) |
+| **AI 画图** 🎨 | 聊天输入区一键按钮 - LLM 根据对话上下文自动生成 ComfyUI 提示词,触发本地画图,图片直接显示在聊天流中 |
+| **Live2D 联动** | 直接在界面控制 Live2D 桌面宠物:摸头、戳戳、待机动画 |
+| **TTS 语音** | 将聊天文本生成角色语音回复(GPT-SoVITS) |
+| **工坊面板** | 侧边栏手动 TTS 合成和 ComfyUI 画图,支持全参数调节(提示词、负向、尺寸、步数、CFG、模型) |
+| **仪表盘** | 服务健康面板,显示 llama-server、Embedding、Live2D Bridge、Artemis Bridge、OpenClaw Gateway、WebChat 状态 - 每项独立启/停/重启 |
+| **显存管理开关** | 控制画图前是否停 llama-server 释放显存(8GB 显卡默认开启,12GB+ 可关闭保持对话不中断) |
+| **双模型支持** | 本地 llama-server 或远程 DeepSeek 模型自由切换 - 设置中修改,配置持久化 |
 
-> WebChat 直接与 shiki daemon (:19260) 通信，daemon 代理请求到 llama-server 或 OpenAI 兼容 API。角色切换即时生效 — 每个标签页加载对应角色的 SOUL.md + IDENTITY.md + USER.md 作为 system prompt。
+> WebChat 直接与 shiki daemon (:19260) 通信,daemon 代理请求到 llama-server 或 OpenAI 兼容 API。角色切换即时生效 - 每个标签页加载对应角色的 SOUL.md + IDENTITY.md + USER.md 作为 system prompt。
 
 ### 技能详情
 
@@ -753,34 +753,34 @@ schtasks /create /tn "cleanup-orphans" `
 | **自动同步** | `skills/shared/mem0_sync_cron.py` | - | 30min Qdrant → md |
 | **角色导入** | `skills/character_importer/` | - | PNG/JSON 角色卡导入 |
 
-**VRAM 调度流程**：
-1. 启动时自动检测 GPU 显存 → 确定 VRAM 级别（Level 0/1/2）
+**VRAM 调度流程**:
+1. 启动时自动检测 GPU 显存 → 确定 VRAM 级别(Level 0/1/2)
 2. 主 session 收到用户请求 → 组装指令
 3. `sessions_spawn(mode="run")` 创建子 session
-4. Level 0/1：`stop_llama()` 释放显存 → TTS/ComfyUI 推理 → `start_llama()` 恢复
-5. Level 2 (≥12GB)：直接推理，llama 始终在线
+4. Level 0/1:`stop_llama()` 释放显存 → TTS/ComfyUI 推理 → `start_llama()` 恢复
+5. Level 2 (≥12GB):直接推理,llama 始终在线
 6. 整个过程中 Artemis Studio、Live2D、Embedding 保持运行--不受影响
 7. 子 session 写入 `.task_flags` → 通知回主 session
 8. 主 session 读取媒体文件 → 通过 `<qqmedia>` / `MEDIA:` 发送
-9. 后台：CCR 每约 8 轮运行一次，提取长期记忆写入 Qdrant
+9. 后台:CCR 每约 8 轮运行一次,提取长期记忆写入 Qdrant
 10. Cron job 每 30 分钟同步 Qdrant → `_mem0_auto.md` 供原生 `memory_search` 检索
 
 ## ⚠️ 重要说明
 
-- **RTX 50xx (Blackwell) + CUDA 13.x = `munmap_chunk(): invalid pointer` 崩溃** - CUDA 13.x 在 Blackwell 架构上与 llama.cpp 存在已知内存管理不兼容问题。**解决方案：使用 CUDA 12.x 预编译的 llama.cpp binary**（不要用 CUDA 13.x 自行编译）。从 [llama.cpp Releases](https://github.com/ggml-org/llama.cpp/releases) 下载 `cudart-llama-bin-win-cuda-12.4-x64.zip`。RTX 5070 Ti 完全兼容 CUDA 12.x 驱动。
-- TTS/ComfyUI 推理期间 llama-server 离线约 60~120 秒--对话暂停，但 Live2D 继续运行
-- 子 session 使用 **local 模型**（与主 session 相同），DeepSeek 作为可选 fallback
-- Llama-server 不支持跨轮 prompt cache 复用（SSM 限制）--请使用定期 `/reset`
-- **Live2D 必须使用 Cubism Core 4**（非 5 或 6）--pixi-live2d-display v0.5.0 基于 Cubism 4 框架；Core 5+ 会导致裁切/图层错误
-- 所有模型文件受 `.gitignore` 保护，不上传到 GitHub
-- GPT-SoVITS 权重为自训练，不公开发布--请用自己的语音数据训练
+- **RTX 50xx (Blackwell) + CUDA 13.x = `munmap_chunk(): invalid pointer` 崩溃** - CUDA 13.x 在 Blackwell 架构上与 llama.cpp 存在已知内存管理不兼容问题。**解决方案:使用 CUDA 12.x 预编译的 llama.cpp binary**(不要用 CUDA 13.x 自行编译)。从 [llama.cpp Releases](https://github.com/ggml-org/llama.cpp/releases) 下载 `cudart-llama-bin-win-cuda-12.4-x64.zip`。RTX 5070 Ti 完全兼容 CUDA 12.x 驱动。
+- TTS/ComfyUI 推理期间 llama-server 离线约 60~120 秒--对话暂停,但 Live2D 继续运行
+- 子 session 使用 **local 模型**(与主 session 相同),DeepSeek 作为可选 fallback
+- Llama-server 不支持跨轮 prompt cache 复用(SSM 限制)--请使用定期 `/reset`
+- **Live2D 必须使用 Cubism Core 4**(非 5 或 6)--pixi-live2d-display v0.5.0 基于 Cubism 4 框架;Core 5+ 会导致裁切/图层错误
+- 所有模型文件受 `.gitignore` 保护,不上传到 GitHub
+- GPT-SoVITS 权重为自训练,不公开发布--请用自己的语音数据训练
 
 ## 🙏 致谢
 
-- [@Rvosy](https://github.com/Rvosy) - [Sakura Desktop Pet](https://github.com/Rvosy/Sakura) 作者，已授权收录（Issue #38）
+- [@Rvosy](https://github.com/Rvosy) - [Sakura Desktop Pet](https://github.com/Rvosy/Sakura) 作者,已授权收录(Issue #38)
 - [@guansss](https://github.com/guansss) - [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display) 作者
-- [Live2D Inc.](https://www.live2d.com) - Cubism SDK（非商业用途）
+- [Live2D Inc.](https://www.live2d.com) - Cubism SDK(非商业用途)
 - [AgentRQ](https://github.com/agentrq/agentrq) - AgentRQ 兼容任务队列 + MCP 工具接口设计灵感来源
-- [headroom](https://github.com/chopratejas/headroom) - SmartCrusher 上下文压缩 + CCR（整理-合并-检索）记忆管线灵感来源
+- [headroom](https://github.com/chopratejas/headroom) - SmartCrusher 上下文压缩 + CCR(整理-合并-检索)记忆管线灵感来源
 - [mem0](https://github.com/mem0ai/mem0) - Qdrant 向量记忆架构 + 混合搜索设计灵感来源
-- [NVIDIA Cosmos](https://github.com/NVIDIA/cosmos) - 物理世界基础模型，[社区 FP8 量化版](https://huggingface.co/benjiaiplayground/Cosmos3-Nano_fp8) 已存档 `skills/cosmos/`
+- [NVIDIA Cosmos](https://github.com/NVIDIA/cosmos) - 物理世界基础模型,[社区 FP8 量化版](https://huggingface.co/benjiaiplayground/Cosmos3-Nano_fp8) 已存档 `skills/cosmos/`

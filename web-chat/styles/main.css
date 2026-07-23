@@ -1910,8 +1910,11 @@ text-align:center;
   background:var(--bg-root);
   border:1px solid var(--border-moderate);
   border-radius:var(--radius-lg);
-  width:min(480px,90vw);
+  width:min(1200px,96vw);
   animation:fadeIn var(--dur-normal) var(--ease-out-expo);
+  display:flex;
+  flex-direction:column;
+  max-height:85vh;
   overflow:hidden;
 }
 .worldbook-modal-header {
@@ -1931,7 +1934,16 @@ text-align:center;
 .worldbook-modal-close:hover{color:var(--text-primary);background:var(--bg-elevated)}
 .worldbook-modal-body {
   padding:20px;
-  display:flex;flex-direction:column;gap:12px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  flex:1 1 0;
+  overflow-y:auto;
+  min-height:0;
+  min-width:0;
+  /* scrollbar styling */
+  scrollbar-width:thin;
+  scrollbar-color:var(--border-moderate) transparent;
 }
 .worldbook-upload-area{
   display:flex;flex-direction:column;gap:8px;
@@ -1970,14 +1982,24 @@ text-align:center;
   font-size:12px;color:var(--text-muted);text-align:center;margin-bottom:8px;
 }
 
-/* World book list */
-.wb-list {
-  display:flex;flex-direction:column;gap:4px;
-  max-height:240px;overflow-y:auto;
-  margin-top:4px;
+/* World book list — also scrollable inside the body */
+.wb-list,
+#wb-list,
+#wb-entry-list,
+#worldbook-list {
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  min-width:0;
 }
-.wb-list::-webkit-scrollbar{width:4px}
-.wb-list::-webkit-scrollbar-thumb{background:var(--border-moderate);border-radius:2px}
+.wb-list::-webkit-scrollbar,
+#wb-list::-webkit-scrollbar,
+#wb-entry-list::-webkit-scrollbar,
+#worldbook-list::-webkit-scrollbar { width:4px }
+.wb-list::-webkit-scrollbar-thumb,
+#wb-list::-webkit-scrollbar-thumb,
+#wb-entry-list::-webkit-scrollbar-thumb,
+#worldbook-list::-webkit-scrollbar-thumb { background:var(--border-moderate);border-radius:2px }
 
 .wb-item {
   display:flex;align-items:center;justify-content:space-between;

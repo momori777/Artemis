@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>llama 调试面板</title>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #12121a;
+  --surface2: #1a1a25;
+  --border: #2a2a3a;
+  --text: #e0e0e8;
+  --text2: #8888a0;
+  --accent: #6c63ff;
+  --accent2: #4a42cc;
+  --green: #00e676;
+  --red: #ff1744;
+  --orange: #ff9100;
+  --blue: #448aff;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+/* ── Header ── */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+}
+.header h1 { font-size: 18px; font-weight: 600; color: var(--accent); }
+.status-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--text2);
+  transition: background 0.3s;
+}
+.status-dot.running { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.status-text { font-size: 13px; color: var(--text2); }
+.header-actions { margin-left: auto; display: flex; gap: 8px; }
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent2); }
+.btn-success { background: var(--green); color: #000; }
+.btn-success:hover { background: #00c864; }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-danger:hover { background: #d50032; }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--border); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+
+/* ── Layout ── */
+.layout {
+  display: flex;
+  min-height: calc(100vh - 56px);
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 240px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 16px 0;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+.sidebar-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text2);
+  padding: 8px 20px;
+  letter-spacing: 1px;
+}
+.nav-item {
+  padding: 8px 20px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text2);
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+}
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  background: var(--surface2);
+}
+
+/* ── Main ── */
+.main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  min-width: 0;
+}
+
+/* ── Panels ── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.panel-header {
+  padding: 12px 16px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-header .icon { font-size: 16px; }
+.panel-body { padding: 16px; }
+
+/* ── Form Grid ── */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-label {
+  font-size: 12px;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.form-label .badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text2);
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+.form-input, .form-select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 7px 10px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  transition: border-color 0.15s;
+  width: 100%;
+}
+.form-input:focus, .form-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(108,99,255,0.15);
+}
+.form-input[type="range"] {
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.form-input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+}
+.form-hint { font-size: 11px; color: var(--text2); opacity: 0.7; }
+
+/* ── Range display ── */
+.range-row { display: flex; align-items: center; gap: 8px; }
+.range-row .range-val {
+  font-family: 'Consolas', monospace;
+  font-size: 13px;
+  color: var(--accent);
+  min-width: 40px;
+  text-align: right;
+}
+
+/* ── Tabs ── */
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── Logs ── */
+.log-area {
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 12px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--green);
+  max-height: 400px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.log-area .log-error { color: var(--red); }
+.log-area .log-warn { color: var(--orange); }
+
+/* ── Presets ── */
+.preset-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.preset-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.preset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Section divider ── */
+.section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 16px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  grid-column: 1 / -1;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .sidebar { width: 56px; }
+  .sidebar-title, .nav-item span { display: none; }
+  .nav-item { text-align: center; border-left: none; border-bottom: 2px solid transparent; }
+  .nav-item.active { border-bottom-color: var(--accent); }
+  .form-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="status-dot" id="statusDot"></div>
+  <h1>llama 调试面板</h1>
+  <span class="status-text" id="statusText">已停止</span>
+  <div class="header-actions">
+    <button class="btn btn-success" onclick="cmd('start')">▶ 启动</button>
+    <button class="btn btn-primary" onclick="cmd('restart')">↻ 重载</button>
+    <button class="btn btn-danger" onclick="cmd('stop')">■ 停止</button>
+    <button class="btn btn-secondary btn-sm" onclick="exportConfig()">⬇ 导出</button>
+    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('importFile').click()">⬆ 导入</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
+  </div>
+</div>
+
+<!-- Layout -->
+<div class="layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-title">参数分组</div>
+    <div class="nav-item active" data-tab="tab-model">📦 模型</div>
+    <div class="nav-item" data-tab="tab-gpu">🎮 GPU</div>
+    <div class="nav-item" data-tab="tab-cpu">⚙️ CPU / 线程</div>
+    <div class="nav-item" data-tab="tab-context">📏 上下文</div>
+    <div class="nav-item" data-tab="tab-sampling">🎲 采样</div>
+    <div class="nav-item" data-tab="tab-rope">📐 RoPE</div>
+    <div class="nav-item" data-tab="tab-advanced">🔬 高级</div>
+    <div class="nav-item" data-tab="tab-logs">📋 日志</div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Presets -->
+    <div class="preset-row">
+      <span style="font-size:12px;color:var(--text2);margin-right:4px;align-self:center;">预设:</span>
+      <button class="preset-btn" onclick="applyPreset('balanced')">均衡 (默认)</button>
+      <button class="btn preset-btn" onclick="applyPreset('fast')">速度优先</button>
+      <button class="btn preset-btn" onclick="applyPreset('quality')">质量优先</button>
+      <button class="btn preset-btn" onclick="applyPreset('low-vram')">低显存</button>
+      <button class="btn preset-btn" onclick="applyPreset('mem0')">Mem0 优化</button>
+      <button class="btn preset-btn" onclick="applyPreset('context')">长上下文</button>
+    </div>
+
+    <!-- Tab: Model -->
+    <div class="tab-content active" id="tab-model">
+      <div class="panel">
+        <div class="panel-header"><span class="icon">📦</span> 模型路径</div>
+        <div class="panel-body">
+          <div class="form-group">
+            <label class="form-label">模型文件路径 <span class="badge">-m</span></label>
+            <input class="form-input" id="model" placeholder="D:\models\your-model.gguf" onchange="markDirty()">
+            <span class="form-hint">GGUF 格式模型文件的完整路径</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: GPU -->
+    <div class="tab-content" id="tab-gpu">
+      <div class="panel">
+        <div class="panel-header"><span class="icon">🎮</span> GPU 设置</div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">GPU 层数 <span class="badge">--gpu-layers</span></label>
+              <div class="range-row">
+                <input type="range" class="form-input" id="gpu_layers" min="-1" max="999" value="-1" oninput="updateRange(this);updateVal('gpu_layers')">
+                <span class="range-val" id="gpu_layers_val">auto</span>
+              </div>
+              <span class="form-hint">-1=自动, 0=CPU全部, 正数=层数, all=全部</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">设备 <span class="badge">--device</span></label>
+              <input class="form-input" id="device" placeholder="0 (留空=自动)" onchange="markDirty()">
+              <span class="form-hint">逗号分隔, 如 "0,1" 或 "0" 或 "auto"</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">分割模式 <span class="badge">--split-mode</span></label>
+              <select class="form-select" id="split_mode" onchange="markDirty()">
+                <option value="layer" selected>layer (默认, 层分割)</option>
+                <option value="none">none (单 GPU)</option>
+                <option value="row">row (并行)</option>
+                <option value="tensor">tensor (实验性)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">张量分割 <span class="badge">--tensor-split</span></label>
+              <input class="form-input" id="tensor_split" placeholder="0.8,0.2" onchange="markDirty()">
+              <span class="form-hint">每块GPU的比例, 如 0.7,0.3</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">主 GPU <span class="badge">--main-gpu</span></label>
+              <input class="form-input" id="main_gpu" type="number" value="0" onchange="markDirty()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">适配显存 <span class="badge">--fit</span></label>
+              <label class="form-label" style="margin-top:4px">
+                <input type="checkbox" id="fit" checked onchange="markDirty()"> 启用自动适配
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="form-label">适配目标 (MiB) <span class="badge">--fit-target</span></label>
+              <input class="form-input" id="fit_target" type="number" value="1024" onchange="markDirty()">
+              <span class="form-hint">每卡保留的余量 (默认 1024)</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">适配最小上下文 <span class="badge">--fit-ctx</span></label>
+              <input class="form-input" id="fit_ctx" type="number" value="4096" onchange="markDirty()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Flash Attention <span class="badge">--flash-attn</span></label>
+              <select class="form-select" id="flash_attn" onchange="markDirty()">
+                <option value="auto" selected>auto (自动)</option>
+                <option value="on">on (强制开启)</option>
+                <option value="off">off (关闭)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">KV Cache 卸载 <span class="badge">--kv-offload</span></label>
+              <label class="form-label" style="margin-top:4px">
+                <input type="checkbox" id="kv_offload" checked onchange="markDirty()"> 启用
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: CPU -->
+    <div class="tab-content" id="tab-cpu">
+      <div class="panel">
+        <div class="panel-header"><span class="icon">⚙️</span> CPU / 线程</div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">线程数 <span class="badge">-t</span></label>
+              <div class="range-row">
+                <input type="range" class="form-input" id="threads" min="-1" max="96" value="-1" oninput="updateRange(this);updateVal('threads')">
+                <span class="range-val" id="threads_val">auto</span>
+              </div>
+              <span class="form-hint">-1=自动, 推荐: 物理核心数</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">批处理线程 <span class="badge">--threads-batch</span></label>
+              <input class="form-input" id="threads_batch" type="number" value="-1" onchange="markDirty()">
+              <span class="form-hint">-1=同 --threads</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">进程优先级 <span class="badge">--prio</span></label>
+              <select class="form-select" id="cpu_prio" onchange="markDirty()">
+                <option value="-1">-1 (低)</option>
+                <option value="0" selected>0 (普通)</option>
+                <option value="1">1 (中高)</option>
+                <option value="2">2 (高)</option>
+                <option value="3">3 (实时)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">轮询级别 <span class="badge">--poll</span></label>
+              <input class="form-input" id="poll" type="number" value="50" min="0" max="100" onchange="markDirty()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">NUMA 模式 <span class="badge">--numa</span></label>
+              <select class="form-select" id="numa" onchange="markDirty()">
+                <option value="" selected>空 (默认)</option>
+                <option value="distribute">distribute</option>
+                <option value="isolate">isolate</option>
+                <option value="numactl">numactl</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">内存映射 (mmap) <span class="badge">--mmap</span></label>
+              <label class="form-label" style="margin-top:4px">
+                <input type="checkbox" id="mmap" checked onchange="markDirty()"> 启用
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="form-label">内存锁定 (mlock) <span class="badge">--mlock</span></label>
+              <label class="form-label" style="margin-top:4px">
+                <input type="checkbox" id="mlock" onchange="markDirty()"> 启用
+              </label>
+              <span class="form-hint">将模型固定在 RAM 中</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Context -->
+    <div class="tab-content" id="tab-context">
+      <div class="panel">
+        <div class="panel-header"><span class="icon">📏</span> 上下文 / 批处理</div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">上下文大小 <span class="badge">-c</span></label>
+              <div class="range-row">
+                <input type="range" class="form-input" id="ctx_size" min="0" max="131072" step="1024" value="0" oninput="updateRange(this,'1024');updateVal('ctx_size')">
+                <span class="range-val" id="ctx_size_val">0</span>
+              </div>
+              <span class="form-hint">0=跟随模型, 推荐 4096~32768</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">预测长度 <span class="badge">-n</span></label>
+              <input class="form-input" id="predict" type="number" value="-1" onchange="markDirty()">
+              <span class="form-hint">-1=无限, 推荐 -1 或 2048</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">批处理大小 <span class="badge">-b</span></label>
+              <input class="form-input" id="batch_size" type="number" value="2048" min="1" onchange="markDirty()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">物理批处理大小 <span class="badge">-ub</span></label>
+              <input class="form-input" id="ubatch_size" type="number" value="512" min="1" onchange="markDirty()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">保留 token <span class="badge">--keep</span></label>
+              <input class="form-input" id="keep" type="number" value="0" onchange="markDirty()">
+              <span class="form-hint">0=不保留, -1=保留全部</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">SWA 完整缓存 <span class="badge">--swa-full</span></label>
+              <label class="form-label" style="margin-top:4px">
+                <input type="checkbox" id="swa_full" onchange="markDirty()"> 启用
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="form-label">权重重打包 <span class="badge">--repack</span></label>
+              <label class="form-label" style="margin-top:4px">
+                <input type="checkbox" id="repack" checked onchange="markDirty()"> 启用
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Sampling -->
+    <div class="tab-content" id="tab-sampling">
+      <div class="panel">
+        <div class="panel-header"><span class="icon">🎲</span> 采样参数</div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">温度 <span class="badge">-t</span></label>
+              <div class="range-row">
+                <input type="range" class="form-input" id="temp" min="0" max="2" step="0.01" value="0.80" oninput="updateRange(this,'0.01');updateVal('temp')">
+                <span class="range-val" id="temp_val">0.80</span>
+              </div>
+              <span class="form-hint">越低越确定, 越高越随机</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Top-K <span class="badge">--top-k</span></label>
+              <input class="form-input" id="top_k" type="number" value="40" min="0" onchange="markDirty()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Top-P <span class="badge">--top-p</span></label>
+              <div class="range-row">
+                <input type="range" class="form-input" id="top_p" min="0" max="1" step="0.01" value="0.95" oninput="updateRange(this,'0.01');updateVal('top_p')">
+                <span class="range-val" id="top_p_val">0.95</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Min-P <span class="badge">--min-p</span></label>
+              <div class="range-row">
+                <input type="range" class="form-input" id="min_p" min="0" max="1" step="0.01" value="0.05" oninput="updateRange(this,'0.01');updateVal('min_p')">
+                <span class="range-val" id="min_p_val">0.05</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">XTC 概率 <span class="badge">--xtc-probability</span></label>
+              <div class="range-row">
+                <input type="range" class="form-input" id="xtc_probability" min="0" max="1" step="0.01" value="0.00" oninput="updateRange(this,'0.01');updateVal('xtc_probability')">
+                <span class="range-val" id="xtc_probability_val">0.00</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">XTC 阈值 <span class="badge">--xtc-threshold</span></label>
+              <div class="range-row">
+                <input type="range" class="form-input" id="xtc_threshold" min="0" max="1" step="0.01" value="0.10" oninput="updateRange(this,'0.01');updateVal('xtc_threshold')">
+                <span class="range-val" id="xtc_threshold_val">0.10</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">典型采样 <span class="badge">--typical-p</span></label>
+              <div class="range-row">
+                <input type="range" class="form-input" id="typical_p" min="0" max="1" step="0.01" value="1.00" oninput="updateRange(this,'0.01');updateVal('typical_p')">
+                <span class="range-val" id="typical_p_val">1.00</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">重复惩罚 N <span class="badge">--repeat-last-n</span></label>
+              <input class="form-input" id="repeat_last_n" type="number" value="64" min="0" onchange="markDirty()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">重复惩罚值 <span class="badge">--repeat-penalty</span></label>
+              <div class="range-row">
+                <input type="range" class="form-input" id="repeat_penalty" min="0" max="2" step="0.01" value="1.00" oninput="updateRange(this,'0.01');updateVal('repeat_penalty')">
+                <span class="range-val" id="repeat_penalty_val">1.00</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">存在惩罚 <span class="badge">--presence-penalty</span></label>
+              <div class="range-row">
+                <input type="range" class="form-input" id="presence_penalty" min="-1" max="1" step="0.01" value="0.00" oninput="updateRange(this,'0.01');updateVal('presence_penalty')">
+                <span class="range-val" id="presence_penalty_val">0.00</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">频率惩罚 <span class="badge">--frequency-penalty</span></label>
+              <div class="range-row">
+                <input type="range" class="form-input" id="frequency_penalty" min="-1" max="1" step="0.01" value="0.00" oninput="updateRange(this,'0.01');updateVal('frequency_penalty')">
+                <span class="range-val" id="frequency_penalty_val">0.00</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mirostat <span class="badge">--mirostat</span></label>
+              <select class="form-select" id="mirostat" onchange="markDirty()">
+                <option value="0" selected>关闭</option>
+                <option value="1">Mirostat 1.0</option>
+                <option value="2">Mirostat 2.0</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mirostat LR <span class="badge">--mirostat-lr</span></label>
+              <input class="form-input" id="mirostat_lr" type="number" value="0.10" step="0.01" min="0" max="1" onchange="markDirty()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mirostat Entropy <span class="badge">--mirostat-ent</span></label>
+              <input class="form-input" id="mirostat_ent" type="number" value="5.00" step="0.01" min="0" onchange="markDirty()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">随机种子 <span class="badge">-s</span></label>
+              <input class="form-input" id="seed" type="number" value="-1" onchange="markDirty()">
+              <span class="form-hint">-1=随机, 固定种子可复现</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: RoPE -->
+    <div class="tab-content" id="tab-rope">
+      <div class="panel">
+        <div class="panel-header"><span class="icon">📐</span> RoPE 频率缩放</div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">缩放方法 <span class="badge">--rope-scaling</span></label>
+              <select class="form-select" id="rope_scaling" onchange="markDirty()">
+                <option value="linear" selected>linear (默认)</option>
+                <option value="none">none</option>
+                <option value="yarn">yarn</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">缩放因子 <span class="badge">--rope-scale</span></label>
+              <input class="form-input" id="rope_scale" type="number" value="1.0" step="0.1" onchange="markDirty()">
+              <span class="form-hint">>1 扩展上下文</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">频率基准 <span class="badge">--rope-freq-base</span></label>
+              <input class="form-input" id="rope_freq_base" type="number" value="0" onchange="markDirty()">
+              <span class="form-hint">0=模型默认</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">频率缩放因子 <span class="badge">--rope-freq-scale</span></label>
+              <input class="form-input" id="rope_freq_scale" type="number" value="1.0" step="0.01" onchange="markDirty()">
+              <span class="form-hint">1/N 扩展</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Advanced -->
+    <div class="tab-content" id="tab-advanced">
+      <div class="panel">
+        <div class="panel-header"><span class="icon">🔬</span> 高级参数</div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">LoRA 适配器 <span class="badge">--lora</span></label>
+              <input class="form-input" id="lora" placeholder="path/to/lora.gguf" onchange="markDirty()">
+              <span class="form-hint">逗号分隔多个</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">控制向量 <span class="badge">--control-vector</span></label>
+              <input class="form-input" id="control_vector" placeholder="path/to/cv.bin" onchange="markDirty()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Speculative Decoding 类型 <span class="badge">--spec-type</span></label>
+              <select class="form-select" id="spec_type" onchange="markDirty()">
+                <option value="none" selected>none</option>
+                <option value="draft-simple">draft-simple</option>
+                <option value="draft-eagle3">draft-eagle3</option>
+                <option value="draft-mtp">draft-mtp</option>
+                <option value="draft-dflash">draft-dflash</option>
+                <option value="ngram-simple">ngram-simple</option>
+                <option value="ngram-map-k">ngram-map-k</option>
+                <option value="nmap-k4v">nmap-k4v</option>
+                <option value="nmap-mod">nmap-mod</option>
+                <option value="nmap-cache">nmap-cache</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">草稿模型 <span class="badge">--spec-draft-model</span></label>
+              <input class="form-input" id="spec_draft_model" placeholder="path/to/draft.gguf" onchange="markDirty()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">草稿 GPU 层数 <span class="badge">--spec-draft-ngl</span></label>
+              <input class="form-input" id="spec_draft_ngl" type="number" value="-1" onchange="markDirty()">
+              <span class="form-hint">-1=跟随主模型</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">JSON Schema 文件 <span class="badge">--json-schema-file</span></label>
+              <input class="form-input" id="json_schema_file" placeholder="path/to/schema.json" onchange="markDirty()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">覆盖 KV <span class="badge">--override-kv</span></label>
+              <input class="form-input" id="override_kv" placeholder="tokenizer.ggml.add_bos_token=bool:false" onchange="markDirty()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">日志级别 <span class="badge">--log-verbosity</span></label>
+              <select class="form-select" id="log_verbosity" onchange="markDirty()">
+                <option value="0">0 (通用输出)</option>
+                <option value="1">1 (错误)</option>
+                <option value="2">2 (警告)</option>
+                <option value="3" selected>3 (信息)</option>
+                <option value="4">4 (追踪)</option>
+                <option value="5">5 (调试)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">离线模式 <span class="badge">--offline</span></label>
+              <label class="form-label" style="margin-top:4px">
+                <input type="checkbox" id="offline" onchange="markDirty()"> 启用
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="form-label">日志前缀 <span class="badge">--log-prefix</span></label>
+              <label class="form-label" style="margin-top:4px">
+                <input type="checkbox" id="log_prefix" onchange="markDirty()"> 启用
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="form-label">日志时间戳 <span class="badge">--log-timestamps</span></label>
+              <label class="form-label" style="margin-top:4px">
+                <input type="checkbox" id="log_timestamps" onchange="markDirty()"> 启用
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Logs -->
+    <div class="tab-content" id="tab-logs">
+      <div class="panel">
+        <div class="panel-header"><span class="icon">📋</span> llama-server 实时日志</div>
+        <div class="panel-body">
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button class="btn btn-secondary btn-sm" onclick="fetchLogs()">⟳ 刷新</button>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text2);cursor:pointer;">
+              <input type="checkbox" id="autoScroll" checked> 自动滚动
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text2);cursor:pointer;margin-left:auto">
+              <input type="checkbox" id="autoRefresh" onchange="toggleAutoRefresh()"> 自动刷新 (5s)
+            </label>
+          </div>
+          <div class="log-area" id="logArea">点击「刷新」或启动 llama 后查看日志...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── 配置数据 ──
+let config = {};
+let dirty = false;
+let autoRefreshTimer = null;
+
+// ── Tab 切换 ──
+document.querySelectorAll('.nav-item[data-tab]').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item[data-tab]').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    item.classList.add('active');
+    document.getElementById(item.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Range 更新 ──
+function updateRange(el, step='1') {
+  const id = el.id;
+  const val = el.value;
+  const display = document.getElementById(id + '_val');
+  if (val === '-1' || val === '0' && id === 'ctx_size') {
+    display.textContent = val === '-1' ? 'auto' : '0';
+  } else {
+    display.textContent = val;
+  }
+}
+
+function updateVal(id) {
+  const el = document.getElementById(id);
+  const display = document.getElementById(id + '_val');
+  if (!display) return;
+  const v = el.value;
+  display.textContent = v === '-1' ? 'auto' : v;
+  if (id !== 'ctx_size' && id !== 'gpu_layers' && id !== 'threads') {
+    // already handled in range input
+  }
+}
+
+// ── 加载配置 ──
+async function loadConfig() {
+  try {
+    const r = await fetch('/api/config');
+    config = await r.json();
+    syncFormToConfig();
+  } catch(e) { console.error('Load config failed:', e); }
+}
+
+function syncFormToConfig() {
+  Object.keys(config).forEach(key => {
+    const el = document.getElementById(key);
+    if (!el) return;
+    if (el.type === 'checkbox') {
+      el.checked = !!config[key];
+    } else if (el.tagName === 'SELECT') {
+      el.value = String(config[key]);
+    } else {
+      el.value = config[key] !== undefined ? String(config[key]) : '';
+    }
+  });
+  // Update all range displays
+  document.querySelectorAll('input[type="range"]').forEach(r => {
+    const display = document.getElementById(r.id + '_val');
+    if (display) {
+      const v = r.value;
+      display.textContent = v === '-1' ? 'auto' : v;
+    }
+  });
+}
+
+function getConfigFromForm() {
+  const cfg = {};
+  Object.keys(config).forEach(key => {
+    const el = document.getElementById(key);
+    if (!el) return;
+    let val = el.type === 'checkbox' ? el.checked : el.value;
+    // Convert types
+    if (['temp','top_p','min_p','xtc_probability','xtc_threshold','typical_p','repeat_penalty','presence_penalty','frequency_penalty','mirostat_lr','mirostat_ent','rope_scale','rope_freq_scale','fit_target'].includes(key)) {
+      val = parseFloat(val) || 0;
+    } else if (['gpu_layers','threads','threads_batch','ctx_size','predict','batch_size','ubatch_size','keep','main_gpu','fit_ctx','fit_target','top_k','mirostat','log_verbosity','cpu_prio','poll'].includes(key)) {
+      val = parseInt(val) || 0;
+    } else if (['kv_offload','mmap','mlock','fit','swa_full','repack','offline','log_prefix','log_timestamps'].includes(key)) {
+      val = !!val;
+    }
+    cfg[key] = val;
+  });
+  return cfg;
+}
+
+function markDirty() {
+  dirty = true;
+}
+
+// ── 保存配置 ──
+async function saveConfig() {
+  if (!dirty) return;
+  try {
+    const cfg = getConfigFromForm();
+    await fetch('/api/config', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(cfg)
+    });
+    config = cfg;
+    dirty = false;
+    showStatus('配置已保存', 'info');
+  } catch(e) {
+    showStatus('保存失败: ' + e.message, 'error');
+  }
+}
+
+// 自动保存 (3s debounce)
+let saveTimer = null;
+document.addEventListener('input', () => {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveConfig, 3000);
+});
+
+// ── 进程管理 ──
+async function cmd(action) {
+  try {
+    const r = await fetch('/api/command', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({cmd: action})
+    });
+    const data = await r.json();
+    showStatus(data.msg || (data.ok ? '操作成功' : '操作失败'), data.ok ? 'success' : 'error');
+    await checkStatus();
+    if (action === 'start' || action === 'restart') {
+      setTimeout(fetchLogs, 2000);
+    }
+  } catch(e) {
+    showStatus('命令失败: ' + e.message, 'error');
+  }
+}
+
+async function checkStatus() {
+  try {
+    const r = await fetch('/api/status');
+    const data = await r.json();
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    if (data.running) {
+      dot.classList.add('running');
+      const m = Math.floor(data.uptime / 60);
+      const s = data.uptime % 60;
+      text.textContent = `运行中 (PID: ${data.pid}, ${m}分${s}秒)`;
+    } else {
+      dot.classList.remove('running');
+      text.textContent = '已停止';
+    }
+  } catch(e) {
+    console.error('Status check failed:', e);
+  }
+}
+
+// ── 日志 ──
+async function fetchLogs() {
+  try {
+    const r = await fetch('/api/logs');
+    const data = await r.json();
+    const area = document.getElementById('logArea');
+    if (data.lines && data.lines.length > 0) {
+      const html = data.lines.map(line => {
+        let cls = '';
+        const lower = line.toLowerCase();
+        if (lower.includes('error') || lower.includes('fatal')) cls = 'log-error';
+        else if (lower.includes('warn')) cls = 'log-warn';
+        return `<div class="${cls}">${escapeHtml(line.trim())}</div>`;
+      }).join('');
+      area.innerHTML = html;
+      if (document.getElementById('autoScroll').checked) {
+        area.scrollTop = area.scrollHeight;
+      }
+    } else {
+      area.textContent = '暂无日志。启动 llama-server 后查看...';
+    }
+  } catch(e) {
+    console.error('Log fetch failed:', e);
+  }
+}
+
+function toggleAutoRefresh() {
+  if (document.getElementById('autoRefresh').checked) {
+    autoRefreshTimer = setInterval(fetchLogs, 5000);
+  } else {
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── 预设 ──
+function applyPreset(name) {
+  const presets = {
+    balanced: { gpu_layers:-1, threads:-1, ctx_size:0, predict:-1, temp:0.80, top_k:40, top_p:0.95, min_p:0.05, mirostat:0, mmap:true, kv_offload:true, fit:true, fit_target:1024, fit_ctx:4096, batch_size:2048, ubatch_size:512 },
+    fast: { gpu_layers:-1, threads:-1, ctx_size:0, predict:-1, temp:1.20, top_k:50, top_p:0.90, min_p:0.05, mirostat:0, mmap:true, kv_offload:true, fit:true, fit_target:512, fit_ctx:2048, batch_size:4096, ubatch_size:1024 },
+    quality: { gpu_layers:-1, threads:-1, ctx_size:0, predict:-1, temp:0.60, top_k:20, top_p:0.99, min_p:0.10, mirostat:2, mirostat_lr:0.10, mirostat_ent:5.00, mmap:true, kv_offload:true, fit:true, fit_target:1024, fit_ctx:4096, batch_size:2048, ubatch_size:512 },
+    'low-vram': { gpu_layers:20, threads:-1, ctx_size:4096, predict:-1, temp:0.80, top_k:40, top_p:0.95, min_p:0.05, mirostat:0, mmap:true, kv_offload:true, fit:true, fit_target:2048, fit_ctx:4096, batch_size:1024, ubatch_size:256 },
+    mem0: { gpu_layers:-1, threads:-1, ctx_size:0, predict:-1, temp:0.80, top_k:40, top_p:0.95, min_p:0.05, mirostat:0, mmap:true, kv_offload:true, fit:true, fit_target:1024, fit_ctx:4096, batch_size:2048, ubatch_size:512, repeat_penalty:1.05, presence_penalty:0.10 },
+    context: { gpu_layers:-1, threads:-1, ctx_size:32768, predict:-1, temp:0.80, top_k:40, top_p:0.95, min_p:0.05, mirostat:0, mmap:true, kv_offload:true, fit:true, fit_target:2048, fit_ctx:4096, batch_size:4096, ubatch_size:1024 }
+  };
+  const p = presets[name];
+  if (!p) return;
+  Object.assign(config, p);
+  syncFormToConfig();
+  saveConfig();
+  showStatus(`已应用预设: ${name}`, 'info');
+}
+
+// ── 导出/导入 ──
+async function exportConfig() {
+  const cfg = getConfigFromForm();
+  const blob = new Blob([JSON.stringify(cfg, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `llama_debug_config_${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importConfig(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      Object.assign(config, imported);
+      syncFormToConfig();
+      saveConfig();
+      showStatus('配置已导入', 'success');
+    } catch(err) {
+      showStatus('导入失败: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ── 状态提示 ──
+function showStatus(msg, type) {
+  const el = document.getElementById('statusText');
+  el.textContent = msg;
+  if (type === 'error') {
+    el.style.color = 'var(--red)';
+  } else if (type === 'success') {
+    el.style.color = 'var(--green)';
+  } else {
+    el.style.color = 'var(--text2)';
+  }
+  setTimeout(() => { el.style.color = ''; }, 2000);
+}
+
+// ── 初始化 ──
+async function init() {
+  await loadConfig();
+  await checkStatus();
+  // Auto-refresh status every 10s
+  setInterval(checkStatus, 10000);
+  // Load logs if running
+  setTimeout(fetchLogs, 1000);
+}
+init();
+</script>
+</body>
+</html>
