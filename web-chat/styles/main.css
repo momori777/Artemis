@@ -1427,6 +1427,9 @@ html,body{
 
 .dash-service-action:hover{background:var(--bg-overlay);color:var(--text-primary)}
 
+.dash-action-debug{color:var(--accent, #d4787a)}
+.dash-action-debug:hover{background:rgba(212,120,122,0.15);color:var(--accent, #d4787a)}
+
 .dash-log{
   margin-top:12px;padding:10px 14px;
   border-radius:var(--radius-sm);

@@ -482,11 +482,21 @@ var Studio = {
         } else {
           btns = '<button class="dash-service-action" title="Start" onclick="Studio.startDaemonService(\'' + s.name + '\')"><i class="ph ph-play-circle"></i></button>';
         }
+        // Llama Debugger: add debugger-specific buttons
+        var extra = '';
+        if (s.name === 'Llama Debugger' && s.online) {
+          extra = '<button class="dash-service-action dash-action-debug" title="Open Debugger UI" onclick="Studio.openLlamaDebugger()"><i class="ph ph-wrench"></i></button>';
+          extra += '<button class="dash-service-action dash-action-debug" title="Restart LLM with debugger config" onclick="Studio.restartLlamaDebugger()"><i class="ph ph-skull"></i></button>';
+        }
+        // Llama Debugger: add launch button when offline but enabled
+        if (s.name === 'Llama Debugger' && !s.online && s.enabled) {
+          extra = '<button class="dash-service-action dash-action-debug" title="Launch Debugger" onclick="Studio.startDaemonService(\'' + s.name + '\')"><i class="ph ph-flask"></i></button>';
+        }
         return '<div class="dash-service-row">' +
           '<i class="dash-service-status ' + cls + ' ' + icon + '"></i>' +
           '<span class="dash-service-name">' + s.name + '</span>' +
           '<span class="dash-service-port">:' + s.port + '</span>' +
-          btns +
+          btns + extra +
         '</div>';
       }).join('');
     };
@@ -552,6 +562,35 @@ var Studio = {
       })
       .catch(function(err) {
         log.textContent = 'Error: ' + err.message;
+      });
+  },
+
+  // ============================================================
+  // Llama Debugger — dashboard actions
+  // ============================================================
+
+  openLlamaDebugger: function() {
+    window.open('http://127.0.0.1:8765', '_blank');
+  },
+
+  restartLlamaDebugger: function() {
+    var self = this;
+    var log = document.getElementById('dash-log');
+    log.textContent = 'Sending debugger restart command...';
+
+    fetch('http://127.0.0.1:8765/api/command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cmd: 'restart' }),
+      signal: AbortSignal.timeout(120000),
+    })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        log.textContent = 'Llama debugger restart: ' + (data.msg || data.error || 'done');
+        setTimeout(function() { self.refreshDashboard(); }, 3000);
+      })
+      .catch(function(err) {
+        log.textContent = 'Llama debugger restart error: ' + err.message;
       });
   },
 

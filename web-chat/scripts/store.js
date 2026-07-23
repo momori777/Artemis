@@ -32,8 +32,8 @@ function createDefaultStore() {
       streamEnabled: true,
       reasoningEnabled: true,
       thinkingMode: 'default',
-      mem0Enhanced: false,
-      mem0WriteEnabled: false,
+      mem0Enhanced: true,
+      mem0WriteEnabled: true,
       mem0WriteInterval: 10,
       bridgeUrl: 'http://localhost:19250',
       // Tree mode: 'on' = always, 'off' = never, 'auto' = new sessions
