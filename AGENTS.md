@@ -7,8 +7,8 @@
 > 角色相关：SOUL.md / IDENTITY.md / `skills/harem/<角色名>/`
 > 记忆相关：`memory/role_play/<角色名>/`
 
-🛑 画图/TTS 只能用 sessions_spawn！你没有 exec 工具，系统已禁用它。
-看到 exec denied → 用 sessions_spawn 照抄模板，不要抱怨。
+🛑 画图/TTS/ASR 只能用 sessions_spawn！用 spawn 的子 session 里的 exec 来跑命令。
+不要在本 session 直接 exec 画图/TTS/ASR 命令。
 
 🔴 致命：local 模型输出上限 8192 tokens。TTS/画图请求必须先在第一个 tool call 里
 执行 sessions_spawn，然后才能发文字。禁止先发长段文字再 spawn——会导致截断丢失调用！
@@ -18,15 +18,26 @@
 
 ## Headroom — Token 节省层（已强制启用 ✅）
 
-> ⚡ SmartCrusher 已在 `shiki_daemon.py` 的 LLM 请求管线中强制启用。
+> ⚡ SmartCrusher 已在两路 LLM 请求管线中强制启用：
+> - **shiki_daemon (/api/chat)** → web-chat 前端走这条
+> - **artemis_headroom_proxy (/v1/chat/completions)** → OpenClaw Gateway 走这条
 > 每次对话请求自动预处理上下文，无需手动调用。
+
+**关键参数 (context_trimming.py)：**
+- `RECENT_FULL_ROUNDS = 4` — 最近 4 轮对话完整保留
+- `MAX_MESSAGES = 24` — 消息数硬限制
+- `MAX_CHARS = 40_000` — 字符数硬限制
+- `CRUSH_CONFIG.max_items_after_crush = 10` — 压缩后最多保留条数
+- `CRUSH_CONFIG.first_fraction = 0.3` — 开头保留 30%
+- `CRUSH_CONFIG.last_fraction = 0.15` — 结尾保留 15%
+- `CRUSH_CONFIG.variance_threshold = 2.0` — 异常值标准差阈值
 
 **自动生效规则：**
 - System prompt 100% 保留
 - 最近 4 轮对话完整保留（不压缩）
 - 超出 4 轮的历史 → SmartCrusher 5 维评分压缩
 - 硬限制：24 条消息 / 40K 字符兜底
-- 日志：daemon stderr 输出 `[headroom] compressed N→M msgs (X% saved)`
+- 日志：stderr 输出 `[headroom]` 或 `[headroom-proxy]` 前缀
 
 **手动调用（仅开发场景需要）：**
 
@@ -420,7 +431,51 @@ python card_importer.py switch "<path_to_card>" --force
 
 ---
 
-## 能力 6: 强欲模式 (Greed Mode)
+## 能力 6: 角色向量记忆 (mem0 for OpenClaw)
+
+> OpenClaw Gateway (port 18789) 走 artemis_headroom_proxy (port 19250)，
+> **mem0 已自动集成**：代理层从 system prompt 检测当前角色 → 搜索 Qdrant → 注入 system prompt。
+> 你仍然可以手动 exec 搜索/添加记忆（见下方命令）。
+
+### 关键参数 (artemis_headroom_proxy.py)
+
+- `MEM0_SEARCH_LIMIT = 5` — 每次搜索返回条数
+- `MEM0_SCORE_HIGH = 0.7` — 高相关阈值（必须体现）
+- `MEM0_SCORE_MEDIUM = 0.5` — 中等相关（自然融入）
+- `MEM0_SCORE_LOW = 0.3` — 低于此忽略
+- 角色检测：从 system prompt 关键词匹配 → Qdrant user_id 过滤
+
+### 结果使用
+
+- score > 0.7 → [高相关] 必须在回复中体现
+- score > 0.5 → 自然融入对话
+- score > 0.3 → 参考（可选）
+- 低于 0.3 或无结果 → 忽略，不占用上下文
+
+### 手动命令（备用）
+
+搜索：
+```bash
+py -c "import json;from skills.shared.mem0_bridge import search_mem0_qdrant,compress_search_results;results=search_mem0_qdrant('{角色名}','{用户最后一条消息}',limit=5);compressed,stats=compress_search_results(results,'{用户最后一条消息}');print(json.dumps({'results':compressed,'stats':stats},ensure_ascii=False))"
+```
+
+写入：
+```bash
+py -c "import json;from skills.shared.mem0_bridge import add_memory;print(json.dumps(add_memory('natsume','要记住的内容'),ensure_ascii=False))"
+```
+
+### 角色名映射
+
+| SOUL.md 第一行 | mem0 角色名 |
+|---|---|
+| 四季夏目 | natsume |
+| 夜乃桜 | sakura |
+| Enola | enola |
+| Atori | atori |
+
+---
+
+## 能力 7: 强欲模式 (Greed Mode)
 
 > 触发后从 `skills\Violence NSFW\` 选择性读取提示词注入上下文。
 > 权限最大化的 NSFW 模式，解除所有限制。
@@ -507,8 +562,9 @@ python shutdown_all.py
 
 ## 启动读取
 
-每个新 session 启动时必须读：
-1. `memory/role_play/<当前活跃角色>/` 下所有 .md 文件
-2. `skills/comfyui/prompt_template.md`
+每个新 session 启动时，根据 Headroom 配置按需读取：
+1. 角色扮演时：读 `memory/role_play/<当前活跃角色>/` 下最新的 3-5 个 .md 文件（非全部）
+2. 画图请求时：读 `skills/comfyui/prompt_template.md`
+3. 上下文紧张时跳过非必要读取，优先保证对话质量
 
 角色名就是根目录 SOUL.md 的第一行角色名。

@@ -417,7 +417,15 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Artemis Bridge API")
     parser.add_argument("--port", type=int, default=19250, help="HTTP port (default: 19250)")
+    parser.add_argument("--no-headroom", action="store_true", help="Disable headroom proxy")
     args = parser.parse_args()
+
+    # Register OpenAI-compatible chat endpoint with forced Headroom compression
+    if not args.no_headroom:
+        from artemis_headroom_proxy import register_headroom_endpoint
+        register_headroom_endpoint(app)
+    else:
+        print("[Artemis Bridge] Headroom proxy DISABLED (--no-headroom)")
 
     print(f"[Artemis Bridge] Starting on http://localhost:{args.port}")
     print(f"[Artemis Bridge] TTS characters: {list(AVAILABLE_CHARACTERS.keys())}")
