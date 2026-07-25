@@ -18,10 +18,15 @@
 <body>
 
 <div id="app">
-  <!-- ===== Sidebar ===== -->
-  <aside id="sidebar">
-    <div class="sidebar-header">
-      <div class="app-title">AI Girlfriend</div>
+
+<!-- Sidebar collapse handle -->
+<div class="sidebar-handle" id="sidebar-handle" title="Character & Settings">
+  <i class="ph ph-sidebar-simple"></i>
+</div>
+<!-- ===== Sidebar ===== -->
+<aside id="sidebar">
+  <div class="sidebar-header">
+      <div class="app-title" data-i18n="app_title">AI 女友</div>
 
       <div class="char-selector">
         <button class="char-select-btn" id="char-select-btn">
@@ -59,8 +64,8 @@
 
     <div class="sidebar-sessions">
       <div class="sessions-header">
-        <span class="sessions-title">Chats</span>
-        <button class="btn-new-chat" id="btn-new-chat" title="New chat">
+        <span class="sessions-title" data-i18n="chats">聊天</span>
+        <button class="btn-new-chat" id="btn-new-chat" data-i18n-title="new_chat" title="新建">
           <i class="ph ph-plus"></i>
         </button>
       </div>
@@ -69,16 +74,16 @@
 
     <div class="sidebar-body">
       <div class="info-group">
-        <div class="info-label">Persona</div>
+        <div class="info-label" data-i18n="persona">人设</div>
         <div class="info-text" id="char-persona"></div>
         <div class="info-text" id="char-persona-note" style="margin-top:4px"></div>
       </div>
       <div class="info-group">
-        <div class="info-label">Traits</div>
+        <div class="info-label" data-i18n="traits">属性</div>
         <div class="tag-list" id="char-tags"></div>
       </div>
       <div class="info-group">
-        <div class="info-label">Source</div>
+        <div class="info-label" data-i18n="source">来源</div>
         <div class="info-text" id="char-source"></div>
       </div>
     </div>
@@ -86,11 +91,11 @@
     <div class="sidebar-footer">
       <button class="skill-btn" id="btn-studio-toggle">
         <i class="ph ph-paint-brush-broad"></i>
-        <span>Open Studio</span>
+        <span data-i18n="open_studio">打开 Studio</span>
       </button>
       <button class="skill-btn" id="btn-live2d">
         <i class="ph ph-person-simple-walk"></i>
-        <span>Live2D Action</span>
+        <span data-i18n="live2d_action">Live2D 动作</span>
       </button>
     </div>
   </aside>
@@ -99,8 +104,8 @@
   <main id="main">
     <!-- Tab bar -->
     <div id="main-tabs">
-      <button class="main-tab active" data-tab="chat">Chat</button>
-      <button class="main-tab" data-tab="studio">Studio</button>
+      <button class="main-tab active" data-tab="chat" data-i18n="tab_chat">聊天</button>
+      <button class="main-tab" data-tab="studio" data-i18n="tab_studio">Studio</button>
     </div>
 
     <!-- ===== CHAT TAB ===== -->
@@ -111,29 +116,41 @@
             <i class="ph ph-list"></i>
           </button>
           <span class="chat-header-name" id="char-name-text">四季夏目</span>
+          <div class="lang-switch" id="lang-switch">
+            <button class="lang-trigger" id="lang-trigger" title="Switch language">
+              <i class="ph ph-translate"></i>
+              <span id="lang-current-label">中</span>
+              <i class="ph ph-caret-down lang-arrow"></i>
+            </button>
+            <ul class="lang-dropdown" id="lang-dropdown">
+              <li><button class="lang-btn active" data-lang="zh">🇨🇳 中文</button></li>
+              <li><button class="lang-btn" data-lang="ja">🇯🇵 日本語</button></li>
+              <li><button class="lang-btn" data-lang="en">🇺🇸 English</button></li>
+            </ul>
+          </div>
         </div>
         <div class="chat-header-actions">
-          <button class="theme-toggle" id="btn-theme-toggle" title="Switch theme">
+          <button class="theme-toggle" id="btn-theme-toggle" data-i18n-title="theme_switch" title="切换主题">
             <i class="ph ph-moon" id="theme-icon"></i>
           </button>
-          <button class="header-action" id="btn-search" title="Search">
-            <i class="ph ph-magnifying-glass"></i> Search
+          <button class="header-action" id="btn-search" data-i18n-title="search" title="搜索">
+            <i class="ph ph-magnifying-glass"></i> <span data-i18n="search">搜索</span>
           </button>
-          <button class="header-action" id="btn-settings" title="Settings">
-            <i class="ph ph-gear"></i> Settings
+          <button class="header-action" id="btn-settings" data-i18n-title="settings" title="设置">
+            <i class="ph ph-gear"></i> <span data-i18n="settings">设置</span>
           </button>
-          <button class="header-action" id="btn-reset" title="Reset session">
-            <i class="ph ph-arrow-counter-clockwise"></i> Reset
+          <button class="header-action" id="btn-reset" data-i18n-title="reset_session" title="重置会话">
+            <i class="ph ph-arrow-counter-clockwise"></i> <span data-i18n="reset_session">重置会话</span>
           </button>
-          <button class="header-action" id="btn-clear" title="Clear messages">
-            <i class="ph ph-trash"></i> Clear
+          <button class="header-action" id="btn-clear" data-i18n-title="clear_messages" title="清空消息">
+            <i class="ph ph-trash"></i> <span data-i18n="clear_messages">清空消息</span>
           </button>
         </div>
       </header>
 
       <div class="search-row" id="search-row" style="display:none">
         <i class="ph ph-magnifying-glass"></i>
-        <input type="text" id="search-input" placeholder="Search messages...">
+        <input type="text" id="search-input" data-i18n="search_placeholder" placeholder="搜索消息...">
         <span class="search-count" id="search-count"></span>
       </div>
 
@@ -141,42 +158,42 @@
 
       <div id="input-area">
         <div id="input-row">
-          <textarea id="msg-input" placeholder="Type a message..." rows="1"></textarea>
+          <textarea id="msg-input" data-i18n="type_message" placeholder="输入消息..." rows="1"></textarea>
           <div class="input-actions">
             <div class="paint-btn-group">
-              <button class="input-action" id="btn-auto-paint" title="AI自动生成画图提示词">
+              <button class="input-action" id="btn-auto-paint" data-i18n-title="btn_auto_paint" title="AI自动生成画图提示词">
                 <i class="ph ph-robot"></i>
               </button>
               <span class="paint-mode-divider">/</span>
-              <button class="input-action" id="btn-manual-paint" title="手动输入提示词画图">
+              <button class="input-action" id="btn-manual-paint" data-i18n-title="btn_manual_paint" title="手动输入提示词画图">
                 <i class="ph ph-pencil-simple"></i>
               </button>
               <span class="paint-mode-divider">/</span>
-              <button class="input-action" id="btn-tts-voice" title="语音朗读最近回复">
+              <button class="input-action" id="btn-tts-voice" data-i18n-title="btn_tts_voice" title="语音朗读最近回复">
                 <i class="ph ph-microphone"></i>
               </button>
               <span class="paint-mode-divider">/</span>
-              <button class="input-action" id="btn-tts-streaming" title="流式TTS+Live2D口型同步">
+              <button class="input-action" id="btn-tts-streaming" data-i18n-title="btn_tts_streaming" title="流式TTS+Live2D口型同步">
                 <i class="ph ph-broadcast"></i>
               </button>
               <span class="paint-mode-divider">/</span>
-              <button class="input-action" id="btn-stop-llama" title="画图时停llama释放显存">
+              <button class="input-action" id="btn-stop-llama" data-i18n-title="btn_stop_llama" title="停llama释放显存">
                 <i class="ph ph-stop-circle"></i>
-                <span class="stop-llama-label" style="display:none">停llama</span>
+                <span class="stop-llama-label" style="display:none" data-i18n="stop_llama_label">停llama</span>
               </button>
               <span class="paint-mode-divider">/</span>
-              <button class="input-action" id="btn-plugins-toggle" title="增强功能 (Mem0等)">
+              <button class="input-action" id="btn-plugins-toggle" data-i18n-title="btn_plugins" title="增强功能 (Mem0等)">
                 <i class="ph ph-sliders-horizontal"></i>
               </button>
-              <select class="thinking-inline" id="thinking-inline-select" title="思考风格">
-                <option value="default">默认</option>
-                <option value="immersive">沉浸</option>
-                <option value="analytic">分析</option>
-                <option value="godview">上帝</option>
+              <select class="thinking-inline" id="thinking-inline-select" data-i18n-title="plugin_think_style" title="思考风格">
+                <option value="default" data-i18n="thinking_default">默认</option>
+                <option value="immersive" data-i18n="thinking_immersive">沉浸</option>
+                <option value="analytic" data-i18n="thinking_analytic">分析</option>
+                <option value="godview" data-i18n="thinking_godview">上帝</option>
               </select></div>
           </div>
         </div>
-        <button id="send-btn" title="Send">
+        <button id="send-btn" data-i18n-title="send" title="发送">
           <i class="ph ph-paper-plane-right"></i>
         </button>
       </div>
@@ -185,51 +202,51 @@
       <div class="plugins-popup" id="plugins-popup" style="display:none">
         <div class="plugins-popup-inner">
           <div class="plugin-group">
-            <div class="plugin-group-title">💬 模型</div>
+            <div class="plugin-group-title" data-i18n="plugin_model">💬 模型</div>
             <label class="plugin-toggle" id="toggle-reasoning-label">
               <span class="toggle-switch on" id="toggle-reasoning-switch"></span>
               <input type="checkbox" id="chat-reasoning" checked style="display:none">
-              <span class="plugin-toggle-text">Reasoning · 深度思考</span>
+              <span class="plugin-toggle-text" data-i18n="plugin_reasoning">Reasoning · 深度思考</span>
             </label>
-            <div class="plugin-sub-row" id="rea-hint-row" style="font-size:11px;color:var(--text-muted);padding:2px 0 0 44px">
+            <div class="plugin-sub-row" id="rea-hint-row" style="font-size:11px;color:var(--text-muted);padding:2px 0 0 44px" data-i18n="plugin_rea_hint">
               ⚠ 开关会重启llama，需等待~30秒
             </div>
             <div class="plugin-sub-row" id="thinking-mode-row" style="display:none">
-              <span class="plugin-sub-label">思考风格</span>
+              <span class="plugin-sub-label" data-i18n="plugin_think_style">思考风格</span>
               <select id="thinking-mode-select" class="plugin-select">
-                <option value="default">默认自动</option>
-                <option value="immersive">角色沉浸</option>
-                <option value="analytic">纯分析</option>
-                <option value="godview">上帝视角</option>
+                <option value="default" data-i18n="thinking_default">默认自动</option>
+                <option value="immersive" data-i18n="thinking_immersive">角色沉浸</option>
+                <option value="analytic" data-i18n="thinking_analytic">纯分析</option>
+                <option value="godview" data-i18n="thinking_godview">上帝视角</option>
               </select>
             </div>
           </div>
           <div class="plugin-group">
-            <div class="plugin-group-title">🧠 记忆</div>
+            <div class="plugin-group-title" data-i18n="plugin_memory">🧠 记忆</div>
             <div class="plugin-sub-row" style="margin-bottom:8px">
-              <span class="plugin-sub-label">记忆源</span>
+              <span class="plugin-sub-label" data-i18n="plugin_mem_source">记忆源</span>
               <div class="memory-source-row">
-                <button class="memory-source-btn active" id="mem-source-mem0" title="Mem0 向量记忆">Mem0</button>
-                <button class="memory-source-btn" id="mem-source-session" title="OpenClaw 会话历史">Session</button>
+                <button class="memory-source-btn active" id="mem-source-mem0" data-i18n-title="plugin_mem_search" title="Mem0 向量记忆">Mem0</button>
+                <button class="memory-source-btn" id="mem-source-session" data-i18n-title="reset_session" title="OpenClaw 会话历史">Session</button>
               </div>
             </div>
-            <button class="memory-view-btn" id="btn-view-memory" title="查看记忆内容">
-              <i class="ph ph-eye"></i> 查看记忆
+            <button class="memory-view-btn" id="btn-view-memory" data-i18n-title="plugin_mem_view" title="查看记忆内容">
+              <i class="ph ph-eye"></i> <span data-i18n="plugin_mem_view">查看记忆</span>
             </button>
             <label class="plugin-toggle" id="toggle-mem0-label">
               <span class="toggle-switch" id="toggle-mem0-switch"></span>
               <input type="checkbox" id="chat-mem0-enhanced" style="display:none">
-              <span class="plugin-toggle-text">每轮搜索记忆</span>
+              <span class="plugin-toggle-text" data-i18n="plugin_mem_search">每轮搜索记忆</span>
             </label>
             <label class="plugin-toggle" id="toggle-mem0-write-label" style="padding-left:16px">
               <span class="toggle-switch" id="toggle-mem0-write-switch"></span>
               <input type="checkbox" id="chat-mem0-write" style="display:none">
-              <span class="plugin-toggle-text">自动写入记忆</span>
+              <span class="plugin-toggle-text" data-i18n="plugin_mem_write">自动写入记忆</span>
             </label>
             <div class="plugin-sub-row" id="mem0-interval-row" style="display:none">
-              <span class="plugin-sub-label">写入间隔</span>
+              <span class="plugin-sub-label" data-i18n="plugin_mem_interval">写入间隔</span>
               <input type="number" id="mem0-write-interval" class="plugin-number-input" value="10" min="1" max="99">
-              <span class="plugin-sub-suffix">轮</span>
+              <span class="plugin-sub-suffix" data-i18n="plugin_mem_round">轮</span>
             </div>
           </div>
         </div>
@@ -253,10 +270,10 @@
       <div class="studio-body">
         <!-- Studio sub-tabs -->
         <div class="studio-subtabs">
-          <button class="studio-subtab active" data-stab="tts">TTS Voice</button>
-          <button class="studio-subtab" data-stab="comfyui">ComfyUI Image</button>
-          <button class="studio-subtab" data-stab="dashboard">Dashboard</button>
-          <button class="studio-subtab" data-stab="debug">Model Debug</button>
+          <button class="studio-subtab active" data-stab="tts" data-i18n="studio_tts_tab">TTS 语音</button>
+          <button class="studio-subtab" data-stab="comfyui" data-i18n="studio_comfyui_tab">ComfyUI 画图</button>
+          <button class="studio-subtab" data-stab="dashboard" data-i18n="studio_dashboard_tab">仪表盘</button>
+          <button class="studio-subtab" data-stab="debug" data-i18n="studio_debug_tab">模型调试</button>
         </div>
 
         <!-- ===== TTS Panel ===== -->
@@ -512,27 +529,29 @@
             </div>
           </div>
         </div>
+      </div>
+      </div>
 
       </main>
 
 <!-- Settings overlay -->
 <div id="settings-overlay">
   <div id="settings-panel">
-    <div class="settings-title">Settings</div>
-    <div class="settings-subtitle">Configure API endpoint and preferences</div>
+    <div class="settings-title" data-i18n="settings_title">设置</div>
+    <div class="settings-subtitle" data-i18n="settings_subtitle">配置 API 端点和偏好</div>
 
     <div class="settings-group">
-      <div class="settings-label">Chat API Base URL</div>
+      <div class="settings-label" data-i18n="settings_api_base">Chat API Base URL</div>
       <input class="settings-input" id="setting-api-base" placeholder="Leave empty for same-origin">
     </div>
 
     <div class="settings-group">
-      <div class="settings-label">Artemis Bridge URL</div>
+      <div class="settings-label" data-i18n="settings_bridge_url">Artemis Bridge URL</div>
       <input class="settings-input" id="setting-bridge-url" placeholder="http://localhost:19250" value="http://localhost:19250">
     </div>
 
     <div class="settings-group">
-      <div class="settings-label">Model <button class="settings-refresh-btn" id="settings-refresh-models" title="Refresh models from Gateway"><i class="ph ph-arrows-clockwise"></i></button></div>
+      <div class="settings-label"><span data-i18n="settings_model">模型</span> <button class="settings-refresh-btn" id="settings-refresh-models" data-i18n-title="studio_refresh" title="刷新"><i class="ph ph-arrows-clockwise"></i></button></div>
       <select class="settings-input settings-select" id="setting-model-select">
         <option value="">Loading models...</option>
       </select>
@@ -542,7 +561,7 @@
       <label class="settings-toggle" id="toggle-stream-label">
         <span class="toggle-switch on" id="toggle-stream-switch"></span>
         <input type="checkbox" id="setting-stream" checked style="display:none">
-        Stream responses
+        <span data-i18n="settings_stream">流式响应</span>
       </label>
     </div>
 
@@ -550,7 +569,7 @@
       <label class="settings-toggle" id="toggle-setting-reasoning-label">
         <span class="toggle-switch on" id="toggle-setting-reasoning-switch"></span>
         <input type="checkbox" id="setting-reasoning" checked style="display:none">
-        Reasoning (深度思考)
+        <span data-i18n="plugin_reasoning">Reasoning (深度思考)</span>
       </label>
     </div>
 
@@ -558,7 +577,7 @@
       <label class="settings-toggle" id="toggle-setting-mem0-label">
         <span class="toggle-switch" id="toggle-setting-mem0-switch"></span>
         <input type="checkbox" id="setting-mem0" style="display:none">
-        Mem0 记忆增强 (每轮搜索长期记忆)
+        <span data-i18n="settings_mem0">Mem0 记忆增强 (每轮搜索长期记忆)</span>
       </label>
     </div>
 
@@ -566,30 +585,30 @@
       <label class="settings-toggle" id="toggle-setting-mem0-write-label">
         <span class="toggle-switch" id="toggle-setting-mem0-write-switch"></span>
         <input type="checkbox" id="setting-mem0-write" style="display:none">
-        Mem0 自动写入
+        <span data-i18n="settings_mem0_write">Mem0 自动写入</span>
       </label>
     </div>
 
     <div class="settings-group">
-      <div class="settings-label">写入间隔 (每N轮对话)</div>
+      <div class="settings-label" data-i18n="settings_mem0_interval">写入间隔 (每N轮对话)</div>
       <input class="settings-input" id="setting-mem0-interval" type="number" value="10" min="1" max="99">
     </div>
 
     <div class="settings-group">
-      <div class="settings-label">对话树模式 (Conversation Tree)</div>
+      <div class="settings-label" data-i18n="settings_tree">对话树模式 (Conversation Tree)</div>
       <select class="settings-input settings-select" id="setting-tree-mode">
-        <option value="auto">自动 (Auto)</option>
-        <option value="on">开启 (On)</option>
-        <option value="off">关闭 (Off)</option>
+        <option value="auto" data-i18n="settings_tree_auto">自动 (Auto)</option>
+        <option value="on" data-i18n="settings_tree_on">开启 (On)</option>
+        <option value="off" data-i18n="settings_tree_off">关闭 (Off)</option>
       </select>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px" data-i18n="settings_tree_hint">
         开启后重新回复会创建分支，保留历史版本
       </div>
     </div>
 
     <div class="settings-actions">
-      <button class="btn-secondary" id="settings-cancel">Cancel</button>
-      <button class="btn-primary" id="settings-save">Save</button>
+      <button class="btn-secondary" id="settings-cancel" data-i18n="settings_cancel">取消</button>
+      <button class="btn-primary" id="settings-save" data-i18n="settings_save">保存</button>
     </div>
   </div>
 </div>
@@ -696,11 +715,11 @@
 <div id="memory-viewer-overlay">
   <div class="memory-viewer-panel">
     <div class="memory-viewer-header">
-      <span id="memory-viewer-title">🧠 记忆查看</span>
+      <span id="memory-viewer-title" data-i18n="mem_view_title">🧠 记忆查看</span>
       <button class="memory-viewer-close" id="memory-viewer-close">&times;</button>
     </div>
     <div class="memory-viewer-body" id="memory-viewer-body">
-      <div class="memory-viewer-empty">点击"查看记忆"按钮加载</div>
+      <div class="memory-viewer-empty" data-i18n="mem_view_empty">点击"查看记忆"按钮加载</div>
     </div>
     <div class="memory-viewer-footer" id="memory-viewer-footer"></div>
   </div>
@@ -708,6 +727,7 @@
 
 <script src="CHARACTERS_JSON.js"></script>
 <script src="scripts/chars.js?v=27"></script>
+<script src="scripts/i18n.js?v=1"></script>
 <script>
 // Theme toggle: read saved preference or auto-detect
 (function() {
