@@ -107,19 +107,52 @@ html,body{
 /* ---- App Shell ---- */
 #app{
   display:grid;
-  grid-template-columns:var(--sidebar-w) 1fr;
+  grid-template-columns:1fr;
   grid-template-rows:1fr;
   width:100%;height:100%;
+  position:relative;
 }
 
 /* ================================================================
    Sidebar
    ================================================================ */
 #sidebar{
+  position:fixed;top:0;left:0;bottom:0;
+  width:var(--sidebar-w);
   background:var(--bg-root);
   border-right:1px solid var(--border-subtle);
-  display:flex;flex-direction:column;overflow:hidden;z-index:10;
+  display:flex;flex-direction:column;overflow:hidden;z-index:50;
+  transform:translateX(-100%);
+  transition:transform .25s cubic-bezier(0.16,1,0.3,1);
 }
+#sidebar.open{
+  transform:translateX(0);
+}
+
+/* Sidebar collapse handle */
+.sidebar-handle{
+  position:fixed;top:50%;left:0;
+  transform:translateY(-50%);
+  z-index:49;
+  width:16px;height:56px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--bg-elevated);
+  border:1px solid var(--border-subtle);
+  border-left:none;
+  border-radius:0 8px 8px 0;
+  cursor:pointer;
+  color:var(--text-muted);
+  font-size:12px;
+  transition:color .15s, background .15s, opacity .2s;
+  opacity:0.6;
+}
+.sidebar-handle:hover,
+.sidebar-handle.active{
+  opacity:1;
+  color:var(--accent);
+  background:var(--bg-surface);
+}
+.sidebar-handle i{font-size:13px}
 
 .sidebar-header{
   padding:28px 24px 20px;
@@ -1150,6 +1183,7 @@ html,body{
 @media(max-width:768px){
   #app{grid-template-columns:1fr;grid-template-rows:1fr}
   #sidebar{display:none}
+  .sidebar-handle{display:none}
   #messages{padding:16px}
   #input-area{padding:12px 16px 16px}
   .msg-row{max-width:100%}
@@ -1158,6 +1192,7 @@ html,body{
   .search-row{padding:8px 16px}
   #sidebar.mobile-open{
     display:flex;position:fixed;
+    transform:translateX(0);
     inset:0;z-index:100;width:100%;
   }
   #sidebar.mobile-open .sidebar-footer{padding-bottom:32px}
