@@ -399,33 +399,44 @@ def start_gateway():
     if is_port_open(18789):
         return "already running"
 
-    # Find openclaw CLI and start directly (no Scheduled Task)
     import shutil
-    openclaw_cmd = shutil.which("openclaw") or shutil.which("openclaw.cmd")
-    if not openclaw_cmd:
-        openclaw_cmd = os.path.expandvars(r"%APPDATA%\npm\openclaw.cmd")
 
-    # Resolve the actual gateway entry point — node + dist/index.js
-    node_exe = shutil.which("node") or r"C:\Program Files\nodejs\node.exe"
-    gateway_js = os.path.expandvars(
-        r"%APPDATA%\npm\node_modules\openclaw\dist\index.js"
-    )
+    # 读取配置
+    wspace = os.path.expandvars(CFG.get("workspace", os.path.expandvars(r"%USERPROFILE%\.openclaw\workspace")))
+    openclaw_dir = os.path.dirname(wspace)  # .openclaw 目录
+    gateway_cmd_cfg = CFG.get("gateway_cmd", "")
+    gateway_cmd = os.path.expandvars(gateway_cmd_cfg) if gateway_cmd_cfg else ""
+    if not gateway_cmd or not os.path.isfile(gateway_cmd):
+        gateway_cmd = os.path.join(openclaw_dir, "gateway.cmd")
 
-    if not os.path.isfile(gateway_js):
-        return "gateway dist not found"
+    if os.path.isfile(gateway_cmd):
+        print(f"[daemon]   Starting gateway via cmd: {gateway_cmd}")
+        subprocess.Popen(
+            ["cmd.exe", "/c", gateway_cmd],
+            cwd=openclaw_dir,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+    else:
+        # 降级：直接 node 启动，从 workspace 推算 dist 路径
+        node_exe = CFG.get("node_exe", "") or shutil.which("node") or r"C:\Program Files\nodejs\node.exe"
+        openclaw_git = os.path.join(openclaw_dir, "openclaw-git", "dist", "index.js")
+        npm_dist = os.path.expandvars(r"%APPDATA%\npm\node_modules\openclaw\dist\index.js")
+        gateway_js = openclaw_git if os.path.isfile(openclaw_git) else npm_dist
+        if not os.path.isfile(gateway_js):
+            return "gateway dist not found"
+        print(f"[daemon]   Starting gateway directly: {node_exe} {gateway_js} gateway --port 18789")
+        subprocess.Popen(
+            [node_exe, gateway_js, "gateway", "--port", "18789"],
+            cwd=openclaw_dir,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
-    print(f"[daemon]   Starting gateway directly: {node_exe} {gateway_js} gateway --port 18789")
-
-    subprocess.Popen(
-        [node_exe, gateway_js, "gateway", "--port", "18789"],
-        cwd=os.path.expandvars(r"%USERPROFILE%\.openclaw"),
-        creationflags=subprocess.CREATE_NO_WINDOW,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-
-    for _ in range(20):
-        if is_port_open(18789): return "ready"
+    # Gateway 启动慢（编译/迁移），等最多 120 秒
+    for _ in range(60):
+        if is_port_open(18789):
+            return "ready"
         time.sleep(2)
     return "timeout"
 
