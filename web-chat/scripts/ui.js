@@ -76,6 +76,42 @@ var UI = {
       document.getElementById('sidebar').classList.toggle('mobile-open');
     });
 
+    // Desktop sidebar handle — hover to peek, click to lock
+    var sidebarHandle = document.getElementById('sidebar-handle');
+    var sidebar = document.getElementById('sidebar');
+    var sidebarLocked = false;
+    var hoverTimer = null;
+    if (sidebarHandle && sidebar) {
+      sidebarHandle.addEventListener('mouseenter', function() {
+        if (sidebarLocked) return;
+        clearTimeout(hoverTimer);
+        sidebar.classList.add('open');
+      });
+      sidebarHandle.addEventListener('mouseleave', function() {
+        if (sidebarLocked) return;
+        hoverTimer = setTimeout(function() {
+          sidebar.classList.remove('open');
+        }, 200);
+      });
+      sidebar.addEventListener('mouseenter', function() {
+        if (sidebarLocked) return;
+        clearTimeout(hoverTimer);
+        sidebar.classList.add('open');
+      });
+      sidebar.addEventListener('mouseleave', function() {
+        if (sidebarLocked) return;
+        hoverTimer = setTimeout(function() {
+          sidebar.classList.remove('open');
+        }, 300);
+      });
+      sidebarHandle.addEventListener('click', function() {
+        sidebarLocked = !sidebarLocked;
+        sidebarHandle.classList.toggle('active', sidebarLocked);
+        sidebar.classList.toggle('open', sidebarLocked);
+        clearTimeout(hoverTimer);
+      });
+    }
+
     // Skill buttons
     document.getElementById('btn-live2d').addEventListener('click', function() { showToast('Live2D - action triggered'); });
     document.getElementById('btn-auto-paint').addEventListener('click', function() { self.autoPaint(); });
@@ -3052,7 +3088,43 @@ document.addEventListener('DOMContentLoaded', function() {
   Studio.bridgeUrl = s.bridgeUrl || 'http://localhost:19250';
   Studio.init();
   UI.init();
+  initLangSwitch();
 });
+
+// ── Language Switch (dropdown) ──
+function initLangSwitch() {
+  var trigger = document.getElementById('lang-trigger');
+  var dropdown = document.getElementById('lang-dropdown');
+  var wrapper = document.getElementById('lang-switch');
+  if (!trigger || !wrapper) return;
+
+  // Toggle open/close
+  trigger.addEventListener('click', function(e) {
+    e.stopPropagation();
+    wrapper.classList.toggle('open');
+  });
+
+  // Click outside closes
+  document.addEventListener('click', function(e) {
+    if (!wrapper.contains(e.target)) {
+      wrapper.classList.remove('open');
+    }
+  });
+
+  // Each lang button
+  var btns = wrapper.querySelectorAll('.lang-btn');
+  btns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var lang = this.dataset.lang;
+      if (typeof setLang === 'function') {
+        setLang(lang);
+      }
+      wrapper.classList.remove('open');
+    });
+  });
+
+  // i18n.js already restores from localStorage on load
+}
 
 // ============================================================
 // Helper: extract last N sentences from text

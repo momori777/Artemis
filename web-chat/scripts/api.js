@@ -66,7 +66,12 @@ var ApiClient = {
       mem0Enhanced: settings.mem0Enhanced === true,
       mem0WriteEnabled: settings.mem0WriteEnabled === true,
       mem0WriteInterval: settings.mem0WriteInterval || 10,
+      language: settings.language || 'zh',
     };
+    // Headroom 配置（前端面板调参）
+    if (typeof getHeadroomConfig === 'function') {
+      body.headroom_config = getHeadroomConfig();
+    }
     if (settings.systemPrompt) body.systemPrompt = settings.systemPrompt;
     try {
       var res = await fetch('http://localhost:19260/api/chat', {
@@ -180,7 +185,12 @@ var ApiClient = {
       mem0Enhanced: settings.mem0Enhanced === true,
       mem0WriteEnabled: settings.mem0WriteEnabled === true,
       mem0WriteInterval: settings.mem0WriteInterval || 10,
+      language: settings.language || 'zh',
     };
+    // Headroom 配置（前端面板调参）
+    if (typeof getHeadroomConfig === 'function') {
+      body.headroom_config = getHeadroomConfig();
+    }
     if (settings.systemPrompt) body.systemPrompt = settings.systemPrompt;
     return fetch('http://localhost:19260/api/chat', {
       method: 'POST',

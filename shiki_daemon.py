@@ -1033,6 +1033,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return
 
+        if path == "/api/headroom-test":
+            self._handle_headroom_test()
+            return
+
         if path == "/api/chat":
             self._handle_chat_proxy()
             return
@@ -1206,6 +1210,54 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_json({"error": str(e), "results": []})
             return
 
+    def _handle_headroom_test(self):
+        """POST /api/headroom-test — 测试压缩效果，返回压缩前后对比"""
+        try:
+            cl = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(cl).decode("utf-8") if cl else "{}"
+            req_data = json.loads(body)
+
+            messages = req_data.get("messages", [])
+            query = req_data.get("query", "")
+            hr_cfg = req_data.get("headroom_config", {})
+
+            from skills.shared.context_trimming import trim_messages_for_model, context_stats
+
+            # 动态应用配置
+            trim_kwargs = {}
+            if hr_cfg:
+                trim_kwargs["recent_full_rounds"] = int(hr_cfg.get("recent_full_rounds", 4))
+                trim_kwargs["max_messages"] = int(hr_cfg.get("max_messages", 24))
+                trim_kwargs["max_chars"] = int(hr_cfg.get("max_chars", 40000))
+                from skills.shared import context_trimming as ct
+                for k in ("max_items_after_crush", "first_fraction", "last_fraction",
+                          "variance_threshold", "preserve_change_points",
+                          "dedup_identical_items", "use_feedback_hints"):
+                    if k in hr_cfg:
+                        ct.CRUSH_CONFIG[k] = hr_cfg[k]
+
+            before = context_stats(messages)
+            compressed = trim_messages_for_model(messages, query=query, **trim_kwargs)
+            after = context_stats(compressed)
+
+            ratio = after["estimated_tokens"] / max(1, before["estimated_tokens"])
+
+            self.send_json({
+                "ok": True,
+                "compressed_messages": compressed,
+                "stats": {
+                    "orig_messages": before["messages"],
+                    "new_messages": after["messages"],
+                    "orig_chars": before["total_chars"],
+                    "new_chars": after["total_chars"],
+                    "orig_tokens": before["estimated_tokens"],
+                    "new_tokens": after["estimated_tokens"],
+                    "compression_ratio": round(ratio, 3),
+                },
+            })
+        except Exception as e:
+            self.send_json({"error": f"Headroom test failed: {e}"}, 500)
+
     def _handle_chat_proxy(self):
         body_len = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(body_len)
@@ -1269,13 +1321,34 @@ class DashboardHandler(BaseHTTPRequestHandler):
         # ── Headroom SmartCrusher: 强制上下文压缩 ──
         try:
             from skills.shared.context_trimming import trim_messages_for_model, context_stats
+            
+            # 读取前端传来的 headroom 配置（如果有）
+            hr_cfg = req_data.get("headroom_config", {})
+            
             last_user_query = ""
             for m in reversed(messages):
                 if m.get("role") == "user":
                     last_user_query = m.get("content", "")
                     break
             before = context_stats(messages)
-            messages = trim_messages_for_model(messages, query=last_user_query)
+            
+            # 动态参数：前端配置优先，fallback 到 context_trimming.py 默认值
+            trim_kwargs = {}
+            if hr_cfg:
+                trim_kwargs["recent_full_rounds"] = int(hr_cfg.get("recent_full_rounds", 4))
+                trim_kwargs["max_messages"] = int(hr_cfg.get("max_messages", 24))
+                trim_kwargs["max_chars"] = int(hr_cfg.get("max_chars", 40000))
+                # 更新 SmartCrusher 全局配置
+                from skills.shared import context_trimming
+                context_trimming.CRUSH_CONFIG["max_items_after_crush"] = int(hr_cfg.get("max_items_after_crush", 10))
+                context_trimming.CRUSH_CONFIG["first_fraction"] = float(hr_cfg.get("first_fraction", 0.3))
+                context_trimming.CRUSH_CONFIG["last_fraction"] = float(hr_cfg.get("last_fraction", 0.15))
+                context_trimming.CRUSH_CONFIG["variance_threshold"] = float(hr_cfg.get("variance_threshold", 2.0))
+                context_trimming.CRUSH_CONFIG["preserve_change_points"] = bool(hr_cfg.get("preserve_change_points", True))
+                context_trimming.CRUSH_CONFIG["dedup_identical_items"] = bool(hr_cfg.get("dedup_identical_items", True))
+                context_trimming.CRUSH_CONFIG["use_feedback_hints"] = bool(hr_cfg.get("use_feedback_hints", True))
+            
+            messages = trim_messages_for_model(messages, query=last_user_query, **trim_kwargs)
             after = context_stats(messages)
             if before["messages"] != after["messages"]:
                 print(f"[headroom] compressed {before['messages']}→{after['messages']} msgs, "
