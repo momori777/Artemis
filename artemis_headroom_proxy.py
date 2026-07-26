@@ -207,3 +207,23 @@ def register_headroom_endpoint(app):
             return jsonify({"error": str(e)}), 502
 
     print(f"[artemis_bridge] /v1/chat/completions registered (headroom: ON, mem0: ON)", flush=True)
+
+
+# ── Standalone mode: 独立运行在独立端口，不绑定 artemis_bridge ──
+if __name__ == "__main__":
+    from flask import Flask
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Headroom Proxy (standalone)")
+    parser.add_argument("--port", type=int, default=19251, help="Port (default: 19251)")
+    args = parser.parse_args()
+
+    app = Flask(__name__)
+    register_headroom_endpoint(app)
+
+    @app.route("/api/status", methods=["GET"])
+    def status():
+        return jsonify({"ok": True, "service": "headroom-proxy", "port": args.port})
+
+    print(f"[headroom-proxy] Starting standalone on http://localhost:{args.port}")
+    app.run(host="127.0.0.1", port=args.port, threaded=True)
