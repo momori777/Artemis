@@ -566,5 +566,6 @@ python shutdown_all.py
 1. 角色扮演时：读 `memory/role_play/<当前活跃角色>/` 下最新的 3-5 个 .md 文件（非全部）
 2. 画图请求时：读 `skills/comfyui/prompt_template.md`
 3. 上下文紧张时跳过非必要读取，优先保证对话质量
+4. 角色扮演首轮对话时：exec mem0 搜索当前角色的向量记忆（见能力 6）
 
 角色名就是根目录 SOUL.md 的第一行角色名。
