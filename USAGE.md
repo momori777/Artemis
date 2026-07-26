@@ -61,12 +61,14 @@ Linux:   参考 start.ps1 / start.sh
 
 ## 3. Debugging
 
-The project has four layers. Debug bottom-up:
+The project has seven layers. Debug bottom-up:
 
 | Layer  | Component            | Check |
 |--------|----------------------|-------|
 | GPU    | llama.cpp            | `http://127.0.0.1:8080/health` |
+| Proxy  | Headroom Proxy       | `http://127.0.0.1:19251/api/status` — mem0 + SmartCrusher for OpenClaw Gateway |
 | Visual | Live2D / Sakura      | Live2D: `http://localhost:19200/api/status`; Sakura: just look at your desktop |
+| API    | Artemis Bridge       | `http://127.0.0.1:19250/api/status` — TTS + ComfyUI API (does NOT proxy LLM) |
 | Skills | TTS / ComfyUI / ASR  | Run `skills/tts/tts_call.py`, `skills/comfyui/comfyui_call.py`, or `skills/asr/asr_call.py <audio>` directly |
 | Hub    | OpenClaw Gateway     | `openclaw gateway status`; logs at `%TEMP%\openclaw\` |
 | MCP    | Claude Code          | `python .claude/artemis_mcp_server.py` (stdin: `{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}`) |
@@ -75,7 +77,9 @@ The project has four layers. Debug bottom-up:
 
 **Common issues:**
 - llama won't start → check `llama_exe` / `llama_model` paths in `config.yaml`
+- OpenClaw local model times out → check headroom-proxy: `http://127.0.0.1:19251/api/status`; restart if needed: `python artemis_headroom_proxy.py --port 19251`
 - ComfyUI/TTS returns a file path but no actual file → run `sync_qqbot_workspace.py`
+- Artemis Bridge TTS/ComfyUI fails → check `http://127.0.0.1:19250/api/status`
 - Sakura crashes on launch → run `start.bat` directly inside `skills/sakura/` to see the error
 - Task Board not loading → check if `python .claude/task_board_api.py` is running (port 19280)
 - Claude Code MCP tools not responding → artemis_mcp_server.py crashes on startup. Run `python .claude/artemis_mcp_server.py` directly and paste `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}` to see the error
