@@ -84,11 +84,21 @@ var ApiClient = {
       if (!res.ok) {
         var errText = '';
         try { var ej = await res.json(); errText = ej.error || res.statusText; } catch (_) {}
-        // Auto retry on llama restart (503)
+        // Auto retry on llama restart (503) — poll every 3s, up to 90s
         if (res.status === 503 && errText.includes('Restarting llama')) {
-          showToast('llama 正在切换思考模式，稍等重试...');
-          await new Promise(function(r) { setTimeout(r, 30000); });
-          return this.chatStream(messages, settings, onToken, onComplete, onError);
+          showToast('llama 正在切换思考模式，请稍候...');
+          var maxRetries = 30, delay = 3000;
+          for (var ri = 0; ri < maxRetries; ri++) {
+            await new Promise(function(r) { setTimeout(r, delay); });
+            try {
+              var probe = await fetch('http://localhost:8080/health', { signal: AbortSignal.timeout(2000) });
+              if (probe.ok) {
+                showToast('llama 就绪，继续对话', 2000);
+                return this.chatStream(messages, settings, onToken, onComplete, onError);
+              }
+            } catch (_) {}
+          }
+          throw new Error('llama 重启超时，请手动重试');
         }
         throw new Error('API ' + res.status + ': ' + errText);
       }
