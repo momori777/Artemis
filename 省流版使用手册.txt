@@ -32,19 +32,23 @@
    Windows: 双击 shiki-stop.cmd
    Linux:   参考 start.sh 停止脚本
 
-三、调试（七层，从下往上查）
+三、调试（九层，从下往上查）
 
     1.GPU层   → 浏览器打开 http://127.0.0.1:8080/health 看llama活着没
-    2.桌宠层  → Live2D看 http://localhost:19200/api/status ；Sakura直接看桌面
-    3.能力层  → 直接跑 skills/tts/tts_call.py 或 skills/comfyui/comfyui_call.py 或 skills/asr/asr_call.py <音频文件>
-    4.中枢层  → openclaw gateway status ；日志在 %TEMP%\openclaw\
-    5.MCP层   → python .claude/artemis_mcp_server.py 然后粘贴 JSON-RPC 请求测试
-    6.任务层  → http://127.0.0.1:19280 看 AgentRQ 风格任务队列
-    7.网关层  → Shiki Daemon 面板 http://127.0.0.1:19260 看全部服务状态
+    2.代理层  → http://127.0.0.1:19251/api/status 看 headroom-proxy（mem0+压缩 for OpenClaw）
+    3.桌宠层  → Live2D看 http://localhost:19200/api/status ；Sakura直接看桌面
+    4.桥接层  → http://127.0.0.1:19250/api/status 看 Artemis Bridge（TTS+ComfyUI API，不管LLM）
+    5.能力层  → 直接跑 skills/tts/tts_call.py 或 skills/comfyui/comfyui_call.py 或 skills/asr/asr_call.py <音频文件>
+    6.中枢层  → openclaw gateway status ；日志在 %TEMP%\openclaw\
+    7.MCP层   → python .claude/artemis_mcp_server.py 然后粘贴 JSON-RPC 请求测试
+    8.任务层  → http://127.0.0.1:19280 看 AgentRQ 风格任务队列
+    9.网关层  → Shiki Daemon 面板 http://127.0.0.1:19260 看全部服务状态
 
 常见坑：
     - llama起不来 → config.yaml里llama_exe/llama_model路径对不对
+    - OpenClaw本地模型超时 → 检查headroom-proxy: http://127.0.0.1:19251/api/status ；重启: python artemis_headroom_proxy.py --port 19251
     - 图片/语音只返回路径没文件 → 跑一下 sync_qqbot_workspace.py
+    - Artemis Bridge TTS/画图失败 → 检查 http://127.0.0.1:19250/api/status
     - Sakura闪退 → 进 skills/sakura/ 手动跑 start.bat 看报啥错
     - Task Board打不开 → 检查 python .claude/task_board_api.py 是否在跑 (:19280)
     - Claude Code MCP工具超时 → 单独跑 .claude/artemis_mcp_server.py 看有没有报错
