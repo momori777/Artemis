@@ -34,6 +34,7 @@ from flask import request, jsonify, Response
 LLAMA_PORT = int(os.environ.get("LLAMA_PORT", "8080"))
 LLAMA_URL = f"http://127.0.0.1:{LLAMA_PORT}/v1/chat/completions"
 LLAMA_MODEL = "Hermes3.6-35B-A3B-Uncensored-Genesis-V5-APEX-Compact.gguf"
+LLAMA_API_KEY = os.environ.get("LLAMA_API_KEY", "123456")
 
 # ── Headroom 关键参数 (与 context_trimming.py 对齐) ──────────
 HEADROOM_RECENT_FULL_ROUNDS = 4   # 最近 N 轮完整保留
@@ -187,7 +188,10 @@ def register_headroom_endpoint(app):
             req = urllib.request.Request(
                 LLAMA_URL,
                 data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {LLAMA_API_KEY}",
+                },
             )
 
             if stream:
