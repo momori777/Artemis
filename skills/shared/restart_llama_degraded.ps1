@@ -132,7 +132,6 @@ for ($i = $startIdx; $i -lt $batchSizes.Count; $i++) {
     '--batch-size', "$bs",
     '--ubatch-size', "$us",
     '--threads', '24',
-    '--api-key', '123456',
     '-rea', 'off',
     '--jinja',
     '--cache-ram', '5000',
