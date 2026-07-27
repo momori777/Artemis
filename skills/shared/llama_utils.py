@@ -88,7 +88,6 @@ def _completion_ok(port: int, timeout: float = 10.0) -> bool:
             data=test_payload,
             headers={
                 "Content-Type": "application/json",
-                "Authorization": "***",
             },
         )
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -114,9 +113,8 @@ def _chat_completions_ok(port: int, timeout: float = 10.0) -> bool:
             f"http://127.0.0.1:{port}/v1/chat/completions",
             data=test_payload,
             headers={
-                "Content-Type": "application/json",
-                "Authorization": "Bearer 123456",
-            },
+                "Content-Type": "application/json"
+},
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=timeout) as resp:
