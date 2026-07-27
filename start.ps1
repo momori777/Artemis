@@ -4,12 +4,13 @@
 #   .\start.ps1 -Stop  停止全部服务（等价于 shutdown_all.py）
 #
 # 启动顺序:
-#   1. llama-server (ngl=41, batch=2048/1024)
+#   1. llama-server (ngl=41, batch=4096/2048)
 #   2. Embedding Server (localhost:9999, all-MiniLM-L6-v2)
-#   3. Live2D Bridge (localhost:19200)
-#   4. OpenClaw Gateway (localhost:18789)
-#   5. Cron Jobs (mem0-auto-sync + cleanup-orphans)
-#   6. llama-watchdog (Task Scheduler)
+#   3. Artemis Headroom Proxy (localhost:19251 → llama:8080)
+#   4. Live2D Bridge (localhost:19200)
+#   5. OpenClaw Gateway (localhost:18789)
+#   6. Cron Jobs (mem0-auto-sync + cleanup-orphans)
+#   7. llama-watchdog (Task Scheduler)
 #
 # Stop 模式:
 #   1. 禁用 llama-watchdog（防止自动重启）
@@ -237,8 +238,44 @@ if (Test-Online $embedPort "Embedding Server") {
     }
 }
 
-# ========== 3. Live2D Bridge ==========
-Write-Host "[3/6] Live2D Bridge" -ForegroundColor Yellow
+# ========== 3. Headroom Proxy ==========
+Write-Host "[3/7] Headroom Proxy (19251 → llama:8080)" -ForegroundColor Yellow
+
+$headroomPort = 19251
+$headroomScript = Join-Path $scriptRoot "artemis_headroom_proxy.py"
+
+if (Test-Online $headroomPort "Headroom Proxy") {
+    # already up
+} else {
+    if (-not (Test-Path $headroomScript)) {
+        Write-Host "  WARNING: artemis_headroom_proxy.py not found at $headroomScript" -ForegroundColor Yellow
+        Write-Host "  OpenClaw local provider (19251/v1) will fail!" -ForegroundColor Red
+    } else {
+        Write-Host "  Starting Headroom Proxy..."
+        $pyExe = (Get-Command python -ErrorAction SilentlyContinue).Source
+        if (-not $pyExe) { $pyExe = (Get-Command py -ErrorAction SilentlyContinue).Source }
+        $null = Start-Process -FilePath $pyExe -ArgumentList @($headroomScript, "--port", $headroomPort) -WindowStyle Hidden
+        Start-Sleep -Seconds 3
+
+        $sw3 = [Diagnostics.Stopwatch]::StartNew()
+        $ready3 = $false
+        while ($sw3.Elapsed.TotalSeconds -lt 15) {
+            try {
+                $null = Invoke-WebRequest -Uri "http://127.0.0.1:${headroomPort}/health" -TimeoutSec 3 -UseBasicParsing
+                Write-Host "  Headroom Proxy ready! (port ${headroomPort})" -ForegroundColor Green
+                $ready3 = $true
+                break
+            } catch {}
+            Start-Sleep -Seconds 1
+        }
+        if (-not $ready3) {
+            Write-Host "  WARNING: Headroom Proxy not responding after 15s" -ForegroundColor Yellow
+        }
+    }
+}
+
+# ========== 4. Live2D Bridge ==========
+Write-Host "[4/7] Live2D Bridge" -ForegroundColor Yellow
 
 if (Test-Online 19200 "Live2D Bridge") {
     # already up — skip
@@ -268,8 +305,8 @@ if (Test-Online 19200 "Live2D Bridge") {
     }
 }
 
-# ========== 4. OpenClaw Gateway ==========
-Write-Host "[4/6] OpenClaw Gateway" -ForegroundColor Yellow
+# ========== 5. OpenClaw Gateway ==========
+Write-Host "[5/7] OpenClaw Gateway" -ForegroundColor Yellow
 
 try {
     $gwStatus = & openclaw gateway status 2>&1
@@ -293,8 +330,8 @@ try {
 
 Start-Sleep -Seconds 2
 
-# ========== 5. Mem0 Auto-Sync Cron Job ==========
-Write-Host "[5/6] Memory System (mem0 → OpenClaw cron)" -ForegroundColor Yellow
+# ========== 6. Mem0 Auto-Sync Cron Job ==========
+Write-Host "[6/7] Memory System (mem0 → OpenClaw cron)" -ForegroundColor Yellow
 
 if (-not $mem0Bridge) {
     $mem0Bridge = Join-Path $scriptRoot "skills\shared\mem0_bridge.py"
@@ -335,8 +372,8 @@ if (Test-Path $mem0Bridge) {
     Write-Host "  Memory sync cron job skipped" -ForegroundColor Yellow
 }
 
-# ========== 6. Enable Watchdog ==========
-Write-Host "[6/6] llama-watchdog" -ForegroundColor Yellow
+# ========== 7. Enable Watchdog ==========
+Write-Host "[7/7] llama-watchdog" -ForegroundColor Yellow
 Enable-Watchdog
 
 # ========== Done ==========
@@ -345,6 +382,7 @@ Write-Host "============================================" -ForegroundColor Green
 Write-Host "  All services ready!" -ForegroundColor Green
 Write-Host "  llama-server   : http://127.0.0.1:${llamaPort}" -ForegroundColor Green
 Write-Host "  Embedding      : http://127.0.0.1:${embedPort} (hybrid memory search)" -ForegroundColor Green
+Write-Host "  Headroom Proxy : http://127.0.0.1:19251 (mem0 + context compression)" -ForegroundColor Green
 Write-Host "  Live2D Bridge  : http://localhost:19200" -ForegroundColor Green
 Write-Host "  Gateway        : http://127.0.0.1:18789" -ForegroundColor Green
 Write-Host "  Mem0 Sync Cron : every 30 min (Qdrant → _mem0_auto.md)" -ForegroundColor Green
