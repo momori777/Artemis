@@ -35,6 +35,7 @@ LLAMA_LOG = os.path.join(CFG.get("llama_log_dir", WORKSPACE), "llama-err.log")
 LIVE2D_DIR = os.path.join(WORKSPACE, "live2d")
 EMBED_SCRIPT = os.path.join(WORKSPACE, "skills", "shared", "embedding_server.py")
 BRIDGE_SCRIPT = os.path.join(WORKSPACE, "artemis_bridge.py")
+HEADROOM_SCRIPT = os.path.join(WORKSPACE, "artemis_headroom_proxy.py")
 WEBCHAT_DIR = os.path.join(WORKSPACE, "web-chat")
 DASHBOARD_PORT = 19260
 WEBCHAT_PORT = 19270
@@ -234,6 +235,7 @@ def _maybe_write_mem0(character_id, messages, write_interval):
 SERVICES = [
     {"name": "llama-server",    "port": LLAMA_PORT,  "enabled": True},
     {"name": "Embedding",       "port": 9999,         "enabled": True},
+    {"name": "Headroom Proxy",  "port": 19251,        "enabled": True},
     {"name": "Live2D Bridge",   "port": 19200,        "enabled": True},
     {"name": "Artemis Bridge",  "port": 19250,        "enabled": True},
     {"name": "OpenClaw Gateway","port": 18789,        "enabled": True},
@@ -320,6 +322,25 @@ def start_live2d():
     for _ in range(5):
         if is_port_open(19200): return "ready"
         time.sleep(2)
+    return "timeout"
+
+def start_headroom():
+    if is_port_open(19251):
+        return "already running"
+    if not os.path.isfile(HEADROOM_SCRIPT):
+        return "script not found"
+
+    proc = subprocess.Popen(
+        [PYTHON, HEADROOM_SCRIPT, "--port", "19251"],
+        cwd=WORKSPACE,
+        creationflags=subprocess.CREATE_NO_WINDOW,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    for _ in range(15):
+        if is_port_open(19251): return "ready"
+        if proc.poll() is not None:
+            return f"exited with code {proc.returncode}"
     return "timeout"
 
 def start_bridge():
@@ -451,6 +472,7 @@ def stop_all():
 SERVICE_STARTERS = {
     "llama-server": start_llama,
     "Embedding": start_embedding,
+    "Headroom Proxy": start_headroom,
     "Live2D Bridge": start_live2d,
     "Artemis Bridge": start_bridge,
     "OpenClaw Gateway": start_gateway,
@@ -462,6 +484,7 @@ SERVICE_STARTERS = {
 SERVICE_KILLERS = {
     "llama-server": "llama-server.exe",
     "Embedding": "python.exe",
+    "Headroom Proxy": "python.exe",
     "Live2D Bridge": "node.exe",
     "Artemis Bridge": "python.exe",
     "OpenClaw Gateway": "node.exe",

@@ -221,6 +221,10 @@ if __name__ == "__main__":
     app = Flask(__name__)
     register_headroom_endpoint(app)
 
+    @app.route("/health", methods=["GET"])
+    def health():
+        return jsonify({"ok": True, "service": "headroom-proxy", "port": args.port})
+
     @app.route("/api/status", methods=["GET"])
     def status():
         return jsonify({"ok": True, "service": "headroom-proxy", "port": args.port})
