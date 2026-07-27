@@ -193,9 +193,8 @@ def _wait_for_llama_ready(port=8080, timeout=180, label="[LLAMA]"):
                 f"http://127.0.0.1:{port}/completion",
                 data=test_payload,
                 headers={
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer 123456",
-                },
+                    "Content-Type": "application/json"
+},
                 method="POST",
             )
             with urllib.request.urlopen(req, timeout=10) as resp:
@@ -224,9 +223,8 @@ def _wait_for_llama_ready(port=8080, timeout=180, label="[LLAMA]"):
                 f"http://127.0.0.1:{port}/v1/chat/completions",
                 data=chat_payload,
                 headers={
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer 123456",
-                },
+                    "Content-Type": "application/json"
+},
                 method="POST",
             )
             with urllib.request.urlopen(req, timeout=10) as resp:
