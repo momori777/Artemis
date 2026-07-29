@@ -2,15 +2,17 @@
 """
 OpenAI-compatible /v1/chat/completions proxy with forced Headroom + Mem0.
 
-拦截 OpenClaw Gateway 发来的 LLM 请求，注入 mem0 角色向量记忆 + SmartCrusher 压缩，
-然后转发给 llama-server。
+拦截 OpenClaw Gateway 发来的 LLM 请求，无论目标后端是本地 llama-server 还是云端 API，
+统一注入 mem0 角色向量记忆 + SmartCrusher 压缩，然后透传到目标后端。
 
 数据流:
-  OpenClaw → /v1/chat/completions (port 19250)
+  OpenClaw → /v1/chat/completions (port 19251)
     → [1] 检测当前角色 → mem0 Qdrant 搜索
     → [2] 注入 mem0 结果到 system prompt
     → [3] SmartCrusher 5维压缩对话历史
-    → [4] 转发 llama-server:8080
+    → [4] 根据 model 字段路由:
+         - local-llama/*  → llama-server:8080
+         - 其他 provider  → 对应云端 baseUrl (apiKey 从 openclaw.json 读取)
 
 关键参数 (与 shiki_daemon.py 对齐):
   headroom: RECENT_FULL_ROUNDS=4, MAX_MESSAGES=24, MAX_CHARS=40K
@@ -61,7 +63,7 @@ MEM0_SCORE_MEDIUM = 0.5           # 中等相关 (自然融入)
 MEM0_SCORE_LOW = 0.3              # 低相关 (可选参考, 低于此忽略)
 
 # ── 角色检测映射 ─────────────────────────────────────────────
-# 从 system prompt 内容检测当前角色
+# 从 system prompt 内容检测当前角色名
 CHARACTER_DETECT_KEYWORDS = {
     "natsume": ["四季夏目", "natsume", "夏目", "shiki natsume"],
     "sakura": ["夜乃桜", "sakura", "夜乃樱", "yono sakura"],
@@ -76,6 +78,9 @@ CHARACTER_MEM0_ID = {
     "enola": "enola",
     "atori": "atori",
 }
+
+# ── 本地 provider 前缀（这些走 llama-server，不经过云端） ──
+LOCAL_PROVIDER_PREFIXES = ("local-llama", "local")
 
 
 def _detect_character(messages: list) -> str | None:
@@ -130,6 +135,75 @@ def _search_mem0(character_id: str, query: str) -> str | None:
         return None
 
 
+def _resolve_upstream(model_field: str) -> tuple[str, str, dict]:
+    """
+    根据 request 中的 model 字段解析目标后端。
+    
+    model_field 格式: "provider-id/model-id" 或纯 "model-id"
+    
+    读取 openclaw.json 中 provider 的 _orig_baseUrl 字段
+    （由 ensure_openclaw_headroom_provider() 写入）。
+    
+    Returns:
+        (upstream_url, upstream_model_name, extra_headers)
+        
+    对于本地 provider (local-llama/*, local/*):
+        → llama-server:8080, model = LLAMA_MODEL
+    对于云端 provider:
+        → _orig_baseUrl + /chat/completions, apiKey 从 openclaw.json 读取
+    """
+    parts = model_field.split("/", 1)
+    provider_prefix = parts[0].lower() if len(parts) > 1 else ""
+    
+    # 本地 provider → llama-server
+    if provider_prefix in LOCAL_PROVIDER_PREFIXES:
+        return LLAMA_URL, LLAMA_MODEL, {}
+    
+    # 云端 provider → 从 openclaw.json 读取 _orig_baseUrl
+    cfg_path = os.path.join(os.path.expanduser("~"), ".openclaw", "openclaw.json")
+    if not os.path.isfile(cfg_path):
+        # 没有 openclaw.json，降级到本地
+        return LLAMA_URL, LLAMA_MODEL, {}
+    
+    try:
+        with open(cfg_path, "r", encoding="utf-8") as f:
+            oc_cfg = json.load(f)
+        providers = oc_cfg.get("models", {}).get("providers", {})
+        
+        provider_cfg = providers.get(parts[0]) if len(parts) > 1 else None
+        if not provider_cfg:
+            # 未知 provider，降级到本地
+            print(f"[headroom-proxy] unknown provider '{parts[0]}', falling back to local", flush=True)
+            return LLAMA_URL, LLAMA_MODEL, {}
+        
+        # 优先读取 _orig_baseUrl（由 ensure_openclaw_headroom_provider 保存）
+        base_url = provider_cfg.get("_orig_baseUrl") or provider_cfg.get("baseUrl", "")
+        # 如果 baseUrl 指向 19251（自己），必须用 _orig_baseUrl
+        if "19251" in base_url:
+            base_url = provider_cfg.get("_orig_baseUrl", "")
+        
+        if not base_url:
+            print(f"[headroom-proxy] no baseUrl for provider '{parts[0]}', falling back to local", flush=True)
+            return LLAMA_URL, LLAMA_MODEL, {}
+        
+        base_url = base_url.rstrip("/")
+        upstream_url = f"{base_url}/chat/completions"
+        
+        # model-id 部分（去掉 provider 前缀）
+        upstream_model = parts[1] if len(parts) > 1 else model_field
+        
+        # API key
+        api_key = provider_cfg.get("apiKey", "")
+        headers = {"Content-Type": "application/json"}
+        if api_key and api_key != "***":
+            headers["Authorization"] = f"Bearer {api_key}"
+        
+        return upstream_url, upstream_model, headers
+    except Exception as e:
+        print(f"[headroom-proxy] provider resolve error: {e}, falling back to local", flush=True)
+        return LLAMA_URL, LLAMA_MODEL, {}
+
+
 def register_headroom_endpoint(app):
     """Register /v1/chat/completions with forced Headroom + Mem0."""
 
@@ -140,6 +214,7 @@ def register_headroom_endpoint(app):
         stream = data.get("stream", False)
         max_tokens = data.get("max_tokens", 4096)
         temperature = data.get("temperature", 0.7)
+        model_field = data.get("model", "")
 
         if not messages:
             return jsonify({"error": "messages is required"}), 400
@@ -188,22 +263,35 @@ def register_headroom_endpoint(app):
         except Exception as e:
             print(f"[headroom-proxy] compression skipped: {e}", file=sys.stderr, flush=True)
 
-        # ── Step 3: 转发 llama-server ──
+        # ── Step 3: 解析目标后端 ──
+        upstream_url, upstream_model, extra_headers = _resolve_upstream(model_field)
+        
+        is_local = upstream_url == LLAMA_URL
+        backend_label = "local-llama" if is_local else model_field
+        print(f"[headroom-proxy] forwarding to {backend_label} → {upstream_url}", flush=True)
+
+        # ── Step 4: 转发 ──
         payload = {
-            "model": LLAMA_MODEL,
+            "model": upstream_model,
             "messages": messages,
             "stream": stream,
             "max_tokens": max_tokens,
             "temperature": temperature,
         }
 
+        # 保留原始请求中的额外参数（如 top_p, frequency_penalty 等）
+        for k in ("top_p", "frequency_penalty", "presence_penalty", "stop", "seed"):
+            if k in data:
+                payload[k] = data[k]
+
+        headers = {"Content-Type": "application/json"}
+        headers.update(extra_headers)
+
         try:
             req = urllib.request.Request(
-                LLAMA_URL,
+                upstream_url,
                 data=json.dumps(payload).encode("utf-8"),
-                headers={
-                    "Content-Type": "application/json",
-                },
+                headers=headers,
             )
 
             if stream:
@@ -218,11 +306,11 @@ def register_headroom_endpoint(app):
 
         except urllib.error.HTTPError as e:
             error_body = e.read().decode("utf-8", errors="replace")
-            return jsonify({"error": f"llama-server error: {e.code}", "detail": error_body[:500]}), 502
+            return jsonify({"error": f"upstream error: {e.code}", "detail": error_body[:500]}), 502
         except Exception as e:
             return jsonify({"error": str(e)}), 502
 
-    print(f"[artemis_bridge] /v1/chat/completions registered (headroom: ON, mem0: ON)", flush=True)
+    print(f"[artemis_bridge] /v1/chat/completions registered (headroom: ON, mem0: ON, routing: auto)", flush=True)
 
 
 # ── Standalone mode: 独立运行在独立端口，不绑定 artemis_bridge ──

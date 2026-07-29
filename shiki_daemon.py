@@ -335,13 +335,19 @@ def _get_openclaw_json_path():
 
 def ensure_openclaw_headroom_provider():
     """
-    检测 headroom proxy (19251) 是否在线，若在线则确保 openclaw.json
-    中存在 local-llama provider 指向 19251。
+    检测 headroom proxy (19251) 是否在线，若在线则将 openclaw.json
+    中所有 provider 的 baseUrl 重写为 19251，使所有 LLM 请求
+    （本地 + 云端）都强制经过 headroom+mem0 管线。
 
-    别人 clone 项目后只需运行 start.ps1 → headroom 启动 →
-    此函数自动将 local-llama provider 注入 openclaw.json →
-    OpenClaw Gateway 走 headroom+mem0 管线。
+    工作原理:
+      1. 保存每个 provider 的原始 baseUrl 到 _orig_baseUrl
+      2. 将 baseUrl 改为 http://127.0.0.1:19251/v1
+      3. headroom proxy 收到请求后:
+         - 从 model 字段识别 provider (如 zai/glm-5.2)
+         - 从 _orig_baseUrl 读取真实后端地址
+         - 注入 mem0 + SmartCrusher 压缩后转发到真实后端
 
+    幂等：已配置则跳过。
     如果 19251 未开或 openclaw.json 不存在，静默跳过。
     """
     if not is_port_open(19251):
@@ -358,40 +364,69 @@ def ensure_openclaw_headroom_provider():
         return False
 
     providers = oc_cfg.setdefault("models", {}).setdefault("providers", {})
+    if not providers:
+        return False
 
-    # 已有 local-llama provider 且 baseUrl 指向 19251 → 无需操作
-    existing = providers.get("local-llama")
-    if existing and "19251" in existing.get("baseUrl", ""):
-        return False  # 已配置，无需修改
+    HEADROOM_BASE = "http://127.0.0.1:19251/v1"
+    changed = False
 
-    # 注入 / 更新 local-llama provider
-    providers["local-llama"] = {
-        "baseUrl": "http://127.0.0.1:19251/v1",
-        "api": "openai-completions",
-        "apiKey": "***",
-        "auth": "api-key",
-        "timeoutSeconds": 300,
-        "models": [
-            {
-                "id": "llama-local",
-                "name": "Local Llama (Headroom+Mem0)",
-                "contextWindow": int(CFG.get("llama", {}).get("context", 120000)),
-                "maxTokens": 8192,
-                "reasoning": False,
-                "compat": {
-                    "supportsReasoningEffort": False,
-                    "supportsTools": False,
-                    "supportsTemperature": True,
-                    "requiresStringContent": True,
-                },
-            }
-        ],
-    }
+    for prov_id, prov_cfg in providers.items():
+        orig_url = prov_cfg.get("baseUrl", "")
+        if not orig_url:
+            continue
+
+        # 已经指向 19251 → 跳过
+        if "19251" in orig_url:
+            continue
+
+        # 保存原始 baseUrl（headroom proxy 需要读取它来转发）
+        prov_cfg["_orig_baseUrl"] = orig_url
+        prov_cfg["baseUrl"] = HEADROOM_BASE
+
+        # 本地 provider 补充 apiKey/auth（如果缺失）
+        if prov_id in ("local-llama", "local"):
+            prov_cfg.setdefault("apiKey", "***")
+            prov_cfg.setdefault("auth", "api-key")
+            prov_cfg.setdefault("timeoutSeconds", 300)
+
+        changed = True
+        print(f"[headroom] {prov_id}: baseUrl {orig_url} → {HEADROOM_BASE}", flush=True)
+
+    # 确保本地 provider 存在
+    if "local-llama" not in providers:
+        providers["local-llama"] = {
+            "baseUrl": HEADROOM_BASE,
+            "_orig_baseUrl": f"http://127.0.0.1:{LLAMA_PORT}/v1",
+            "api": "openai-completions",
+            "apiKey": "***",
+            "auth": "api-key",
+            "timeoutSeconds": 300,
+            "models": [
+                {
+                    "id": "llama-local",
+                    "name": "Local Llama (Headroom+Mem0)",
+                    "contextWindow": int(CFG.get("llama", {}).get("context", 120000)),
+                    "maxTokens": 8192,
+                    "reasoning": False,
+                    "compat": {
+                        "supportsReasoningEffort": False,
+                        "supportsTools": False,
+                        "supportsTemperature": True,
+                        "requiresStringContent": True,
+                    },
+                }
+            ],
+        }
+        changed = True
+        print(f"[headroom] created local-llama provider → {HEADROOM_BASE}", flush=True)
+
+    if not changed:
+        return False
 
     try:
         with open(cfg_path, "w", encoding="utf-8") as f:
             json.dump(oc_cfg, f, indent=2, ensure_ascii=False)
-        print(f"[headroom] injected local-llama provider into {cfg_path}", flush=True)
+        print(f"[headroom] patched {cfg_path} (all providers → 19251)", flush=True)
         return True
     except Exception as e:
         print(f"[headroom] failed to patch openclaw.json: {e}", flush=True)
