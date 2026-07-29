@@ -29,7 +29,7 @@ OpenClaw + QQ Bot + Telegram Bot + llama.cpp + GPT-SoVITS + ComfyUI + Sakura デ
 
 ### 夜乃 桜 (Yono Sakura)
 
-*Dimension W Lovers!!* より。元生徒会長で学院最強の対怪獣戦闘員。ピンクのグラデーションが入った銀白髪、淡い青の瞳 - 冷静で抑制され、責任感が強い。滑らかな言葉や易しい笑顔は苦手；她的关爱直接而笨拙，就像命令一样：休息、吃饭、别太勉强。デスクトップペットとして、一人で何でも背負わなくていいことを学んでいる - スクリーンの向こう側から誰かの平凡な日常を守るだけで十分だと。 **静かな守護者**： Silent but watchful, loyal but stubborn, 頼られる先輩。
+*Dimension W Lovers!!* より。元生徒会長で学院最強の対怪獣戦闘員。ピンクのグラデーションが入った銀白髪、淡い青の瞳 - 冷静で抑制され、責任感が強い。滑らかな言葉や易しい笑顔は苦手；彼女の思いやりは直接的で不器用。まるで命令のように：休め、食べろ、無理するな。デスクトップペットとして、一人で何でも背負わなくていいことを学んでいる - スクリーンの向こう側から誰かの平凡な日常を守るだけで十分だと。 **静かな守護者**： Silent but watchful, loyal but stubborn, 頼られる先輩。
 
 
 ## ✨ なぜこのプロジェクトを選ぶのか？
@@ -64,69 +64,69 @@ OpenClaw + QQ Bot + Telegram Bot + llama.cpp + GPT-SoVITS + ComfyUI + Sakura デ
 ### マルチチャンネルチャット
 ![QQ Bot デモ](media/demo_qqbot.gif)
 
-> ?? QQ Bot: テキストチャット + TTS音声 + ComfyUI画像生成 + キャラクターメモリ
+> 👆 QQ Bot: テキストチャット + TTS音声 + ComfyUI画像生成 + キャラクターメモリ
 
 ### Live2D デスクトップペット
 ![Live2D デモ](media/demo_live2d.gif)
 
-> ?? **四季 夏目** Live2D: 感情駆動のモーション、リップシンク、吹き出し付きのリアルタイムキャラクターアニメーション。ローカルHTTPブリッジで制御。
+> 👆 **四季 夏目** Live2D: 感情駆動のモーション、リップシンク、吹き出し付きのリアルタイムキャラクターアニメーション。ローカルHTTPブリッジで制御。
 
-### ?? アトリ - 2人目のAIガールフレンド
+### ⭐ アトリ - 2人目のAIガールフレンド
 
 **夏目とは正反対の性格**、ホットスワップ対応でメモリ分離済み。
 
 ![アトリ Live2D](media/atri_live2d.gif)
 
-> ?? **アトリ** Live2D: 銀髪、ルビー色の瞳、白ドレスの素足 - 無邪気で表現的。
+> 👆 **アトリ** Live2D: 銀髪、ルビー色の瞳、白ドレスの素足 - 無邪気で表現的。
 
 ![アトリ ComfyUI](media/atri_comfyui.gif)
 
-> ?? **アトリ** ComfyUI: AI画像生成 - 海辺の夕陽、流れる白ドレス、温かい黄金時間の光。
+> 👆 **アトリ** ComfyUI: AI画像生成 - 海辺の夕陽、流れる白ドレス、温かい黄金時間の光。
 
-### ?? 夜乃 桜 - 3人目のAIガールフレンド
+### ⭐ 夜乃 桜 - 3人目のAIガールフレンド
 
 **冷静な守護者先輩**、生徒会長であり学院最強の戦闘員 - いまはあなたのデスクトップコンパニオン。
 
 ![桜 デスクトップペット](media/sakura_demo.gif)
 
-> ?? **夜乃 桜** デスクトップペット: 銀ピンクグラデーション髪、淡い青の瞳、学生服 - 反応的なポートレート表現、主動的なケアリマインダー、GPT-SoVITS によるリアルタイム TTS 音声。
+> 👆 **夜乃 桜** デスクトップペット: 銀ピンクグラデーション髪、淡い青の瞳、学生服 - 反応的なポートレート表現、主動的なケアリマインダー、GPT-SoVITS によるリアルタイム TTS 音声。
 
-### ?? ウェブチャットフロントエンド
+### 🌐 ウェブチャットフロントエンド
 
 ![ウェブチャット デモ](media/webchat-demo.gif)
 
-> ?? **ウェブチャット**: ブラウザベースのチャットインターフェース `http://127.0.0.1:19270` — QQ/Telegramボットの代替。ローカルデーモンプロキシに接続 → llama.cpp サーバー。8GB VRAMでも動作します！
+> 👆 **ウェブチャット**: ブラウザベースのチャットインターフェース `http://127.0.0.1:19270` — QQ/Telegramボットの代替。ローカルデーモンプロキシに接続 → llama.cpp サーバー。8GB VRAMでも動作します！
 
-### ??? TTS 音声ワークショップ
+### 🎙️ TTS 音声ワークショップ
 
 <video src="media/tts_workshop_small.mp4" controls width="800"></video>
 
-> ?? **Artemis Studio - TTSワークショップ**: GPT-SoVITS リアルタイム音声合成、3キャラクターの声（夏目/アトリ/桜）、5つの感情モード（日常/傲娇/深情/長文/ランダム）、日中英ミックス読み上げ。llamaが動いていなくても動作。
+> 👆 **Artemis Studio - TTSワークショップ**: GPT-SoVITS リアルタイム音声合成、3キャラクターの声（夏目/アトリ/桜）、5つの感情モード（日常/傲娇/深情/長文/ランダム）、日中英ミックス読み上げ。llamaが動いていなくても動作。
 
 ![TTS ワークショップ](media/tts_workshop.gif)
 
-?? **聴く**（クリックして再生、アトリ 日本語）:
+🔊 **聴く**（クリックして再生、アトリ 日本語）:
 
-?? [tts_atori.mp3](media/tts_atori.mp3) *(46KB、ブラウザで再生)*
+🎧 [tts_atori.mp3](media/tts_atori.mp3) *(46KB、ブラウザで再生)*
 
-### ?? ComfyUI 画像ワークショップ
+### 🎨 ComfyUI 画像ワークショップ
 
 <video src="media/comfyui_workshop_small.mp4" controls width="800"></video>
 
 ![ComfyUI ワークショップ](media/comfyui_workshop.gif)
 
-> ?? **Artemis Studio - ComfyUIワークショップ**: ビジュアルAI画像生成コンソール - キャラクター/衣装/シーン/画風を自由に選択、ワンクリック生成。**llamaと並列動作**（12GB+ VRAM）。
+> 👆 **Artemis Studio - ComfyUIワークショップ**: ビジュアルAI画像生成コンソール - キャラクター/衣装/シーン/画風を自由に選択、ワンクリック生成。**llamaと並列動作**（12GB+ VRAM）。
 
 | 機能 | 説明 |
 |-|-|
-| ?? **キャラクター切替** | `skills/harem/` から自動読み込み、ペルソナ + タグ + 挨拶を表示 |
-| ?? **キャラクターホットスワップ** | サイドバードロップダウンでワンクリック切替、メモリとチャット履歴はキャラクターごとに保持 |
-| ?? キャードカード取り込み** | ドラッグ&ドロップまたは選択した SillyTavern PNG/JSON キャラクターカード、メタデータとペルソナを自動解析 |
-| ?? **モデルセレクター** | セットINGSドロップダウンからローカル llama / DeepSeek / Grok を選択、デーモンプロキシ経由でルーティング |
-| ?? **本物のLLMチャット** | デーモン `/api/chat` → llama.cpp `/v1/chat/completions` 経由でストリーミング返信、フェールバックなし |
-| ?? **レスポンシブ** | モバイルサイドバー折りたたみ、適応型バブルレイアウト、デスクトップとタブレットで動作 |
-| ?? **ローカルストレージ** | マルチセッション履歴、設定、キャラクター状態をブラウザ localStorage に保存 |
-| ??? **Artemis Studio** | 内蔵 TTS + ComfyUI -placeholder パネル（エージェントサブプロセス経由で音声/画像生成） |
+| 🎭 **キャラクター切替** | `skills/harem/` から自動読み込み、ペルソナ + タグ + 挨拶を表示 |
+| 🔄 **キャラクターホットスワップ** | サイドバードロップダウンでワンクリック切替、メモリとチャット履歴はキャラクターごとに保持 |
+| 🃏 **キャラクターカード取り込み** | ドラッグ&ドロップまたは選択した SillyTavern PNG/JSON キャラクターカード、メタデータとペルソナを自動解析 |
+| 🤖 **モデルセレクター** | セットINGSドロップダウンからローカル llama / DeepSeek / Grok を選択、デーモンプロキシ経由でルーティング |
+| 💬 **本物のLLMチャット** | デーモン `/api/chat` → llama.cpp `/v1/chat/completions` 経由でストリーミング返信、フェールバックなし |
+| 📱 **レスポンシブ** | モバイルサイドバー折りたたみ、適応型バブルレイアウト、デスクトップとタブレットで動作 |
+| 💾 **ローカルストレージ** | マルチセッション履歴、設定、キャラクター状態をブラウザ localStorage に保存 |
+| 🎛️ **Artemis Studio** | 内蔵 TTS + ComfyUI -placeholder パネル（エージェントサブプロセス経由で音声/画像生成） |
 
 ## ハードウェア
 
@@ -178,18 +178,18 @@ Qwen3.6-35B（言語の心）  ←→  Cosmos 3 Nano（物理の心）
 
 ## 機能
 
-- ?? **マルチキャラクターホットスワップ** - AIガールフレンド間のワンクリック切替（夏目 ↔ アトリ ↔ 桜）; SOUL/IDENTITY/TTS 重み/Live2D モデルが自動切替、メモリはキャラクターごとに分離
-- ?? **SillyTavern キャラクターカード取り込み** - PNG/JSON カードを自動検出して取り込み；カードインポート時にエージェントが自動でペルソナ切替
-- ?? **チャット履歴取り込み** - SillyTavern JSONL 会話ログを `memory/role_play/<character>/` に取り込み；キャラクター切替時にエージェントがコンテキストを復元
-- ?? **TTS 音声合成** - ローカル GPT-SoVITS 推論、日本語音声（会話ごとに感情マッチ）、3 キャラクターの音声モデル（夏目 / アトリ / 桜）
-- ?? **ASR 音声認識** - ローカル Faster-Whisper small モデル（~1.5GB VRAM）、llama と共存可能；99言語対応
-- ?? **AI 画像生成** - ローカル ComfyUI 推論、SDXL/Illustrious モデル、3 キャラクターのプロンプトテンプレート
-- ??? **Sakura デスクトップペット** - PySide6 デスクトップコンパニオン、主動的ケア、画面観察 & ローカルLLM認識；3キャラクター対応
-- ?? **Live2D キャラクターモデル** - 感情駆動の表情 & 吹き出し付きリアルタイム Live2D レンダリング（夏目 / アトリ L2D; 桜ポートレートモード）
-- ?? **スマートVRAMティアリング** - GPU VRAM を自動検出して最適な実行モードを選択：≥12GB はすべてオンライン維持（llama + スキル共存）、8GB は GPU 重負荷タスク用に llama をホットスワップ、<8GB は安全モード。手動設定ゼロ
-- ??? **Artemis Studio コンソール** - TTS + ComfyUI のビジュアルワークショップ、llama 状態に関係なくいつでも音声/画像 DIY - 真のオフラインクリエイティブスイート
-- ?? **ロールプレイメモリ** - キャラクターごとの `memory/role_play/` に日別会話サマリー
-- ?? **長期記憶システム** - [headroom](https://github.com/chopratejas/headroom)（SmartCrusher + CCR）と [mem0](https://github.com/mem0ai/mem0)（Qdrant ベクターデータベース）搭載：
+- 🔄 **マルチキャラクターホットスワップ** - AIガールフレンド間のワンクリック切替（夏目 ↔ アトリ ↔ 桜）; SOUL/IDENTITY/TTS 重み/Live2D モデルが自動切替、メモリはキャラクターごとに分離
+- 🃏 **SillyTavern キャラクターカード取り込み** - PNG/JSON カードを自動検出して取り込み；カードインポート時にエージェントが自動でペルソナ切替
+- 💬 **チャット履歴取り込み** - SillyTavern JSONL 会話ログを `memory/role_play/<character>/` に取り込み；キャラクター切替時にエージェントがコンテキストを復元
+- 🎤 **TTS 音声合成** - ローカル GPT-SoVITS 推論、日本語音声（会話ごとに感情マッチ）、3 キャラクターの音声モデル（夏目 / アトリ / 桜）
+- 🎤 **ASR 音声認識** - ローカル Faster-Whisper small モデル（~1.5GB VRAM）、llama と共存可能；99言語対応
+- 🎨 **AI 画像生成** - ローカル ComfyUI 推論、SDXL/Illustrious モデル、3 キャラクターのプロンプトテンプレート
+- 🖥️ **Sakura デスクトップペット** - PySide6 デスクトップコンパニオン、主動的ケア、画面観察 & ローカルLLM認識；3キャラクター対応
+- 🎭 **Live2D キャラクターモデル** - 感情駆動の表情 & 吹き出し付きリアルタイム Live2D レンダリング（夏目 / アトリ L2D; 桜ポートレートモード）
+- 🧠 **スマートVRAMティアリング** - GPU VRAM を自動検出して最適な実行モードを選択：≥12GB はすべてオンライン維持（llama + スキル共存）、8GB は GPU 重負荷タスク用に llama をホットスワップ、<8GB は安全モード。手動設定ゼロ
+- 🎛️ **Artemis Studio コンソール** - TTS + ComfyUI のビジュアルワークショップ、llama 状態に関係なくいつでも音声/画像 DIY - 真のオフラインクリエイティブスイート
+- 💾 **ロールプレイメモリ** - キャラクターごとの `memory/role_play/` に日別会話サマリー
+- 🧠 **長期記憶システム** - [headroom](https://github.com/chopratejas/headroom)（SmartCrusher + CCR）と [mem0](https://github.com/mem0ai/mem0)（Qdrant ベクターデータベース）搭載：
   - **中国語埋め込み強化** - all-MiniLM-L6-v2 に BGE-small-zh-v1.5 を追加し、日中英ミックス検索の精度を向上
   - **SmartCrusher コンテキストトリミング** - チャット履歴を LLM リクエストごとに 24メッセージ/40K文字でハードキャップ
   - **CCR（収集-統合-取得）** - バックグラウンドワーカーが 8 ターンごとに永続的ファクトを抽出し、mem0 Qdrant に書き込み
@@ -197,9 +197,9 @@ Qwen3.6-35B（言語の心）  ←→  Cosmos 3 Nano（物理の心）
   - **自動同期ブリッジ** - クローンジョブが 30 分ごとに Qdrant → `_mem0_auto.md` を同期し、OpenClaw 原生の `memory_search` でベクターメモリを検索可能に
   - **キャラクター別分離** - Qdrant 内の `user_id` スコーピング；4 つの独立メモリ空間（sakura / natsume / enola / atori）
   - **検索優先順位** - ベクター長期記憶 > 手書き日付ノート > SOUL 基本ペルソナ
-- ?? **マルチキャラクターホットスワップ** - ワンドコマンドで AI ガールフレンド切替（夏目 ↔ アトリ ↔ 桜）；SOUL/IDENTITY/TTS 重み/Live2D モデルが自動切替、メモリ分離済み
-- ?? **キャラクターカード取り込み** - `skills/character_importer/` 経由で SillyTavern キャラクターカードを自動検出、取り込み → エージェント自動で役割切替
-- ?? **チャット取り込み** - SillyTavern JSONL チャットログを `memory/role_play/<character>/` に取り込み、ロール切替時に会話コンテキストを復元
+- 🔄 **マルチキャラクターホットスワップ** - ワンドコマンドで AI ガールフレンド切替（夏目 ↔ アトリ ↔ 桜）；SOUL/IDENTITY/TTS 重み/Live2D モデルが自動切替、メモリ分離済み
+- 🃏 **キャラクターカード取り込み** - `skills/character_importer/` 経由で SillyTavern キャラクターカードを自動検出、取り込み → エージェント自動で役割切替
+- 💬 **チャット取り込み** - SillyTavern JSONL チャットログを `memory/role_play/<character>/` に取り込み、ロール切替時に会話コンテキストを復元
 
 ## モデル
 
@@ -237,7 +237,7 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/ --l
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-dir ./live2d-model
 ```
 
-> ?????? 国内ユーザー: hf-mirror.com を使用 - VPN不要：
+> 🇨🇳 国内ユーザー: hf-mirror.com を使用 - VPN不要：
 > `set HF_ENDPOINT=https://hf-mirror.com` として通常通り hf download を実行。
 
 ### ローカル設定
@@ -248,7 +248,7 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-d
 
 すべての Python/PS スクリプトは `config.yaml` からパスを読み取り - 硬コーディングされたパスの編集不要。
 
-> ?? **免責事項**: すべてのモデルはコミュニティのオープンソースです。本プロジェクトはミラー配布のみ提供し、営利目的ではありません。著作権は各原作者に帰属します。
+> ⚠️ **免責事項**: すべてのモデルはコミュニティのオープンソースです。本プロジェクトはミラー配布のみ提供し、営利目的ではありません。著作権は各原作者に帰属します。
 
 ## ローカル LLM パフォーマンス
 
@@ -284,7 +284,7 @@ llama-server.exe `
 
 Qwen3.6 MoE は SSM（Gated Delta Net）ハイブリッド注意力と `--kv-unified` を使用。
 
-?? **既知の制限**: クロスターンプロンプトキャッシュの再利用はサポートされない（SSM アーキテクチャの制限）。すべてのリクエストでフルコンテキスト再処理がトリガーされる。長い会話 = より高い最初のトークンレイテンシ（~59k トークンで約 55秒）。
+⚠️ **既知の制限**: クロスターンプロンプトキャッシュの再利用はサポートされない（SSM アーキテクチャの制限）。すべてのリクエストでフルコンテキスト再処理がトリガーされる。長い会話 = より高い最初のトークンレイテンシ（~59k トークンで約 55秒）。
 
 **緩和策**:
 - 定期的な `/reset`（夏目リセット前に `memory/role_play/` にロールプレイサマリーを書き込み）
@@ -321,8 +321,8 @@ Qwen3.6 MoE は SSM（Gated Delta Net）ハイブリッド注意力と `--kv-uni
 
 ```
 <PROJECT_DIR>/                        # OpenClaw ワークスペースルート
-├── start.ps1                         # ?? ワンクリック起動：llama + Live2D + Gateway
-├── quick_setup.ps1                     # ?? インタラクティブパス設定ウィザード
+├── start.ps1                         # 🚀 ワンクリック起動：llama + Live2D + Gateway
+├── quick_setup.ps1                     # 🛠 インタラクティブパス設定ウィザード
 ├── config.yaml                       # 生成された設定ファイル
 ├── download-models.ps1               # ワンクリックモデルダウンロード（Windows）
 ├── download-models.sh                # ワンクリックモデルダウンロード（Linux/macOS）
@@ -330,8 +330,8 @@ Qwen3.6 MoE は SSM（Gated Delta Net）ハイブリッド注意力と `--kv-uni
 ├── setup-llama.sh                    # 自動検出HW + llama.cpp設定（Linux/macOS）
 ├── setup-openclaw.ps1                # ワンクリック OpenClaw インストール + デプロイ（Win）
 ├── setup-openclaw.sh                 # ワンクリック OpenClaw インストール + デプロイ（Linux/macOS）
-├── setup-all.ps1                     # ?? 統合メガスクリプト（Windows）
-├── setup-all.sh                      # ?? 統合メガスクリプト（Linux/macOS）
+├── setup-all.ps1                     # 🚀 統合メガスクリプト（Windows）
+├── setup-all.sh                      # 🚀 統合メガスクリプト（Linux/macOS）
 ├── config-qqbot.json                 # QQ Bot 設定パッチ
 ├── config-telegram.json              # Telegram Bot 設定パッチ
 ├── config-patch.json                 # OpenClaw LLM 設定パッチ
@@ -346,72 +346,72 @@ Qwen3.6 MoE は SSM（Gated Delta Net）ハイブリッド注意力と `--kv-uni
 ├── README.md                         # このファイル
 ├── .gitignore
 ├── live2d/                           # Live2D キャラクターモデル（Cubism 4 Core）
-│  ├── index.html                    # デフォルト（四季 夏目）
-│  ├── index_atri.html               # アトリ バリアント
-│  ├── index_upper.html              # 夏目上半身バリアント
-│  ├── index_atri_upper.html         # アトリ上半身バリアント
-│  ├── live2dcubismcore.min.js       # Cubism Core 4（207 KB）
-│  ├── plid-v5-bundle.js             # pixi-live2d-display v0.5.0バンドル
-│  ├── live2d-bridge.mjs             # HTTP (19200) + WebSocket (19201) ブリッジ
-│  ├── switch_model.ps1              # モデル切替（natsume / atri）
-│  ├── pixi.min.js, pixi-shim.js     # PIXI.js v7 レンダリング
-│  ├── model/shiki_natsume/          # 夏目モデル（14テクスチャ、42モーション、41サウンド）
-│  └── model/atri/                   # アトリモデル（2テクスチャ、620音声mp3、8モーション）
+│   ├── index.html                    # デフォルト（四季 夏目）
+│   ├── index_atri.html               # アトリ バリアント
+│   ├── index_upper.html              # 夏目上半身バリアント
+│   ├── index_atri_upper.html         # アトリ上半身バリアント
+│   ├── live2dcubismcore.min.js       # Cubism Core 4（207 KB）
+│   ├── plid-v5-bundle.js             # pixi-live2d-display v0.5.0バンドル
+│   ├── live2d-bridge.mjs             # HTTP (19200) + WebSocket (19201) ブリッジ
+│   ├── switch_model.ps1              # モデル切替（natsume / atri）
+│   ├── pixi.min.js, pixi-shim.js     # PIXI.js v7 レンダリング
+│   ├── model/shiki_natsume/          # 夏目モデル（14テクスチャ、42モーション、41サウンド）
+│   └── model/atri/                   # アトリモデル（2テクスチャ、620音声mp3、8モーション）
 ├── ren_pro_jp/                       # Ren'Py ダイアログエンジン（計画）
 ├── memory/                           # [.gitignore] ランタイムメモリ
-│  └── role_play/                    # ロールプレイ会話ログ
+│   └── role_play/                    # ロールプレイ会話ログ
 ├── media/                            # [.gitignore] 生成メディア
-│  ├── audio/                        # TTS音声出力
-│  ├── images/                       # ComfyUI画像出力
-│  └── *.gif                         # READMEデモGIF
+│   ├── audio/                        # TTS音声出力
+│   ├── images/                       # ComfyUI画像出力
+│   └── *.gif                         # READMEデモGIF
 ├── docs/
-│  ├── telegram-setup.md             # Telegram Bot 設定ガイド
-│  └── qqbot-setup.md                # QQ Bot 設定ガイド
+│   ├── telegram-setup.md             # Telegram Bot 設定ガイド
+│   └── qqbot-setup.md                # QQ Bot 設定ガイド
 └── skills/
     ├── live2d/                       # Live2D コントロールスキル
-    │  ├── SKILL.md                  # モーション/表情リファレンス + APIガイド
-    │  ├── scripts/start-live2d.ps1  # Live2D ランチャー
-    │  └── media/                    # 共有メディア出力
+    │   ├── SKILL.md                  # モーション/表情リファレンス + APIガイド
+    │   ├── scripts/start-live2d.ps1  # Live2D ランチャー
+    │   └── media/                    # 共有メディア出力
     ├── tts/
-    │  ├── SKILL.md                  # TTS 呼び出しガイド
-    │  ├── run_tts.ps1               # TTS ランチャースクリプト
-    │  ├── tts_call.py               # GPT-SoVITS 推論
-    │  └── ref_wavs/                 # 参照音声クリップ
+    │   ├── SKILL.md                  # TTS 呼び出しガイド
+    │   ├── run_tts.ps1               # TTS ランチャースクリプト
+    │   ├── tts_call.py               # GPT-SoVITS 推論
+    │   └── ref_wavs/                 # 参照音声クリップ
     ├── comfyui/
-    │  ├── SKILL.md                  # ComfyUI 呼び出しガイド
-    │  ├── run_comfyui.ps1           # ComfyUI ランチャースクリプト
-    │  ├── comfyui_call.py           # ComfyUI 推論
-    │  ├── prompt_template.md        # キャラクタープロンプトテンプレート
-    │  └── custom_prompt.txt         # カスタム追加プロンプト
+    │   ├── SKILL.md                  # ComfyUI 呼び出しガイド
+    │   ├── run_comfyui.ps1           # ComfyUI ランチャースクリプト
+    │   ├── comfyui_call.py           # ComfyUI 推論
+    │   ├── prompt_template.md        # キャラクタープロンプトテンプレート
+    │   └── custom_prompt.txt         # カスタム追加プロンプト
     ├── asr/                          # 音声認識スキル
-    │  ├── run_asr.ps1               # Faster-Whisper ランチャー（~1.5GB VRAM）
-    │  └── asr_call.py               # Whisper small モデル推論
+    │   ├── run_asr.ps1               # Faster-Whisper ランチャー（~1.5GB VRAM）
+    │   └── asr_call.py               # Whisper small モデル推論
     ├── shared/                       # 共有インフラストラクチャ
-    │  ├── embedding_server.py       # OpenAI 互換埋め込み API（9999、二重モデル）
-    │  ├── mem0_bridge.py            # mem0 Qdrant → OpenClaw メモリブリッジ
-    │  ├── start_embedding_server.ps1 # 埋め込みサーバー自動起動
-    │  ├── vram.py                   # VRAM ティア自動検出
-    │  ├── VRAM_LEVELS.md             # VRAM ティアドキュメント
-    │  ├── llama_lifecycle.py        # Llama 起動/停止管理
-    │  └── llama_utils.py            # Llama ユーティリティ関数
+    │   ├── embedding_server.py       # OpenAI 互換埋め込み API（9999、二重モデル）
+    │   ├── mem0_bridge.py            # mem0 Qdrant → OpenClaw メモリブリッジ
+    │   ├── start_embedding_server.ps1 # 埋め込みサーバー自動起動
+    │   ├── vram.py                   # VRAM ティア自動検出
+    │   ├── VRAM_LEVELS.md             # VRAM ティアドキュメント
+    │   ├── llama_lifecycle.py        # Llama 起動/停止管理
+    │   └── llama_utils.py            # Llama ユーティリティ関数
     ├── sakura/                       # Sakura デスクトップペット（PySide6 GUI）
-    │  ├── SKILL.md                  # Sakura スキルドキュメント
-    │  ├── main.py                   # アプリケーションエントリーポイント
-    │  ├── install.bat               # Windows 依存関係インストーラー
-    │  ├── start.bat                 # Windows ランチャー
-    │  └── app/                      # ソースコード
+    │   ├── SKILL.md                  # Sakura スキルドキュメント
+    │   ├── main.py                   # アプリケーションエントリーポイント
+    │   ├── install.bat               # Windows 依存関係インストーラー
+    │   ├── start.bat                 # Windows ランチャー
+    │   └── app/                      # ソースコード
     ├── cosmos/                       # 🔮 NVIDIA Cosmos WFM（将来のハードウェア用）
-    │  ├── BRIDGE_REFERENCE.md       # Cosmos ↔ AI Girlfriend ブリッジ設計
-    │  ├── cosmos_check.py           # ハードウェア VRAM 検出スクリプト
-    │  ├── cookbooks/                # 公式チュートリアル例
-    │  └── README.md                 # 上流ドキュメント
+    │   ├── BRIDGE_REFERENCE.md       # Cosmos ↔ AI Girlfriend ブリッジ設計
+    │   ├── cosmos_check.py           # ハードウェア VRAM 検出スクリプト
+    │   ├── cookbooks/                # 公式チュートリアル例
+    │   └── README.md                 # 上流ドキュメント
     ├── llama-management.md           # VRAM 管理アーキテクチャドキュメント
     ├── llama-watchdog.ps1            # Llama 健康チェック
     ├── cleanup_orphans.ps1           # 孤児プロセスクリーンアップ
     └── character_importer/           # SillyTavern キャラクターカード自動取り込み
 ```
 
-## ?? Claude Code + AgentRQ 形式タスクボード（NEW）
+## 🤖 Claude Code + AgentRQ 形式タスクボード（NEW）
 
 Artemis は OpenClaw と並列エージェントランタイムとして **Claude Code** をサポート。Claude Code は MCP 経由で Artemis の全機能にアクセス可能 - **ビルトインの AgentRQ 互換タスクキュー**で人間-エージェント協調が可能。
 
@@ -465,15 +465,15 @@ Claude Code は起動時に自動的にタスクループを実行：
 
 | カテゴリ | ツール | 説明 |
 |-|-|-|
-| ?? TTS | `tts_generate` | 音声合成（キャラクター/言語/感情） |
-| ?? 画像 | `comfyui_generate` | AI 画像生成（プロンプト、チェックポイント） |
-| ?? ASR | `asr_transcribe` | 音声→テキスト（wav/mp3/ogg/flac、Whisper small、~1.5GB VRAM） |
-| ?? Live2D | `live2d_emotion` | モーション + 吹き出し |
-| ?? キャラ | `switch_character` / `list_characters` | キャラクター管理 |
-| ?? メモリ | `memory_search` / `memory_add` | ベクターメモリ（mem0 Qdrant） |
-| ?? ステータス | `get_status` | サービスヘルスチェック |
-| ?? タスク | `getWorkspace` / `getNextTask` / `createTask` | タスクキュー操作 |
-| ?? タスク | `updateTaskStatus` / `reply` / `getTaskMessages` | タスクライフサイクル |
+| 🎤 TTS | `tts_generate` | 音声合成（キャラクター/言語/感情） |
+| 🎨 画像 | `comfyui_generate` | AI 画像生成（プロンプト、チェックポイント） |
+| 🎤 ASR | `asr_transcribe` | 音声→テキスト（wav/mp3/ogg/flac、Whisper small、~1.5GB VRAM） |
+| 🎭 Live2D | `live2d_emotion` | モーション + 吹き出し |
+| 🔄 キャラ | `switch_character` / `list_characters` | キャラクター管理 |
+| 🧠 メモリ | `memory_search` / `memory_add` | ベクターメモリ（mem0 Qdrant） |
+| 📊 ステータス | `get_status` | サービスヘルスチェック |
+| 📋 タスク | `getWorkspace` / `getNextTask` / `createTask` | タスクキュー操作 |
+| 📋 タスク | `updateTaskStatus` / `reply` / `getTaskMessages` | タスクライフサイクル |
 
 ### Artemis タスクボード vs AgentRQ
 
@@ -525,15 +525,15 @@ Claude Code は起動時に自動的にタスクループを実行：
 | [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display) | v0.5.0（バンドル済み） | Live2D WebGL レンダラー |
 | Live2D Cubism Core | 4.x（バンドル済み：`live2d/live2dcubismcore.min.js`） | Live2D 物理/アニメーション |
 
-> ?**TTS、ComfyUI、Live2D は完全に自己完結。** ランタイムに外部ダウンロードは不要 - すべてのモデル重み（`skills/sovits/`、`skills/comfyui_core/`）、Python スクリプト、JS ライブラリ（`live2d/pixi.min.js`、`live2d/plid-v5-bundle.js`）、Cubism Core 4（`live2d/live2dcubismcore.min.js`）がローカルにバンドル済み。
+> ✅**TTS、ComfyUI、Live2D は完全に自己完結。** ランタイムに外部ダウンロードは不要 - すべてのモデル重み（`skills/sovits/`、`skills/comfyui_core/`）、Python スクリプト、JS ライブラリ（`live2d/pixi.min.js`、`live2d/plid-v5-bundle.js`）、Cubism Core 4（`live2d/live2dcubismcore.min.js`）がローカルにバンドル済み。
 >
-> ?? **headroom トークン節約** - `skills/headroom/`（SmartCrusher + ContentRouter + CCR）。開発シナリオでのツール出力をコンテキストウィンドウに入る前に圧縮。API 使用法は AGENTS.md を参照。
+> 🧠 **headroom トークン節約** - `skills/headroom/`（SmartCrusher + ContentRouter + CCR）。開発シナリオでのツール出力をコンテキストウィンドウに入る前に圧縮。API 使用法は AGENTS.md を参照。
 | headroom | バンドル済み（`skills/headroom/`） | SmartCrusher コンテキスト圧縮 + ContentRouter + CCR |
 | Python | 3.12+ | ランタイム（Sakura + TTS + ComfyUI） |
 
 ## クイックスタート
 
-### ?? 一括インストール（推奨）
+### 🚀 一括インストール（推奨）
 
 **ワンコマンドで、ゼロから完全機能の AI ガールフレンド：**
 
@@ -670,7 +670,7 @@ schtasks /create /tn "cleanup-orphans" `
 <tr>
 <td width="50%" valign="top">
 
-**?? LLM 推論**
+**🧠 LLM 推論**
 
 | コンポーネント | 説明 |
 |-|-|
@@ -686,7 +686,7 @@ schtasks /create /tn "cleanup-orphans" `
 </td>
 <td width="50%" valign="top">
 
-**?? メモリシステム**
+**🧠 メモリシステム**
 
 | コンポーネント | 説明 |
 |-|-|
@@ -701,16 +701,6 @@ schtasks /create /tn "cleanup-orphans" `
 </td>
 </tr>
 </table>
-
-### エージェントハブ
-
-キャラクターメモリ分離のイミュータブルな能力指示：
-
-| レヤー | ファイル | 用途 | 切替時 |
-|-|-|-|-|
-| **能力ハブ** | `AGENTS.md` | ComfyUI/TTS/Live2D 指示 | ??? 不変 |
-| **高速リファレンス** | `TOOLS.md` | ツール呼び出しチートシート | ??? 不変 |
-| **キャラクターペルソナ** | `SOUL.md` | 現在のキャラクターの性格/口調 | ?? ホットスワップ |
 
 ### エージェントハブ
 
