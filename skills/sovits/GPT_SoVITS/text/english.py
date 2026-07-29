@@ -123,7 +123,7 @@ def replace_phs(phs):
 
 def replace_consecutive_punctuation(text):
     punctuations = "".join(re.escape(p) for p in punctuation)
-    pattern = f"([{punctuations}\s])([{punctuations}])+"
+    pattern = f"([{punctuations}\\s])([{punctuations}])+"
     result = re.sub(pattern, r"\1", text)
     return result
 

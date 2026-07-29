@@ -32,6 +32,9 @@ LLAMA_EXE = CFG["llama_exe"]
 LLAMA_MODEL = CFG["llama_model"]
 LLAMA_PORT = int(CFG.get("llama_port", 8080))
 LLAMA_LOG = os.path.join(CFG.get("llama_log_dir", WORKSPACE), "llama-err.log")
+# 模型名从 config.yaml 的 llama_model 路径提取 basename
+import os as _os
+LLAMA_MODEL_NAME = _os.path.basename(CFG.get("llama_model", "local-model"))
 LIVE2D_DIR = os.path.join(WORKSPACE, "live2d")
 EMBED_SCRIPT = os.path.join(WORKSPACE, "skills", "shared", "embedding_server.py")
 BRIDGE_SCRIPT = os.path.join(WORKSPACE, "artemis_bridge.py")
@@ -1399,7 +1402,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             auth_header = ""  # no auth needed (--api-key breaks llama-server)
             base_url = "http://127.0.0.1:8080/v1"
             # llama.cpp server's model name is the full gguf filename
-            backend_model = "Hermes3.6-35B-A3B-Uncensored-Genesis-V5-APEX-Compact.gguf"
+            backend_model = LLAMA_MODEL_NAME
         else:
             provider_cfg = _resolve_provider_for_model(model_id)
             if not provider_cfg:
@@ -1582,7 +1585,7 @@ Conversation:
         try:
             import urllib.request, urllib.error
             payload = {
-                "model": "Hermes3.6-35B-A3B-Uncensored-Genesis-V5-APEX-Compact.gguf",
+                "model": LLAMA_MODEL_NAME,
                 "messages": [{"role": "user", "content": instruction}],
                 "stream": False,
                 "max_tokens": 800,
@@ -1681,7 +1684,7 @@ Conversation:
         if model_id.startswith("local/"):
             api_key = ""
             base_url = "http://127.0.0.1:8080/v1"
-            backend_model = "Hermes3.6-35B-A3B-Uncensored-Genesis-V5-APEX-Compact.gguf"
+            backend_model = LLAMA_MODEL_NAME
         else:
             provider_cfg = _resolve_provider_for_model(model_id)
             if not provider_cfg:
