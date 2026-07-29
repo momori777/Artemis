@@ -79,8 +79,115 @@ CHARACTER_MEM0_ID = {
     "atori": "atori",
 }
 
-# ── 本地 provider 前缀（这些走 llama-server，不经过云端） ──
-LOCAL_PROVIDER_PREFIXES = ("local-llama", "local")
+# ── 本地 model id（这些走 llama-server，不经过云端） ──
+LOCAL_MODEL_IDS = ("llama-local",)
+
+
+def _resolve_upstream(model_field: str) -> tuple[str, str, dict]:
+    """
+    根据 request 中的 model 字段解析目标后端。
+    
+    model_field 可能是:
+    - "llama-local"          → 本地 llama-server:8080
+    - "glm-5.2"              → sidecar 查找真实后端
+    - "glm-4-flash"          → sidecar 查找真实后端
+    - "local-llama/llama-local" → 去掉前缀后同上
+    - "local-llama/glm-5.2"     → 去掉前缀后同上
+    
+    sidecar 文件 ~/.openclaw/headroom_routes.json 映射:
+      model_id → 真实后端 baseUrl
+    或
+      provider_id → 真实后端 baseUrl
+    
+    Returns:
+        (upstream_url, upstream_model_name, extra_headers)
+    """
+    # 去掉 provider 前缀
+    parts = model_field.split("/", 1)
+    model_id = parts[1] if len(parts) > 1 else model_field
+    provider_id = parts[0] if len(parts) > 1 else ""
+    
+    # 本地模型 → llama-server
+    if model_id in LOCAL_MODEL_IDS:
+        return LLAMA_URL, LLAMA_MODEL, {}
+    
+    # 云端模型 → 从 sidecar + openclaw.json 读取
+    routes_path = os.path.join(os.path.expanduser("~"), ".openclaw", "headroom_routes.json")
+    oc_cfg_path = os.path.join(os.path.expanduser("~"), ".openclaw", "openclaw.json")
+    
+    if not os.path.isfile(oc_cfg_path):
+        print(f"[headroom-proxy] no openclaw.json, falling back to local", flush=True)
+        return LLAMA_URL, LLAMA_MODEL, {}
+    
+    try:
+        # 读 sidecar 路由
+        routes = {}
+        if os.path.isfile(routes_path):
+            with open(routes_path, "r", encoding="utf-8") as f:
+                routes = json.load(f)
+        
+        # 读 openclaw.json 获取 apiKey
+        with open(oc_cfg_path, "r", encoding="utf-8") as f:
+            oc_cfg = json.load(f)
+        providers = oc_cfg.get("models", {}).get("providers", {})
+        
+        # 查找真实 baseUrl：先按 model_id 查 sidecar，再按 provider_id 查
+        base_url = routes.get(model_id, "")
+        api_key = ""
+        
+        if not base_url and provider_id:
+            base_url = routes.get(provider_id, "")
+            prov_cfg = providers.get(provider_id, {})
+            api_key = prov_cfg.get("apiKey", "")
+        
+        # 如果 sidecar 没有，尝试从 openclaw.json 的非 local-llama provider 中查找
+        if not base_url:
+            for pid, pcfg in providers.items():
+                if pid in ("local-llama", "local"):
+                    continue
+                if "19251" in pcfg.get("baseUrl", ""):
+                    continue
+                # 检查该 provider 是否有这个 model
+                for m in pcfg.get("models", []):
+                    if m.get("id") == model_id:
+                        base_url = pcfg.get("baseUrl", "")
+                        api_key = pcfg.get("apiKey", "")
+                        break
+                if base_url:
+                    break
+        
+        if not base_url:
+            print(f"[headroom-proxy] no route for model '{model_id}', falling back to local", flush=True)
+            return LLAMA_URL, LLAMA_MODEL, {}
+        
+        base_url = base_url.rstrip("/")
+        upstream_url = f"{base_url}/chat/completions"
+        
+        # 如果还没拿到 apiKey，从 provider 中找
+        if not api_key and provider_id:
+            api_key = providers.get(provider_id, {}).get("apiKey", "")
+        if not api_key:
+            # 遍历非 local-llama provider 找 apiKey
+            for pid, pcfg in providers.items():
+                if pid in ("local-llama", "local"):
+                    continue
+                if "19251" in pcfg.get("baseUrl", ""):
+                    continue
+                for m in pcfg.get("models", []):
+                    if m.get("id") == model_id:
+                        api_key = pcfg.get("apiKey", "")
+                        break
+                if api_key:
+                    break
+        
+        headers = {"Content-Type": "application/json"}
+        if api_key and api_key != "***":
+            headers["Authorization"] = f"Bearer {api_key}"
+        
+        return upstream_url, model_id, headers
+    except Exception as e:
+        print(f"[headroom-proxy] provider resolve error: {e}, falling back to local", flush=True)
+        return LLAMA_URL, LLAMA_MODEL, {}
 
 
 def _detect_character(messages: list) -> str | None:
@@ -139,79 +246,104 @@ def _resolve_upstream(model_field: str) -> tuple[str, str, dict]:
     """
     根据 request 中的 model 字段解析目标后端。
     
-    model_field 格式: "provider-id/model-id" 或纯 "model-id"
+    model_field 可能是:
+    - "llama-local"             → 本地 llama-server:8080
+    - "glm-5.2"                 → sidecar 查找真实后端
+    - "local-llama/glm-5.2"     → 去掉前缀后同上
     
-    读取 ~/.openclaw/headroom_routes.json sidecar 文件
-    获取 provider 的真实后端地址和 apiKey。
+    sidecar 文件 ~/.openclaw/headroom_routes.json 映射:
+      model_id → 真实后端 baseUrl
+    或
+      provider_id → 真实后端 baseUrl
     
     Returns:
         (upstream_url, upstream_model_name, extra_headers)
-        
-    对于本地 provider (local-llama/*, local/*):
-        → llama-server:8080, model = LLAMA_MODEL
-    对于云端 provider:
-        → sidecar 中的原始 baseUrl + /chat/completions
     """
     parts = model_field.split("/", 1)
-    provider_prefix = parts[0].lower() if len(parts) > 1 else ""
+    model_id = parts[1] if len(parts) > 1 else model_field
+    provider_id = parts[0] if len(parts) > 1 else ""
     
-    # 本地 provider → llama-server
-    if provider_prefix in LOCAL_PROVIDER_PREFIXES:
+    # 本地模型 → llama-server
+    if model_id in LOCAL_MODEL_IDS:
         return LLAMA_URL, LLAMA_MODEL, {}
     
-    # 云端 provider → 从 sidecar 路由文件 + openclaw.json 读取
+    # 云端模型 → 从 sidecar + openclaw.json 读取
     routes_path = os.path.join(os.path.expanduser("~"), ".openclaw", "headroom_routes.json")
     oc_cfg_path = os.path.join(os.path.expanduser("~"), ".openclaw", "openclaw.json")
     
     if not os.path.isfile(oc_cfg_path):
+        print(f"[headroom-proxy] no openclaw.json, falling back to local", flush=True)
         return LLAMA_URL, LLAMA_MODEL, {}
     
     try:
-        # 读 sidecar 路由映射
+        # 读 sidecar 路由
         routes = {}
         if os.path.isfile(routes_path):
             with open(routes_path, "r", encoding="utf-8") as f:
                 routes = json.load(f)
         
-        # 读 openclaw.json 获取 apiKey
+        # 读 openclaw.json
         with open(oc_cfg_path, "r", encoding="utf-8") as f:
             oc_cfg = json.load(f)
         providers = oc_cfg.get("models", {}).get("providers", {})
         
-        provider_id = parts[0] if len(parts) > 1 else model_field
-        provider_cfg = providers.get(provider_id)
-        if not provider_cfg:
-            print(f"[headroom-proxy] unknown provider '{provider_id}', falling back to local", flush=True)
-            return LLAMA_URL, LLAMA_MODEL, {}
+        # 查找真实 baseUrl 和 apiKey
+        base_url = ""
+        api_key = ""
         
-        # 从 sidecar 文件读原始 baseUrl，fallback 到 openclaw.json 的 baseUrl
-        base_url = routes.get(provider_id, "")
-        if not base_url:
-            base_url = provider_cfg.get("baseUrl", "")
-        # 如果 baseUrl 还是指向 19251（自己），说明 sidecar 缺失，降级
-        if "19251" in base_url:
+        # 1) 先按 model_id 查 sidecar
+        base_url = routes.get(model_id, "")
+        
+        # 2) 按 provider_id 查 sidecar（但跳过 local-llama，它是代理 provider）
+        if not base_url and provider_id and provider_id not in ("local-llama", "local"):
             base_url = routes.get(provider_id, "")
-            if not base_url:
-                print(f"[headroom-proxy] no route for '{provider_id}' in sidecar, falling back to local", flush=True)
-                return LLAMA_URL, LLAMA_MODEL, {}
+            prov_cfg = providers.get(provider_id, {})
+            api_key = prov_cfg.get("apiKey", "")
+        
+        # 3) 如果 sidecar 没有，遍历 openclaw.json 的非 local-llama provider
+        if not base_url:
+            for pid, pcfg in providers.items():
+                if pid in ("local-llama", "local"):
+                    continue
+                if "19251" in pcfg.get("baseUrl", ""):
+                    continue
+                # 检查该 provider 是否有这个 model
+                for m in pcfg.get("models", []):
+                    if m.get("id") == model_id:
+                        base_url = pcfg.get("baseUrl", "")
+                        api_key = pcfg.get("apiKey", "")
+                        break
+                if base_url:
+                    break
         
         if not base_url:
-            print(f"[headroom-proxy] no baseUrl for provider '{provider_id}', falling back to local", flush=True)
+            print(f"[headroom-proxy] no route for model '{model_id}', falling back to local", flush=True)
             return LLAMA_URL, LLAMA_MODEL, {}
         
         base_url = base_url.rstrip("/")
         upstream_url = f"{base_url}/chat/completions"
         
-        # model-id 部分（去掉 provider 前缀）
-        upstream_model = parts[1] if len(parts) > 1 else model_field
+        # 如果还没拿到 apiKey，从 provider 中找
+        if not api_key and provider_id:
+            api_key = providers.get(provider_id, {}).get("apiKey", "")
+        if not api_key:
+            for pid, pcfg in providers.items():
+                if pid in ("local-llama", "local"):
+                    continue
+                if "19251" in pcfg.get("baseUrl", ""):
+                    continue
+                for m in pcfg.get("models", []):
+                    if m.get("id") == model_id:
+                        api_key = pcfg.get("apiKey", "")
+                        break
+                if api_key:
+                    break
         
-        # API key
-        api_key = provider_cfg.get("apiKey", "")
         headers = {"Content-Type": "application/json"}
         if api_key and api_key != "***":
             headers["Authorization"] = f"Bearer {api_key}"
         
-        return upstream_url, upstream_model, headers
+        return upstream_url, model_id, headers
     except Exception as e:
         print(f"[headroom-proxy] provider resolve error: {e}, falling back to local", flush=True)
         return LLAMA_URL, LLAMA_MODEL, {}
