@@ -77,7 +77,7 @@ GPT_weight_version2root = {
 
 def custom_sort_key(s):
     # 使用正则表达式提取字符串中的数字部分和非数字部分
-    parts = re.split("(\d+)", s)
+    parts = re.split(r"(\d+)", s)
     # 将数字部分转换为整数，非数字部分保持不变
     parts = [int(part) if part.isdigit() else part for part in parts]
     return parts

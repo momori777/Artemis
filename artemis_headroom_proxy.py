@@ -31,9 +31,24 @@ sys.path.insert(0, WORKSPACE_ROOT)
 from skills.shared.context_trimming import trim_messages_for_model, context_stats
 from flask import request, jsonify, Response
 
-LLAMA_PORT = int(os.environ.get("LLAMA_PORT", "8080"))
+# ── 从 config.yaml 读取配置（避免硬编码） ──
+def _load_config():
+    import yaml
+    cfg_path = os.path.join(WORKSPACE_ROOT, "config.yaml")
+    try:
+        with open(cfg_path, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except Exception:
+        return {}
+
+_CFG = _load_config()
+
+LLAMA_PORT = int(os.environ.get("LLAMA_PORT", str(_CFG.get("llama_port", 8080))))
 LLAMA_URL = f"http://127.0.0.1:{LLAMA_PORT}/v1/chat/completions"
-LLAMA_MODEL = "Hermes3.6-35B-A3B-Uncensored-Genesis-V5-APEX-Compact.gguf"
+# 模型名从 config.yaml 读取，fallback 到环境变量
+_model_path = _CFG.get("llama_model", "")
+LLAMA_MODEL = os.path.basename(_model_path) if _model_path else os.environ.get("LLAMA_MODEL", "local-model")
+
 # ── Headroom 关键参数 (与 context_trimming.py 对齐) ──────────
 HEADROOM_RECENT_FULL_ROUNDS = 4   # 最近 N 轮完整保留
 HEADROOM_MAX_MESSAGES = 24        # 消息数硬限制
