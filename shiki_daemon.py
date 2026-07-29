@@ -327,8 +327,81 @@ def start_live2d():
         time.sleep(2)
     return "timeout"
 
+def _get_openclaw_json_path():
+    """返回用户 openclaw.json 路径（跨平台）。"""
+    home = os.path.expanduser("~")
+    return os.path.join(home, ".openclaw", "openclaw.json")
+
+
+def ensure_openclaw_headroom_provider():
+    """
+    检测 headroom proxy (19251) 是否在线，若在线则确保 openclaw.json
+    中存在 local-llama provider 指向 19251。
+
+    别人 clone 项目后只需运行 start.ps1 → headroom 启动 →
+    此函数自动将 local-llama provider 注入 openclaw.json →
+    OpenClaw Gateway 走 headroom+mem0 管线。
+
+    如果 19251 未开或 openclaw.json 不存在，静默跳过。
+    """
+    if not is_port_open(19251):
+        return False
+
+    cfg_path = _get_openclaw_json_path()
+    if not os.path.isfile(cfg_path):
+        return False
+
+    try:
+        with open(cfg_path, "r", encoding="utf-8") as f:
+            oc_cfg = json.load(f)
+    except Exception:
+        return False
+
+    providers = oc_cfg.setdefault("models", {}).setdefault("providers", {})
+
+    # 已有 local-llama provider 且 baseUrl 指向 19251 → 无需操作
+    existing = providers.get("local-llama")
+    if existing and "19251" in existing.get("baseUrl", ""):
+        return False  # 已配置，无需修改
+
+    # 注入 / 更新 local-llama provider
+    providers["local-llama"] = {
+        "baseUrl": "http://127.0.0.1:19251/v1",
+        "api": "openai-completions",
+        "apiKey": "***",
+        "auth": "api-key",
+        "timeoutSeconds": 300,
+        "models": [
+            {
+                "id": "llama-local",
+                "name": "Local Llama (Headroom+Mem0)",
+                "contextWindow": int(CFG.get("llama", {}).get("context", 120000)),
+                "maxTokens": 8192,
+                "reasoning": False,
+                "compat": {
+                    "supportsReasoningEffort": False,
+                    "supportsTools": False,
+                    "supportsTemperature": True,
+                    "requiresStringContent": True,
+                },
+            }
+        ],
+    }
+
+    try:
+        with open(cfg_path, "w", encoding="utf-8") as f:
+            json.dump(oc_cfg, f, indent=2, ensure_ascii=False)
+        print(f"[headroom] injected local-llama provider into {cfg_path}", flush=True)
+        return True
+    except Exception as e:
+        print(f"[headroom] failed to patch openclaw.json: {e}", flush=True)
+        return False
+
+
 def start_headroom():
     if is_port_open(19251):
+        # 已在运行，仍确保 openclaw 配置同步
+        ensure_openclaw_headroom_provider()
         return "already running"
     if not os.path.isfile(HEADROOM_SCRIPT):
         return "script not found"
@@ -341,7 +414,10 @@ def start_headroom():
         stderr=subprocess.DEVNULL,
     )
     for _ in range(15):
-        if is_port_open(19251): return "ready"
+        if is_port_open(19251):
+            # headroom proxy 就绪 → 自动配置 openclaw 走 19251
+            ensure_openclaw_headroom_provider()
+            return "ready"
         if proc.poll() is not None:
             return f"exited with code {proc.returncode}"
     return "timeout"
@@ -422,6 +498,9 @@ def start_webchat():
 def start_gateway():
     if is_port_open(18789):
         return "already running"
+
+    # 确保 headroom proxy 端口配置已注入 openclaw.json（如果 19251 在线）
+    ensure_openclaw_headroom_provider()
 
     import shutil
 

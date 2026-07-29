@@ -274,6 +274,54 @@ if (Test-Online $headroomPort "Headroom Proxy") {
     }
 }
 
+# ── Headroom 就绪后自动注入 openclaw.json local-llama provider ──
+if (Test-Online 19251 "Headroom Proxy") {
+    Write-Host "  Injecting local-llama provider into openclaw.json..." -ForegroundColor DarkGray
+    $ocJson = Join-Path $env:USERPROFILE ".openclaw\openclaw.json"
+    if (Test-Path $ocJson) {
+        try {
+            $ocCfg = Get-Content $ocJson -Raw -Encoding UTF8 | ConvertFrom-Json
+            $needPatch = $true
+            if ($ocCfg.models.providers.PSObject.Properties['local-llama']) {
+                $existingUrl = $ocCfg.models.providers.'local-llama'.baseUrl
+                if ($existingUrl -and $existingUrl.Contains('19251')) { $needPatch = $false }
+            }
+            if ($needPatch) {
+                $llamaCtx = if ($config.llama.context) { [int]$config.llama.context } else { 120000 }
+                $localProvider = [PSCustomObject]@{
+                    baseUrl = "http://127.0.0.1:19251/v1"
+                    api = "openai-completions"
+                    apiKey = "***"
+                    auth = "api-key"
+                    timeoutSeconds = 300
+                    models = @(
+                        [PSCustomObject]@{
+                            id = "llama-local"
+                            name = "Local Llama (Headroom+Mem0)"
+                            contextWindow = $llamaCtx
+                            maxTokens = 8192
+                            reasoning = $false
+                            compat = [PSCustomObject]@{
+                                supportsReasoningEffort = $false
+                                supportsTools = $false
+                                supportsTemperature = $true
+                                requiresStringContent = $true
+                            }
+                        }
+                    )
+                }
+                $ocCfg.models.providers | Add-Member -NotePropertyName 'local-llama' -NotePropertyValue $localProvider -Force
+                $ocCfg | ConvertTo-Json -Depth 10 | Set-Content $ocJson -Encoding UTF8
+                Write-Host "  local-llama provider injected!" -ForegroundColor Green
+            } else {
+                Write-Host "  local-llama provider already configured" -ForegroundColor DarkGray
+            }
+        } catch {
+            Write-Host "  WARNING: Failed to patch openclaw.json: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
+}
+
 # ========== 4. Live2D Bridge ==========
 Write-Host "[4/7] Live2D Bridge" -ForegroundColor Yellow
 
