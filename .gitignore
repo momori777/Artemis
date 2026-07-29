@@ -3,6 +3,8 @@
 # memory/ 不用通配 ?ignore，改为精 ?ignore 运行时生成的临时文件
 # (导入新角色后如需提交，手动加 !memory/role_play/<角色 ?/ 到此文件)
 
+fixlogs
+
 # memory/role_play/
 # 生成的媒体文 ?
 media/qqbot/audio/*.wav

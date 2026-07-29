@@ -43,6 +43,15 @@ WEBCHAT_DIR = os.path.join(WORKSPACE, "web-chat")
 DASHBOARD_PORT = 19260
 WEBCHAT_PORT = 19270
 
+# ── API 超时和重试配置 ──
+REQUEST_TIMEOUT = int(CFG.get("api_timeout", 180))  # 默认 180s
+REQUEST_MAX_RETRIES = int(CFG.get("api_max_retries", 2))  # 默认重试 2 次
+LLAMA_BASE_URL = f"http://127.0.0.1:{LLAMA_PORT}/v1"
+
+# ── 并发控制：限制同时请求数 ──
+import threading
+_llama_semaphore = threading.Semaphore(int(CFG.get("llama_max_concurrent", 3)))  # 默认最多 3 个并发
+
 # ── Mem0 per-character write counters ───────────────────────
 _mem0_write_counters = {}  # {character_id: count}
 _mem0_write_lock = threading.Lock()
@@ -1544,78 +1553,112 @@ class DashboardHandler(BaseHTTPRequestHandler):
             print(f"[headroom] context trimming skipped: {e}", file=sys.stderr)
         # ── End headroom ──
 
-        # Local llama: skip provider lookup, use hardcoded endpoint
-        if model_id.startswith("local/"):
+        # Local llama: skip provider lookup, use config-based endpoint
+        use_local = model_id.startswith("local/")
+        if use_local:
             api_key = ""
             auth_header = ""  # no auth needed (--api-key breaks llama-server)
-            base_url = "http://127.0.0.1:8080/v1"
-            # llama.cpp server's model name is the full gguf filename
+            base_url = LLAMA_BASE_URL
             backend_model = LLAMA_MODEL_NAME
+            print(f"[chat] routing to local llama: {base_url}", file=sys.stderr)
         else:
             provider_cfg = _resolve_provider_for_model(model_id)
             if not provider_cfg:
-                self.send_json({"error": f"Unknown model: {model_id}"}, 400)
+                self.send_json({"error": f"Model not found: {model_id}. Check openclaw.json providers."}, 400)
                 return
             api_key = provider_cfg.get("apiKey", "")
             auth_header = "Bearer " + api_key
             base_url = provider_cfg.get("baseUrl", "").rstrip("/")
             backend_model = model_id.split("/")[-1]
+            print(f"[chat] routing to cloud provider: {base_url} model={backend_model}", file=sys.stderr)
 
         endpoint = base_url + "/chat/completions"
         payload = {"model": backend_model, "messages": messages, "stream": stream, "max_tokens": max_tokens}
 
-        error_evt = Event()
-        error_msg = [None]
-
-        def upstream():
-            try:
-                import urllib.request, urllib.error
-                data = json.dumps(payload).encode("utf-8")
-                req = urllib.request.Request(endpoint, data=data,
-                    headers=({"Authorization": auth_header, "Content-Type": "application/json"} if auth_header else {"Content-Type": "application/json"}))
-                resp = urllib.request.urlopen(req, timeout=120)
-                return resp, None
-            except Exception as e:
-                error_msg[0] = str(e)
-                error_evt.set()
-                return None, e
-
-        # Send response headers now (we'll stream as data arrives)
+        # ── 并发控制：使用信号量限制同时请求数 ──
+        semaphore = _llama_semaphore if use_local else None
+        if semaphore:
+            acquired = semaphore.acquire(blocking=True, timeout=30)
+            if not acquired:
+                self.send_json({"error": "Server busy, too many concurrent requests. Please retry."}, 503)
+                return
+        
         try:
-            import urllib.request
+            import urllib.request, urllib.error
             data = json.dumps(payload).encode("utf-8")
-            req = urllib.request.Request(endpoint, data=data,
-                headers=({"Authorization": auth_header, "Content-Type": "application/json"} if auth_header else {"Content-Type": "application/json"}))
+            headers = {"Content-Type": "application/json"}
+            if auth_header:
+                headers["Authorization"] = auth_header
+            req = urllib.request.Request(endpoint, data=data, headers=headers)
+            
+            # ── 重试逻辑：最多重试 REQUEST_MAX_RETRIES 次 ──
+            last_error = None
+            for attempt in range(REQUEST_MAX_RETRIES + 1):
+                try:
+                    resp = urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT)
+                    if stream:
+                        self.send_response(200)
+                        self.send_header("Content-Type", "text/event-stream")
+                        self.send_header("Cache-Control", "no-cache")
+                        self.send_header("Access-Control-Allow-Origin", "*")
+                        self.end_headers()
+                        try:
+                            for line_bytes in resp:
+                                line = line_bytes.decode("utf-8", errors="replace")
+                                self.wfile.write((line.rstrip("\n") + "\n").encode("utf-8"))
+                                self.wfile.flush()
+                            self.wfile.write(b"data: [DONE]\n\n")
+                            self.wfile.flush()
+                        except Exception as stream_err:
+                            print(f"[chat] stream error: {stream_err}", file=sys.stderr)
+                            try:
+                                self.wfile.write(f"data: {{\"error\":\"{stream_err}\"}}\n\n".encode("utf-8"))
+                                self.wfile.flush()
+                            except:
+                                pass
+                        finally:
+                            resp.close()
+                    else:
+                        response_data = resp.read()
+                        resp.close()
+                        self.send_json(json.loads(response_data))
+
+                    # Mem0: trigger write after response (non-blocking)
+                    if mem0_write_enabled:
+                        self._maybe_write_mem0(character_id, messages, mem0_write_interval)
+                    break  # 成功，跳出重试循环
+                    
+                except urllib.error.HTTPError as http_err:
+                    last_error = http_err
+                    error_detail = f"HTTP {http_err.code}"
+                    try:
+                        error_body = http_err.read().decode("utf-8")
+                        error_detail += f": {error_body[:200]}"
+                    except:
+                        pass
+                    if attempt < REQUEST_MAX_RETRIES and http_err.code >= 500:
+                        print(f"[chat] attempt {attempt+1}/{REQUEST_MAX_RETRIES+1} failed: {error_detail}, retrying...", file=sys.stderr)
+                        time.sleep(1 * (attempt + 1))  # 指数退避
+                        continue
+                    else:
+                        raise Exception(f"Provider error: {error_detail}")
+                        
+                except (urllib.error.URLError, socket.timeout, ConnectionError) as net_err:
+                    last_error = net_err
+                    if attempt < REQUEST_MAX_RETRIES:
+                        print(f"[chat] attempt {attempt+1}/{REQUEST_MAX_RETRIES+1} network error: {net_err}, retrying...", file=sys.stderr)
+                        time.sleep(2 * (attempt + 1))
+                        continue
+                    else:
+                        raise Exception(f"Network error after {REQUEST_MAX_RETRIES+1} attempts: {net_err}")
+                        
         except Exception as e:
-            self.send_json({"error": str(e)}, 502)
-            return
-
-        # Open upstream in the same thread. If it hangs for > 120 s the
-        # client will time out (Python HTTP server will not kill the
-        # upstream, but urllib timeout handles it).
-        try:
-            resp = urllib.request.urlopen(req, timeout=120)
-            if stream:
-                self.send_response(200)
-                self.send_header("Content-Type", "text/event-stream")
-                self.send_header("Cache-Control", "no-cache")
-                self.send_header("Access-Control-Allow-Origin", "*")
-                self.end_headers()
-                for line_bytes in resp:
-                    line = line_bytes.decode("utf-8", errors="replace")
-                    self.wfile.write((line.rstrip("\n") + "\n").encode("utf-8"))
-                    self.wfile.flush()
-                self.wfile.write(b"data: [DONE]\n\n")
-                self.wfile.flush()
-            else:
-                self.send_json(json.loads(resp.read()))
-
-            # Mem0: trigger write after response (non-blocking)
-            if mem0_write_enabled:
-                self._maybe_write_mem0(character_id, messages, mem0_write_interval)
-
-        except Exception as e:
-            self.send_json({"error": str(e)}, 502)
+            error_msg = f"{type(e).__name__}: {str(e)}"
+            print(f"[chat] final error: {error_msg}", file=sys.stderr)
+            self.send_json({"error": error_msg, "model": model_id, "endpoint": endpoint}, 502)
+        finally:
+            if semaphore:
+                semaphore.release()
 
     def _handle_gen_prompt(self):
         """Use LLM to generate a ComfyUI image prompt from conversation context."""
@@ -1741,11 +1784,11 @@ Conversation:
             }
             data = json.dumps(payload).encode("utf-8")
             req = urllib.request.Request(
-                "http://127.0.0.1:8080/v1/chat/completions",
+                f"{LLAMA_BASE_URL}/chat/completions",
                 data=data,
                 headers={"Content-Type": "application/json"}
             )
-            resp = urllib.request.urlopen(req, timeout=30)
+            resp = urllib.request.urlopen(req, timeout=60)
             result = json.loads(resp.read())
             msg = result.get("choices", [{}])[0].get("message", {})
             content = msg.get("content", "") or msg.get("reasoning_content", "")
@@ -1831,7 +1874,7 @@ Conversation:
         # Resolve backend
         if model_id.startswith("local/"):
             api_key = ""
-            base_url = "http://127.0.0.1:8080/v1"
+            base_url = LLAMA_BASE_URL
             backend_model = LLAMA_MODEL_NAME
         else:
             provider_cfg = _resolve_provider_for_model(model_id)
