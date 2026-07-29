@@ -274,22 +274,37 @@ if (Test-Online $headroomPort "Headroom Proxy") {
     }
 }
 
-# ── Headroom 就绪后自动注入 openclaw.json local-llama provider ──
+# ── Headroom 就绪后将 openclaw.json 所有 provider 重写为 19251 ──
 if (Test-Online 19251 "Headroom Proxy") {
-    Write-Host "  Injecting local-llama provider into openclaw.json..." -ForegroundColor DarkGray
+    Write-Host "  Patching openclaw.json providers → headroom proxy (19251)..." -ForegroundColor DarkGray
     $ocJson = Join-Path $env:USERPROFILE ".openclaw\openclaw.json"
     if (Test-Path $ocJson) {
         try {
             $ocCfg = Get-Content $ocJson -Raw -Encoding UTF8 | ConvertFrom-Json
-            $needPatch = $true
-            if ($ocCfg.models.providers.PSObject.Properties['local-llama']) {
-                $existingUrl = $ocCfg.models.providers.'local-llama'.baseUrl
-                if ($existingUrl -and $existingUrl.Contains('19251')) { $needPatch = $false }
+            $headroomBase = "http://127.0.0.1:19251/v1"
+            $changed = $false
+
+            foreach ($provId in @($ocCfg.models.providers.PSObject.Properties.Name)) {
+                $prov = $ocCfg.models.providers.$provId
+                $origUrl = $prov.baseUrl
+                if (-not $origUrl) { continue }
+                if ($origUrl.Contains('19251')) { continue }
+
+                # 保存原始 baseUrl
+                $prov | Add-Member -NotePropertyName '_orig_baseUrl' -NotePropertyValue $origUrl -Force
+                $prov.baseUrl = $headroomBase
+                $changed = $true
+                Write-Host "    $provId : $origUrl → $headroomBase" -ForegroundColor DarkGray
             }
-            if ($needPatch) {
+
+            # 确保 local-llama provider 存在
+            $hasLocal = $ocCfg.models.providers.PSObject.Properties['local-llama']
+            if (-not $hasLocal) {
                 $llamaCtx = if ($config.llama.context) { [int]$config.llama.context } else { 120000 }
+                $llamaPort = if ($config.llama_port) { $config.llama_port } else { 8080 }
                 $localProvider = [PSCustomObject]@{
-                    baseUrl = "http://127.0.0.1:19251/v1"
+                    baseUrl = $headroomBase
+                    _orig_baseUrl = "http://127.0.0.1:${llamaPort}/v1"
                     api = "openai-completions"
                     apiKey = "***"
                     auth = "api-key"
@@ -311,10 +326,15 @@ if (Test-Online 19251 "Headroom Proxy") {
                     )
                 }
                 $ocCfg.models.providers | Add-Member -NotePropertyName 'local-llama' -NotePropertyValue $localProvider -Force
+                $changed = $true
+                Write-Host "    local-llama: created → $headroomBase" -ForegroundColor DarkGray
+            }
+
+            if ($changed) {
                 $ocCfg | ConvertTo-Json -Depth 10 | Set-Content $ocJson -Encoding UTF8
-                Write-Host "  local-llama provider injected!" -ForegroundColor Green
+                Write-Host "  All providers patched to headroom proxy!" -ForegroundColor Green
             } else {
-                Write-Host "  local-llama provider already configured" -ForegroundColor DarkGray
+                Write-Host "  All providers already point to 19251" -ForegroundColor DarkGray
             }
         } catch {
             Write-Host "  WARNING: Failed to patch openclaw.json: $($_.Exception.Message)" -ForegroundColor Yellow
