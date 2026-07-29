@@ -141,8 +141,8 @@ def _resolve_upstream(model_field: str) -> tuple[str, str, dict]:
     
     model_field 格式: "provider-id/model-id" 或纯 "model-id"
     
-    读取 openclaw.json 中 provider 的 _orig_baseUrl 字段
-    （由 ensure_openclaw_headroom_provider() 写入）。
+    读取 ~/.openclaw/headroom_routes.json sidecar 文件
+    获取 provider 的真实后端地址和 apiKey。
     
     Returns:
         (upstream_url, upstream_model_name, extra_headers)
@@ -150,7 +150,7 @@ def _resolve_upstream(model_field: str) -> tuple[str, str, dict]:
     对于本地 provider (local-llama/*, local/*):
         → llama-server:8080, model = LLAMA_MODEL
     对于云端 provider:
-        → _orig_baseUrl + /chat/completions, apiKey 从 openclaw.json 读取
+        → sidecar 中的原始 baseUrl + /chat/completions
     """
     parts = model_field.split("/", 1)
     provider_prefix = parts[0].lower() if len(parts) > 1 else ""
@@ -159,31 +159,44 @@ def _resolve_upstream(model_field: str) -> tuple[str, str, dict]:
     if provider_prefix in LOCAL_PROVIDER_PREFIXES:
         return LLAMA_URL, LLAMA_MODEL, {}
     
-    # 云端 provider → 从 openclaw.json 读取 _orig_baseUrl
-    cfg_path = os.path.join(os.path.expanduser("~"), ".openclaw", "openclaw.json")
-    if not os.path.isfile(cfg_path):
-        # 没有 openclaw.json，降级到本地
+    # 云端 provider → 从 sidecar 路由文件 + openclaw.json 读取
+    routes_path = os.path.join(os.path.expanduser("~"), ".openclaw", "headroom_routes.json")
+    oc_cfg_path = os.path.join(os.path.expanduser("~"), ".openclaw", "openclaw.json")
+    
+    if not os.path.isfile(oc_cfg_path):
         return LLAMA_URL, LLAMA_MODEL, {}
     
     try:
-        with open(cfg_path, "r", encoding="utf-8") as f:
+        # 读 sidecar 路由映射
+        routes = {}
+        if os.path.isfile(routes_path):
+            with open(routes_path, "r", encoding="utf-8") as f:
+                routes = json.load(f)
+        
+        # 读 openclaw.json 获取 apiKey
+        with open(oc_cfg_path, "r", encoding="utf-8") as f:
             oc_cfg = json.load(f)
         providers = oc_cfg.get("models", {}).get("providers", {})
         
-        provider_cfg = providers.get(parts[0]) if len(parts) > 1 else None
+        provider_id = parts[0] if len(parts) > 1 else model_field
+        provider_cfg = providers.get(provider_id)
         if not provider_cfg:
-            # 未知 provider，降级到本地
-            print(f"[headroom-proxy] unknown provider '{parts[0]}', falling back to local", flush=True)
+            print(f"[headroom-proxy] unknown provider '{provider_id}', falling back to local", flush=True)
             return LLAMA_URL, LLAMA_MODEL, {}
         
-        # 优先读取 _orig_baseUrl（由 ensure_openclaw_headroom_provider 保存）
-        base_url = provider_cfg.get("_orig_baseUrl") or provider_cfg.get("baseUrl", "")
-        # 如果 baseUrl 指向 19251（自己），必须用 _orig_baseUrl
+        # 从 sidecar 文件读原始 baseUrl，fallback 到 openclaw.json 的 baseUrl
+        base_url = routes.get(provider_id, "")
+        if not base_url:
+            base_url = provider_cfg.get("baseUrl", "")
+        # 如果 baseUrl 还是指向 19251（自己），说明 sidecar 缺失，降级
         if "19251" in base_url:
-            base_url = provider_cfg.get("_orig_baseUrl", "")
+            base_url = routes.get(provider_id, "")
+            if not base_url:
+                print(f"[headroom-proxy] no route for '{provider_id}' in sidecar, falling back to local", flush=True)
+                return LLAMA_URL, LLAMA_MODEL, {}
         
         if not base_url:
-            print(f"[headroom-proxy] no baseUrl for provider '{parts[0]}', falling back to local", flush=True)
+            print(f"[headroom-proxy] no baseUrl for provider '{provider_id}', falling back to local", flush=True)
             return LLAMA_URL, LLAMA_MODEL, {}
         
         base_url = base_url.rstrip("/")
