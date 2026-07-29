@@ -1,4 +1,4 @@
-﻿Fourth girlfriend voting in progress - please vote on Issues.
+Fourth girlfriend voting in progress - please vote on Issues.
 
 Baidu Netdisk: https://pan.baidu.com/s/1sLeSyVp76yzWcR3Q4pX0kA?pwd=0721
 You don't actually need Baidu Netdisk - HuggingFace mirrors work fine in China. Use it only if you really don't want to configure hf-mirror.
@@ -198,9 +198,6 @@ Qwen3.6-35B (Language Mind) ←→ Cosmos 3 Nano (Physical Mind)
   - **Auto-Sync Bridge** -Cron job syncs Qdrant →`_mem0_auto.md` every 30 min, making vector memories searchable by OpenClaw's native `memory_search`
   - **Per-Character Isolation** -`user_id` scoping in Qdrant; 4 independent memory spaces (sakura / natsume / enola / atori)
   - **Recall Priority** -Vector long-term memories > handwritten daily notes > SOUL base persona
-- 🔄 **Multi-Character Hot-Swap** -Switch between AI girlfriends (Natsume ↔ATRI ↔Sakura) with one command; SOUL/IDENTITY/TTS weights/Live2D model all switch automatically, memories isolated per character
-- 🃏 **Character Card Import** -Auto-detect SillyTavern character cards via `skills/character_importer/`, import →agent auto-switches role
-- 💬 **Chat Import** -Import SillyTavern JSONL chat logs into `memory/role_play/<character>/`, agent restores conversation context on role switch
 
 ## Models
 
@@ -347,65 +344,65 @@ The system auto-detects GPU VRAM and selects the optimal run mode - no manual co
 ├── README.md                         # This file
 ├── .gitignore
 ├── live2d/                           # Live2D character model (Cubism 4 Core)
-│  ├── index.html                    # Default (Shiki Natsume)
-│  ├── index_atri.html               # ATRI variant
-│  ├── index_upper.html              # Natsume upper-body variant
-│  ├── index_atri_upper.html         # ATRI upper-body variant
-│  ├── live2dcubismcore.min.js       # Cubism Core 4 (207 KB)
-│  ├── plid-v5-bundle.js             # pixi-live2d-display v0.5.0 bundle
-│  ├── live2d-bridge.mjs             # HTTP (19200) + WebSocket (19201) bridge
-│  ├── switch_model.ps1              # Model switcher (natsume / atri)
-│  ├── pixi.min.js, pixi-shim.js     # PIXI.js v7 rendering
-│  ├── model/shiki_natsume/          # Natsume model (14 textures, 42 motions, 41 sounds)
-│  └── model/atri/                   # ATRI model (2 textures, 620 voice mp3, 8 motions)
+│   ├── index.html                    # Default (Shiki Natsume)
+│   ├── index_atri.html               # ATRI variant
+│   ├── index_upper.html              # Natsume upper-body variant
+│   ├── index_atri_upper.html         # ATRI upper-body variant
+│   ├── live2dcubismcore.min.js       # Cubism Core 4 (207 KB)
+│   ├── plid-v5-bundle.js             # pixi-live2d-display v0.5.0 bundle
+│   ├── live2d-bridge.mjs             # HTTP (19200) + WebSocket (19201) bridge
+│   ├── switch_model.ps1              # Model switcher (natsume / atri)
+│   ├── pixi.min.js, pixi-shim.js     # PIXI.js v7 rendering
+│   ├── model/shiki_natsume/          # Natsume model (14 textures, 42 motions, 41 sounds)
+│   └── model/atri/                   # ATRI model (2 textures, 620 voice mp3, 8 motions)
 ├── ren_pro_jp/                       # Ren'Py dialog engine (planned)
 ├── memory/                           # [.gitignore] Runtime memory
-│  └── role_play/                    # Roleplay conversation logs
+│   └── role_play/                    # Roleplay conversation logs
 ├── media/                            # [.gitignore] Generated media
-│  ├── audio/                        # TTS voice output
-│  ├── images/                       # ComfyUI image output
-│  └── *.gif                         # README demo GIFs
+│   ├── audio/                        # TTS voice output
+│   ├── images/                       # ComfyUI image output
+│   └── *.gif                         # README demo GIFs
 ├── docs/
-│  ├── telegram-setup.md             # Telegram Bot setup guide
-│  └── qqbot-setup.md                # QQ Bot setup guide
+│   ├── telegram-setup.md             # Telegram Bot setup guide
+│   └── qqbot-setup.md                # QQ Bot setup guide
 └── skills/
     ├── live2d/                       # Live2D control skill
-    │  ├── SKILL.md                  # Motion/expression reference + API guide
-    │  ├── scripts/start-live2d.ps1  # Live2D launcher
-    │  └── media/                    # Shared media output
+    │   ├── SKILL.md                  # Motion/expression reference + API guide
+    │   ├── scripts/start-live2d.ps1  # Live2D launcher
+    │   └── media/                    # Shared media output
     ├── tts/
-    │  ├── SKILL.md                  # TTS invocation guide
-    │  ├── run_tts.ps1               # TTS launcher script
-    │  ├── tts_call.py               # GPT-SoVITS inference
-    │  └── ref_wavs/                 # Reference audio clips
+    │   ├── SKILL.md                  # TTS invocation guide
+    │   ├── run_tts.ps1               # TTS launcher script
+    │   ├── tts_call.py               # GPT-SoVITS inference
+    │   └── ref_wavs/                 # Reference audio clips
     ├── comfyui/
-    │  ├── SKILL.md                  # ComfyUI invocation guide
-    │  ├── run_comfyui.ps1           # ComfyUI launcher script
-    │  ├── comfyui_call.py           # ComfyUI inference
-    │  ├── prompt_template.md        # Character prompt template
-    │  └── custom_prompt.txt         # Custom extra prompt
+    │   ├── SKILL.md                  # ComfyUI invocation guide
+    │   ├── run_comfyui.ps1           # ComfyUI launcher script
+    │   ├── comfyui_call.py           # ComfyUI inference
+    │   ├── prompt_template.md        # Character prompt template
+    │   └── custom_prompt.txt         # Custom extra prompt
     ├── asr/                          # Speech recognition skill
-    │  ├── run_asr.ps1               # Faster-Whisper launcher (~1.5GB VRAM)
-    │  └── asr_call.py               # Whisper small model inference
+    │   ├── run_asr.ps1               # Faster-Whisper launcher (~1.5GB VRAM)
+    │   └── asr_call.py               # Whisper small model inference
     ├── shared/                       # Shared infrastructure
-    │  ├── embedding_server.py       # OpenAI-compatible embedding API (9999, dual model)
-    │  ├── mem0_bridge.py            # mem0 Qdrant →OpenClaw memory bridge
-    │  ├── start_embedding_server.ps1 # Auto-start embedding server
-    │  ├── vram.py                   # VRAM tier auto-detection
-    │  ├── VRAM_LEVELS.md             # VRAM tier documentation
-    │  ├── llama_lifecycle.py        # Llama start/stop management
-    │  └── llama_utils.py            # Llama utility functions
+    │   ├── embedding_server.py       # OpenAI-compatible embedding API (9999, dual model)
+    │   ├── mem0_bridge.py            # mem0 Qdrant →OpenClaw memory bridge
+    │   ├── start_embedding_server.ps1 # Auto-start embedding server
+    │   ├── vram.py                   # VRAM tier auto-detection
+    │   ├── VRAM_LEVELS.md             # VRAM tier documentation
+    │   ├── llama_lifecycle.py        # Llama start/stop management
+    │   └── llama_utils.py            # Llama utility functions
     ├── sakura/                       # Sakura Desktop Pet (PySide6 GUI)
-    │  ├── SKILL.md                  # Sakura skill documentation
-    │  ├── main.py                   # Application entry point
-    │  ├── install.bat               # Windows dependency installer
-    │  ├── start.bat                 # Windows launcher
-    │  └── app/                      # Source code
+    │   ├── SKILL.md                  # Sakura skill documentation
+    │   ├── main.py                   # Application entry point
+    │   ├── install.bat               # Windows dependency installer
+    │   ├── start.bat                 # Windows launcher
+    │   └── app/                      # Source code
     ├── cosmos/                       # 🔮 NVIDIA Cosmos WFM (future hardware)
-    │  ├── BRIDGE_REFERENCE.md       # Cosmos ↔ AI Girlfriend bridge design
-    │  ├── cosmos_check.py           # Hardware VRAM detection script
-    │  ├── cookbooks/                # Official tutorial examples
-    │  └── README.md                 # Upstream documentation
+    │   ├── BRIDGE_REFERENCE.md       # Cosmos ↔ AI Girlfriend bridge design
+    │   ├── cosmos_check.py           # Hardware VRAM detection script
+    │   ├── cookbooks/                # Official tutorial examples
+    │   └── README.md                 # Upstream documentation
     ├── llama-management.md           # VRAM management architecture doc
     ├── llama-watchdog.ps1            # Llama health check
     ├── cleanup_orphans.ps1           # Orphan process cleanup
@@ -511,7 +508,7 @@ Then open **http://127.0.0.1:19280** - create tasks, watch Claude Code pick them
 | **Sakura** | Shared llama-client | ❌No | Detects llama down →waits →auto-resumes |
 | **Artemis Studio** | Desktop console | ❌No | TTS/ComfyUI visual workshop, standalone - works regardless of llama status |
 
-## Prerequisites
+## Environment Dependencies
 
 | Component | Version / Source | Purpose |
 |-|-|-|
@@ -529,7 +526,6 @@ Then open **http://127.0.0.1:19280** - create tasks, watch Claude Code pick them
 > ✨**TTS, ComfyUI, and Live2D are fully self-contained.** No external downloads at runtime -all model weights (`skills/sovits/`, `skills/comfyui_core/`), Python scripts, JS libraries (`live2d/pixi.min.js`, `live2d/plid-v5-bundle.js`), and Cubism Core 4 (`live2d/live2dcubismcore.min.js`) are bundled locally.
 >
 > 🧠 **Headroom token-saving** -`skills/headroom/` (SmartCrusher + ContentRouter + CCR). Compress large tool outputs in dev scenarios before they hit the context window. See AGENTS.md for API usage.
-| headroom | Bundled (\skills/headroom/\) | SmartCrusher context compression + ContentRouter + CCR |
 | headroom | Bundled (`skills/headroom/`) | SmartCrusher context compression + ContentRouter + CCR |
 | Python | 3.12+ | Runtime (Sakura + TTS + ComfyUI) |
 
