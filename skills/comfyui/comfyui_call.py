@@ -374,6 +374,7 @@ if __name__ == "__main__":
         restart_script=RESTART_SCRIPT,
     )
 
+    out_path = None  # 声明在外层作用域
     try:
         manage_llama = not no_manage_llama
         if no_manage_llama:
@@ -383,13 +384,20 @@ if __name__ == "__main__":
         with TimeoutGuard(HARD_TIMEOUT, lock_file=LOCK_FILE):
             run_txt2img(positive_prompt, negative_prompt, seed, width, height,
                         steps, cfg, ckpt_name, manage_llama=manage_llama)
+            # 读取输出路径
+            if os.path.exists(LAST_OUTPUT_FILE):
+                with open(LAST_OUTPUT_FILE, 'r') as f:
+                    out_path = f.read().strip()
     except TimeoutError:
-        # 超时时图片可能已保存（start_llama 阶段超时），不要 exit 1
-        if os.path.exists(out_path):
-            print(f"[TIMEOUT] 超时但图片已生成: {out_path}", file=sys.stderr, flush=True)
-            sys.stdout.write(out_path + '\n')
-            sys.stdout.flush()
-            sys.exit(0)
+        # 超时时图片可能已保存（start_llama 阶段超时），检查 LAST_OUTPUT_FILE
+        if os.path.exists(LAST_OUTPUT_FILE):
+            with open(LAST_OUTPUT_FILE, 'r') as f:
+                out_path = f.read().strip()
+            if out_path and os.path.exists(out_path):
+                print(f"[TIMEOUT] 超时但图片已生成: {out_path}", file=sys.stderr, flush=True)
+                sys.stdout.write(out_path + '\n')
+                sys.stdout.flush()
+                sys.exit(0)
         print(f"[TIMEOUT] 超时，无输出文件", file=sys.stderr, flush=True)
         sys.exit(1)
     except Exception as e:
