@@ -361,12 +361,12 @@ if (Test-Online 19251 "Headroom Proxy") {
                 $ocCfg.models.providers | Add-Member -NotePropertyName 'local-llama' -NotePropertyValue $localProvider -Force
 
                 # 写 sidecar + openclaw.json
-                $routes | ConvertTo-Json -Depth 5 | Set-Content $routesJson -Encoding UTF8
-                $ocCfg | ConvertTo-Json -Depth 10 | Set-Content $ocJson -Encoding UTF8
+                $routes | ConvertTo-Json -Depth 5 | Out-File -FilePath $routesJson -Encoding utf8NoBOM
+                $ocCfg | ConvertTo-Json -Depth 10 | Out-File -FilePath $ocJson -Encoding utf8NoBOM
                 Write-Host "  local-llama provider added ($($allModels.Count) models). Existing providers untouched." -ForegroundColor Green
             } else {
                 # 仍然更新 sidecar
-                $routes | ConvertTo-Json -Depth 5 | Set-Content $routesJson -Encoding UTF8
+                $routes | ConvertTo-Json -Depth 5 | Out-File -FilePath $routesJson -Encoding utf8NoBOM
                 Write-Host "  local-llama provider already configured" -ForegroundColor DarkGray
             }
         } catch {

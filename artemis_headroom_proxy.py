@@ -123,11 +123,11 @@ def _resolve_upstream(model_field: str) -> tuple[str, str, dict]:
         # 读 sidecar 路由
         routes = {}
         if os.path.isfile(routes_path):
-            with open(routes_path, "r", encoding="utf-8") as f:
+            with open(routes_path, "r", encoding="utf-8-sig") as f:
                 routes = json.load(f)
         
         # 读 openclaw.json 获取 apiKey
-        with open(oc_cfg_path, "r", encoding="utf-8") as f:
+        with open(oc_cfg_path, "r", encoding="utf-8-sig") as f:
             oc_cfg = json.load(f)
         providers = oc_cfg.get("models", {}).get("providers", {})
         
@@ -279,11 +279,11 @@ def _resolve_upstream(model_field: str) -> tuple[str, str, dict]:
         # 读 sidecar 路由
         routes = {}
         if os.path.isfile(routes_path):
-            with open(routes_path, "r", encoding="utf-8") as f:
+            with open(routes_path, "r", encoding="utf-8-sig") as f:
                 routes = json.load(f)
         
         # 读 openclaw.json
-        with open(oc_cfg_path, "r", encoding="utf-8") as f:
+        with open(oc_cfg_path, "r", encoding="utf-8-sig") as f:
             oc_cfg = json.load(f)
         providers = oc_cfg.get("models", {}).get("providers", {})
         

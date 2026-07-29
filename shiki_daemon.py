@@ -339,7 +339,7 @@ HEADROOM_ROUTES_PATH = os.path.join(os.path.expanduser("~"), ".openclaw", "headr
 def _load_headroom_routes():
     """读取 sidecar 路由映射文件。"""
     try:
-        with open(HEADROOM_ROUTES_PATH, "r", encoding="utf-8") as f:
+        with open(HEADROOM_ROUTES_PATH, "r", encoding="utf-8-sig") as f:
             return json.load(f)
     except Exception:
         return {}
@@ -378,7 +378,7 @@ def ensure_openclaw_headroom_provider():
         return False
 
     try:
-        with open(cfg_path, "r", encoding="utf-8") as f:
+        with open(cfg_path, "r", encoding="utf-8-sig") as f:
             oc_cfg = json.load(f)
     except Exception:
         return False
