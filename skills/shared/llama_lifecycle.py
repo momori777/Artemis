@@ -317,13 +317,13 @@ def stop_llama(port=8080, wait_vram_stable=True):
     先尝试 HTTP /shutdown 优雅关闭，失败后 taskkill 强杀。
     wait_vram_stable=True 时等待 CUDA VRAM 完全释放后再返回。
 
-    返回 True 表示已停止（或本来就没运行）。
+    返回 True 表示已停止（或本来就没运行），False 表示停止失败。
     """
     print("[LLAMA] 检查 llama-server 状态...", file=sys.stderr, flush=True)
 
     if not _port_open("127.0.0.1", port, timeout=1):
         print("[LLAMA] llama-server 未运行，跳过", file=sys.stderr, flush=True)
-        return False
+        return True  # 未运行也算成功
 
     print("[LLAMA] 停止 llama-server...", file=sys.stderr, flush=True)
     try:
@@ -347,6 +347,7 @@ def stop_llama(port=8080, wait_vram_stable=True):
     else:
         print(f"[LLAMA] 警告：端口 {port} 仍未释放，继续执行",
               file=sys.stderr, flush=True)
+        return False  # 端口未释放算失败
 
     # CUDA VRAM 稳定检测 — 仅记录，不做硬阻塞
     if wait_vram_stable:
@@ -404,7 +405,8 @@ def start_llama(port=8080, exe_path=None, model_path=None,
                 break
             time.sleep(0.5)
 
-    # Build args — use --no-mmap, let llama.cpp manage memory automatically.
+    # Build args — mmap 模式由 use_mmap 参数控制。
+    # ComfyUI 推理后 RSS 未完全回收，用 mmap 避免 15GB pinned RAM 分配失败。
     # q4_0 on KV halves VRAM usage while stable up to 50K+ tokens.
     batch_size = 4096
     ubatch_size = 2048
@@ -416,7 +418,15 @@ def start_llama(port=8080, exe_path=None, model_path=None,
         "--flash-attn", "on",
         "-ctk", "q4_0",
         "-ctv", "q4_0",
-        "--no-mmap",
+    ]
+
+    # mmap 模式：use_mmap=True 用 mmap（从磁盘映射，省 RAM），
+    # 否则 --no-mmap（全部加载到 RAM，需 ~15GB）。
+    # ComfyUI 回调传 use_mmap=True 避免推理后 RAM OOM。
+    if not use_mmap:
+        args.append("--no-mmap")
+
+    args += [
         "--cpu-moe",
         "--cpu-mask", "0xFFFFFFFF",
         "--batch-size", str(batch_size),
