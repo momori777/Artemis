@@ -275,14 +275,24 @@ if (Test-Online $headroomPort "Headroom Proxy") {
 }
 
 # ── Headroom 就绪后将 openclaw.json 所有 provider 重写为 19251 ──
+# 原始 baseUrl 存入 sidecar 文件 ~/.openclaw/headroom_routes.json
+# openclaw.json 只动 baseUrl（合法字段），不加非标准字段
 if (Test-Online 19251 "Headroom Proxy") {
     Write-Host "  Patching openclaw.json providers → headroom proxy (19251)..." -ForegroundColor DarkGray
     $ocJson = Join-Path $env:USERPROFILE ".openclaw\openclaw.json"
+    $routesJson = Join-Path $env:USERPROFILE ".openclaw\headroom_routes.json"
     if (Test-Path $ocJson) {
         try {
             $ocCfg = Get-Content $ocJson -Raw -Encoding UTF8 | ConvertFrom-Json
             $headroomBase = "http://127.0.0.1:19251/v1"
             $changed = $false
+
+            # 读取或初始化 sidecar 路由
+            $routes = @{}
+            if (Test-Path $routesJson) {
+                $routes = Get-Content $routesJson -Raw -Encoding UTF8 | ConvertFrom-Json
+            }
+            if (-not $routes) { $routes = [PSCustomObject]@{} }
 
             foreach ($provId in @($ocCfg.models.providers.PSObject.Properties.Name)) {
                 $prov = $ocCfg.models.providers.$provId
@@ -290,8 +300,13 @@ if (Test-Online 19251 "Headroom Proxy") {
                 if (-not $origUrl) { continue }
                 if ($origUrl.Contains('19251')) { continue }
 
-                # 保存原始 baseUrl
-                $prov | Add-Member -NotePropertyName '_orig_baseUrl' -NotePropertyValue $origUrl -Force
+                # 保存原始 baseUrl 到 sidecar
+                if (-not $routes.PSObject.Properties[$provId]) {
+                    $routes | Add-Member -NotePropertyName $provId -NotePropertyValue $origUrl -Force
+                } else {
+                    $routes.$provId = $origUrl
+                }
+                # 只改 baseUrl（合法字段）
                 $prov.baseUrl = $headroomBase
                 $changed = $true
                 Write-Host "    $provId : $origUrl → $headroomBase" -ForegroundColor DarkGray
@@ -304,7 +319,6 @@ if (Test-Online 19251 "Headroom Proxy") {
                 $llamaPort = if ($config.llama_port) { $config.llama_port } else { 8080 }
                 $localProvider = [PSCustomObject]@{
                     baseUrl = $headroomBase
-                    _orig_baseUrl = "http://127.0.0.1:${llamaPort}/v1"
                     api = "openai-completions"
                     apiKey = "***"
                     auth = "api-key"
@@ -326,13 +340,19 @@ if (Test-Online 19251 "Headroom Proxy") {
                     )
                 }
                 $ocCfg.models.providers | Add-Member -NotePropertyName 'local-llama' -NotePropertyValue $localProvider -Force
+                if (-not $routes.PSObject.Properties['local-llama']) {
+                    $routes | Add-Member -NotePropertyName 'local-llama' -NotePropertyValue "http://127.0.0.1:${llamaPort}/v1" -Force
+                }
                 $changed = $true
                 Write-Host "    local-llama: created → $headroomBase" -ForegroundColor DarkGray
             }
 
             if ($changed) {
+                # 写 sidecar 路由文件
+                $routes | ConvertTo-Json -Depth 5 | Set-Content $routesJson -Encoding UTF8
+                # 写 openclaw.json（只含合法字段）
                 $ocCfg | ConvertTo-Json -Depth 10 | Set-Content $ocJson -Encoding UTF8
-                Write-Host "  All providers patched to headroom proxy!" -ForegroundColor Green
+                Write-Host "  All providers patched to headroom proxy! Routes saved to $routesJson" -ForegroundColor Green
             } else {
                 Write-Host "  All providers already point to 19251" -ForegroundColor DarkGray
             }
