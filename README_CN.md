@@ -316,7 +316,9 @@ Qwen3.6 MoE 使用 SSM (Gated Delta Net) 混合注意力,配合 `--kv-unified`�
 
 ```
 <PROJECT_DIR>/                                               # OpenClaw 工作区根目录
-├── start.ps1                         # 🚀 一键启动:llama + Live2D + Gateway
+├── start.ps1                         # 🚀 一键启动:llama + headroom + Live2D + Gateway
+├── artemis_headroom_proxy.py          # Headroom 代理 (19251): mem0 注入 + SmartCrusher + 路由
+├── shiki_daemon.py                    # 守护进程 (19260/19270): WebChat 后端 + auto-inject provider
 ├── quick_setup.ps1                     # 🛠 交互式路径配置向导
 ├── config.yaml                       # 生成的配置文件
 ├── download-models.ps1               # 一键模型下载 (Windows)
@@ -523,7 +525,7 @@ npm install -g @anthropic-ai/claude-code
 > ✅ **TTS、ComfyUI 和 Live2D 完全自包含。** 运行时无需外部下载--所有模型权重(`skills/sovits/`, `skills/comfyui_core/`)、Python 脚本、JS 库(`live2d/pixi.min.js`, `live2d/plid-v5-bundle.js`)和 Cubism Core 4(`live2d/live2dcubismcore.min.js`) 均打包内置。
 >
 > 🧠 **Headroom 节省 Token** - `skills/headroom/` (SmartCrusher 5维评分压缩 + ContentRouter 自动路由 + CCR 缓存)。开发场景下大输出结果自动压缩后再入上下文窗口。详见 AGENTS.md。
-| Python | 3.12+ | 运行时 (Sakura + TTS + ComfyUI) |
+| Python | 3.12+ | 运行时 (Sakura + TTS + ComfyUI + Headroom) |
 
 ## 快速开始
 
@@ -619,13 +621,14 @@ powershell -File start.ps1
 
 启动顺序:
 ```
-[1/7] llama-server        (8080, Genesis Hermes V5, --no-mmap)
-[2/7] Embedding Server    (9999, all-MiniLM + BGE 双模型, CPU, ~100MB 内存)
-[3/7] VRAM 分档检测       (自动判断 TTS/ComfyUI 是否停 llama)
-[4/7] Live2D Bridge       (19200, pixi-live2d-display)
-[5/7] OpenClaw Gateway    (18789)
-[6/7] llama-watchdog      (崩溃自动重启)
-[7/7] Web Chat Daemon     (19260 API + 19270 webchat, --no-llama)
+[1/8] llama-server        (8080, Genesis Hermes V5, --no-mmap)
+[2/8] Embedding Server    (9999, all-MiniLM + BGE 双模型, CPU, ~100MB 内存)
+[3/8] VRAM 分档检测       (自动判断 TTS/ComfyUI 是否停 llama)
+[4/8] Headroom Proxy      (19251, mem0 记忆注入 + SmartCrusher 压缩 + 云端路由)
+[5/8] Live2D Bridge       (19200, pixi-live2d-display)
+[6/8] OpenClaw Gateway    (18789, 自动注入 local-llama provider)
+[7/8] llama-watchdog      (崩溃自动重启)
+[8/8] Web Chat Daemon     (19260 API + 19270 webchat, --no-llama)
 ```
 
 **关闭:`shiki.cmd -Stop`** - 优雅关闭所有服务(llama → live2d → sakura → embedding → comfyui → gateway → cleanup)。
@@ -667,11 +670,12 @@ schtasks /create /tn "cleanup-orphans" `
 <tr>
 <td width="50%" valign="top">
 
-**🧠 LLM 推理**
+**🧠 LLM 推理 + Headroom**
 
 | 组件 | 说明 |
 |-|-|
 | `llama-server :8080` | Qwen3.6-35B-A3B MoE |
+| `headroom proxy :19251` | mem0 记忆注入 + SmartCrusher 压缩 + 模型路由 |
 | Main session | AGENTS.md 驱动角色扮演 |
 | TTS | 按 VRAM 分档停/不停 llama |
 | ComfyUI | 按 VRAM 分档停/不停 llama |
@@ -694,10 +698,30 @@ schtasks /create /tn "cleanup-orphans" `
 | CCR | 每 8 轮提取事实 → Qdrant |
 | SmartCrusher | 24 消息/40K 字符硬截断 |
 | mem0_sync_cron | 每 30min 同步 Qdrant → _mem0_auto.md |
+| headroom_routes.json | sidecar: model_id → 真实后端 baseUrl 映射 |
 
 </td>
 </tr>
 </table>
+
+### Headroom + Mem0 管线 (port 19251)
+
+```
+OpenClaw Gateway (18789)
+  ├─ <provider>/<model-id>           → 直连原始后端（不走 headroom）
+  ├─ local-llama/llama-local          → 19251 → llama-server:8080
+  └─ local-llama/<model-id>           → 19251 → 原始后端（走 headroom+mem0）
+         │
+         ▼
+  headroom proxy (19251)
+    ├─ [1] mem0 角色记忆注入（Qdrant 向量搜索）
+    ├─ [2] SmartCrusher 5维压缩对话历史
+    └─ [3] 路由到真实后端
+         ├─ llama-local → llama-server:8080
+         └─ 云端模型    → sidecar 查找真实 baseUrl
+```
+
+**只加不改原则：** `start.ps1` 启动时自动扫描 `~/.openclaw/openclaw.json`，新增 `local-llama` provider（复制现有云端模型），原始 provider 原封不动。原始 baseUrl 存入 `~/.openclaw/headroom_routes.json` sidecar 文件。clone 后零配置。
 
 ### Agent 中枢
 
@@ -740,6 +764,8 @@ schtasks /create /tn "cleanup-orphans" `
 | 技能 | 位置 | Llama 交互 | 备注 |
 |-|-|-|-|
 | **WebChat** | `web-chat/` | ❌ HTTP 代理 | 端口 19270, daemon 后端, 多角色 |
+| **Headroom Proxy** | `artemis_headroom_proxy.py` | ❌ 独立进程 | 端口 19251, mem0+压缩+路由 |
+| **Shiki Daemon** | `shiki_daemon.py` | ❌ 共享 client | 端口 19260/19270, auto-inject |
 | **Embedding** | `skills/shared/` | ❌ 不碰 GPU | 双模型 CPU, 端口 9999 |
 | **Live2D** | `skills/live2d/` | ❌ 仅 HTTP | 桥接 :19200, 独立进程 |
 | **TTS** | `skills/tts/` | 🔶 按 VRAM 分档 | Level 2 不杀, Level 0/1 停 llama |
@@ -748,6 +774,8 @@ schtasks /create /tn "cleanup-orphans" `
 | **Sakura** | `skills/sakura/` | ❌ 共享 client | 内置 CCR + mem0 |
 | **Artemis Studio** | `artemis_studio.py` | ❌ 独立运行 | 桌面控制台, TTS+ComfyUI 工坊 |
 | **SmartCrusher** | `skills/shared/context_trimming.py` | - | 24 消息/40K 截断 |
+| **Headroom Proxy** | `artemis_headroom_proxy.py` | - | mem0 注入 + 压缩 + 路由 :19251 |
+| **Shiki Daemon** | `shiki_daemon.py` | - | WebChat 后端 + auto-inject provider |
 | **CCR** | `skills/sakura/app/agent/memory_curator.py` | - | 每 8 轮事实提取 |
 | **mem0 Bridge** | `skills/shared/mem0_bridge.py` | - | CLI 搜索/添加/同步 |
 | **自动同步** | `skills/shared/mem0_sync_cron.py` | - | 30min Qdrant → md |
@@ -764,6 +792,7 @@ schtasks /create /tn "cleanup-orphans" `
 8. 主 session 读取媒体文件 → 通过 `<qqmedia>` / `MEDIA:` 发送
 9. 后台:CCR 每约 8 轮运行一次,提取长期记忆写入 Qdrant
 10. Cron job 每 30 分钟同步 Qdrant → `_mem0_auto.md` 供原生 `memory_search` 检索
+11. Headroom proxy (19251) 透明拦截 `local-llama/*` 请求 → 注入 mem0 → 压缩上下文 → 路由到真实后端
 
 ## ⚠️ 重要说明
 
