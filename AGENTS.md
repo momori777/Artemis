@@ -26,9 +26,9 @@
 
 ```
 OpenClaw Gateway (18789)
-  ├─ zai/glm-5.2            → 直连 proaiapi.tech（不走 headroom）
-  ├─ local-llama/llama-local → 19251 → llama-server:8080
-  └─ local-llama/glm-5.2    → 19251 → proaiapi.tech（走 headroom+mem0）
+  ├─ <provider>/<model-id>          → 直连原始后端（不走 headroom）
+  ├─ local-llama/llama-local         → 19251 → llama-server:8080
+  └─ local-llama/<model-id>          → 19251 → 原始后端（走 headroom+mem0）
          │
          ▼
   headroom proxy (19251)
@@ -43,10 +43,10 @@ OpenClaw Gateway (18789)
 
 | 场景 | model 字段 | 走 headroom? | 说明 |
 |------|-----------|-------------|------|
-| 角色扮演对话 | `local-llama/glm-5.2` | ✅ | mem0 注入 + 压缩 |
+| 角色扮演对话 | `local-llama/<model-id>` | ✅ | mem0 注入 + 压缩 |
 | 角色扮演对话 | `local-llama/llama-local` | ✅ | 本地模型也走 |
-| 工具人/事务性 | `zai/glm-5.2` | ❌ | 直连，省延迟 |
-| 子任务 spawn | `local/qwen3.6-35b` | ❌ | 子 session 直连 |
+| 工具人/事务性 | `<provider>/<model-id>` | ❌ | 直连，省延迟 |
+| 子任务 spawn | `local/<model-id>` | ❌ | 子 session 直连 |
 
 **原则：** 需要角色记忆和上下文压缩的对话走 `local-llama/*`，纯工具操作走原始 provider。
 
@@ -55,7 +55,7 @@ OpenClaw Gateway (18789)
 1. 运行 `start.ps1` → headroom proxy 启动 (19251)
 2. 自动扫描 `~/.openclaw/openclaw.json` 中所有 provider
 3. **只加不改**：新增 `local-llama` provider，复制现有云端模型到其下
-4. 原始 provider（zai/openai/anthropic 等）原封不动
+4. 原始 provider 原封不动
 5. 原始 baseUrl 存入 `~/.openclaw/headroom_routes.json`（sidecar 路由文件）
 6. headroom proxy 根据 model id 从 sidecar 查找真实后端
 
