@@ -333,6 +333,28 @@ def _get_openclaw_json_path():
     return os.path.join(home, ".openclaw", "openclaw.json")
 
 
+HEADROOM_ROUTES_PATH = os.path.join(os.path.expanduser("~"), ".openclaw", "headroom_routes.json")
+
+
+def _load_headroom_routes():
+    """读取 sidecar 路由映射文件。"""
+    try:
+        with open(HEADROOM_ROUTES_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _save_headroom_routes(routes: dict):
+    """写入 sidecar 路由映射文件。"""
+    try:
+        os.makedirs(os.path.dirname(HEADROOM_ROUTES_PATH), exist_ok=True)
+        with open(HEADROOM_ROUTES_PATH, "w", encoding="utf-8") as f:
+            json.dump(routes, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"[headroom] failed to save routes: {e}", flush=True)
+
+
 def ensure_openclaw_headroom_provider():
     """
     检测 headroom proxy (19251) 是否在线，若在线则将 openclaw.json
@@ -340,11 +362,13 @@ def ensure_openclaw_headroom_provider():
     （本地 + 云端）都强制经过 headroom+mem0 管线。
 
     工作原理:
-      1. 保存每个 provider 的原始 baseUrl 到 _orig_baseUrl
-      2. 将 baseUrl 改为 http://127.0.0.1:19251/v1
+      1. 保存每个 provider 的原始 baseUrl 到 sidecar 文件
+         ~/.openclaw/headroom_routes.json
+      2. 将 openclaw.json 中 provider 的 baseUrl 改为 19251
+         （只动合法字段，不添加非标准字段）
       3. headroom proxy 收到请求后:
          - 从 model 字段识别 provider (如 zai/glm-5.2)
-         - 从 _orig_baseUrl 读取真实后端地址
+         - 从 sidecar 文件读取真实后端地址
          - 注入 mem0 + SmartCrusher 压缩后转发到真实后端
 
     幂等：已配置则跳过。
@@ -368,6 +392,7 @@ def ensure_openclaw_headroom_provider():
         return False
 
     HEADROOM_BASE = "http://127.0.0.1:19251/v1"
+    routes = _load_headroom_routes()
     changed = False
 
     for prov_id, prov_cfg in providers.items():
@@ -379,8 +404,8 @@ def ensure_openclaw_headroom_provider():
         if "19251" in orig_url:
             continue
 
-        # 保存原始 baseUrl（headroom proxy 需要读取它来转发）
-        prov_cfg["_orig_baseUrl"] = orig_url
+        # 保存原始 baseUrl 到 sidecar 文件
+        routes[prov_id] = orig_url
         prov_cfg["baseUrl"] = HEADROOM_BASE
 
         # 本地 provider 补充 apiKey/auth（如果缺失）
@@ -396,7 +421,6 @@ def ensure_openclaw_headroom_provider():
     if "local-llama" not in providers:
         providers["local-llama"] = {
             "baseUrl": HEADROOM_BASE,
-            "_orig_baseUrl": f"http://127.0.0.1:{LLAMA_PORT}/v1",
             "api": "openai-completions",
             "apiKey": "***",
             "auth": "api-key",
@@ -417,6 +441,7 @@ def ensure_openclaw_headroom_provider():
                 }
             ],
         }
+        routes["local-llama"] = f"http://127.0.0.1:{LLAMA_PORT}/v1"
         changed = True
         print(f"[headroom] created local-llama provider → {HEADROOM_BASE}", flush=True)
 
@@ -424,9 +449,12 @@ def ensure_openclaw_headroom_provider():
         return False
 
     try:
+        # 写 sidecar 路由文件
+        _save_headroom_routes(routes)
+        # 写 openclaw.json（只含合法字段）
         with open(cfg_path, "w", encoding="utf-8") as f:
             json.dump(oc_cfg, f, indent=2, ensure_ascii=False)
-        print(f"[headroom] patched {cfg_path} (all providers → 19251)", flush=True)
+        print(f"[headroom] patched {cfg_path} + routes saved to {HEADROOM_ROUTES_PATH}", flush=True)
         return True
     except Exception as e:
         print(f"[headroom] failed to patch openclaw.json: {e}", flush=True)
