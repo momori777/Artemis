@@ -274,87 +274,100 @@ if (Test-Online $headroomPort "Headroom Proxy") {
     }
 }
 
-# ── Headroom 就绪后将 openclaw.json 所有 provider 重写为 19251 ──
+# ── Headroom 就绪后在 openclaw.json 新增 local-llama provider（只加不改） ──
+# 现有 provider 原封不动，local-llama 下挂载本地模型 + 云端模型副本
 # 原始 baseUrl 存入 sidecar 文件 ~/.openclaw/headroom_routes.json
-# openclaw.json 只动 baseUrl（合法字段），不加非标准字段
 if (Test-Online 19251 "Headroom Proxy") {
-    Write-Host "  Patching openclaw.json providers → headroom proxy (19251)..." -ForegroundColor DarkGray
+    Write-Host "  Adding local-llama provider to openclaw.json (add-only)..." -ForegroundColor DarkGray
     $ocJson = Join-Path $env:USERPROFILE ".openclaw\openclaw.json"
     $routesJson = Join-Path $env:USERPROFILE ".openclaw\headroom_routes.json"
     if (Test-Path $ocJson) {
         try {
             $ocCfg = Get-Content $ocJson -Raw -Encoding UTF8 | ConvertFrom-Json
             $headroomBase = "http://127.0.0.1:19251/v1"
-            $changed = $false
+            $llamaCtx = if ($config.llama.context) { [int]$config.llama.context } else { 120000 }
+            $llamaPort = if ($config.llama_port) { $config.llama_port } else { 8080 }
 
-            # 读取或初始化 sidecar 路由
-            $routes = @{}
+            # 收集 sidecar 路由
+            $routes = [PSCustomObject]@{}
             if (Test-Path $routesJson) {
                 $routes = Get-Content $routesJson -Raw -Encoding UTF8 | ConvertFrom-Json
             }
-            if (-not $routes) { $routes = [PSCustomObject]@{} }
 
+            # 遍历非 local-llama provider，复制模型 + 记录 baseUrl
+            $cloudModels = @()
             foreach ($provId in @($ocCfg.models.providers.PSObject.Properties.Name)) {
+                if ($provId -in @('local-llama', 'local')) { continue }
                 $prov = $ocCfg.models.providers.$provId
                 $origUrl = $prov.baseUrl
-                if (-not $origUrl) { continue }
-                if ($origUrl.Contains('19251')) { continue }
+                if (-not $origUrl -or $origUrl.Contains('19251')) { continue }
 
-                # 保存原始 baseUrl 到 sidecar
+                # 保存 provider baseUrl 到 sidecar
                 if (-not $routes.PSObject.Properties[$provId]) {
                     $routes | Add-Member -NotePropertyName $provId -NotePropertyValue $origUrl -Force
-                } else {
-                    $routes.$provId = $origUrl
                 }
-                # 只改 baseUrl（合法字段）
-                $prov.baseUrl = $headroomBase
-                $changed = $true
-                Write-Host "    $provId : $origUrl → $headroomBase" -ForegroundColor DarkGray
+
+                # 复制该 provider 的模型
+                foreach ($m in $prov.models) {
+                    $exists = $false
+                    foreach ($cm in $cloudModels) { if ($cm.id -eq $m.id) { $exists = $true; break } }
+                    if ($exists) { continue }
+                    $modelCopy = $m.PSObject.Copy()
+                    $modelCopy.name = "$($m.name) via Headroom"
+                    $cloudModels += $modelCopy
+                }
             }
 
-            # 确保 local-llama provider 存在
-            $hasLocal = $ocCfg.models.providers.PSObject.Properties['local-llama']
-            if (-not $hasLocal) {
-                $llamaCtx = if ($config.llama.context) { [int]$config.llama.context } else { 120000 }
-                $llamaPort = if ($config.llama_port) { $config.llama_port } else { 8080 }
+            # 本地模型
+            $localModel = [PSCustomObject]@{
+                id = "llama-local"
+                name = "Local Llama (Headroom+Mem0)"
+                contextWindow = $llamaCtx
+                maxTokens = 8192
+                reasoning = $false
+                compat = [PSCustomObject]@{
+                    supportsReasoningEffort = $false
+                    supportsTools = $false
+                    supportsTemperature = $true
+                    requiresStringContent = $true
+                }
+            }
+            if (-not $routes.PSObject.Properties['llama-local']) {
+                $routes | Add-Member -NotePropertyName 'llama-local' -NotePropertyValue "http://127.0.0.1:${llamaPort}/v1" -Force
+            }
+
+            $allModels = @($localModel) + $cloudModels
+
+            # 检查 local-llama 是否已存在且配置一致
+            $needPatch = $true
+            if ($ocCfg.models.providers.PSObject.Properties['local-llama']) {
+                $existing = $ocCfg.models.providers.'local-llama'
+                if ($existing.baseUrl -and $existing.baseUrl.Contains('19251')) {
+                    $existingIds = $existing.models | ForEach-Object { $_.id } | Sort-Object
+                    $newIds = $allModels | ForEach-Object { $_.id } | Sort-Object
+                    if ($existingIds -eq $newIds) { $needPatch = $false }
+                }
+            }
+
+            if ($needPatch) {
                 $localProvider = [PSCustomObject]@{
                     baseUrl = $headroomBase
                     api = "openai-completions"
                     apiKey = "***"
                     auth = "api-key"
                     timeoutSeconds = 300
-                    models = @(
-                        [PSCustomObject]@{
-                            id = "llama-local"
-                            name = "Local Llama (Headroom+Mem0)"
-                            contextWindow = $llamaCtx
-                            maxTokens = 8192
-                            reasoning = $false
-                            compat = [PSCustomObject]@{
-                                supportsReasoningEffort = $false
-                                supportsTools = $false
-                                supportsTemperature = $true
-                                requiresStringContent = $true
-                            }
-                        }
-                    )
+                    models = $allModels
                 }
                 $ocCfg.models.providers | Add-Member -NotePropertyName 'local-llama' -NotePropertyValue $localProvider -Force
-                if (-not $routes.PSObject.Properties['local-llama']) {
-                    $routes | Add-Member -NotePropertyName 'local-llama' -NotePropertyValue "http://127.0.0.1:${llamaPort}/v1" -Force
-                }
-                $changed = $true
-                Write-Host "    local-llama: created → $headroomBase" -ForegroundColor DarkGray
-            }
 
-            if ($changed) {
-                # 写 sidecar 路由文件
+                # 写 sidecar + openclaw.json
                 $routes | ConvertTo-Json -Depth 5 | Set-Content $routesJson -Encoding UTF8
-                # 写 openclaw.json（只含合法字段）
                 $ocCfg | ConvertTo-Json -Depth 10 | Set-Content $ocJson -Encoding UTF8
-                Write-Host "  All providers patched to headroom proxy! Routes saved to $routesJson" -ForegroundColor Green
+                Write-Host "  local-llama provider added ($($allModels.Count) models). Existing providers untouched." -ForegroundColor Green
             } else {
-                Write-Host "  All providers already point to 19251" -ForegroundColor DarkGray
+                # 仍然更新 sidecar
+                $routes | ConvertTo-Json -Depth 5 | Set-Content $routesJson -Encoding UTF8
+                Write-Host "  local-llama provider already configured" -ForegroundColor DarkGray
             }
         } catch {
             Write-Host "  WARNING: Failed to patch openclaw.json: $($_.Exception.Message)" -ForegroundColor Yellow

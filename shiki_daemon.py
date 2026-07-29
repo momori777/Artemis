@@ -357,19 +357,15 @@ def _save_headroom_routes(routes: dict):
 
 def ensure_openclaw_headroom_provider():
     """
-    检测 headroom proxy (19251) 是否在线，若在线则将 openclaw.json
-    中所有 provider 的 baseUrl 重写为 19251，使所有 LLM 请求
-    （本地 + 云端）都强制经过 headroom+mem0 管线。
+    检测 headroom proxy (19251) 是否在线，若在线则在 openclaw.json 中
+    新增 local-llama provider（baseUrl=19251），并将所有现有 provider 的
+    模型复制到 local-llama 下，使它们也走 headroom+mem0 管线。
 
-    工作原理:
-      1. 保存每个 provider 的原始 baseUrl 到 sidecar 文件
-         ~/.openclaw/headroom_routes.json
-      2. 将 openclaw.json 中 provider 的 baseUrl 改为 19251
-         （只动合法字段，不添加非标准字段）
-      3. headroom proxy 收到请求后:
-         - 从 model 字段识别 provider (如 zai/glm-5.2)
-         - 从 sidecar 文件读取真实后端地址
-         - 注入 mem0 + SmartCrusher 压缩后转发到真实后端
+    原则：只加不改。
+      - 现有 provider（zai 等）原封不动
+      - 新增 local-llama provider，baseUrl 指向 19251
+      - local-llama 下挂载：llama-local（本地）+ 所有云端模型的副本
+      - headroom proxy 根据 model id 路由：llama-local → 8080，其他 → sidecar
 
     幂等：已配置则跳过。
     如果 19251 未开或 openclaw.json 不存在，静默跳过。
@@ -395,66 +391,76 @@ def ensure_openclaw_headroom_provider():
     routes = _load_headroom_routes()
     changed = False
 
+    # 收集所有非 local-llama provider 的模型 + baseUrl
+    cloud_models = []
     for prov_id, prov_cfg in providers.items():
-        orig_url = prov_cfg.get("baseUrl", "")
-        if not orig_url:
-            continue
-
-        # 已经指向 19251 → 跳过
-        if "19251" in orig_url:
-            continue
-
-        # 保存原始 baseUrl 到 sidecar 文件
-        routes[prov_id] = orig_url
-        prov_cfg["baseUrl"] = HEADROOM_BASE
-
-        # 本地 provider 补充 apiKey/auth（如果缺失）
         if prov_id in ("local-llama", "local"):
-            prov_cfg.setdefault("apiKey", "***")
-            prov_cfg.setdefault("auth", "api-key")
-            prov_cfg.setdefault("timeoutSeconds", 300)
+            continue
+        orig_url = prov_cfg.get("baseUrl", "")
+        if not orig_url or "19251" in orig_url:
+            continue
+        # 保存 provider 的原始 baseUrl 到 sidecar
+        routes[prov_id] = orig_url
+        # 复制该 provider 的模型
+        for m in prov_cfg.get("models", []):
+            model_id = m.get("id", "")
+            if not model_id:
+                continue
+            # 跳过已存在的
+            if any(em["id"] == model_id for em in cloud_models):
+                continue
+            model_copy = dict(m)
+            model_copy["name"] = f"{m.get('name', model_id)} via Headroom"
+            cloud_models.append(model_copy)
 
-        changed = True
-        print(f"[headroom] {prov_id}: baseUrl {orig_url} → {HEADROOM_BASE}", flush=True)
+    # 本地模型始终放第一个
+    local_model = {
+        "id": "llama-local",
+        "name": "Local Llama (Headroom+Mem0)",
+        "contextWindow": int(CFG.get("llama", {}).get("context", 120000)),
+        "maxTokens": 8192,
+        "reasoning": False,
+        "compat": {
+            "supportsReasoningEffort": False,
+            "supportsTools": False,
+            "supportsTemperature": True,
+            "requiresStringContent": True,
+        },
+    }
+    routes["llama-local"] = f"http://127.0.0.1:{LLAMA_PORT}/v1"
 
-    # 确保本地 provider 存在
-    if "local-llama" not in providers:
-        providers["local-llama"] = {
-            "baseUrl": HEADROOM_BASE,
-            "api": "openai-completions",
-            "apiKey": "***",
-            "auth": "api-key",
-            "timeoutSeconds": 300,
-            "models": [
-                {
-                    "id": "llama-local",
-                    "name": "Local Llama (Headroom+Mem0)",
-                    "contextWindow": int(CFG.get("llama", {}).get("context", 120000)),
-                    "maxTokens": 8192,
-                    "reasoning": False,
-                    "compat": {
-                        "supportsReasoningEffort": False,
-                        "supportsTools": False,
-                        "supportsTemperature": True,
-                        "requiresStringContent": True,
-                    },
-                }
-            ],
-        }
-        routes["local-llama"] = f"http://127.0.0.1:{LLAMA_PORT}/v1"
-        changed = True
-        print(f"[headroom] created local-llama provider → {HEADROOM_BASE}", flush=True)
+    all_models = [local_model] + cloud_models
+
+    # 检查 local-llama provider 是否已存在且配置一致
+    existing = providers.get("local-llama")
+    if existing and "19251" in existing.get("baseUrl", ""):
+        existing_ids = {m.get("id") for m in existing.get("models", [])}
+        needed_ids = {m["id"] for m in all_models}
+        if existing_ids == needed_ids:
+            # 已配置且模型列表一致，只需确保 sidecar 是最新的
+            _save_headroom_routes(routes)
+            return False  # 无需修改
+
+    # 创建或更新 local-llama provider
+    providers["local-llama"] = {
+        "baseUrl": HEADROOM_BASE,
+        "api": "openai-completions",
+        "apiKey": "***",
+        "auth": "api-key",
+        "timeoutSeconds": 300,
+        "models": all_models,
+    }
+    changed = True
+    print(f"[headroom] local-llama provider: {len(all_models)} models via {HEADROOM_BASE}", flush=True)
 
     if not changed:
         return False
 
     try:
-        # 写 sidecar 路由文件
         _save_headroom_routes(routes)
-        # 写 openclaw.json（只含合法字段）
         with open(cfg_path, "w", encoding="utf-8") as f:
             json.dump(oc_cfg, f, indent=2, ensure_ascii=False)
-        print(f"[headroom] patched {cfg_path} + routes saved to {HEADROOM_ROUTES_PATH}", flush=True)
+        print(f"[headroom] patched {cfg_path} (local-llama added, existing providers untouched)", flush=True)
         return True
     except Exception as e:
         print(f"[headroom] failed to patch openclaw.json: {e}", flush=True)
