@@ -1390,6 +1390,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
         limit = int(qs.get("limit", ["20"])[0])
         
         try:
+            if WORKSPACE not in sys.path:
+                sys.path.insert(0, WORKSPACE)
+            try:
+                from skills.mem0_bridge.mem0_bridge import search_mem0_qdrant
+            except ImportError:
+                from skills.shared.mem0_bridge import search_mem0_qdrant
             results = search_mem0_qdrant(character_id, query if query else "所有记忆", limit=limit)
             formatted = []
             for r in results:
