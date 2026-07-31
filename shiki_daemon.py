@@ -25,7 +25,7 @@ os.chdir(WORKSPACE)
 
 # Config
 import yaml
-with open(os.path.join(WORKSPACE, "config.yaml"), "r", encoding="utf-8") as f:
+with open(os.path.join(WORKSPACE, "config.yaml"), "r", encoding="utf-8-sig") as f:
     CFG = yaml.safe_load(f)
 
 LLAMA_EXE = CFG["llama_exe"]
@@ -603,16 +603,27 @@ def start_gateway():
         openclaw_git = os.path.join(openclaw_dir, "openclaw-git", "dist", "index.js")
         npm_dist = os.path.expandvars(r"%APPDATA%\npm\node_modules\openclaw\dist\index.js")
         gateway_js = openclaw_git if os.path.isfile(openclaw_git) else npm_dist
+        
+        # 验证所有路径
+        if not os.path.isfile(node_exe):
+            return f"node.exe not found: {node_exe}"
         if not os.path.isfile(gateway_js):
-            return "gateway dist not found"
+            return f"gateway dist not found: {gateway_js}"
+        if not os.path.isdir(openclaw_dir):
+            return f"openclaw_dir not a directory: {openclaw_dir}"
+        
         print(f"[daemon]   Starting gateway directly: {node_exe} {gateway_js} gateway --port 18789")
-        subprocess.Popen(
-            [node_exe, gateway_js, "gateway", "--port", "18789"],
-            cwd=openclaw_dir,
-            creationflags=subprocess.CREATE_NO_WINDOW,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        
+        # 输出重定向到日志文件而不是 DEVNULL
+        gateway_log = os.path.join(WORKSPACE, "gateway.log")
+        with open(gateway_log, "a", encoding="utf-8") as log_f:
+            subprocess.Popen(
+                [node_exe, gateway_js, "gateway", "--port", "18789"],
+                cwd=openclaw_dir,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                stdout=log_f,
+                stderr=log_f,
+            )
 
     # Gateway 启动慢（编译/迁移），等最多 120 秒
     for _ in range(60):
@@ -1031,6 +1042,44 @@ def _inject_system_prompt(messages, character_id, custom_system_prompt=None, mem
     else:
         result.insert(0, {"role": "system", "content": prompt})
     return result
+
+
+def _normalize_system_messages(messages):
+    """Ensure exactly one system message, at index 0.
+
+    Many chat templates (e.g. Qwen/Hermes with `raise_exception('System message
+    must be at the beginning.')`) fail during llama.cpp --jinja tool-parser
+    generation when a system-role message appears anywhere but position 0.
+    In 对话树 (conversation-tree) mode the reconstructed message list can carry a
+    system message mid-list, which triggers HTTP 400. Merge every system message
+    into a single leading system message so the template always validates.
+    """
+    if not messages:
+        return messages
+    system_parts = []
+    rest = []
+    for msg in messages:
+        if msg.get("role") == "system":
+            content = msg.get("content", "")
+            if isinstance(content, str):
+                text = content.strip()
+            else:
+                # content may be a list of parts; join text parts
+                try:
+                    text = "\n".join(
+                        p.get("text", "") for p in content
+                        if isinstance(p, dict)
+                    ).strip()
+                except Exception:
+                    text = str(content).strip()
+            if text:
+                system_parts.append(text)
+        else:
+            rest.append(msg)
+    if not system_parts:
+        return messages
+    merged = {"role": "system", "content": "\n\n".join(system_parts)}
+    return [merged] + rest
 
 
 def _resolve_provider_for_model(model_id):
@@ -1579,6 +1628,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             print(f"[chat] routing to cloud provider: {base_url} model={backend_model}", file=sys.stderr)
 
         endpoint = base_url + "/chat/completions"
+        # Normalize system messages to a single leading message. Required for
+        # templates that raise when a system message is not at the beginning
+        # (e.g. 对话树 mode sending mid-list system messages -> HTTP 400 on --jinja).
+        messages = _normalize_system_messages(messages)
         payload = {"model": backend_model, "messages": messages, "stream": stream, "max_tokens": max_tokens}
 
         # ── 并发控制：使用信号量限制同时请求数 ──
