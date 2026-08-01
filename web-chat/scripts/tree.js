@@ -60,6 +60,10 @@ function migrateToTree(messages) {
       childrenIds: [],
       time: msg.time || new Date().toISOString(),
       media: msg.media || null,
+      // Preserve image/paint metadata across flat -> tree migration.
+      mediaType: msg.mediaType || null,
+      paint: !!msg.paint,
+      paintParams: msg.paintParams || null,
       regenerated: !!msg.regenerated,
     };
     nodes[prevId].childrenIds.push(nid);
@@ -113,7 +117,18 @@ function getChainMessages(tree) {
   var chain = getCurrentChain(tree);
   return chain
     .filter(function(n) { return n.role !== 'system'; })
-    .map(function(n) { return { role: n.role, content: n.content }; });
+    .map(function(n) {
+      // Carry media/paint fields through. The UI reads state.messages to decide
+      // how to render (and whether a message is re-rollable), so dropping these
+      // turned generated images into blank assistant bubbles.
+      var m = { role: n.role, content: n.content };
+      if (n.media) m.media = n.media;
+      if (n.mediaType) m.mediaType = n.mediaType;
+      if (n.paint) m.paint = true;
+      if (n.paintParams) m.paintParams = n.paintParams;
+      if (n.time) m.time = n.time;
+      return m;
+    });
 }
 
 /**
@@ -137,6 +152,12 @@ function appendTreeNode(tree, msg) {
     childrenIds: [],
     time: msg.time || new Date().toISOString(),
     media: msg.media || null,
+    // Image/paint metadata must survive the round-trip into the tree,
+    // otherwise a generated image loses its paint identity (and its
+    // regeneration params) as soon as it is persisted.
+    mediaType: msg.mediaType || null,
+    paint: !!msg.paint,
+    paintParams: msg.paintParams || null,
   };
   tree.nodes[tree.currentNodeId].childrenIds.push(nid);
   tree.currentNodeId = nid;
