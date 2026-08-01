@@ -1203,7 +1203,10 @@ var UI = {
               self.$messages.innerHTML = '';
               self.appendSystemMsg('Jumped to branch #' + (branchIdx + 1) + ' - ' + self.formatTime(new Date()));
               getCurrentChain(tree).forEach(function(cn, ci) {
-                if (cn.role === 'system' || cn.regenerated) return;
+                // Only skip system/placeholder nodes. Filtering on `regenerated`
+                // here is what made the re-selected branch disappear: the flag
+                // stays true on a node forever, even once it is the active branch.
+                if (cn.role === 'system' || cn._pending) return;
                 // Resolve local filesystem media paths to daemon proxy URLs
                 if (cn.media && !/^https?:\/\//.test(cn.media)) {
                   cn.media = self._resolveMediaPath(cn.media);
@@ -1217,7 +1220,14 @@ var UI = {
           branchBtns.appendChild(btn);
         });
         branchBar.appendChild(branchBtns);
-        el.insertBefore(branchBar, el.firstChild);
+        // `el` is `.msg-row`, a horizontal flex container (avatar | content).
+        // Inserting as its first child would push the branch bar to the LEFT of
+        // the avatar. Put it at the top of the vertical content column instead,
+        // so it sits directly above the bubble it describes.
+        var branchHost = el.querySelector('.msg-bubble-wrap')
+          || (el.querySelector('.msg-bubble') && el.querySelector('.msg-bubble').parentNode)
+          || el;
+        branchHost.insertBefore(branchBar, branchHost.firstChild);
       }
     }
     return el;
@@ -1229,8 +1239,12 @@ var UI = {
     var time = msg.time || this.formatTime(new Date());
     var self = this;
 
-    // Hide regenerated (superseded) messages
-    if (msg.regenerated) {
+    // Superseded messages get a faded placeholder, but ONLY in flat (non-tree)
+    // mode. In tree mode a `regenerated` node is still a real, selectable
+    // branch: the flag records "this was superseded once", not "never show it".
+    // Rendering the stub there is what made branch 1 look like it vanished
+    // after generating branch 2.
+    if (msg.regenerated && !this.state.tree) {
       var fadedRow = document.createElement('div');
       fadedRow.className = 'msg-row char faded';
       fadedRow.dataset.msgIndex = index;
@@ -1299,21 +1313,40 @@ var UI = {
       e.stopPropagation();
       self.startEditMessage(row, index, msg);
     });
-    btnsRow.appendChild(editBtn);
+    // Editing text on an image-only message makes no sense.
+    if (!msg.paint) btnsRow.appendChild(editBtn);
 
     if (!isUser && msg.role === 'assistant') {
       var regenBtn = document.createElement('button');
       regenBtn.className = 'msg-regen-btn';
-      regenBtn.innerHTML = '<i class="ph ph-arrows-clockwise"></i>';
-      regenBtn.title = 'Regenerate reply';
+      if (msg.paint) {
+        // Image messages get their own re-roll affordance so it is obvious the
+        // action re-runs the image job, not the text model.
+        regenBtn.classList.add('msg-repaint-btn');
+        regenBtn.innerHTML = '<i class="ph ph-image"></i>';
+        regenBtn.title = msg.paintParams && msg.paintParams.positive
+          ? 'Re-roll this image'
+          : 'No prompt stored for this image';
+        if (!(msg.paintParams && msg.paintParams.positive)) {
+          regenBtn.disabled = true;
+          regenBtn.classList.add('is-disabled');
+        }
+      } else {
+        regenBtn.innerHTML = '<i class="ph ph-arrows-clockwise"></i>';
+        regenBtn.title = 'Regenerate reply';
+      }
       regenBtn.addEventListener('click', function(e) {
         e.stopPropagation();
+        if (regenBtn.disabled) return;
         self.regenerateMessage(index);
       });
       btnsRow.appendChild(regenBtn);
     }
 
-    row.appendChild(btnsRow);
+    // NOTE: btnsRow is intentionally NOT appended to `row` here.
+    // `.msg-row` is a horizontal flex container (avatar | content), so a direct
+    // child lands BESIDE the bubble. It is appended into contentWrap below the
+    // bubble instead, so Edit/Regenerate sit under the message they act on.
 
     // Collapse long historical messages
     if (!isUser && msg.content && msg.content.length > this.LONG_MSG_THRESHOLD) {
@@ -1339,7 +1372,13 @@ var UI = {
           var placeholder = document.createElement('div');
           placeholder.className = 'media-placeholder';
           placeholder.innerHTML = '<i class="ph ph-image-broken"></i><span>Image unavailable</span>';
-          img.parentNode.insertBefore(placeholder, img);
+          // The error event can fire after a re-render has detached this node,
+          // in which case parentNode is null. Fall back to the bubble.
+          if (img.parentNode) {
+            img.parentNode.insertBefore(placeholder, img);
+          } else if (bubble) {
+            bubble.appendChild(placeholder);
+          }
         });
         bubble.appendChild(img);
       }
@@ -1379,6 +1418,7 @@ var UI = {
 
     contentWrap.appendChild(bubble);
     contentWrap.appendChild(timeEl);
+    contentWrap.appendChild(btnsRow);
     row.appendChild(avatar);
     row.appendChild(contentWrap);
 
@@ -1528,13 +1568,20 @@ var UI = {
       }
     }
     // Restore long collapse
-    if (msg.content && msg.content.length > this.LONG_MSG_THRESHOLD && !msg.role === 'user') {
+    if (msg.content && msg.content.length > this.LONG_MSG_THRESHOLD && msg.role !== 'user') {
       bubble.classList.add('long-collapsed');
     }
 
-    // Restore button row
-    var btnsRow = document.createElement('div');
-    btnsRow.className = 'msg-btns';
+    // Restore button row.
+    // Reuse the existing row if present so cancelling an edit twice does not
+    // stack duplicate button rows.
+    var btnsRow = row.querySelector('.msg-btns');
+    if (btnsRow) {
+      btnsRow.innerHTML = '';
+    } else {
+      btnsRow = document.createElement('div');
+      btnsRow.className = 'msg-btns';
+    }
 
     var editBtn2 = document.createElement('button');
     editBtn2.className = 'msg-edit-btn';
@@ -1546,7 +1593,7 @@ var UI = {
     });
     btnsRow.appendChild(editBtn2);
 
-    if (!msg.role === 'user' && msg.role === 'assistant') {
+    if (msg.role === 'assistant') {
       var regenBtn2 = document.createElement('button');
       regenBtn2.className = 'msg-regen-btn';
       regenBtn2.innerHTML = '<i class="ph ph-arrows-clockwise"></i>';
@@ -1558,13 +1605,24 @@ var UI = {
       btnsRow.appendChild(regenBtn2);
     }
 
-    row.appendChild(btnsRow);
+    // Put the buttons under the bubble, inside the vertical content column --
+    // not directly on `.msg-row`, which is a horizontal flex container.
+    var wrap = bubble.parentNode || row;
+    wrap.appendChild(btnsRow);
   },
 
   // ---- Regenerate ----
   regenerateMessage: function(assistantIndex) {
     var self = this;
     if (this.state.streaming) return;
+
+    // Image messages carry no text, so the LLM text-stream path cannot
+    // regenerate them. Re-run the image job instead.
+    var target = this.state.messages[assistantIndex];
+    if (target && target.paint) {
+      this._regeneratePaint(assistantIndex);
+      return;
+    }
 
     var charId = this.state.currentCharId;
     var sessionId = this.state.currentSessionId;
@@ -1580,7 +1638,8 @@ var UI = {
       this.appendSystemMsg('Branch: regenerating - ' + this.formatDate(new Date()));
       var chain = getCurrentChain(this.state.tree);
       chain.forEach(function(n, i) {
-        if (n.role === 'system' || n.regenerated) return;
+        // `_pending` is the empty placeholder for the branch being streamed.
+        if (n.role === 'system' || n._pending) return;
         var el = self._renderTreeNode(n, i, self.state.tree);
         self.$messages.appendChild(el);
       });
@@ -1597,20 +1656,27 @@ var UI = {
         settings.systemPrompt = currentChar.systemPrompt;
       }
 
-      // Replay messages: only send history up to (and including) the trigger user msg
-      // The pending branch node should NOT be sent to the API
+      // Replay messages: only send history up to (and including) the trigger user msg.
+      // The pending branch node must NOT be sent to the API.
+      //
+      // We cut the chain at the trigger user message rather than filtering on
+      // `regenerated`. During a regenerate the chain is [... , user, pending],
+      // and the superseded assistant is on a DIFFERENT branch, so it is not in
+      // this chain at all. Filtering on `regenerated` additionally dropped
+      // legitimate earlier turns whose flag was still set from a past
+      // regenerate, silently truncating the prompt.
       var allMsgs = getCurrentChain(this.state.tree);
-      // Find the last non-pending, non-regenerated message index
       var lastGoodIdx = -1;
       for (var ri = allMsgs.length - 1; ri >= 0; ri--) {
-        if (!allMsgs[ri].regenerated && !allMsgs[ri]._pending && allMsgs[ri].role !== 'system') {
+        var cand = allMsgs[ri];
+        if (!cand._pending && cand.role !== 'system' && String(cand.content || '').length) {
           lastGoodIdx = ri;
           break;
         }
       }
       var replayMsgs = allMsgs
         .slice(0, lastGoodIdx + 1)
-        .filter(function(n) { return n.role !== 'system' && !n.regenerated; })
+        .filter(function(n) { return n.role !== 'system' && !n._pending; })
         .map(function(n) { return { role: n.role, content: n.content }; });
 
       self.hideTyping();
@@ -1637,7 +1703,7 @@ var UI = {
           self.$messages.innerHTML = '';
           self.appendSystemMsg('Branch: regenerated - ' + self.formatDate(new Date()));
           getCurrentChain(tree).forEach(function(cn, ci) {
-            if (cn.role === 'system' || cn.regenerated) return;
+            if (cn.role === 'system' || cn._pending) return;
             // Resolve local filesystem media paths to daemon proxy URLs
             if (cn.media && !/^https?:\/\//.test(cn.media)) {
               cn.media = self._resolveMediaPath(cn.media);
@@ -1748,6 +1814,136 @@ var UI = {
         self.$input.focus();
       }
     );
+  },
+
+  // ---- Regenerate an image (paint) message ----
+  // Image messages have empty `content`, so the text-stream regenerate path
+  // cannot produce anything for them. This re-runs the ComfyUI job using the
+  // params stored on the message and swaps the image in place.
+  _regeneratePaint: function(assistantIndex) {
+    var self = this;
+    if (this.state.paintRegenerating) return;
+
+    var msg = this.state.messages[assistantIndex];
+    if (!msg || !msg.paint) return;
+
+    var params = msg.paintParams;
+    if (!params || !params.positive) {
+      showToast('No prompt stored for this image, use Paint to make a new one');
+      return;
+    }
+
+    var manageLlama = false;
+    var stopBtn = document.getElementById('btn-stop-llama');
+    if (stopBtn) manageLlama = stopBtn.classList.contains('active');
+
+    this.state.paintRegenerating = true;
+    var row = this.$messages.querySelector('.msg-row[data-msg-index="' + assistantIndex + '"]');
+    if (row) row.classList.add('paint-regenerating');
+    showToast('Re-rolling image...');
+
+    var bridgeUrl = getSettings().bridgeUrl || 'http://localhost:19250';
+    var job = {
+      positive: params.positive,
+      negative: params.negative,
+      width: params.width,
+      height: params.height,
+      steps: params.steps,
+      cfg: params.cfg,
+      checkpoint: params.checkpoint,
+      manage_llama: manageLlama,
+    };
+
+    var finish = function(ok, detail) {
+      self.state.paintRegenerating = false;
+      if (row) row.classList.remove('paint-regenerating');
+      if (!ok) {
+        self.appendSystemMsg('Image re-roll failed: ' + (detail || 'unknown'));
+        self.scrollToBottom();
+      }
+    };
+
+    fetch(bridgeUrl + '/api/comfyui', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(job),
+      signal: AbortSignal.timeout(5000),
+    })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (!data.job_id) { finish(false, data.error); return; }
+        self._pollPaintRegen(data.job_id, assistantIndex, finish);
+      })
+      .catch(function(err) { finish(false, err.message); });
+  },
+
+  _pollPaintRegen: function(jobId, assistantIndex, finish) {
+    var self = this;
+    var bridgeUrl = getSettings().bridgeUrl || 'http://localhost:19250';
+    var attempt = 0;
+    var maxAttempts = 180;
+
+    var interval = setInterval(function() {
+      attempt++;
+      fetch(bridgeUrl + '/api/jobs/' + jobId, { signal: AbortSignal.timeout(3000) })
+        .then(function(res) { return res.json(); })
+        .then(function(job) {
+          if (job.status === 'done') {
+            clearInterval(interval);
+            self._applyPaintRegen(assistantIndex, job.path);
+            finish(true);
+          } else if (job.status === 'failed') {
+            clearInterval(interval);
+            finish(false, job.error);
+          }
+        })
+        .catch(function() {});
+
+      if (attempt >= maxAttempts) {
+        clearInterval(interval);
+        finish(false, 'timed out');
+      }
+    }, 2000);
+  },
+
+  // Swap the new image into the message, in both tree and flat sessions.
+  _applyPaintRegen: function(assistantIndex, newPath) {
+    var self = this;
+    var msg = this.state.messages[assistantIndex];
+    if (msg) {
+      msg.media = newPath;
+      msg.time = this.formatTime(new Date());
+    }
+
+    if (this._useTree && this.state.tree) {
+      var node = getNodeByChainIndex(this.state.tree, assistantIndex);
+      if (node) {
+        node.media = newPath;
+        node.paint = true;
+        node.mediaType = 'image';
+        node.time = this.formatTime(new Date());
+      }
+      saveSessionTree(this.state.currentCharId, this.state.currentSessionId, this.state.tree);
+      this.state.messages = getChainMessages(this.state.tree);
+      this.$messages.innerHTML = '';
+      this.appendSystemMsg('Image re-rolled - ' + this.formatTime(new Date()));
+      var tree = this.state.tree;
+      getCurrentChain(tree).forEach(function(cn, ci) {
+        if (cn.role === 'system' || cn._pending) return;
+        if (cn.media && !/^https?:\/\//.test(cn.media)) {
+          cn.media = self._resolveMediaPath(cn.media);
+        }
+        self.$messages.appendChild(self._renderTreeNode(cn, ci, tree));
+      });
+    } else {
+      saveChatHistory(this.state.currentCharId, this.state.currentSessionId, this.state.messages);
+      this.$messages.innerHTML = '';
+      for (var mi = 0; mi < this.state.messages.length; mi++) {
+        this.$messages.appendChild(this.renderMessage(this.state.messages[mi], mi));
+      }
+    }
+    this.scrollToBottom(true);
+    showToast('Image re-rolled');
   },
 
   // ---- Typing ----
@@ -2483,6 +2679,20 @@ var UI = {
       manage_llama: manage_llama,
     };
 
+    // Remember the params on the instance so the resulting image message can
+    // store them. Without this, an image message has no way to be re-rolled:
+    // its `content` is empty, so the text-regenerate path has nothing to work
+    // with. See _regeneratePaint().
+    this._lastPaintParams = {
+      positive: params.positive,
+      negative: params.negative,
+      width: params.width,
+      height: params.height,
+      steps: params.steps,
+      cfg: params.cfg,
+      checkpoint: params.checkpoint,
+    };
+
     var bridgeUrl = getSettings().bridgeUrl || 'http://localhost:19250';
 
     fetch(bridgeUrl + '/api/comfyui', {
@@ -2530,7 +2740,10 @@ var UI = {
               media: imgPath,
               mediaType: 'image',
               time: self.formatTime(new Date()),
-              paint: true
+              paint: true,
+              // Persist the generation params so this image can be re-rolled
+              // later from its own regenerate button.
+              paintParams: self._lastPaintParams || null
             };
             self.state.messages.push(imgMsg);
             // Persist: use tree-aware save to avoid losing paint images in tree sessions
@@ -2605,7 +2818,13 @@ var UI = {
         this.appendSystemMsg('Resumed (' + msgCount + ' messages) - ' + this.formatDate(new Date()));
         chain.forEach(function(n, i) {
           if (n.role === 'system') return;
-          if (n.regenerated) return; // skip superseded branches in current path
+          // NOTE: do NOT filter on n.regenerated here. getCurrentChain() already
+          // walks up from currentNodeId, so every node it returns is on the
+          // ACTIVE path by definition. The `regenerated` flag only means "this
+          // node was superseded at some point" -- it stays true forever, so
+          // filtering on it made a re-selected branch render as an empty gap.
+          // Skip only the streaming placeholder.
+          if (n._pending) return;
           // Resolve local filesystem media paths to daemon proxy URLs
           if (n.media && !/^https?:\/\//.test(n.media)) {
             n.media = self._resolveMediaPath(n.media);

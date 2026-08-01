@@ -40,6 +40,19 @@ var ApiClient = {
   /**
    * Stream chat via daemon proxy.
    */
+  // Strip UI-only fields (media, paint, paintParams, time, ...) before sending.
+  // The chat API only accepts role/content; leaking extra keys can make strict
+  // backends reject the request.
+  _cleanMessages: function (messages) {
+    return (messages || []).map(function (m) {
+      var out = { role: m.role, content: m.content || '' };
+      // An image-only message has no text; give the model a short placeholder
+      // so the turn is not silently empty.
+      if (!out.content && m.paint) out.content = '[sent an image]';
+      return out;
+    });
+  },
+
   chatStream: async function (messages, settings, onToken, onComplete, onError) {
     var model = settings.model || 'local/qwen3.6-35b';
     var characterId = settings.characterId || 'natsume';
@@ -50,7 +63,7 @@ var ApiClient = {
     }
     var body = {
       model: model,
-      messages: messages,
+      messages: this._cleanMessages(messages),
       stream: true,
       max_tokens: samplerParams.max_tokens || 4096,
       temperature: samplerParams.temperature ?? 0.7,
@@ -186,7 +199,7 @@ var ApiClient = {
     var characterId = settings.characterId || 'natsume';
     var body = {
       model: model,
-      messages: messages,
+      messages: this._cleanMessages(messages),
       stream: false,
       max_tokens: 4096,
       characterId: characterId,

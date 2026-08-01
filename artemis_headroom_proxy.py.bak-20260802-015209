@@ -349,33 +349,6 @@ def _resolve_upstream(model_field: str) -> tuple[str, str, dict]:
         return LLAMA_URL, LLAMA_MODEL, {}
 
 
-def _normalize_system_messages(messages: list) -> list:
-    """合并多个 system 消息为一个，并确保它在最前面。
-
-    背景：SmartCrusher 压缩后会把摘要作为第二个 system 消息插入 index 1，
-    但很多 chat template (包括 Hermes/Qwen 系) 硬性要求 system 只能有一个且
-    必须在开头，否则 llama-server 直接报
-      400 "System message must be at the beginning"。
-
-    这里不改 SmartCrusher 算法，只在转发前做一次规范化，
-    保留原有逐条内容和顺序。
-    """
-    system_parts = [
-        str(m.get("content", "")).strip()
-        for m in messages
-        if m.get("role") == "system" and str(m.get("content", "")).strip()
-    ]
-    others = [m for m in messages if m.get("role") != "system"]
-
-    if len(system_parts) <= 1:
-        # 最多一个 system：只需保证它在开头
-        if not system_parts or (messages and messages[0].get("role") == "system"):
-            return messages
-
-    merged = {"role": "system", "content": "\n\n".join(system_parts)}
-    return [merged] + others
-
-
 def register_headroom_endpoint(app):
     """Register /v1/chat/completions with forced Headroom + Mem0."""
 
@@ -417,44 +390,14 @@ def register_headroom_endpoint(app):
                 print(f"[headroom-proxy] mem0 injection error: {e}", file=sys.stderr, flush=True)
 
         # ── Step 2: Headroom SmartCrusher 压缩 ──
-        # 前端 sampler_panel.js 会在 body.headroom_config 里传动态参数，
-        # 与 shiki_daemon.py 的处理方式保持一致：前端优先，否则用模块常量。
-        hr_cfg = data.get("headroom_config") or {}
         try:
             before = context_stats(messages)
-
-            if hr_cfg:
-                recent_rounds = int(hr_cfg.get("recent_full_rounds", HEADROOM_RECENT_FULL_ROUNDS))
-                max_msgs = int(hr_cfg.get("max_messages", HEADROOM_MAX_MESSAGES))
-                max_chars = int(hr_cfg.get("max_chars", HEADROOM_MAX_CHARS))
-                # SmartCrusher 内部参数是全局 dict，需要单独写入
-                try:
-                    from skills.shared import context_trimming as _ct
-                    _ct.CRUSH_CONFIG["max_items_after_crush"] = int(hr_cfg.get("max_items_after_crush", 10))
-                    _ct.CRUSH_CONFIG["first_fraction"] = float(hr_cfg.get("first_fraction", 0.3))
-                    _ct.CRUSH_CONFIG["last_fraction"] = float(hr_cfg.get("last_fraction", 0.15))
-                    _ct.CRUSH_CONFIG["variance_threshold"] = float(hr_cfg.get("variance_threshold", 2.0))
-                    _ct.CRUSH_CONFIG["preserve_change_points"] = bool(hr_cfg.get("preserve_change_points", True))
-                    _ct.CRUSH_CONFIG["dedup_identical_items"] = bool(hr_cfg.get("dedup_identical_items", True))
-                    _ct.CRUSH_CONFIG["use_feedback_hints"] = bool(hr_cfg.get("use_feedback_hints", True))
-                except Exception as e:
-                    print(f"[headroom-proxy] CRUSH_CONFIG update failed: {e}", file=sys.stderr, flush=True)
-                print(f"[headroom-proxy] headroom dynamic: rounds={recent_rounds} "
-                      f"max_msgs={max_msgs} max_chars={max_chars} "
-                      f"crush_items={hr_cfg.get('max_items_after_crush', 10)}", flush=True)
-            else:
-                recent_rounds = HEADROOM_RECENT_FULL_ROUNDS
-                max_msgs = HEADROOM_MAX_MESSAGES
-                max_chars = HEADROOM_MAX_CHARS
-                print(f"[headroom-proxy] headroom static: rounds={recent_rounds} "
-                      f"max_msgs={max_msgs} max_chars={max_chars}", flush=True)
-
             messages = trim_messages_for_model(
                 messages,
                 query=last_user_query,
-                recent_full_rounds=recent_rounds,
-                max_messages=max_msgs,
-                max_chars=max_chars,
+                recent_full_rounds=HEADROOM_RECENT_FULL_ROUNDS,
+                max_messages=HEADROOM_MAX_MESSAGES,
+                max_chars=HEADROOM_MAX_CHARS,
             )
             after = context_stats(messages)
             if before["messages"] != after["messages"]:
@@ -465,23 +408,14 @@ def register_headroom_endpoint(app):
         except Exception as e:
             print(f"[headroom-proxy] compression skipped: {e}", file=sys.stderr, flush=True)
 
-        # ── Step 3: 规范化 system 消息 ──
-        # 必须在压缩之后、转发之前做，SmartCrusher 会新增一个 system 摘要消息。
-        _sys_before = sum(1 for m in messages if m.get("role") == "system")
-        messages = _normalize_system_messages(messages)
-        _sys_after = sum(1 for m in messages if m.get("role") == "system")
-        if _sys_before != _sys_after:
-            print(f"[headroom-proxy] merged {_sys_before} system msgs → {_sys_after} "
-                  f"(chat template requires a single leading system message)", flush=True)
-
-        # ── Step 4: 解析目标后端 ──
+        # ── Step 3: 解析目标后端 ──
         upstream_url, upstream_model, extra_headers = _resolve_upstream(model_field)
         
         is_local = upstream_url == LLAMA_URL
         backend_label = "local-llama" if is_local else model_field
         print(f"[headroom-proxy] forwarding to {backend_label} → {upstream_url}", flush=True)
 
-        # ── Step 5: 转发 ──
+        # ── Step 4: 转发 ──
         payload = {
             "model": upstream_model,
             "messages": messages,
@@ -490,45 +424,10 @@ def register_headroom_endpoint(app):
             "temperature": temperature,
         }
 
-        # 保留原始请求中的额外采样参数。
-        # 注意区分两类：
-        #   - OpenAI 标准参数：任何后端都能收
-        #   - llama.cpp 专有参数：只有本地 llama-server 认识，
-        #     发给云端 OpenAI 兼容 API 会被拒 (400 unknown field)
-        OPENAI_SAMPLER_KEYS = (
-            "top_p", "frequency_penalty", "presence_penalty",
-            "stop", "seed", "logit_bias", "n",
-        )
-        # llama.cpp 扩展采样器 (sampler_panel.js 会发 top_k / min_p / repeat_penalty)
-        LLAMACPP_SAMPLER_KEYS = (
-            "top_k", "min_p", "typical_p", "tfs_z",
-            "repeat_penalty", "repeat_last_n", "penalize_nl",
-            "mirostat", "mirostat_tau", "mirostat_eta",
-            "dynatemp_range", "dynatemp_exponent",
-            "xtc_probability", "xtc_threshold",
-            "dry_multiplier", "dry_base", "dry_allowed_length",
-            "grammar", "json_schema", "samplers",
-        )
-
-        forwarded = []
-        for k in OPENAI_SAMPLER_KEYS:
+        # 保留原始请求中的额外参数（如 top_p, frequency_penalty 等）
+        for k in ("top_p", "frequency_penalty", "presence_penalty", "stop", "seed"):
             if k in data:
                 payload[k] = data[k]
-                forwarded.append(k)
-
-        if is_local:
-            for k in LLAMACPP_SAMPLER_KEYS:
-                if k in data:
-                    payload[k] = data[k]
-                    forwarded.append(k)
-        else:
-            dropped = [k for k in LLAMACPP_SAMPLER_KEYS if k in data]
-            if dropped:
-                print(f"[headroom-proxy] cloud backend, dropping llama-only params: "
-                      f"{','.join(dropped)}", flush=True)
-
-        print(f"[headroom-proxy] sampler: temp={temperature} "
-              f"forwarded=[{','.join(forwarded)}]", flush=True)
 
         headers = {"Content-Type": "application/json"}
         headers.update(extra_headers)
