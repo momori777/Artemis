@@ -1,0 +1,686 @@
+/* ============================================================
+   refine.css - top layer, loaded after main.css + polish.css
+   Goal: neutral-warm dark palette, real type system, honest
+   depth, visible focus states, calmer motion.
+   Loaded last so it wins on equal specificity.
+   ============================================================ */
+
+/* ---------- 1. Typography ---------- */
+:root{
+  --font-sans:"Geist","Noto Sans SC",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"Geist Mono","Cascadia Code",ui-monospace,monospace;
+
+  /* type scale, 1.2 ratio off a 14px base */
+  --t-xs:11px;
+  --t-sm:12.5px;
+  --t-base:14px;
+  --t-md:15px;
+  --t-lg:17px;
+  --t-xl:20px;
+}
+
+body{
+  font-feature-settings:"cv11","ss01";
+  letter-spacing:-0.006em;
+}
+
+/* mono should never wobble in changing numbers (timers, counts, tokens) */
+.msg-time,
+.session-msg-count,
+.status-label,
+.branch-btn,
+[class*="-meta"]{
+  font-variant-numeric:tabular-nums;
+  letter-spacing:0;
+}
+
+/* headings earn tighter tracking, not bigger weight */
+.app-title{
+  letter-spacing:-0.03em;
+  font-weight:600;
+}
+.chat-header-name{
+  font-size:var(--t-md);
+  letter-spacing:-0.02em;
+}
+.char-name{letter-spacing:-0.015em}
+
+/* ---------- 2. Palette: neutral-warm, no violet cast ---------- */
+:root{
+  /* surfaces step in even luminance increments, slight warm hue */
+  --bg-deepest:#0c0b0d;
+  --bg-root:#121013;
+  --bg-surface:#181619;
+  --bg-elevated:#201d21;
+  --bg-overlay:#282429;
+
+  /* text: warm off-white, never pure white */
+  --text-primary:#ece7e6;
+  --text-secondary:#a49d9e;
+  --text-muted:#847d80;
+  --text-inverse:#131114;
+
+  /* single rose accent, unchanged hue, tuned for AA on dark */
+  --accent:#e08b8b;
+  --accent-soft:rgba(224,139,139,0.13);
+  --accent-glow:rgba(224,139,139,0.07);
+  --accent-hover:#f0a1a0;
+  --accent-press:#c97474;
+
+  --border-subtle:rgba(255,255,255,0.055);
+  --border-moderate:rgba(255,255,255,0.11);
+  --border-strong:rgba(255,255,255,0.17);
+
+  --success:#7fb8a2;
+  --warning:#d9a86c;
+  --error:#e08b8b;
+
+  /* layered shadows: ambient + direct, never one flat blur */
+  --shadow-sm:0 1px 2px rgba(0,0,0,0.28);
+  --shadow-md:0 2px 4px rgba(0,0,0,0.22),0 8px 20px rgba(0,0,0,0.28);
+  --shadow-lg:0 4px 8px rgba(0,0,0,0.24),0 18px 48px rgba(0,0,0,0.42);
+
+  /* hairline highlight that reads as a lit top edge */
+  --bezel:inset 0 1px 0 rgba(255,255,255,0.045);
+
+  --dur-fast:130ms;
+  --dur-normal:220ms;
+  --dur-slow:420ms;
+}
+
+[data-theme="light"]{
+  --bg-deepest:#f4f2f1;
+  --bg-root:#fbfaf9;
+  --bg-surface:#f1efee;
+  --bg-elevated:#e8e5e4;
+  --bg-overlay:#dedad9;
+
+  --text-primary:#1c191b;
+  --text-secondary:#544e50;
+  --text-muted:#7d7679;
+  --text-inverse:#fbfaf9;
+
+  --accent:#b85659;
+  --accent-soft:rgba(184,86,89,0.10);
+  --accent-glow:rgba(184,86,89,0.06);
+  --accent-hover:#a04649;
+  --accent-press:#8d3b3e;
+
+  --border-subtle:rgba(0,0,0,0.07);
+  --border-moderate:rgba(0,0,0,0.13);
+  --border-strong:rgba(0,0,0,0.2);
+
+  --shadow-sm:0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md:0 2px 4px rgba(0,0,0,0.05),0 8px 20px rgba(0,0,0,0.07);
+  --shadow-lg:0 4px 8px rgba(0,0,0,0.06),0 18px 48px rgba(0,0,0,0.11);
+  --bezel:inset 0 1px 0 rgba(255,255,255,0.7);
+}
+
+/* ---------- 3. App backdrop: static, cheap, no scroll listener ---------- */
+body{
+  background:
+    radial-gradient(1100px 620px at 78% -12%, rgba(224,139,139,0.055), transparent 62%),
+    radial-gradient(820px 520px at 4% 104%, rgba(224,139,139,0.028), transparent 58%),
+    var(--bg-deepest);
+  background-attachment:fixed;
+}
+
+/* ---------- 4. Messages: reading column, grouped rhythm ---------- */
+#messages{
+  padding:36px 32px 28px;
+  gap:2px;
+  scrollbar-width:thin;
+  scrollbar-color:var(--border-moderate) transparent;
+}
+#messages::-webkit-scrollbar{width:10px}
+#messages::-webkit-scrollbar-thumb{
+  background:var(--border-moderate);
+  border-radius:99px;
+  border:3px solid transparent;
+  background-clip:content-box;
+}
+#messages::-webkit-scrollbar-thumb:hover{background:var(--border-strong);background-clip:content-box}
+
+/* speaker changes get air, same-speaker runs stay tight */
+.msg-row{
+  max-width:min(760px,100%);
+  gap:11px;
+  margin-top:2px;
+  animation:msgIn var(--dur-normal) var(--ease-out-expo) both;
+}
+.msg-row.char + .msg-row.user,
+.msg-row.user + .msg-row.char{margin-top:18px}
+.msg-row + .msg-system,
+.msg-system + .msg-row{margin-top:16px}
+
+@keyframes msgIn{
+  from{opacity:0;transform:translate3d(0,10px,0) scale(0.994)}
+  to{opacity:1;transform:translate3d(0,0,0) scale(1)}
+}
+
+/* avatar: circular, subtle ring, no heavy border */
+.msg-avatar{
+  width:30px;height:30px;
+  border-radius:var(--radius-full);
+  border:none;
+  box-shadow:0 0 0 1px var(--border-moderate),var(--shadow-sm);
+  background:var(--bg-elevated);
+  margin-top:2px;
+}
+.msg-avatar.char{
+  background:linear-gradient(150deg,var(--accent-soft),transparent 78%),var(--bg-elevated);
+  box-shadow:0 0 0 1px rgba(224,139,139,0.26),var(--shadow-sm);
+}
+.msg-avatar img{width:100%;height:100%;object-fit:cover}
+
+/* ---------- 5. Bubbles ---------- */
+.msg-bubble{
+  padding:11px 15px;
+  font-size:var(--t-base);
+  line-height:1.7;
+  max-width:600px;
+  border-radius:16px;
+  transition:border-color var(--dur-fast) linear;
+}
+
+/* character: reads as a surface sitting on the page */
+.msg-row.char .msg-bubble{
+  background:var(--bg-surface);
+  border:1px solid var(--border-subtle);
+  border-top-left-radius:5px;
+  box-shadow:var(--bezel),var(--shadow-sm);
+}
+.msg-row.char:hover .msg-bubble{border-color:var(--border-moderate)}
+
+/* user: tinted, warmer, clearly the speaker's own voice */
+.msg-row.user .msg-bubble{
+  background:linear-gradient(180deg,rgba(224,139,139,0.155),rgba(224,139,139,0.105));
+  border:1px solid rgba(224,139,139,0.22);
+  border-top-right-radius:5px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.06),var(--shadow-sm);
+}
+
+/* in-bubble text rhythm */
+.msg-bubble p+p{margin-top:0.68em}
+.msg-bubble em{color:var(--text-secondary);font-style:italic}
+.msg-bubble strong{color:var(--text-primary);font-weight:600}
+.msg-bubble code{
+  font-family:var(--font-mono);
+  font-size:0.88em;
+  padding:1px 5px;
+  border-radius:5px;
+  background:rgba(255,255,255,0.055);
+  border:1px solid var(--border-subtle);
+}
+.msg-bubble pre{
+  margin:8px 0;
+  padding:12px 14px;
+  border-radius:10px;
+  background:var(--bg-deepest);
+  border:1px solid var(--border-subtle);
+  overflow-x:auto;
+  font-size:12.5px;
+  line-height:1.6;
+}
+.msg-bubble pre code{background:none;border:none;padding:0}
+
+/* timestamps recede until hover */
+.msg-time{
+  font-size:10px;
+  opacity:0;
+  transition:opacity var(--dur-fast) linear;
+}
+.msg-row:hover .msg-time{opacity:0.75}
+
+/* fade gradient must match the new bubble surface */
+.msg-bubble.long-collapsed::after{
+  height:72px;
+  background:linear-gradient(transparent,var(--bg-surface) 82%);
+}
+.msg-row.user .msg-bubble.long-collapsed::after{
+  background:linear-gradient(transparent,rgba(30,24,26,0.92) 86%);
+}
+
+/* ---------- 6. Header: thinner, quieter, sticky glass ---------- */
+.chat-header{
+  padding:14px 32px;
+  background:color-mix(in srgb,var(--bg-root) 78%,transparent);
+  backdrop-filter:blur(20px) saturate(1.4);
+  -webkit-backdrop-filter:blur(20px) saturate(1.4);
+  border-bottom:1px solid var(--border-subtle);
+  box-shadow:none;
+  min-height:56px;
+}
+
+.header-action{
+  padding:6px 12px;
+  font-size:var(--t-sm);
+  border-color:transparent;
+  background:transparent;
+  color:var(--text-muted);
+  gap:6px;
+}
+.header-action:hover{
+  background:var(--bg-elevated);
+  border-color:var(--border-subtle);
+  color:var(--text-primary);
+}
+/* ---------- 7. Input area ---------- */
+#input-area{
+  padding:14px 32px 22px;
+  background:linear-gradient(to top,var(--bg-root) 38%,color-mix(in srgb,var(--bg-root) 72%,transparent));
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-top:1px solid var(--border-subtle);
+  box-shadow:none;
+  gap:10px;
+}
+
+#input-row{
+  background:var(--bg-surface);
+  border:1px solid var(--border-moderate);
+  border-radius:18px;
+  padding:5px 7px 5px 17px;
+  box-shadow:var(--bezel),var(--shadow-sm);
+  transition:border-color var(--dur-fast) linear,box-shadow var(--dur-fast) linear;
+}
+#input-row:focus-within{
+  border-color:rgba(224,139,139,0.42);
+  box-shadow:var(--bezel),0 0 0 3px var(--accent-glow),var(--shadow-md);
+}
+
+#msg-input{
+  font-size:var(--t-base);
+  line-height:1.6;
+  min-height:40px;
+  max-height:200px;
+  padding:9px 0;
+}
+#msg-input::placeholder{color:var(--text-muted);opacity:0.75}
+/* tool cluster: one recessed well, hairline separators, no text slashes */
+.paint-btn-group{
+  background:rgba(255,255,255,0.035);
+  border:1px solid var(--border-subtle);
+  border-radius:12px;
+  padding:2px;
+  gap:1px;
+  overflow:visible;
+}
+.paint-mode-divider{
+  font-size:0;
+  width:1px;
+  height:16px;
+  background:var(--border-subtle);
+  opacity:1;
+  margin:0 1px;
+  flex:none;
+}
+.paint-btn-group .input-action{
+  border-radius:9px;
+  padding:0;
+  width:32px;
+  height:30px;
+}
+.paint-btn-group .input-action:hover{background:var(--bg-overlay);color:var(--text-primary)}
+.input-action i{font-size:16px}
+
+#send-btn{
+  border-radius:var(--radius-full);
+  background:var(--accent);
+  color:var(--text-inverse);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.22),0 2px 10px rgba(224,139,139,0.24);
+  transition:background var(--dur-fast) linear,transform var(--dur-fast) var(--ease-spring),box-shadow var(--dur-fast) linear;
+}
+#send-btn:hover{
+  background:var(--accent-hover);
+  transform:translateY(-1px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.28),0 5px 18px rgba(224,139,139,0.32);
+}
+#send-btn:active{background:var(--accent-press);transform:translateY(0) scale(0.97)}
+/* ---------- 8. Sidebar ---------- */
+#sidebar{
+  width:296px;
+  background:color-mix(in srgb,var(--bg-root) 92%,transparent);
+  backdrop-filter:blur(24px);
+  -webkit-backdrop-filter:blur(24px);
+  border-right:1px solid var(--border-subtle);
+}
+#sidebar.open{
+  box-shadow:1px 0 0 var(--border-subtle),var(--shadow-lg);
+}
+
+.sidebar-handle{
+  width:20px;height:64px;
+  border-radius:0 10px 10px 0;
+  border-left:none;
+  background:var(--bg-surface);
+  color:var(--text-muted);
+  box-shadow:var(--shadow-sm);
+  transition:background var(--dur-fast) linear,color var(--dur-fast) linear,width var(--dur-fast) var(--ease-spring);
+}
+.sidebar-handle:hover{
+  width:24px;
+  background:var(--bg-elevated);
+  color:var(--accent);
+}
+
+/* avatar block: real depth, tighter ring */
+.char-avatar{
+  box-shadow:0 0 0 1px var(--border-moderate),var(--shadow-md);
+}
+.char-avatar:hover{
+  box-shadow:0 0 0 1px rgba(224,139,139,0.4),var(--shadow-lg);
+}
+/* session rows: active state uses a rail, not just a wash */
+.session-item{
+  border-radius:10px;
+  position:relative;
+  transition:background var(--dur-fast) linear,color var(--dur-fast) linear;
+}
+.session-item::before{
+  content:'';
+  position:absolute;
+  left:0;top:50%;
+  width:2px;height:0;
+  border-radius:99px;
+  background:var(--accent);
+  transform:translateY(-50%);
+  transition:height var(--dur-normal) var(--ease-spring);
+}
+.session-item.active::before{height:62%}
+.session-item.active{
+  background:var(--accent-soft);
+  font-weight:500;
+}
+.session-msg-count{
+  font-size:10px;
+  color:var(--text-muted);
+  opacity:0.7;
+}
+
+.info-label{
+  font-size:10px;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  color:var(--text-muted);
+}
+.info-text{
+  font-size:var(--t-sm);
+  line-height:1.65;
+  color:var(--text-secondary);
+}
+
+.tag{
+  border-radius:99px;
+  font-size:10.5px;
+  padding:3px 9px;
+  background:rgba(255,255,255,0.045);
+  border:1px solid var(--border-subtle);
+  color:var(--text-secondary);
+}
+
+.skill-btn{
+  border-radius:10px;
+  transition:background var(--dur-fast) linear,color var(--dur-fast) linear,transform var(--dur-fast) var(--ease-spring);
+}
+.skill-btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+/* ---------- 9. Typing + streaming feedback ---------- */
+.typing-dots{gap:5px;padding:5px 1px}
+.typing-dots span{
+  width:6px;height:6px;
+  background:var(--accent);
+  opacity:0.55;
+  animation:dotPulse 1.25s infinite var(--ease-out-expo);
+}
+@keyframes dotPulse{
+  0%,78%,100%{opacity:0.28;transform:translate3d(0,0,0) scale(0.82)}
+  38%{opacity:0.95;transform:translate3d(0,-2px,0) scale(1)}
+}
+
+.stream-cursor{
+  width:2px;
+  border-radius:1px;
+  animation:blink 1s steps(2,jump-none) infinite;
+}
+
+/* ---------- 10. Focus visibility (keyboard only) ---------- */
+:where(button,a,input,textarea,select,[tabindex]):focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+  border-radius:var(--radius-sm);
+}
+:where(button,a,input,textarea,select):focus:not(:focus-visible){outline:none}
+#msg-input:focus-visible{outline:none}
+
+/* ---------- 11. Selection ---------- */
+::selection{
+  background:rgba(224,139,139,0.28);
+  color:var(--text-primary);
+}
+/* ---------- 12. Tabs, toasts, panels ---------- */
+.main-tab{
+  font-size:var(--t-sm);
+  letter-spacing:-0.01em;
+  position:relative;
+}
+.main-tab.active{
+  color:var(--text-primary);
+  box-shadow:none;
+}
+.main-tab.active::after{
+  content:'';
+  position:absolute;
+  left:12px;right:12px;bottom:0;
+  height:2px;
+  border-radius:99px 99px 0 0;
+  background:var(--accent);
+}
+
+.toast{
+  border-radius:12px;
+  background:color-mix(in srgb,var(--bg-elevated) 90%,transparent);
+  border:1px solid var(--border-moderate);
+  box-shadow:var(--shadow-lg);
+  font-size:var(--t-sm);
+}
+
+#settings-panel{
+  background:color-mix(in srgb,var(--bg-root) 94%,transparent);
+  border:1px solid var(--border-moderate);
+  box-shadow:var(--shadow-lg);
+}
+
+.dash-service-row{
+  background:var(--bg-surface);
+  box-shadow:var(--bezel);
+  border-radius:12px;
+  transition:background var(--dur-fast) linear,border-color var(--dur-fast) linear,transform var(--dur-fast) var(--ease-spring);
+}
+.dash-service-row:hover{
+  background:var(--bg-elevated);
+  border-color:var(--border-moderate);
+  box-shadow:var(--bezel),var(--shadow-md);
+  transform:translateY(-1px);
+}
+
+/* studio + settings inputs get consistent focus treatment */
+.studio-input:focus,
+.studio-select:focus,
+.studio-textarea:focus,
+.plugin-select:focus,
+.plugin-number-input:focus,
+#search-input:focus{
+  outline:none;
+  border-color:rgba(224,139,139,0.45);
+  box-shadow:0 0 0 3px var(--accent-glow);
+}
+/* ---------- 16. Message action row (edit / regenerate) ----------
+   These buttons live INSIDE the vertical content column, directly under the
+   bubble. main.css positions .msg-edit-btn absolutely (right:8px/top:8px),
+   which only made sense while the row was a direct child of .msg-row; that
+   pinned it beside the bubble. Reset to static flex flow here. */
+.msg-btns{
+  display:flex;
+  gap:2px;
+  margin-top:3px;
+  padding:0 2px;
+  opacity:0;
+  transition:opacity var(--dur-fast) linear;
+}
+.msg-row:hover .msg-btns,
+.msg-row:focus-within .msg-btns{opacity:1}
+
+/* user messages are right-aligned, so their controls should be too */
+.msg-row.user .msg-btns{justify-content:flex-end}
+
+.msg-btns .msg-edit-btn,
+.msg-btns .msg-regen-btn{
+  position:static;
+  right:auto;
+  top:auto;
+  opacity:1;
+  width:26px;
+  height:26px;
+  padding:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid transparent;
+  background:transparent;
+  border-radius:8px;
+  color:var(--text-muted);
+  cursor:pointer;
+  transition:background var(--dur-fast) linear,color var(--dur-fast) linear,border-color var(--dur-fast) linear;
+}
+.msg-btns .msg-edit-btn i,
+.msg-btns .msg-regen-btn i{font-size:14px}
+
+.msg-btns .msg-edit-btn:hover,
+.msg-btns .msg-regen-btn:hover{
+  background:var(--bg-elevated);
+  border-color:var(--border-subtle);
+  color:var(--text-primary);
+}
+.msg-btns .msg-regen-btn:hover{color:var(--accent)}
+.msg-btns .msg-regen-btn:active{transform:scale(0.94)}
+
+/* keep the hover-reveal rule in main.css from re-showing the old absolute btn */
+.msg-row:hover .msg-edit-btn{opacity:1}
+/* ---------- 17. Branch tree bar ----------
+   Sits above the bubble inside the content column. */
+.msg-branch-info{
+  padding:0 2px 5px;
+  font-size:10.5px;
+  gap:5px;
+  flex-wrap:wrap;
+}
+.branch-dot{color:var(--accent);opacity:0.8}
+.branch-label{
+  font-weight:500;
+  opacity:0.8;
+  font-variant-numeric:tabular-nums;
+}
+.branch-switcher{gap:3px;margin-left:2px}
+
+.branch-btn{
+  width:auto;
+  min-width:24px;
+  height:19px;
+  padding:0 6px;
+  line-height:17px;
+  border-radius:5px;
+  background:rgba(255,255,255,0.04);
+  border:1px solid var(--border-subtle);
+  transition:background var(--dur-fast) linear,color var(--dur-fast) linear,border-color var(--dur-fast) linear;
+}
+.branch-btn:hover{
+  background:var(--bg-elevated);
+  color:var(--text-primary);
+  /* main.css referenced --border, which is not a defined token */
+  border-color:var(--border-moderate);
+}
+.branch-btn.active{
+  background:var(--accent);
+  color:var(--text-inverse);
+  border-color:var(--accent);
+  font-weight:600;
+}
+.branch-btn.old{opacity:0.4;text-decoration:line-through}
+
+/* ---------- 19. Image (paint) message re-roll ---------- */
+.msg-btns .msg-repaint-btn{color:var(--accent);opacity:0.85}
+.msg-btns .msg-repaint-btn:hover{
+  color:var(--accent-hover);
+  background:var(--accent-soft);
+  border-color:rgba(224,139,139,0.3);
+  opacity:1;
+}
+.msg-btns .msg-repaint-btn.is-disabled,
+.msg-btns .msg-repaint-btn:disabled{
+  color:var(--text-muted);
+  opacity:0.4;
+  cursor:not-allowed;
+}
+.msg-btns .msg-repaint-btn.is-disabled:hover,
+.msg-btns .msg-repaint-btn:disabled:hover{
+  background:transparent;
+  border-color:transparent;
+  color:var(--text-muted);
+}
+
+/* image messages keep their controls visible: the bubble is a large target
+   and a hidden-until-hover control is easy to miss on media */
+.msg-row:has(.paint-msg) .msg-btns{opacity:0.65}
+.msg-row:has(.paint-msg):hover .msg-btns{opacity:1}
+
+/* in-flight state while the job runs */
+.msg-row.paint-regenerating .msg-media{
+  filter:brightness(0.55) saturate(0.6);
+  transition:filter var(--dur-normal) linear;
+}
+.msg-row.paint-regenerating .msg-bubble{
+  position:relative;
+  border-color:rgba(224,139,139,0.35);
+}
+.msg-row.paint-regenerating .msg-bubble::after{
+  content:'';
+  position:absolute;
+  top:50%;left:50%;
+  width:26px;height:26px;
+  margin:-13px 0 0 -13px;
+  border-radius:50%;
+  border:2px solid rgba(255,255,255,0.18);
+  border-top-color:var(--accent);
+  animation:repaintSpin 0.8s linear infinite;
+  pointer-events:none;
+}
+.msg-row.paint-regenerating .msg-repaint-btn{opacity:0.4;pointer-events:none}
+
+@keyframes repaintSpin{to{transform:rotate(360deg)}}
+
+@media (prefers-reduced-motion:reduce){
+  .msg-row.paint-regenerating .msg-bubble::after{animation:none;border-top-color:var(--accent)}
+}
+
+/* ---------- 20. Missing token referenced by main.css ---------- */
+:root{ --radius-xs:6px; }
+
+/* ---------- 14. Respect reduced motion ---------- */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:0.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:0.01ms !important;
+    scroll-behavior:auto !important;
+  }
+  .msg-row{animation:none}
+  #send-btn:hover,.skill-btn:hover,.dash-service-row:hover{transform:none}
+}
+
+/* ---------- 15. Narrow viewports ---------- */
+@media (max-width:900px){
+  #messages{padding:20px 16px}
+  .chat-header{padding:12px 16px}
+  #input-area{padding:12px 16px 16px}
+  .msg-bubble{max-width:calc(100% - 54px)}
+}
