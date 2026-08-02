@@ -1,19 +1,36 @@
 {
-  "_comment": "Copy this file to openclaw.json and fill in your API keys. Then restart OpenClaw Gateway.",
+  "_comment": "Copy this file to openclaw.json and fill in your API keys. Then restart OpenClaw Gateway. Gemini 3.5 Flash 可用 Google AI Studio 免费 API key（https://aistudio.google.com/apikey），无需付费即可开玩。",
   "agents": {
     "defaults": {
       "workspace": "C:\\Users\\YOUR_USER\\.openclaw\\workspace",
       "models": {
+        "google/gemini-3.5-flash": { "alias": "Gemini 3.5 Flash (免费)" },
         "deepseek/deepseek-v4-flash": { "alias": "DeepSeek" },
         "deepseek/deepseek-v4-pro": { "alias": "DeepSeek Pro" },
         "x-ai/grok-4": { "alias": "Grok" }
       },
-      "model": "deepseek/deepseek-v4-flash"
+      "model": "google/gemini-3.5-flash"
     }
   },
   "models": {
     "mode": "merge",
     "providers": {
+      "google": {
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "api": "openai-completions",
+        "apiKey": "YOUR_GEMINI_API_KEY_HERE",
+        "models": [
+          {
+            "id": "gemini-3.5-flash",
+            "name": "Gemini 3.5 Flash (免费)",
+            "api": "openai-completions",
+            "reasoning": false,
+            "input": ["text"],
+            "contextWindow": 1048576,
+            "maxTokens": 65536
+          }
+        ]
+      },
       "deepseek": {
         "baseUrl": "https://api.deepseek.com/v1",
         "api": "openai-completions",
