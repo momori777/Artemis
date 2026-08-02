@@ -18,9 +18,7 @@
     "defaults": {
       "model": {
         "primary": "llama/qwen3.6-35b",
-        "fallbacks": [
-          "zai/deepseek-v4-pro"
-        ]
+        "fallbacks": []
       },
       "timeoutSeconds": 600
     }
@@ -65,70 +63,6 @@
         ],
         "timeoutSeconds": 600
       },
-      "zai": {
-        "baseUrl": "https://proaiapi.tech/v1",
-        "api": "openai-completions",
-        "apiKey": "",
-        "models": [
-          {
-            "id": "glm-5.2",
-            "name": "GLM-5.2",
-            "contextWindow": 204800,
-            "maxTokens": 131072,
-            "reasoning": true
-          },
-          {
-            "id": "claude-opus-5",
-            "name": "claude-opus-5",
-            "contextWindow": 400000,
-            "maxTokens": 16000,
-            "reasoning": true
-          },
-          {
-            "id": "claude-opus-4-8",
-            "name": "claude-opus-4-8",
-            "contextWindow": 400000,
-            "maxTokens": 16000,
-            "reasoning": true
-          },
-          {
-            "id": "grok-4.5",
-            "name": "grok-4.5",
-            "contextWindow": 604800,
-            "maxTokens": 16000,
-            "reasoning": true
-          },
-          {
-            "id": "grok-4.2-fast",
-            "name": "grok-4.2-fast",
-            "contextWindow": 604800,
-            "maxTokens": 16000,
-            "reasoning": true
-          },
-          {
-            "id": "deepseek-v4-flash",
-            "name": "deepseek-v4-flash",
-            "contextWindow": 604800,
-            "maxTokens": 16000,
-            "reasoning": true
-          },
-          {
-            "id": "deepseek-v4-pro",
-            "name": "deepseek-v4-pro",
-            "contextWindow": 604800,
-            "maxTokens": 131072,
-            "reasoning": true
-          },
-          {
-            "id": "glm-4-flash",
-            "name": "GLM-4-Flash",
-            "contextWindow": 128000,
-            "maxTokens": 8192,
-            "reasoning": false
-          }
-        ],
-        "timeoutSeconds": 600
-      },
       "local-llama": {
         "baseUrl": "http://127.0.0.1:19251/v1",
         "api": "openai-completions",
@@ -155,62 +89,6 @@
             "contextWindow": 12000,
             "maxTokens": 8096,
             "reasoning": true
-          },
-          {
-            "id": "glm-5.2",
-            "name": "GLM-5.2 via Headroom",
-            "contextWindow": 204800,
-            "maxTokens": 131072,
-            "reasoning": true
-          },
-          {
-            "id": "claude-opus-5",
-            "name": "claude-opus-5 via Headroom",
-            "contextWindow": 400000,
-            "maxTokens": 16000,
-            "reasoning": true
-          },
-          {
-            "id": "claude-opus-4-8",
-            "name": "claude-opus-4-8 via Headroom",
-            "contextWindow": 400000,
-            "maxTokens": 16000,
-            "reasoning": true
-          },
-          {
-            "id": "grok-4.5",
-            "name": "grok-4.5 via Headroom",
-            "contextWindow": 604800,
-            "maxTokens": 16000,
-            "reasoning": true
-          },
-          {
-            "id": "grok-4.2-fast",
-            "name": "grok-4.2-fast via Headroom",
-            "contextWindow": 604800,
-            "maxTokens": 16000,
-            "reasoning": true
-          },
-          {
-            "id": "deepseek-v4-flash",
-            "name": "deepseek-v4-flash via Headroom",
-            "contextWindow": 604800,
-            "maxTokens": 16000,
-            "reasoning": true
-          },
-          {
-            "id": "deepseek-v4-pro",
-            "name": "deepseek-v4-pro via Headroom",
-            "contextWindow": 604800,
-            "maxTokens": 131072,
-            "reasoning": true
-          },
-          {
-            "id": "glm-4-flash",
-            "name": "GLM-4-Flash via Headroom",
-            "contextWindow": 128000,
-            "maxTokens": 8192,
-            "reasoning": false
           }
         ]
       }
