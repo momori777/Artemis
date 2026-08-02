@@ -8,7 +8,41 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+
+MODEL_SLOT_CHAT = "chat"
+MODEL_SLOT_VISION_CHAT = "vision_chat"
+MODEL_SLOT_MEMORY_CURATION = "memory_curation"
+
+MODEL_SLOT_ORDER = (
+    MODEL_SLOT_CHAT,
+    MODEL_SLOT_VISION_CHAT,
+    MODEL_SLOT_MEMORY_CURATION,
+)
+
+MODEL_SLOT_UI_ORDER = (
+    MODEL_SLOT_CHAT,
+    MODEL_SLOT_VISION_CHAT,
+    MODEL_SLOT_MEMORY_CURATION,
+)
+
+MODEL_SLOT_LABELS = {
+    MODEL_SLOT_CHAT: "聊天模型",
+    MODEL_SLOT_VISION_CHAT: "视觉模型",
+    MODEL_SLOT_MEMORY_CURATION: "记忆整理模型",
+}
+
+MODEL_SLOT_DESCRIPTIONS = {
+    MODEL_SLOT_CHAT: "全局默认的角色聊天模型，必填。",
+    MODEL_SLOT_VISION_CHAT: "当聊天模型不支持图片，或想要自定义视觉模型时使用；留空则由聊天模型直接看原图。",
+    MODEL_SLOT_MEMORY_CURATION: "用于自动整理长期记忆；留空则继承聊天模型。",
+}
+
+MODEL_SLOT_FALLBACKS = {
+    MODEL_SLOT_VISION_CHAT: (MODEL_SLOT_CHAT,),
+    MODEL_SLOT_MEMORY_CURATION: (MODEL_SLOT_CHAT,),
+}
 
 
 # ---- API 配置 ----
@@ -17,25 +51,100 @@ from dataclasses import dataclass
 class ApiSettings:
     """LLM API 连接配置。"""
 
-    base_url: str = "https://api.openai.com/v1"
+    base_url: str = ""
     api_key: str = ""
-    model: str = "gpt-4.1-mini"
+    model: str = ""
     timeout_seconds: int = 60
+    # 角色对话生成参数；None 表示沿用内置默认/不发送该参数，保持历史行为。
+    temperature: float | None = None
+    top_p: float | None = None
+    max_tokens: int | None = None
 
 
-# ---- 调试日志 ----
+@dataclass(frozen=True)
+class ApiConfigProfile:
+    """单条 API 供应商配置，包含 base_url、api_key、别名和该供应商模型列表。
+
+    模型列表属于供应商，功能槽位只能选择某个供应商下已添加的模型。
+    """
+
+    id: str
+    alias: str
+    base_url: str
+    api_key: str = ""
+    models: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class ModelSlotSelection:
+    """某个功能槽位选中的供应商和模型；空值表示继承。"""
+
+    profile_id: str = ""
+    model: str = ""
+
+    @property
+    def configured(self) -> bool:
+        return bool(self.profile_id.strip() and self.model.strip())
+
+
+@dataclass(frozen=True)
+class ModelSelectionSettings:
+    """各功能实际使用的模型配置。"""
+
+    chat: ModelSlotSelection = field(default_factory=ModelSlotSelection)
+    vision_chat: ModelSlotSelection | None = None
+    memory_curation: ModelSlotSelection | None = None
+
+    def get(self, slot: str) -> ModelSlotSelection | None:
+        if slot == MODEL_SLOT_CHAT:
+            return self.chat
+        if slot == MODEL_SLOT_VISION_CHAT:
+            return self.vision_chat
+        if slot == MODEL_SLOT_MEMORY_CURATION:
+            return self.memory_curation
+        return None
+
+    @property
+    def vision_profile_id(self) -> str:
+        selection = self.vision_chat or self.chat
+        return selection.profile_id
+
+    @property
+    def vision_model(self) -> str:
+        selection = self.vision_chat or self.chat
+        return selection.model
+
+    @property
+    def text_enabled(self) -> bool:
+        return self.vision_chat is not None
+
+    @property
+    def text_profile_id(self) -> str:
+        return self.chat.profile_id
+
+    @property
+    def text_model(self) -> str:
+        return self.chat.model
+
+
+# ---- 运行日志 ----
 
 @dataclass(frozen=True)
 class DebugLogSettings:
-    """调试日志配置。"""
+    """运行日志配置。"""
 
-    enabled: bool = False
+    enabled: bool = True
     body_enabled: bool = False
-    file_enabled: bool = False
+    file_enabled: bool = True
+    profile: str = "info"
+    # 开发者选项:舞台调试框(画窗口/布局/实际立绘三框 + DPR 数值,排查布局/HiDPI)。
+    stage_debug_overlay: bool = False
+    # 舞台碰撞遮罩(默认开):setMask 到内容矩形并集,立绘四周空白点击穿透,避免误拖/挡点击。
+    stage_collision_mask: bool = True
 
 
-# ---- TTS 配置 (存根，实际实现在 app/voice/tts.py) ----
-# GPTSoVITSTTSSettings 仍在 app/voice/tts.py 中定义，
+# ---- TTS 配置 (存根，实际实现在 app/voice/tts_settings.py) ----
+# GPTSoVITSTTSSettings 在 app/voice/tts_settings.py 中定义，
 # 因其包含 validate() 等逻辑方法，不适合纯数据容器。
 
 
@@ -43,8 +152,8 @@ class DebugLogSettings:
 # MCPRuntimeSettings 在 app/agent/mcp/settings.py 中定义
 
 
-# ---- 主动关怀 ----
-# ProactiveCareSettings 在 app/agent/proactive_care.py 中定义
+# ---- 主动屏幕感知 ----
+# ScreenAwarenessSettings 在 app/agent/screen_awareness.py 中定义
 
 
 # ---- 记忆整理 ----

@@ -55,10 +55,7 @@ class PendingToolAction:
         created_at: str = "",
         tool_call_id: str = "",
         continuation_messages: list[dict[str, Any]] | None = None,
-        risk: str = "",
     ) -> None:
-        """兼容旧调用点；risk 已迁移到 Tool 元数据，这里只忽略保留入参。"""
-        del risk
         object.__setattr__(self, "id", id.strip() or uuid.uuid4().hex[:8])
         object.__setattr__(self, "tool_name", tool_name)
         object.__setattr__(self, "arguments", dict(arguments))
@@ -165,3 +162,4 @@ class AgentResult:
     reply: ChatReply
     actions: list[AgentAction] = field(default_factory=list)
     _debug: dict[str, Any] | None = field(default=None)
+    visual_observation: dict[str, Any] | None = None

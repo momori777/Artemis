@@ -9,35 +9,18 @@ echo ========================================
 echo.
 
 REM ============================================================
-REM 检测 Python：runtime > Python 3.10 > Python 3.11 > Python 3.12 > 系统Python
-REM  PySide6 对 Python 3.13+ 兼容性不佳，优先使用 3.10-3.12
+REM 检测 Python：只使用 runtime/python.exe
 REM ============================================================
-setlocal enabledelayedexpansion
 if exist "%PRJ_ROOT%\runtime\python.exe" (
     set "PYTHON_EXE=%PRJ_ROOT%\runtime\python.exe"
     echo [OK] 找到 runtime\python.exe
 ) else (
-    echo [提示] 未找到内置 Python，查找系统 Python 3.10-3.12...
-    set "PYTHON_EXE="
-    set "PYTHON_310=!LOCALAPPDATA!\Programs\Python\Python310\python.exe"
-    set "PYTHON_311=!LOCALAPPDATA!\Programs\Python\Python311\python.exe"
-    set "PYTHON_312=!LOCALAPPDATA!\Programs\Python\Python312\python.exe"
-    if exist "!PYTHON_310!" set "PYTHON_EXE=!PYTHON_310!"
-    if exist "!PYTHON_311!" if "!PYTHON_EXE!"=="" set "PYTHON_EXE=!PYTHON_311!"
-    if exist "!PYTHON_312!" if "!PYTHON_EXE!"=="" set "PYTHON_EXE=!PYTHON_312!"
-    if not "!PYTHON_EXE!"=="" (
-        echo [OK] 使用 !PYTHON_EXE!
-    ) else (
-        where python > nul 2>&1
-        if errorlevel 1 (
-            echo [错误] 未检测到 Python 3.10-3.12，请安装 Python 或下载完整 release 包
-            echo        https://www.python.org/downloads/
-            pause
-            exit /b 1
-        )
-        set "PYTHON_EXE=python"
-        echo [OK] 使用系统 Python
-    )
+    echo [错误] 未找到 runtime\python.exe
+    echo         请前往 GitHub Releases 下载 runtime 运行时文件加入目录:
+    echo         https://github.com/Rvosy/sakura/releases
+    pause
+    exit /b 1
+)
 
 REM ============================================================
 REM 检测非 ASCII 路径（PySide6 在非英文路径下会崩溃）
@@ -65,10 +48,7 @@ echo.
 echo [1/2] 安装 Python 依赖...
 echo.
 
-"%PYTHON_EXE%" -m pip install -r "%PRJ_ROOT%\requirements.txt" ^
-    -i https://mirrors.aliyun.com/pypi/simple ^
-    --extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple ^
-    --extra-index-url https://pypi.org/simple
+"%PYTHON_EXE%" -m pip install -r "%PRJ_ROOT%\requirements.txt" -i https://mirrors.aliyun.com/pypi/simple --extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple --no-warn-script-location
 
 if errorlevel 1 (
     echo.
