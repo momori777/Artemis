@@ -260,7 +260,8 @@
     paint_need_pos:          { zh: '请输入正向提示词',     ja: 'ポジティブプロンプトを入力してください', en: 'Please enter a positive prompt' },
     paint_cancel:            { zh: '取消',                 ja: 'キャンセル',           en: 'Cancel' },
     paint_generate:          { zh: '生成',                 ja: '生成',                 en: 'Generate' },
-    paint_stop_llama_hint:   { zh: '将停止 llama 以释放显存（生成后自动重启）', ja: 'llamaを停止してVRAM解放（生成後に自動再開）', en: 'Will stop llama to free VRAM (auto-restarts after)' },
+    paint_stop_llama_hint:   { zh: '将停止 llama 以释放资源（生成后自动重启）', ja: 'llamaを停止して資源解放（生成後に自動再開）', en: 'Will stop llama to free resources (auto-restarts after)' },
+    paint_keep_llama_hint:   { zh: 'llama 保持运行（未停止）', ja: 'llama 稼働中（停止しない）', en: 'llama stays running (not stopped)' },
 
     // Forced injection (auto paint / regenerate)
     paint_forced_title:      { zh: '🔒 AI 自动画图强制注入', ja: '🔒 AI自動描画の強制注入', en: '🔒 Forced Injection (Auto Paint)' },
