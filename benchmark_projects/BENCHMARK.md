@@ -246,3 +246,48 @@
 在"AI 女友"这个细分赛道上，它是唯一一个集成了本地 LLM + ComfyUI 画图 + GPT-SoVITS 语音 + Live2D + 后宫系统 + SillyTavern 兼容 + 全离线 NSFW 的项目。
 
 能打。但不是和大项目正面打，而是在它们覆盖不到的缝隙里，把一件事做到极致。
+
+---
+
+# 2026-08-02 更新：六项目深度源码分析
+
+> 分析方式：本地源码逐项深度分析（airi / Artemis / companion-app / neko / SillyTavern / super-agent-party）
+> 详细报告：`2026-08-02-*.md`（本目录，7 份，含总对比）
+
+## 六项目总览（源码核实）
+
+| 维度 | airi | Artemis | companion-app | neko | SillyTavern | super-agent-party |
+|---|---|---|---|---|---|---|
+| **定位** | 数字生命/灵魂容器 | 100% 本地 AI 女友 | a16z 教学模板 | 赛博猫娘陪伴平台 | LLM 聊天前端工具 | 桌面伴侣+Agent 全家桶 |
+| **许可证** | MIT | CC BY-NC 4.0（禁商用） | MIT | Apache-2.0 | AGPL-3.0 | AGPL-3.0 |
+| **维护状态** | 非常活跃 | 活跃 | ❌ 停更（2023） | 极其活跃 | 非常活跃 | 非常活跃 |
+| **契合度** | 8.5/10 | 9/10 | 参考级 | **9.5/10** | 9/10（工具） | 8/10 |
+
+## 能力矩阵（源码证据）
+
+| 能力 | airi | Artemis | companion-app | neko | SillyTavern | super-agent-party |
+|---|---|---|---|---|---|---|
+| **LLM 后端** | ★★★★★ 30+ | ★★★★★ 本地+云端 | ★★★☆ | ★★★★★ 14+含免费通道 | ★★★★★ 36 后端 | ★★★★★ |
+| **记忆** | ★★☆ 未发布 | ★★★★★ mem0+Qdrant | ★★★☆ 浅 | ★★★★★ 五维记忆 | ★★★★☆ 世界书+RAG | ★★★★☆ mem0+RAG |
+| **语音** | ★★★☆ | ★★★★★ GPT-SoVITS+Whisper | ❌ | ★★★★★ 实时语音+克隆 | ★★★★★ 28 TTS | ★★★★★ |
+| **虚拟形象** | ★★★★★ Live2D/VRM/MMD | ★★★★☆ Live2D+桌宠 | ❌ | ★★★★★ 五形态+VMC | ★★★★☆ 挂载点 | ★★★★★ VRM/THA/VTS 三套 |
+| **Agent** | ★★★★ 游戏/MCP | ★★★★★ OpenClaw+MCP | ★★☆ | ★★★★☆ 电脑操作/MCP/A2A | ★★★★ 工具调用 | ★★★★★ 全功能 |
+| **多渠道** | ★★★★★ 全平台 | ★★★★★ QQ/TG/Web | ★★★★ Web+SMS | ★★★★☆ 全渠道+直播 | ★★★★ Web | ★★★★★ 全平台机器人 |
+
+## 与旧版 BENCHMARK 结论的差异
+
+1. **AIRI Star 数修正**：旧版写 41k，源码分析核实为约 1 万+（Trendshift/PH 收录，本地无法精确核实）。
+2. **记忆系统**：旧版认为 AIRI 无长期记忆（WIP），本次核实确认其 memory-pgvector/DuckDB 包已有雏形但产品级 Memory Bank 未发布——维持"待落地"判断。
+3. **新增项目**：neko（Apache-2.0，五维记忆+实时语音+五形态形象+Steam 生态，综合评分最高 9.5/10）、companion-app（a16z 教学模板，停更）、super-agent-party（AGPL，全渠道 Agent 平台，陪伴内核偏浅）。
+4. **Artemis 定位再确认**：在"本地隐私 + 后宫切换 + 全离线 NSFW"维度仍是最强；neko 是综合最强竞品，super-agent-party 渠道最广，airi 形态最完整但记忆未落地。
+
+## 综合排名（AI 陪伴场景契合度）
+
+1. 🥇 **neko 9.5/10** — 功能密度+工程化+生态闭环综合最强
+2. 🥈 **Artemis 9/10** — 本地隐私场景最优（契合度满分但门槛高）
+3. 🥈 **SillyTavern 9/10** — 前端工具标杆（定位不同，生态为王）
+4. 🥉 **airi 8.5/10** — 形态上限最高，记忆未落地
+5. **super-agent-party 8/10** — 全渠道 Agent 平台，陪伴内核偏浅
+6. **companion-app 参考级** — 教学模板，停更不可上线
+
+**结论**：Artemis 的"本地女友"缝隙定位依旧成立；若要与 neko 正面竞争，优先级是补实时语音链路与更深的记忆分层（facts→reflections→persona 模式可借鉴）。
