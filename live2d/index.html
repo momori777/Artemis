@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>shiki natsume</title>
+<title>final / shiki_natsume.model3.json</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 html, body { width:100%; height:100%; overflow:hidden; background:transparent; }
@@ -57,7 +57,7 @@ canvas { display:block; }
 <script src="/plid-v5-bundle.js"></script>
 
 <script>
-var MODEL='/model/shiki_natsume/final/shiki_natsume.model3.json';
+var MODEL='/shiki_natsume/final/shiki_natsume.model3.json';
 var st=document.getElementById('status'), ws, app, model;
 
 // ========== Real Audio-Driven Lip-Sync Engine ==========
@@ -264,6 +264,12 @@ function connectWS(){
           if (d.running) { b.textContent = '🔊 TTS'; b.classList.add('on'); }
           else { b.textContent = '🔇 TTS'; b.classList.remove('on'); }
         }
+      }
+
+      // Model switched from the settings panel — reload to pick it up
+      if (d.type === 'model_changed') {
+        log('model changed → ' + (d.title || d.model) + ' (reloading)');
+        setTimeout(function() { location.reload(); }, 300);
       }
     } catch(_) {}
   };

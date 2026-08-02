@@ -13,6 +13,7 @@ from app.voice.tts_bundle import (
     GPUInfo,
     TTSBundleEntry,
     cleanup_stale_download_archives,
+    default_provider_bundle_notice,
     default_provider_bundle_work_dir,
     download_and_extract_bundle,
     find_pending_bundle_migrations,
@@ -23,9 +24,10 @@ from app.voice.tts_bundle import (
 
 
 class FakeResponse:
-    def __init__(self, data: bytes) -> None:
+    def __init__(self, data: bytes, status: int = 200) -> None:
         self._data = data
         self._offset = 0
+        self._status = status
 
     def __enter__(self) -> "FakeResponse":
         return self
@@ -41,6 +43,9 @@ class FakeResponse:
         chunk = self._data[self._offset : self._offset + size]
         self._offset += len(chunk)
         return chunk
+
+    def getcode(self) -> int:
+        return self._status
 
 
 def test_tts_bundle_downloads_to_part_then_verifies_and_extracts() -> None:
@@ -72,7 +77,7 @@ def test_tts_bundle_downloads_to_part_then_verifies_and_extracts() -> None:
     assert not archive.with_name(f"{archive.name}.part").exists()
     assert work_dir == (root / "tts" / entry.key).resolve()
     assert (work_dir / "api_v2.py").exists()
-    assert statuses == ["verify", "download", "extract", "cleanup"]
+    assert statuses == ["verify", "download", "extract", "install", "cleanup"]
     assert progress[-1] == 100
 
 
@@ -104,12 +109,111 @@ def test_tts_bundle_verifies_cached_archive_with_progress() -> None:
 
     assert work_dir == (root / "tts" / entry.key).resolve()
     assert not archive.exists()
-    assert statuses == ["verify", "extract", "cleanup"]
+    assert statuses == ["verify", "extract", "install", "cleanup"]
     assert 10 in progress
     assert progress[-1] == 100
 
 
-def test_tts_bundle_download_removes_part_on_verification_failure() -> None:
+def test_tts_bundle_resumes_part_download_with_range_request() -> None:
+    root = _runtime_root("bundle_resume")
+    payload = b"sakura-resumable-tts-bundle" * 32
+    prefix = payload[:128]
+    suffix = payload[128:]
+    entry = _entry(payload)
+    archive = root / "tts" / "_dl" / entry.filename
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    archive.with_name(f"{archive.name}.part").write_bytes(prefix)
+    progress: list[tts_bundle.TTSBundleDownloadProgress] = []
+    seen_range: list[str | None] = []
+
+    def fake_urlopen(request, timeout: int):  # type: ignore[no-untyped-def]
+        assert timeout == 600
+        seen_range.append(request.get_header("Range"))
+        return FakeResponse(suffix, status=206)
+
+    def fake_extract(_archive: Path, out_dir: Path) -> str | None:
+        (out_dir / "api_v2.py").write_text("fake", encoding="utf-8")
+        return None
+
+    work_dir = download_and_extract_bundle(
+        entry,
+        root,
+        on_download_progress=progress.append,
+        urlopen=fake_urlopen,
+        extractor=fake_extract,
+    )
+
+    assert work_dir == (root / "tts" / entry.key).resolve()
+    assert seen_range == [f"bytes={len(prefix)}-"]
+    assert any(item.resumed for item in progress)
+    assert not archive.exists()
+    assert not archive.with_name(f"{archive.name}.part").exists()
+
+
+def test_tts_bundle_falls_back_to_full_download_when_range_is_ignored() -> None:
+    root = _runtime_root("bundle_resume_fallback")
+    payload = b"sakura-full-redownload" * 32
+    stale_part = b"stale-partial"
+    entry = _entry(payload)
+    archive = root / "tts" / "_dl" / entry.filename
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    archive.with_name(f"{archive.name}.part").write_bytes(stale_part)
+    progress: list[tts_bundle.TTSBundleDownloadProgress] = []
+    seen_range: list[str | None] = []
+
+    def fake_urlopen(request, timeout: int):  # type: ignore[no-untyped-def]
+        assert timeout == 600
+        seen_range.append(request.get_header("Range"))
+        return FakeResponse(payload, status=200)
+
+    def fake_extract(_archive: Path, out_dir: Path) -> str | None:
+        (out_dir / "api_v2.py").write_text("fake", encoding="utf-8")
+        return None
+
+    work_dir = download_and_extract_bundle(
+        entry,
+        root,
+        on_download_progress=progress.append,
+        urlopen=fake_urlopen,
+        extractor=fake_extract,
+    )
+
+    assert work_dir == (root / "tts" / entry.key).resolve()
+    assert seen_range == [f"bytes={len(stale_part)}-"]
+    assert any(not item.resumed and item.downloaded_bytes == 0 for item in progress)
+    assert not archive.with_name(f"{archive.name}.part").exists()
+
+
+def test_tts_bundle_cancel_preserves_part_for_resume() -> None:
+    root = _runtime_root("bundle_cancel_preserve_part")
+    payload = b"sakura-cancel-resume" * 64
+    entry = _entry(payload)
+    checks = 0
+
+    def fake_urlopen(_request, timeout: int):  # type: ignore[no-untyped-def]
+        assert timeout == 600
+        return FakeResponse(payload)
+
+    def check_cancel() -> None:
+        nonlocal checks
+        checks += 1
+        raise tts_bundle.DownloadCancelledError("pause")
+
+    with pytest.raises(tts_bundle.DownloadCancelledError):
+        download_and_extract_bundle(
+            entry,
+            root,
+            check_cancel=check_cancel,
+            urlopen=fake_urlopen,
+            extractor=lambda *_args: None,
+        )
+
+    archive = root / "tts" / "_dl" / entry.filename
+    assert checks == 1
+    assert archive.with_name(f"{archive.name}.part").read_bytes() == payload
+
+
+def test_tts_bundle_download_preserves_part_on_short_download() -> None:
     root = _runtime_root("bundle_verify_failure")
     payload = b"too-short"
     entry = TTSBundleEntry(
@@ -126,6 +230,30 @@ def test_tts_bundle_download_removes_part_on_verification_failure() -> None:
         return FakeResponse(payload)
 
     with pytest.raises(RuntimeError, match="文件大小不匹配"):
+        download_and_extract_bundle(entry, root, urlopen=fake_urlopen, extractor=lambda *_args: None)
+
+    archive = root / "tts" / "_dl" / entry.filename
+    assert not archive.exists()
+    assert archive.with_name(f"{archive.name}.part").read_bytes() == payload
+
+
+def test_tts_bundle_download_removes_part_on_sha256_failure() -> None:
+    root = _runtime_root("bundle_sha_failure")
+    payload = b"wrong-hash"
+    entry = TTSBundleEntry(
+        key="demo",
+        label="Demo",
+        filename="demo.7z",
+        download_url="https://example.test/demo.7z",
+        size=len(payload),
+        sha256=hashlib.sha256(b"expected").hexdigest(),
+    )
+
+    def fake_urlopen(_request, timeout: int):  # type: ignore[no-untyped-def]
+        assert timeout == 600
+        return FakeResponse(payload)
+
+    with pytest.raises(RuntimeError, match="SHA256 不匹配"):
         download_and_extract_bundle(entry, root, urlopen=fake_urlopen, extractor=lambda *_args: None)
 
     archive = root / "tts" / "_dl" / entry.filename
@@ -233,7 +361,11 @@ def test_tts_bundle_default_provider_work_dir_uses_installed_root(monkeypatch: p
     runtime_python.parent.mkdir(parents=True)
     _write_fake_runtime_python(runtime_python)
 
-    assert default_provider_bundle_work_dir("gpt-sovits", root) == work_dir.resolve()
+    assert default_provider_bundle_work_dir(
+        "gpt-sovits",
+        root,
+        gpus=[GPUInfo("NVIDIA GeForce RTX 5080", 16.0)],
+    ) == work_dir.resolve()
 
 
 def test_tts_bundle_default_provider_prefers_short_installed_root(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -244,7 +376,74 @@ def test_tts_bundle_default_provider_prefers_short_installed_root(monkeypatch: p
     runtime_python.parent.mkdir(parents=True)
     _write_fake_runtime_python(runtime_python)
 
-    assert default_provider_bundle_work_dir("gpt-sovits", root) == work_dir.resolve()
+    assert default_provider_bundle_work_dir(
+        "gpt-sovits",
+        root,
+        gpus=[GPUInfo("NVIDIA GeForce RTX 5080", 16.0)],
+    ) == work_dir.resolve()
+
+
+def test_tts_bundle_default_provider_uses_nvidia50_when_both_installed(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(tts_bundle.sys, "platform", "win32")
+    root = _runtime_root("default_provider_both_installed_50")
+    _install_fake_bundle(root, tts_bundle.GPT_SOVITS_STANDARD)
+    _install_fake_bundle(root, tts_bundle.GPT_SOVITS_NVIDIA50)
+
+    work_dir = default_provider_bundle_work_dir(
+        "gpt-sovits",
+        root,
+        gpus=[GPUInfo("NVIDIA GeForce RTX 5080", 16.0)],
+    )
+
+    assert work_dir == (root / "tts" / "g50").resolve()
+    assert default_provider_bundle_notice(
+        "gpt-sovits",
+        root,
+        gpus=[GPUInfo("NVIDIA GeForce RTX 5080", 16.0)],
+    ) == ""
+
+
+def test_tts_bundle_default_provider_uses_standard_when_both_installed(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(tts_bundle.sys, "platform", "win32")
+    root = _runtime_root("default_provider_both_installed_40")
+    _install_fake_bundle(root, tts_bundle.GPT_SOVITS_STANDARD)
+    _install_fake_bundle(root, tts_bundle.GPT_SOVITS_NVIDIA50)
+
+    work_dir = default_provider_bundle_work_dir(
+        "gpt-sovits",
+        root,
+        gpus=[GPUInfo("NVIDIA GeForce RTX 4070", 12.0)],
+    )
+
+    assert work_dir == (root / "tts" / "gpt").resolve()
+    assert default_provider_bundle_notice(
+        "gpt-sovits",
+        root,
+        gpus=[GPUInfo("NVIDIA GeForce RTX 4070", 12.0)],
+    ) == ""
+
+
+def test_tts_bundle_notice_warns_when_only_nvidia50_installed_on_non_50_gpu(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(tts_bundle.sys, "platform", "win32")
+    root = _runtime_root("default_provider_wrong_nvidia50")
+    _install_fake_bundle(root, tts_bundle.GPT_SOVITS_NVIDIA50)
+
+    work_dir = default_provider_bundle_work_dir(
+        "gpt-sovits",
+        root,
+        gpus=[GPUInfo("NVIDIA GeForce RTX 4070", 12.0)],
+    )
+    notice = default_provider_bundle_notice(
+        "gpt-sovits",
+        root,
+        gpus=[GPUInfo("NVIDIA GeForce RTX 4070", 12.0)],
+    )
+
+    assert work_dir == root / "tts" / "gpt"
+    assert "50 系" in notice
+    assert "通用" in notice
 
 
 def test_tts_bundle_detects_and_migrates_legacy_install() -> None:
@@ -476,6 +675,48 @@ def test_tts_bundle_recommends_gptsovits_for_capable_nvidia(monkeypatch: pytest.
     assert tts_bundle.recommend_tts_bundle([GPUInfo("NVIDIA GeForce RTX 4070", 12.0)]).key == "gpt_sovits_v2pro"
     assert tts_bundle.recommend_tts_bundle([GPUInfo("NVIDIA GeForce RTX 5080", 16.0)]).key == "gpt_sovits_nvidia50"
     assert tts_bundle.recommend_tts_bundle([GPUInfo("NVIDIA GeForce RTX 5060", 7.96)]).key == "gpt_sovits_nvidia50"
+
+
+def test_list_nvidia_gpus_swallows_which_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    """复刻 CI 场景：伪造 win32 但宿主非 Windows，shutil.which 抛异常时应按未检测到 GPU 处理，而非崩溃。"""
+
+    # 伪造为 Windows，使 GPT-SoVITS 整合包在任意宿主上都判定为兼容，从而让推荐逻辑真正走到 GPU 探测。
+    monkeypatch.setattr(tts_bundle.sys, "platform", "win32")
+
+    def _boom(_name: str):  # type: ignore[no-untyped-def]
+        # 模拟非 Windows 宿主上 shutil.which 因 _winapi 缺失抛出的 AttributeError
+        raise AttributeError("'NoneType' object has no attribute 'NeedCurrentDirectoryForExePath'")
+
+    monkeypatch.setattr(tts_bundle.shutil, "which", _boom)
+
+    assert tts_bundle.list_nvidia_gpus(force_refresh=True) == []
+    # 上层推荐逻辑不应被探测异常打断
+    assert tts_bundle.recommend_gpt_sovits_bundle() is not None
+
+
+def test_list_nvidia_gpus_uses_ttl_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(tts_bundle, "_NVIDIA_GPU_CACHE", None)
+    monkeypatch.setattr(tts_bundle.shutil, "which", lambda _name: "nvidia-smi")
+    now = [100.0]
+    calls = {"run": 0}
+
+    class Result:
+        returncode = 0
+        stdout = "NVIDIA GeForce RTX 4070, 12288\n"
+
+    def fake_run(**_kwargs):  # type: ignore[no-untyped-def]
+        calls["run"] += 1
+        return Result()
+
+    monkeypatch.setattr(tts_bundle.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(tts_bundle.subprocess, "run", fake_run)
+
+    assert tts_bundle.list_nvidia_gpus(force_refresh=True) == [GPUInfo("NVIDIA GeForce RTX 4070", 12.0)]
+    now[0] += 1
+    assert tts_bundle.list_nvidia_gpus() == [GPUInfo("NVIDIA GeForce RTX 4070", 12.0)]
+    now[0] += 31
+    assert tts_bundle.list_nvidia_gpus() == [GPUInfo("NVIDIA GeForce RTX 4070", 12.0)]
+    assert calls["run"] == 2
 
 
 def test_tts_bundle_label_includes_approx_size() -> None:
@@ -742,7 +983,7 @@ def _entry(payload: bytes) -> TTSBundleEntry:
 
 
 def _runtime_root(name: str) -> Path:
-    root = Path(__file__).resolve().parents[2] / "__pycache__" / "test_runtime" / name / uuid.uuid4().hex
+    root = Path(__file__).resolve().parents[2] / "temp" / "test_runtime" / uuid.uuid4().hex / name
     root.mkdir(parents=True, exist_ok=True)
     return root
 
@@ -750,3 +991,11 @@ def _runtime_root(name: str) -> Path:
 def _write_fake_runtime_python(path: Path, content: str = "fake") -> None:
     path.write_text(content, encoding="utf-8")
     path.chmod(0o755)
+
+
+def _install_fake_bundle(root: Path, entry: TTSBundleEntry) -> Path:
+    work_dir = root / "tts" / {"gpt_sovits_v2pro": "gpt", "gpt_sovits_nvidia50": "g50"}[entry.key]
+    runtime_python = work_dir / "runtime" / "python.exe"
+    runtime_python.parent.mkdir(parents=True, exist_ok=True)
+    _write_fake_runtime_python(runtime_python)
+    return work_dir

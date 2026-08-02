@@ -5,7 +5,15 @@ from app.ui.manual_screenshot_overlay import (
     ManualScreenshotOverlay,
 )
 from app.ui.portrait_controller import PortraitController
-from app.ui.screen_capture import capture_virtual_desktop_pixmap
+from app.ui.screen_capture import (
+    ScreenCapture,
+    VirtualDesktopCapture,
+    capture_virtual_desktop,
+    capture_virtual_desktop_pixmap,
+    crop_logical_region,
+    draw_virtual_desktop_capture,
+    logical_to_device_rect,
+)
 from app.ui.styles import PET_WINDOW_STYLEHEET
 from app.ui.subtitle_controller import SubtitleController
 from app.ui.tool_confirmation_panel import ToolConfirmationPanel
@@ -15,7 +23,13 @@ __all__ = [
     "MANUAL_SCREENSHOT_MIN_SIZE",
     "ManualScreenshotOverlay",
     "PortraitController",
+    "ScreenCapture",
+    "VirtualDesktopCapture",
+    "capture_virtual_desktop",
     "capture_virtual_desktop_pixmap",
+    "crop_logical_region",
+    "draw_virtual_desktop_capture",
+    "logical_to_device_rect",
     "PET_WINDOW_STYLEHEET",
     "SubtitleController",
     "ToolConfirmationPanel",

@@ -2,90 +2,77 @@
 
 # Sakura Desktop Pet
 
-A desktop companion Agent — chats, changes expressions, speaks, remembers what you allow, and helps with tasks after confirmation. It is not just a "desktop pet + chat" but a desktop companion Agent.
+A desktop companion Agent — chats, changes expressions, speaks, remembers what you allow, and helps with tasks after confirmation.
 
-![Sakura Preview](../assets/sakura_01.png)
+> The current development version is `0.9.9-dev`. The latest stable Windows package is still `0.9.8`.
+
+![Sakura Preview](../assets/sakura_01.webp)
 
 ## Quick Start
 
-**Prerequisites:** Python 3.10+.
+> **On macOS?** See [MACOS_SETUP.md](MACOS_SETUP.md) before you begin.
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+1. Download `sakura-v0.9.8-windows-x64.zip` from [Releases](https://github.com/Rvosy/sakura/releases).
+2. Extract it to a path containing only ASCII characters.
+3. Run `install.bat`, then `start.bat`.
+4. Enter your OpenAI-compatible API details in the first-run setup.
 
-# Edit data/config/api.yaml with your API Key
-notepad data/config/api.yaml
+For source installs, macOS/Linux instructions, TTS, and upgrades, see the [Setup Guide](SETUP.md).
 
-python main.py
-```
+## Features
 
-**Minimal `data/config/api.yaml`:**
+- **Character-pack driven.** Personality card, portraits, voice references, and GPT-SoVITS weights are all bundled per character.
+- **Proactive.** Sakura observes context on a timer and speaks up on her own — you don't have to always start the conversation.
+- **Bilingual replies.** Model outputs Japanese dialogue + Chinese subtitle + mood tag; UI drives subtitles, expressions, and voice in sync.
+- **Fast local reactions.** Sakura can respond with a short in-character line while the full model reply is still being generated.
+- **Screen observation.** On-demand screenshots and autonomous visual summaries fed into the conversation context.
+- **Selected screenshots.** Capture a specific screen region from the input bar and attach it to the next message.
+- **Multiple model providers.** Save several API providers and choose separate models for chat, vision, and memory curation.
+- **Tool use.** Browser control, desktop actions, file read, web search, reminders, notes, and memory.
+- **Permission gate.** High-risk tool calls ask for user confirmation before executing.
+- **Long-term memory.** Layered memories, relevant recall, automatic curation, and manual editing.
+- **Plugins & MCP.** Local plugins, MCP servers, and a built-in web-search MCP server.
+- **Character Studio.** Create, edit, validate, and export `.char` packages from a graphical editor.
+- **Mobile web chat.** An optional plugin lets a phone share the desktop app's current character, history, and memory without exposing host tools.
+- **Windows updater.** `update.bat` verifies update archives and preserves user data while replacing program files.
 
-```yaml
-llm:
-  base_url: https://api.openai.com/v1
-  api_key: your_api_key_here
-  model: gpt-4.1-mini
-  timeout_seconds: 60
-```
+## Docs
 
-## Character Packs
+| Doc | Contents |
+|---|---|
+| [Setup Guide](SETUP.md) | Full install steps, character packs, TTS setup, updating |
+| [API Config Guide](API_CONFIG.md) | Base URL, API key, model selection, relay-provider setup |
+| [macOS Setup](MACOS_SETUP.md) | Apple Silicon/Rosetta, SSL cert fix, GPT-SoVITS on Mac |
+| [Technical README](TECHNICAL_README.md) | Runtime architecture, bootstrap, project layout, config reference |
+| [Plugin SDK](SAKURA_PLUGIN_SDK.md) | Plugin development |
+| [Contributing Guide](../.github/CONTRIBUTING.en.md) | Development setup, branches, tests, and pull requests |
 
-Character packs (portraits, personality cards, voice resources) bring the pet to life. The project ships with a default character; additional ones are available from:
+## Acknowledgements and Open Source License Notice
 
-- **[GitHub Releases](https://github.com/Rvosy/sakura/releases)**: Download character pack zips (e.g. `mia.zip`) from the latest Release Assets.
-- **[Baidu Netdisk](https://pan.baidu.com/s/1LnO25Ec2rezOnopjgX_OkQ?pwd=0721)**: Passcode `0721`, contains all published character packs.
+Sakura Desktop Pet is inspired by open source projects in desktop Agents, companion interactions, and plugin ecosystems. Special thanks to the [Shinsekai](https://github.com/RachelForster/Shinsekai) project and its plugin ecosystem for exploring desktop companions, character interaction, and plugin extensibility, which informed Sakura's compatibility design and feature set.
 
-### Installation
+This project is open source under the MIT License. You may freely use, copy, modify, merge, publish, distribute, sublicense, or sell copies of this project's code, provided that you retain this project's copyright notice and MIT License text.
 
-1. Download a character pack zip.
-2. Extract it into the project root **`characters`** directory.
-3. Ensure the structure is `characters/<id>/character.json` (one folder per character).
-4. Restart the app — it auto-scans and loads new characters.
+Copyright © 2026 Rvosy
 
-> Example: extracting `mia.zip` should yield `characters/mia/character.json`, `characters/mia/card.md`, `characters/mia/portraits/`, etc.
+### Third-Party Code and Compatibility Notes
 
-### Switching Characters
+The built-in plugin `plugins/playwright_browser` includes code and modifications based on the following MIT-licensed open source project:
 
-Right-click the pet or tray icon → Settings → pick a character from the list → Save.
+- Project: [`shinsekai-playwright-browser`](https://github.com/RachelForster/shinsekai-playwright-browser)
+- License: MIT License
+- Copyright: Copyright © 2026 Chihiro
 
+Sakura adapts and modifies this work to provide Playwright browser automation capabilities.
 
-## Project Structure
+Thanks to all open source project authors and contributors.
 
-```
-app/
-  agent/         # Agent decision layer (AgentRuntime, tools, memory, MCP)
-  core/          # App core (AppContext, bootstrap, ChatPipeline, debug)
-  config/        # Config management (YAML read/write, models, migrations)
-  llm/           # LLM client (OpenAI-compatible, ChatReply, prompts)
-  plugins/       # Native plugin system (discovery, capabilities, manager)
-  storage/       # Storage layer (StoragePaths, chat history, visual obs)
-  ui/            # UI components (PetWindow, settings, history, portrait)
-  voice/         # TTS providers (GPT-SoVITS, playback)
-sdk/             # Shinsekai compat layer (deprecated, use app/plugins/)
-plugins/         # Local plugins
-data/config/     # YAML configuration files
-tests/           # pytest tests
-docs/            # Documentation (ARCHITECTURE.md, etc.)
-```
+## Star History
 
-## Configuration
-
-All config in YAML under `data/config/`:
-
-| YAML Path | Description | Default |
-|---|---|---|
-| `api.yaml: llm.base_url` | API base URL | `https://api.openai.com/v1` |
-| `api.yaml: llm.api_key` | API Key | (empty) |
-| `api.yaml: llm.model` | Model name | `gpt-4.1-mini` |
-| `system_config.yaml: ui.subtitle_language` | Subtitle lang (`ja`/`zh`) | `ja` |
-| `system_config.yaml: proactive_care.enabled` | Proactive care | `false` |
-| `system_config.yaml: debug.enabled` | Debug logging | `false` |
-
-## Testing
-
-```powershell
-python -m pytest
-```
+<a href="https://www.star-history.com/?repos=Rvosy%2Fsakura&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Rvosy/sakura&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Rvosy/sakura&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=Rvosy/sakura&type=date&legend=top-left" />
+ </picture>
+</a>

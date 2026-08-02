@@ -1,1 +1,8 @@
-{"GPT": {"v2": "GPT_weights_v2Pro/Sakura-e15.ckpt"}, "SoVITS": {"v2": "SoVITS_weights_v2Pro/Sakura_e8_s7176.pth"}}
+{
+  "GPT": {
+    "v2": "weights/Sakura-e15.ckpt"
+  },
+  "SoVITS": {
+    "v2": "weights/Sakura_e8_s7176.pth"
+  }
+}

@@ -1,1 +1,8 @@
-{"GPT": {"v2": "GPT_weights_v2Pro/atori-e15.ckpt"}, "SoVITS": {"v2": "SoVITS_weights_v2Pro/atori_e20_s9560.pth"}}
+{
+  "GPT": {
+    "v2": "weights/atori-e15.ckpt"
+  },
+  "SoVITS": {
+    "v2": "weights/atori_e20_s9560.pth"
+  }
+}

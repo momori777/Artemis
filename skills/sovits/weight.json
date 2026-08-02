@@ -1,1 +1,8 @@
-{"GPT": {"v2": "C:\\Users\\TK\\Desktop\\vllm\\GPT-SoVITS-v2pro-20250604-nvidia50\\GPT_weights_v2Pro\\xxx-e30.ckpt"}, "SoVITS": {"v2": "SoVITS_weights_v2Pro/xxx_e20_s6240.pth"}}
+{
+  "GPT": {
+    "v2": "weights/xxx-e30.ckpt"
+  },
+  "SoVITS": {
+    "v2": "weights/xxx_e20_s6240.pth"
+  }
+}

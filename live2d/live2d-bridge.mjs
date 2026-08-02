@@ -234,6 +234,16 @@ const httpServer = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${HTTP_PORT}`);
   const pathname = decodeURIComponent(url.pathname);
 
+  // CORS for cross-origin calls from the web-chat frontend (127.0.0.1:19270)
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
   // ---- API Routes ----
   if (pathname === '/api/status') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -242,6 +252,91 @@ const httpServer = http.createServer(async (req, res) => {
       clients: clients.size,
       uptime: process.uptime(),
     }));
+    return;
+  }
+
+  // ---- Model list & switching (Live2D settings panel) ----
+  if (pathname === '/api/models') {
+    try {
+      const modelRoot = path.join(STATIC_DIR, 'model');
+      const models = [];
+      if (fs.existsSync(modelRoot)) {
+        for (const dir of fs.readdirSync(modelRoot)) {
+          const dirPath = path.join(modelRoot, dir);
+          if (!fs.statSync(dirPath).isDirectory()) continue;
+          // Find all .model3.json recursively (some models nest deeper)
+          const found = [];
+          (function walk(d) {
+            for (const ent of fs.readdirSync(d)) {
+              const p = path.join(d, ent);
+              const st = fs.statSync(p);
+              if (st.isDirectory()) walk(p);
+              else if (ent.endsWith('.model3.json')) found.push(path.relative(modelRoot, p).split(path.sep).join('/'));
+            }
+          })(dirPath);
+          if (found.length) {
+            models.push({
+              id: dir,
+              name: dir,
+              models: found,
+            });
+          }
+        }
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, models }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: e.message }));
+    }
+    return;
+  }
+
+  if (pathname === '/api/switch-model') {
+    const model = url.searchParams.get('model') || '';
+    if (!model) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: 'model param required (relative path under /model/)' }));
+      return;
+    }
+    // Security: model must resolve under STATIC_DIR/model
+    const modelRootDir = path.join(STATIC_DIR, 'model');
+    const resolvedModel = path.resolve(modelRootDir, model);
+    const resolvedRoot = path.resolve(modelRootDir);
+    if (!resolvedModel.startsWith(resolvedRoot + path.sep)) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: 'model path must be under /model/' }));
+      return;
+    }
+    const modelUrl = '/' + model.split(path.sep).join('/').replace(/^\/+/, '');
+    if (!fs.existsSync(resolvedModel)) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: `model file not found: ${modelUrl}` }));
+      return;
+    }
+    // Rewrite var MODEL= in index.html (same mechanism as switch_model.ps1)
+    const indexPath = path.join(STATIC_DIR, 'index.html');
+    try {
+      let content = fs.readFileSync(indexPath, 'utf-8');
+      if (!/var MODEL\s*=/.test(content)) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: 'index.html has no var MODEL= line' }));
+        return;
+      }
+      const titleMatch = content.match(/<title>([^<]*)<\/title>/);
+      const oldTitle = titleMatch ? titleMatch[1] : 'Live2D';
+      const modelName = path.basename(path.dirname(modelUrl)) + ' / ' + path.basename(modelUrl);
+      content = content.replace(/var MODEL\s*=\s*'[^']*'/, `var MODEL='${modelUrl}'`);
+      content = content.replace(/<title>[^<]*<\/title>/, `<title>${modelName}</title>`);
+      fs.writeFileSync(indexPath, content, 'utf-8');
+      // Tell all connected Live2D pages to reload so they pick up the new model
+      broadcast({ type: 'model_changed', model: modelUrl, title: modelName });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, model: modelUrl, title: modelName, oldTitle }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: e.message }));
+    }
     return;
   }
 

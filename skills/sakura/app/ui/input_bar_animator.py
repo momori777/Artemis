@@ -60,8 +60,10 @@ class InputBarAnimator(QObject):
         self._started = False
         # 拖动期间挂起：停轮询并强制隐藏，避免静态模糊背景与移动后的真实桌面对不上而穿帮。
         self._suspended = False
-        # 外部强制常显（如设置对话框打开期间）：优先于 hover/pinned，便于实时调整时输入栏不被收起。
+        # 外部强制常显：优先于 hover/pinned，便于临时固定输入栏。
         self._force_visible = False
+        # 外部强制隐藏：优先级最高，用于设置窗口等场景避免输入栏挡住其他窗口。
+        self._force_hidden = False
         self._anim: QPropertyAnimation | None = None
         self._send_anim: QSequentialAnimationGroup | None = None
 
@@ -77,6 +79,7 @@ class InputBarAnimator(QObject):
         self._started = True
         self._apply_resting_state()
         self._poll_timer.start()
+
 
     def set_before_show(self, callback: Callable[[], None] | None) -> None:
         """按当前视觉效果模式动态替换显示前回调。
@@ -96,16 +99,39 @@ class InputBarAnimator(QObject):
 
     def sync(self) -> None:
         """外部 pinned 状态（如待确认动作出现）变化时，立即重算可见性。"""
-        self._sync()
+        self._sync(refresh_hover=True)
 
     def set_force_visible(self, value: bool) -> None:
-        """外部强制常显开关（如设置对话框打开期间）：开启立即现身，关闭后按常规可见性重算。"""
+        """外部强制常显开关：开启立即现身，关闭后按常规可见性重算。"""
         value = bool(value)
         if value == self._force_visible:
             return
         self._force_visible = value
         if self._started and not self._suspended:
-            self._sync()
+            self._sync(refresh_hover=True)
+
+    def set_force_hidden(self, value: bool) -> None:
+        """外部强制隐藏开关：开启后忽略 hover、焦点和 pinned，关闭后恢复常规显隐。"""
+        value = bool(value)
+        if value == self._force_hidden:
+            return
+        self._force_hidden = value
+        if self._started and not self._suspended:
+            self._sync(refresh_hover=True)
+
+    def set_polling_enabled(self, enabled: bool) -> None:
+        """临时停/起 hover 轮询（如副窗口打开期间），减少后台无谓的命中测试与重绘。
+
+        仅作用于轮询计时器，不改变当前可见性/动画；未启动或拖动挂起时为空操作，
+        以免与 suspend_for_drag 的状态机相互打架。
+        """
+        if not self._started or self._suspended:
+            return
+        if enabled:
+            if not self._poll_timer.isActive():
+                self._poll_timer.start()
+        else:
+            self._poll_timer.stop()
 
     def suspend_for_drag(self) -> None:
         """拖动开始：停轮询并淡出隐藏输入栏，避免静态模糊背景与移动后的真实桌面穿帮。"""
@@ -124,8 +150,11 @@ class InputBarAnimator(QObject):
 
         应可见则经 _animate → before_show 截「新位置」桌面后慢慢淡入现身，否则保持收起。
         输入栏为子控件已随主窗口移动到新位置，无需外部重定位。
+
+        幂等：已恢复时（_suspended == False）直接返回，避免 X11 上 moveEvent
+        与 mouseReleaseEvent 两条路径重复触发导致动画打断。
         """
-        if not self._started:
+        if not self._started or not self._suspended:
             self._suspended = False
             return
         self._suspended = False
@@ -137,15 +166,22 @@ class InputBarAnimator(QObject):
 
     # --- 内部逻辑 -----------------------------------------------------------
     def _on_poll(self) -> None:
-        self._hover = bool(self._is_hover_active())
+        self._refresh_hover()
         self._sync()
 
+    def _refresh_hover(self) -> None:
+        self._hover = bool(self._is_hover_active())
+
     def _target_visible(self) -> bool:
+        if self._force_hidden:
+            return False
         return self._force_visible or self._hover or bool(self._is_pinned())
 
-    def _sync(self) -> None:
+    def _sync(self, *, refresh_hover: bool = False) -> None:
         if self._suspended:
             return
+        if refresh_hover:
+            self._refresh_hover()
         target = self._target_visible()
         if target == self._shown:
             return

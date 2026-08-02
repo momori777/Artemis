@@ -1,113 +1,127 @@
-[English](docs/README.en.md)
+<div align="center">
 
 # Sakura Desktop Pet
 
-最近推完水晶社的新作，~~推完自动变成学姐的狗~~，已经变成学姐的形状了，夜里辗转反侧怎么都睡不着，所以起来开发了这个桌宠 Agent 框架。
+### 一个能主动感知屏幕内容与系统事件的通用桌宠 Agent 框架
 
-Sakura 最大的特点是 **她会主动找你**。传统聊天机器人只有在你先开口时才会回应，就像一扇需要你敲门才会开的锁；Sakura 更像一个坐在你旁边的人，你不需要一直和她说话，但她知道你在做什么，偶尔觉得该说点什么的时候会自己开口。
+[![Release](https://img.shields.io/github/v/release/Rvosy/sakura)](https://github.com/Rvosy/sakura/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](docs/SETUP.md)
+[![Downloads](https://img.shields.io/github/downloads/Rvosy/sakura/total)](https://github.com/Rvosy/sakura/releases)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
+[![License](https://img.shields.io/github/license/Rvosy/sakura)](LICENSE)
 
-比如你正在打游戏，她瞥见屏幕上的死亡提示，凑过来说「已经第三回了…要不要帮你查下攻略？」同意后就真的打开浏览器搜了一圈，把要点贴进备忘录。
+[English](docs/README.en.md) [安装教程](docs/SETUP.md) [API配置教程](docs/API_CONFIG.md)  [插件开发文档](docs/SAKURA_PLUGIN_SDK.md)  [技术文档](docs/TECHNICAL_README.md)
 
-或者是你在浏览其他角色的图片时，会吃醋地说「又在看别人了啊…」要求你多看看她的立绘，偶尔还会因为你太久没看她而生气地说「都不理我了啊…」。
+</div>
 
-所以 Sakura 实现的是一个一直在角落、会观察、会偶尔插话的角色。她的对话风格、表情、语音都由角色卡驱动，而工具能力（浏览器操作、屏幕截图、文件读取、Web 搜索、提醒、长期记忆等）则来自内置的 Agent 引擎。
+> 当前开发版本为 `0.9.9-dev`。Releases 页面提供的稳定包仍是 `0.9.8`；开发版变化见 [更新日志](CHANGELOG.md)。
 
-把它想成一个定制角色的桌面 Agent。
+最近推完水晶社的新作，~~推完自动变成学姐的狗~~，已经变成学姐的形状了，夜里辗转反侧怎么都睡不着。便以学姐的名字 **Sakura** 命名这个项目，开发了这个桌宠 Agent 框架。
 
-![Sakura 预览](assets/sakura_01.png)
-![N.A.V.I. 预览](assets/navi_01.png)
-## 新手教程（零基础也能用）
+Sakura 最大的特点：**她会主动来找你**。
 
-**不需要会编程。** 推荐直接使用 **Release 里的最新版本**，不要只下载 GitHub 页面上的源码压缩包。源码包缺少预置 `runtime`，无法启动
+传统聊天机器人是一扇门，你不敲，它永远不会开。Sakura 更像一个窝在你屏幕角落的人——你不用一直陪她说话，但她会看你在做什么。觉得该开口了，就自己凑过来。
 
-> **平台提醒：** Windows 版本是当前主要测试目标。linux/mac 用户可以使用源码自行安装
+比如你在打游戏，死了好几回。她瞥一眼屏幕，小声说：「已经第三次了喔……要不我帮你查查攻略？」你一点头，她就真的打开浏览器搜一圈，还把重点贴进备忘录。
 
-### 第一步：下载发布包
+再比如你在看着其他角色的图，她发现后会立刻吃醋：「又在看别人啦？」然后软磨硬泡让你多看几眼她的立绘。你要是冷落她太久，她还会鼓着脸生气：「都不理我了啊……」
 
-打开 [Releases 页面](https://github.com/Rvosy/sakura/releases)，下载最新的构建包。
+**角色卡**驱动她的对话风格、表情和语音，而**内置的 Agent 引擎**给了她真正的工具能力：浏览器操作、屏幕截图、文件读取、Web 搜索、提醒、长期记忆……
 
-Release 里常见的文件含义如下：
+简单说：**一个完全由你定制的、会吃醋会操心会主动找你的桌面角色 Agent。**
 
-| 文件名 | 是什么 | 适合谁下载 |
-|:-:|---|---|
-| `sakura-v0.9.x-windows-x64.zip` | Windows 完整包，包含项目文件和 `runtime` | **Windows 新手首选** |
-| `runtime-windows-x64.zip` | 只有 Windows 预置 Python 运行环境 | 拉源码、缺 `runtime` 的用户 |
+## 效果预览
 
-> 如果你只是想运行桌宠，下载 `sakura-v0.9.x-windows-x64.zip` 这种 **完整包**。`runtime` 包不是完整程序，单独下载后不能直接启动。
+<div align="center">
 
-### 第二步：安装依赖
+![Sakura 预览](assets/sakura_01.webp)
+![N.A.V.I. 预览](assets/navi_01.webp)
 
-解压完整包后，进入解压出来的软件目录。
+</div>
 
-- **Windows 用户：** 双击 `install.bat`，等待完成（约 5-15 分钟）。
-- **Mac 用户：** 可尝试双击 `install.command`，或在终端进入项目目录后运行 `bash scripts/install.sh`。但 Mac 没有实机测试过，遇到问题请优先反馈日志。
-- **Linux 用户：** 当前没有正式发布包；如果从源码运行，进入项目目录后运行 `bash scripts/install.sh`。
+## 快速开始
 
-> 如果是直接拉取的源码，需要先从 Release 页面下载对应平台的预编译依赖包（`sakura-runtime-*.zip`），把里面的 `runtime` 文件夹放到项目根目录，再运行安装脚本。
-> 不管下载的是 Release 完整包还是 GitHub 源码，这一步都要做。装完命令行窗口会自动关闭。
+推荐直接使用 **Release 里的最新版本**，不要只下载 GitHub 页面上的源码压缩包。
 
-### 第三步：获取 API Key
+> **平台提醒：** Windows 版本是当前主要测试目标。Mac 和 Linux 用户请先看 [完整安装指南](docs/SETUP.md)。
 
-桌宠需要一个「AI 大脑」才能说话，你需要一个 API Key。就像给手机插 SIM 卡才能上网一样。
+1. 从 [Releases 页面](https://github.com/Rvosy/sakura/releases) 下载 `sakura-v0.9.8-windows-x64.zip`
+2. 解压后双击 `install.bat` 安装依赖
+3. 双击 `start.bat` 启动
 
-1. **获取 API Key。** 可以从以下任一渠道获得：
-   - 国内中转站如 [GemAI](https://api.gemai.cc/register?aff=rwbQ)（有便宜且按次计费的 gemini-flash 系列模型）
-   - 其他任何兼容 OpenAI 接口格式的服务
+遇到问题、使用 Mac/Linux、或想了解更多配置项，请看 **[完整安装指南](docs/SETUP.md)**。
 
-> **目前不要使用 DeepSeek 系列模型！**
->
-> Sakura 的很多功能（屏幕观察、图像识别等）直接依赖模型的多模态能力（视觉理解），而 DeepSeek 系列模型不具备多模态能力，使用后会导致桌宠无法正常观察屏幕、识别图像等功能失效。
->
-> 请选择支持视觉/多模态的模型，例如 Gemini Flash 等。
+## 功能特性
 
-### 第四步：一键启动
+**角色与外观**
+- 角色包驱动 — `.char` 一键导入，角色卡、立绘、GPT-SoVITS 语音权重一体打包；UI 主题色跟随角色
+- 角色工作室 — Windows / macOS Release 包内置 Tauri 工坊，可从设置页新建、编辑并导出 `.char` 角色包
+- 首次启动引导 — 先选择或导入角色，再配置 API 供应商和模型；已有配置不会重复触发
+- 外观效果 — 支持纯色 / 高斯模糊 / 亚克力 / macOS 原生毛玻璃（NSVisualEffectView），气泡与输入栏位置、大小可调
 
-- **Windows 用户：** 双击项目根目录的 **`start.bat`**
-- **Mac 用户：** 可尝试双击 `start.command`，或在终端里运行 `bash scripts/start.sh`。再次提醒：Mac 没有实机测试过。
-- **Linux 用户：** 在终端里运行 `bash scripts/start.sh`
-- **右键** 桌宠或托盘图标可以打开菜单（设置、聊天记录等）
+**主动感知**
+- 屏幕观察 — 定期截图生成视觉摘要并纳入上下文，也可随时按需截图；间隔与冷却时间可配置
+- 框选截图 — 可从输入栏截取指定区域，随下一条消息一起发送；支持分辨率选择、高 DPI 和混合缩放多显示器
+- 主动发言 — 周期性评估是否需要开口，不用你先说话她就会自己凑过来
 
-### 第五步：获取角色包
+**对话体验**
 
-角色包下载渠道：
+- 分段双语回复 — 模型输出日文原文 + 中文字幕 + 语气标签 + 立绘指令，字幕、表情、语音同步驱动
+- 本地快速接话 — 正式回复生成期间先给出符合角色语气的短回应，可选本地模型增强和语音
+- 打字机动效 — 逐字渲染，气泡高度随长回复自适应扩展，不截断
+- 输入框动效 — 胶囊形高斯模糊背景，发送等待期间有状态提示
 
-角色包会携带角色卡、立绘、语音参考音频，以及该角色可用的 GPT-SoVITS 权重（例如 `voice/models/*.ckpt`、`voice/models/*.pth`）。源码仓库和 TTS 运行环境安装脚本不会单独下载这些角色声线权重；如果完整包中没有对应角色资源，需要先通过角色包渠道获取并导入。
+**工具能力**
+- 内置工具 — 屏幕截图、打开网页、待办、提醒（支持「3 分钟后」等相对时间）、笔记读写
+- 长期记忆 — 分层保存人物信息、经历、任务和操作习惯；支持自动整理、相关记忆召回和手动编辑
+- 权限确认 — 高风险工具（打开网页、文件操作等）执行前弹出确认面板
+- 多模型配置 — 可保存多套 API 供应商，并分别给聊天、视觉和记忆整理选择模型
 
-安装方式：
+**语音（TTS）**
+- GPT-SoVITS 集成 — 一键下载整合包（RTX 50 系 / 通用 N 卡 / CPU 三档），语气标签联动参考音频
+- 外置服务 — 可接入自部署的 GPT-SoVITS 实例，macOS / AMD 用户同样可用
 
-1. 下载角色包
-2. 打开 Sakura 设置页
-3. 选择导入角色包
+**插件与扩展**
+- MCP Server — 任意 MCP Server 均可接入，内置 Web 搜索 MCP
+- 本地插件 — 插件自动发现与加载，Playwright 浏览器插件开箱可用
+- 手机网页端 — 可选插件允许手机发送文字和图片，并与桌面端共用当前角色、历史和长期记忆
 
-### 如何更新版本？
+**调试与历史**
+- GUI 运行日志 — 实时查看 Agent 决策与工具调用过程
+- 聊天历史 — 可浏览和搜索历史对话
+- Windows 更新器 — `update.bat` 会校验更新包，并在覆盖程序文件时保留用户数据
 
-如果你已经装过旧版，推荐按下面方式更新：
+## 文档
 
-1. 关闭正在运行的 Sakura。
-2. 下载同平台的最新**完整包**，例如 Windows 用户下载 `sakura-v0.9.x-windows-x64.zip`。
-3. 解压新包，把新包里的文件复制到旧 Sakura 目录，遇到同名文件选择 **覆盖/替换**。
-4. 如果启动失败，再运行一次安装脚本：Windows 双击 `install.bat`；Mac/Linux 运行 `bash scripts/install.sh`。
-5. 启动 Sakura：Windows 双击 `start.bat`；Mac 可尝试 `start.command` 或 `bash scripts/start.sh`。
+| 文档 | 内容 |
+|---|---|
+| [安装与配置指南](docs/SETUP.md) | 完整安装步骤、角色包获取、语音配置、版本更新 |
+| [API 配置教程](docs/API_CONFIG.md) | Base URL、API Key、模型选择和中转站配置 |
+| [macOS 安装指南](docs/MACOS_SETUP.md) | Apple Silicon/Rosetta、SSL 证书、GPT-SoVITS 语音 |
+| [技术讲解 README](docs/TECHNICAL_README.md) | 运行时架构、启动流程、项目结构、配置项 |
+| [插件 SDK 文档](docs/SAKURA_PLUGIN_SDK.md) | 插件开发入口 |
+| [贡献指南](.github/CONTRIBUTING.md) | 开发环境、分支规范、测试和 PR 要求 |
+| [更新日志](CHANGELOG.md) | 各版本的用户可见变化与升级提醒 |
 
-## 核心功能
+## 致谢与开源许可说明
 
-- **角色包驱动。** 角色卡、立绘、语音参考和 GPT-SoVITS 权重都可以按角色包组织。
-- **主动关怀。** Sakura 可以按周期观察上下文，主动发起提醒、关心或建议。
-- **分段双语回复。** 模型输出日文原文、中文字幕、语气和立绘标识，UI 同步驱动字幕、表情和语音。
-- **语气联动表情和语音。** 语气标签会同时影响立绘切换和 TTS 参考音频选择。
-- **屏幕观察。** 支持按需截图和自主屏幕观察，把视觉摘要纳入对话上下文。
-- **工具调用。** 支持浏览器操作、桌面操作、文件读取、Web 搜索、提醒、待办、笔记和记忆等工具。
-- **权限确认。** 高风险工具会先请求用户确认，再执行实际动作。
-- **长期记忆。** 记忆先进入候选区，确认后才写入正式记忆，并支持自动整理。
-- **插件和 MCP 扩展。** 支持本地插件、MCP Server 和内置 Web 搜索 MCP Server。
-- **历史、调试和 UI 控制。** 支持聊天历史回看、调试日志、立绘缩放和动效配置。
+Sakura Desktop Pet 受桌面 Agent、桌宠交互与插件化生态中多个开源项目启发。特别感谢 [Shinsekai](https://github.com/RachelForster/Shinsekai) 项目及其插件生态在桌宠、角色交互、插件扩展等方向上的探索，为 Sakura 的兼容设计和功能设计提供了参考。
 
-## 技术文档
+本项目采用 MIT License 开源。你可以自由使用、复制、修改、合并、发布、分发、再授权或销售本项目代码，但需要保留本项目的版权声明和 MIT License 文本。
 
-想了解运行时架构、启动流程、项目结构、配置项、TTS 技术细节或插件开发入口，请看：
+Copyright © 2026 Rvosy
 
-- [Sakura 技术讲解 README](docs/TECHNICAL_README.md)
-- [Sakura 插件 SDK 文档](docs/SAKURA_PLUGIN_SDK.md)
+### 第三方代码与兼容说明
+
+本项目中的内置插件 `plugins/playwright_browser` 包含基于以下 MIT 开源项目的代码与改动：
+
+- Project: [`shinsekai-playwright-browser`](https://github.com/RachelForster/shinsekai-playwright-browser)
+- License: MIT License
+- Copyright: Copyright © 2026 Chihiro
+
+Sakura 在此基础上进行了适配和修改，用于提供 Playwright 浏览器自动化能力。
+
+感谢所有开源项目作者和贡献者。
 
 ## Star History
 

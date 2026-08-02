@@ -157,6 +157,7 @@
 
     // Memory viewer
     mem_view_title:          { zh: '🧠 记忆查看',          ja: '🧠 記憶ビューア',       en: '🧠 Memory Viewer' },
+    mem_view_viz:            { zh: '可视化',              ja: '可視化',                en: 'Visualize' },
     mem_view_empty:          { zh: '点击"查看记忆"按钮加载', ja: '「記憶を表示」ボタンで読込', en: 'Click "View Memory" to load' },
 
     // Toast / misc

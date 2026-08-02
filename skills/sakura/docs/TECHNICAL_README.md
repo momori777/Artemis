@@ -1,47 +1,50 @@
 # Sakura 技术讲解 README
 
-本文面向想深入了解 Sakura 架构、运行链路、配置方式或二次开发的用户。只想安装和使用桌宠的话，看 [主 README](../README.md) 就够啦。
+本文面向想深入了解 Sakura 架构、运行链路、配置方式或二次开发的用户。只想安装和使用桌宠的话，看 [主 README](../README.md) 即可。
 
 ## 设计思路
 
-Sakura 采用比较直接的运行时结构：UI 负责收集用户输入、截图、确认面板和主动事件，`ChatWorker` / `ChatPipeline` 负责把这些上下文整理成一次运行请求，真正的对话决策和工具循环交给 `AgentRuntime`。
+Sakura 采用直接的运行时结构：UI 负责收集用户输入、截图、确认面板和主动事件，`ChatWorker` / `ChatPipeline` 负责把它们整理成运行请求，`ContextOrchestrator` 按优先级、信任级别和 token 预算选择上下文，真正的对话决策与工具循环交给 `AgentRuntime`。
 
 `AgentRuntime` 直接使用 OpenAI 兼容接口的原生 `tool_calls` 协议。模型可以在同一轮对话里决定是否调用工具，工具结果会以 tool role 回填给模型，再由模型产出最终角色回复。这样不再需要额外的路由拆分模块，链路更短，也更容易保证提醒、主动关怀、工具确认后的回复都进入同一套字幕和语音播放流程。
 
-最终回复统一按分段 JSON 组织：每段包含日文原文、中文字幕、语气和立绘标识。UI 只消费这份结构，同步驱动字幕、表情切换和 TTS 播放；如果模型输出格式不合格，运行时会尝试一次格式修复，避免坏 JSON 直接进入界面。
+最终回复统一按分段 JSON 组织：每段包含日文原文、中文字幕、语气和立绘标识。UI 只读取这份结构，同步驱动字幕、表情切换和 TTS 播放；如果模型输出格式不合格，运行时会尝试一次格式修复，避免坏 JSON 直接进入界面。耗时线程、子进程和外部服务统一交给 `ResourceManager`，退出时按依赖顺序关闭。
 
 ## 启动流程
 
 运行 `python main.py` 后：
 
-1. 创建 `QApplication`
-2. `AppSettingsService` 从 `data/config/api.yaml` 加载 API 配置
-3. `CharacterRegistry` 扫描角色包
-4. 加载角色人格卡和可用语气/立绘
-5. `AppBuilder` 组装 `AppContext`，包括工具注册表、记忆库、提醒库、MCP、插件、TTS
-6. 后台线程装配耗时服务（MCP 工具、插件、TTS Provider）
-7. 显示 `PetWindow`
+1. 创建 `QApplication`，取得单实例锁
+2. 生成缺失的默认配置，执行版本化迁移并记录应用版本
+3. 检查数据目录写权限、配置文件、磁盘空间和记忆库锁
+4. `AppSettingsService` 加载 `data/config/*.yaml`
+5. `CharacterRegistry` 扫描角色包并加载人格卡、语气和立绘
+6. `bootstrap.py` 组装 `AppContext`、`ResourceManager`、工具、记忆、MCP、插件和 TTS
+7. 后台装配耗时服务，显示 `PetWindow`
 
 ```mermaid
 flowchart LR
-    A["main.py"] --> B["data/config/*.yaml<br/>配置"]
-    A --> C["CharacterRegistry"]
+    A["main.py"] --> X["默认配置 / 迁移 / 自检"]
+    X --> B["data/config/*.yaml<br/>配置"]
+    X --> C["CharacterRegistry"]
     C --> D["characters/sakura/character.json<br/>角色包"]
     A --> E["OpenAICompatibleClient<br/>API 客户端"]
     B --> E
-    A --> I["TTSProvider"]
-    A --> J["AppBuilder"]
+    X --> J["bootstrap.py"]
     J --> K["AppContext"]
+    J --> R["ResourceManager"]
     K --> L["PetWindow"]
-    I --> L
     L --> M["ChatWorker<br/>后台线程"]
     M --> N["ChatPipeline<br/>运行管线"]
-    N --> S["AgentRuntime<br/>原生 tool_calls 循环"]
+    N --> O["ContextOrchestrator<br/>上下文预算与选择"]
+    O --> S["AgentRuntime<br/>原生 tool_calls 循环"]
     S --> T["ToolRegistry"]
     T --> U["内置工具 + MCP 工具 + 插件工具"]
     S --> V["ChatReply<br/>分段 JSON 回复"]
     V --> L
-    L --> W["字幕 / 立绘 / TTS"]
+    L --> W["字幕 / 立绘 / TTS / 接话"]
+    R --> M
+    R --> W
 ```
 
 ## 项目结构
@@ -53,17 +56,17 @@ flowchart LR
 │   ├── agent/                          # Agent 决策层
 │   │   ├── actions.py                  # 动作/事件/待确认数据结构
 │   │   ├── builtin_tools.py            # 内置工具（待办/提醒/笔记/记忆等）
-│   │   ├── memory.py / reminders.py    # 长期记忆 / 提醒
-│   │   ├── memory_curator.py           # 自动记忆整理（含后台 Worker）
-│   │   ├── memory_curation_worker.py   # 自动记忆整理 Qt Worker
+│   │   ├── context_orchestrator.py      # 上下文收集与选择
+│   │   ├── session_state_context.py     # 最近会话续接上下文
+│   │   ├── memory.py / memory_recall.py # 分层长期记忆与相关召回
+│   │   ├── memory_curator.py            # 自动记忆整理
 │   │   ├── runtime.py                  # AgentRuntime（决策/工具循环）
-│   │   ├── runtime_limits.py           # 运行时限制常量
-│   │   ├── screen_policy.py            # 屏幕观察策略
+│   │   ├── runtime_limits.py           # 可配置工具循环限制
+│   │   ├── screen_awareness.py         # 主动屏幕感知策略
 │   │   ├── screen_tools.py             # 屏幕观察工具
 │   │   ├── screen_observation.py       # 屏幕观察入口
-│   │   ├── proactive_care.py           # 主动关怀
 │   │   ├── tool_policy.py              # 工具路由策略
-│   │   ├── tool_registry.py            # 兼容层（→ app/agent/tools/）
+│   │   ├── tool_routing.py             # 浏览器/屏幕工具路由纯函数
 │   │   ├── tools/                      # 统一工具注册系统
 │   │   │   ├── registry.py             # ToolRegistry / Tool / ToolMetadata
 │   │   │   ├── permission_policy.py    # ToolPermissionPolicy
@@ -72,15 +75,18 @@ flowchart LR
 │   ├── core/                           # 应用核心
 │   │   ├── app_context.py              # AppContext 依赖容器
 │   │   ├── bootstrap.py                # 启动装配
-│   │   ├── builder/                    # AppBuilder / ServiceContainer / Lifecycle
-│   │   ├── contracts/                  # 核心接口契约
 │   │   ├── chat_pipeline.py            # ChatPipeline 对话编排
 │   │   ├── chat_worker.py              # Qt 后台线程 Worker
+│   │   ├── instance.py                 # 单实例锁
+│   │   ├── resource_manager.py          # 线程、进程与服务生命周期
+│   │   ├── selfcheck.py                 # 启动环境自检
 │   │   ├── debug_log.py                # 调试日志（自动脱敏）
-│   │   ├── extensions.py               # 扩展注册表
-│   │   ├── plugin_manager.py           # SakuraPluginManager（兼容层 → app/plugins/）
-│   │   └── runtime/                    # 运行时编排
+│   │   └── extensions.py               # 扩展注册表
+│   ├── backchannel/                     # 等待期本地快速接话
 │   ├── config/                         # 配置管理
+│   │   ├── app_version.py               # 应用版本记录
+│   │   ├── default_configs.py           # 缺失配置生成
+│   │   ├── migration_runner.py          # 版本化迁移执行器
 │   │   ├── models.py                   # 配置数据模型
 │   │   ├── defaults.py                 # 默认值
 │   │   ├── settings_service.py         # YAML 配置读写
@@ -95,17 +101,19 @@ flowchart LR
 │   │   └── prompts/                    # 提示词块/渲染
 │   ├── plugins/                        # 插件系统（原生）
 │   │   ├── models.py                   # PluginManifest / PluginSpec / Contribution
+│   │   ├── base.py                     # PluginBase / PluginContext
 │   │   ├── discovery.py                # PluginDiscovery
 │   │   ├── capabilities.py             # PluginCapabilityRegistry
-│   │   ├── manager.py                  # PluginManager
-│   │   └── adapters.py                 # SDK 兼容适配
+│   │   ├── events.py / services.py      # 事件与受限服务门面
+│   │   └── manager.py                  # PluginManager
+│   ├── renderers/                       # 可扩展角色渲染器
 │   ├── storage/                        # 存储层
 │   │   ├── paths.py                    # StoragePaths 统一路径
 │   │   ├── chat_history.py             # 聊天历史（JSONL）
 │   │   └── visual_observation.py       # 视觉观察记录（JSONL）
 │   ├── ui/                             # UI 组件
 │   │   ├── pet_window.py               # 桌宠主窗口
-│   │   ├── settings_dialog.py          # 设置对话框
+│   │   ├── tauri_settings.py           # Tauri 设置页桥接与请求构建
 │   │   ├── history_window.py           # 历史回看
 │   │   ├── portrait_controller.py      # 立绘控制器
 │   │   ├── subtitle_controller.py      # 字幕控制器
@@ -113,16 +121,14 @@ flowchart LR
 │   │   ├── portrait_utils.py           # 立绘工具函数
 │   │   └── ...（其余 UI 组件）
 │   └── voice/                          # 语音
-│       ├── tts.py                      # GPT-SoVITS / Null Provider
-│       └── playback_controller.py      # 语音播放控制器
-├── sdk/                                # Shinsekai 兼容层（已废弃，新插件用 app/plugins/）
-│   ├── plugin.py                       # PluginBase
-│   ├── register.py                     # PluginCapabilityRegistry
-│   ├── types.py                        # 贡献点类型
-│   └── tool_registry.py                # 已废弃工具装饰器
+│       ├── tts.py / tts_settings.py     # Provider 与配置
+│       ├── tts_service.py               # 服务监管
+│       ├── tts_synthesis.py             # 合成队列
+│       └── tts_playback.py              # 播放端点
 ├── plugins/                            # 本地插件
 │   └── playwright_browser/             # Playwright 浏览器插件
 ├── characters/sakura/                  # 角色资源
+├── assets/backchannels/                # 角色接话清单与开发说明
 ├── data/                               # 本地数据
 │   ├── config/                         # YAML 配置（api.yaml / system_config.yaml 等）
 │   ├── chat_history/                   # 聊天记录
@@ -135,6 +141,8 @@ flowchart LR
 ├── docs/                               # 文档
 │   ├── TECHNICAL_README.md             # 技术讲解 README
 │   └── SAKURA_PLUGIN_SDK.md            # 插件开发指南
+├── tools/studio/                       # SakuraCharacterStudio
+├── tools/cleanup.py                    # 安全清理工具（默认 dry-run）
 └── tools/mcp/                          # MCP Server 运行时
 ```
 
@@ -164,7 +172,7 @@ python -m pytest tests/unit
 
 所有配置集中在 `data/config/` 下的 YAML 文件中。
 
-| YAML 路径 | 作用 | 默认值 |
+| YAML 路径 | 说明 | 默认值 |
 |---|---|---|
 | `api.yaml: llm.base_url` | API 地址 | `https://api.openai.com/v1` |
 | `api.yaml: llm.api_key` | API Key | 空 |
@@ -174,11 +182,13 @@ python -m pytest tests/unit
 | `api.yaml: tts.gpt_sovits.api_url` | TTS 接口 | `http://127.0.0.1:9880/tts` |
 | `api.yaml: tts.gpt_sovits.python_path` | 自定义 GPT-SoVITS Python | 空 |
 | `api.yaml: tts.gpt_sovits.tts_config_path` | 自定义 GPT-SoVITS 推理配置 | 空 |
-| `system_config.yaml: ui.subtitle_language` | 气泡语言 `ja`/`zh` | `ja` |
+| `system_config.yaml: ui.subtitle_language` | 气泡语言 `ja`/`zh` | `zh` |
 | `system_config.yaml: ui.portrait_scale_percent` | 立绘缩放 | `100` |
-| `system_config.yaml: proactive_care.enabled` | 主动关怀 | `false` |
-| `system_config.yaml: proactive_care.check_interval_minutes` | 检查间隔 | `20` |
-| `system_config.yaml: proactive_care.cooldown_minutes` | 冷却时间 | `10` |
+| `system_config.yaml: screen_awareness.enabled` | 主动屏幕感知 | `true` |
+| `system_config.yaml: screen_awareness.check_interval_minutes` | 检查间隔 | `20` |
+| `system_config.yaml: screen_awareness.cooldown_minutes` | 发言冷却 | `10` |
+| `system_config.yaml: tool_loop.*` | Agent 步数和工具调用上限 | `4 / 3 / 8` |
+| `system_config.yaml: backchannel.enabled` | 本地快速接话 | `false` |
 | `system_config.yaml: memory_curation.enabled` | 自动记忆整理 | `true` |
 | `system_config.yaml: mcp.windows_enabled` | Windows MCP | `false` |
 | `system_config.yaml: debug.enabled` | 调试日志 | `false` |
@@ -209,7 +219,7 @@ Windows 用户可以在设置窗口的 TTS 页点击“一键下载 TTS 整合�
 
 脚本会下载固定版本的 Miniforge 并校验 SHA256；GPT-SoVITS 官方安装脚本默认按 MPS 依赖安装，推理配置默认使用 CPU 与关闭半精度以保持兼容，可通过 `GPT_SOVITS_INSTALL_DEVICE` 和 `GPT_SOVITS_INFER_DEVICE` 覆盖。这个 macOS 安装项只负责 GPT-SoVITS 源码、Python 环境和官方预训练基础模型；Sakura 等角色声线权重仍来自角色包的 `voice/models/`，由 `character.json` 读取后在启动 TTS 时切换。
 
-下载窗口会按当前系统过滤整合包；Windows 不会展示 macOS 安装项，macOS 也不会展示只包含 Windows 运行时的整合包。
+下载窗口会按当前系统过滤整合包：Windows 只显示 Windows 版，macOS 只显示 macOS 版。
 
 设置页新增的 `TTS Python` 和 `推理配置` 字段只用于自定义或 macOS 源码版 GPT-SoVITS；Windows 内置整合包无需填写。
 
@@ -234,4 +244,4 @@ macOS 一键安装完成后会自动回填这些字段。内置整合包如果�
 
 ## 插件开发
 
-插件相关代码位于 `plugins/`、`app/plugins/` 和 `sdk/`。插件开发说明请看 [Sakura 插件 SDK 文档](SAKURA_PLUGIN_SDK.md)。
+插件相关代码位于 `plugins/` 和 `app/plugins/`；插件只通过 `app.plugins.*` 公开 API 接入。插件开发说明请看 [Sakura 插件 SDK 文档](SAKURA_PLUGIN_SDK.md)。

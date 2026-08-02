@@ -66,6 +66,19 @@ class BubbleAutoHideController(QObject):
         elif self._settled:
             self._start_countdown()
 
+    def set_polling_enabled(self, enabled: bool) -> None:
+        """临时停/起悬停轮询（如副窗口打开期间），减少后台无谓的命中测试。
+
+        仅作用于轮询计时器，不影响隐藏倒计时本身。恢复时只在「已说完且开启自动隐藏、
+        气泡仍可见」的计时态下重启，避免空转。
+        """
+        if enabled:
+            if self._enabled and self._settled and not self._hidden:
+                if not self._poll_timer.isActive():
+                    self._poll_timer.start()
+        else:
+            self._poll_timer.stop()
+
     def notify_speaking(self) -> None:
         """有新台词/正在说话：保持显示并停倒计时（说话期间不隐藏）。"""
         self._settled = False

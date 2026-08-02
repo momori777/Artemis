@@ -13,7 +13,7 @@ Usage:
     python shiki_daemon.py --no-auto-start  (no auto-start)
 """
 
-import sys, os, json, time, threading, subprocess
+import sys, os, json, time, threading, subprocess, functools
 import socket, signal, webbrowser, hashlib
 import http.server
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -563,10 +563,12 @@ def start_webchat():
     if not os.path.isdir(WEBCHAT_DIR):
         return "web-chat directory not found"
     import http.server
-    os.chdir(WEBCHAT_DIR)
+    # Pass directory to the handler instead of os.chdir() — chdir changes the
+    # process-wide cwd and races with other threads.
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=WEBCHAT_DIR)
     threading.Thread(target=lambda: http.server.HTTPServer(
         ("127.0.0.1", WEBCHAT_PORT),
-        http.server.SimpleHTTPRequestHandler
+        handler
     ).serve_forever(), daemon=True).start()
     for _ in range(3):
         if is_port_open(WEBCHAT_PORT): return "ready"
@@ -653,16 +655,60 @@ SERVICE_STARTERS = {
 }
 
 SERVICE_KILLERS = {
-    "llama-server": "llama-server.exe",
-    "Embedding": "python.exe",
-    "Headroom Proxy": "python.exe",
-    "Live2D Bridge": "node.exe",
-    "Artemis Bridge": "python.exe",
-    "OpenClaw Gateway": "node.exe",
-    "Task Board": "python.exe",
-    "Llama Debugger": "python.exe",
+    "llama-server": 8080,
+    "Embedding": 9999,
+    "Headroom Proxy": 19251,
+    "Live2D Bridge": 19200,
+    "Artemis Bridge": 19250,
+    "OpenClaw Gateway": 18789,
+    "Task Board": 19280,
+    "Llama Debugger": 8765,
     "WebChat": None,  # WebChat runs in daemon thread, can't kill separately
 }
+
+
+def _kill_by_port(port, wait_sec=3):
+    """Kill the process owning a local port via netstat + taskkill by PID.
+    Never uses taskkill /IM so it can't take down unrelated processes
+    (e.g. other python/node instances, or the daemon itself)."""
+    if not is_port_open(port):
+        return "not running"
+    pid = None
+    try:
+        result = subprocess.run(["netstat", "-ano"], capture_output=True, timeout=5,
+                                encoding="utf-8", errors="replace")
+        for line in result.stdout.splitlines():
+            parts = line.split()
+            # Only LISTENING rows (state col) on the local addr (col 2);
+            # skip TIME_WAIT/ESTABLISHED rows whose local port is a client port.
+            if (len(parts) >= 5 and parts[0].upper() == "TCP"
+                    and parts[3].upper() == "LISTENING"
+                    and parts[1].endswith(f":{port}")
+                    and parts[-1].isdigit() and int(parts[-1]) > 0):
+                pid = int(parts[-1])
+                break
+    except Exception:
+        pass
+    if pid:
+        try:
+            subprocess.run(["taskkill", "/f", "/pid", str(pid)], capture_output=True, timeout=5)
+        except Exception:
+            pass
+    else:
+        # Fallback: PowerShell per-port kill (still PID-scoped, no /IM)
+        try:
+            subprocess.run(
+                ["powershell", "-NoProfile", "-Command",
+                 f"Get-NetTCPConnection -LocalPort {port} -ErrorAction SilentlyContinue | "
+                 "ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"],
+                capture_output=True, text=True, timeout=8)
+        except Exception:
+            pass
+    for _ in range(wait_sec * 2):
+        time.sleep(0.5)
+        if not is_port_open(port):
+            return f"stopped (port {port})"
+    return f"STILL RUNNING (port {port})"
 
 # ---- Daemon core ----
 
@@ -1164,6 +1210,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_json({"ok": True, "message": msg})
             return
 
+        if path == "/api/mem0-viz":
+            self._handle_mem0_viz()
+            return
+
         if path == "/api/worldbook":
             # New entries-based format
             with _wb_entries_lock:
@@ -1260,7 +1310,15 @@ class DashboardHandler(BaseHTTPRequestHandler):
             qs = parse_qs(urlparse(self.path).query)
             script = qs.get("script", [""])[0]
             args = qs.get("args", [])
-            script_path = os.path.join(WORKSPACE, script)
+            # Security: resolve inside WORKSPACE only; reject path traversal
+            script_path = os.path.abspath(os.path.join(WORKSPACE, script))
+            ws_root = os.path.abspath(WORKSPACE)
+            if not (script_path == ws_root or script_path.startswith(ws_root + os.sep)):
+                self.send_json({"error": f"Script outside workspace: {script}"}, 403)
+                return
+            if not script_path.lower().endswith(".ps1"):
+                self.send_json({"error": f"Only .ps1 scripts allowed: {script}"}, 403)
+                return
             if not os.path.isfile(script_path):
                 self.send_json({"error": f"Script not found: {script}"}, 404)
                 return
@@ -1268,10 +1326,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 # Pass paths from config, not hardcoded in script
                 args = args + [LLAMA_EXE, LLAMA_MODEL, os.path.dirname(LLAMA_LOG)]
             self.send_json({"ok": True, "message": f"Running {script} {' '.join(args)}"})
-            if script.endswith(".ps1"):
-                cmd = ["powershell", "-ExecutionPolicy", "Bypass", "-File", script_path] + args
-            else:
-                cmd = [script_path] + args
+            cmd = ["powershell", "-ExecutionPolicy", "Bypass", "-File", script_path] + args
             subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return
@@ -1326,13 +1381,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
         elif path == "/api/stop-service":
             name = data.get("name")
-            process_name = SERVICE_KILLERS.get(name)
-            if process_name is None:
+            port = SERVICE_KILLERS.get(name)
+            if port is None:
                 self.send_json({"ok": False, "error": f"Service '{name}' cannot be stopped individually (runs in daemon)"})
-            elif process_name:
+            elif isinstance(port, int):
                 try:
-                    subprocess.run(["taskkill", "/F", "/IM", process_name], capture_output=True, timeout=5)
-                    self.send_json({"ok": True, "result": f"Killed {process_name}"})
+                    result = _kill_by_port(port)
+                    self.send_json({"ok": True, "result": result})
                 except Exception as e:
                     self.send_json({"ok": False, "error": str(e)})
             else:
@@ -1383,7 +1438,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
         
         # Find the sessions.json path for this agent
         import glob
-        agents_dir = os.path.join(os.path.dirname(os.path.expanduser("~")), ".openclaw", "agents")
+        # os.path.dirname(os.path.expanduser("~")) drops the username
+        # (C:\Users\TK -> C:\Users); use expanduser directly so the path
+        # stays dynamic/portable across machines.
+        agents_dir = os.path.join(os.path.expanduser("~"), ".openclaw", "agents")
         session_files = []
         for agent_dir in glob.glob(os.path.join(agents_dir, "*", "sessions")):
             sf = os.path.join(agent_dir, "sessions.json")
@@ -1458,6 +1516,83 @@ class DashboardHandler(BaseHTTPRequestHandler):
             print(f"[mem0-search] error: {e}", file=sys.stderr)
             self.send_json({"error": str(e), "results": []})
             return
+
+    def _handle_mem0_viz(self):
+        """GET /api/mem0-viz — return all mem0 memories with PCA-2D
+        projection of their embedding vectors for the frontend scatter plot.
+        Pure local: numpy PCA over 384-dim vectors -> x/y."""
+        try:
+            if WORKSPACE not in sys.path:
+                sys.path.insert(0, WORKSPACE)
+            try:
+                from skills.mem0_bridge.mem0_bridge import _get_qdrant_client, CHARACTERS
+            except ImportError:
+                from skills.shared.mem0_bridge import _get_qdrant_client, CHARACTERS
+            client = _get_qdrant_client()
+            try:
+                pts, _ = client.scroll(
+                    collection_name="sakura_memories",
+                    limit=2000, with_payload=True, with_vectors=True,
+                )
+            finally:
+                try:
+                    client.close()
+                except Exception:
+                    pass
+
+            import numpy as np
+            items = []
+            vecs = []
+            for p in pts:
+                payload = p.payload or {}
+                text = payload.get("memory", "") or payload.get("data", "")
+                if not text:
+                    continue
+                vec = p.vector
+                if vec is None or not hasattr(vec, "__len__"):
+                    continue
+                try:
+                    v = np.asarray(list(vec), dtype=float)
+                except Exception:
+                    continue
+                if v.shape[0] < 2:
+                    continue
+                vecs.append(v)
+                items.append({
+                    "text": text,
+                    "character": payload.get("agent_id", payload.get("user_id", "?")),
+                    "time": payload.get("timestamp", payload.get("created_at", "")),
+                })
+
+            if not vecs:
+                self.send_json({"ok": True, "points": [], "count": 0})
+                return
+
+            # PCA to 2D (mean-center + top-2 singular vectors)
+            M = np.vstack(vecs)
+            M = M - M.mean(axis=0, keepdims=True)
+            try:
+                _, _, Vt = np.linalg.svd(M, full_matrices=False)
+                proj = M @ Vt[:2].T
+            except Exception:
+                # Fallback: random projection (deterministic seed)
+                rng = np.random.RandomState(42)
+                R = rng.randn(M.shape[1], 2)
+                R /= np.linalg.norm(R, axis=0, keepdims=True)
+                proj = M @ R
+
+            # Normalize to ~[-1, 1] box
+            x = proj[:, 0]; y = proj[:, 1]
+            xr = x.max() - x.min() if x.max() != x.min() else 1.0
+            yr = y.max() - y.min() if y.max() != y.min() else 1.0
+            for i, it in enumerate(items):
+                it["x"] = round(float((x[i] - x.min()) / xr * 2 - 1), 4)
+                it["y"] = round(float((y[i] - y.min()) / yr * 2 - 1), 4)
+
+            self.send_json({"ok": True, "points": items, "count": len(items)})
+        except Exception as e:
+            print(f"[mem0-viz] error: {e}", file=sys.stderr)
+            self.send_json({"ok": False, "error": str(e), "points": []})
 
     def _handle_headroom_test(self):
         """POST /api/headroom-test — 测试压缩效果，返回压缩前后对比"""
@@ -1877,9 +2012,12 @@ Conversation:
             self.send_json(fallback)
 
     def _handle_media_proxy(self):
-        """Proxy local file paths so the browser can load generated images."""
-        # The file path comes after ? in the URL, e.g. /api/media?C:/Users/.../image.png
-        # parse_qs won't work because file paths don't have key=value format
+        """Proxy local file paths so the browser can load generated images.
+
+        Security: only serves files under WORKSPACE/media (dynamic, derived
+        from this file's location so the repo stays portable). Anything else
+        (configs, secrets, system files) is rejected.
+        """
         from urllib.parse import unquote
         parsed = urlparse(self.path)
         file_path = unquote(parsed.query) if parsed.query else None
@@ -1891,8 +2029,19 @@ Conversation:
         if not file_path:
             self.send_error(400)
             return
+        try:
+            file_path = os.path.abspath(file_path)
+        except Exception:
+            self.send_error(400)
+            return
         if not os.path.isfile(file_path):
             self.send_error(404)
+            return
+        # Path whitelist: only WORKSPACE/media (and subdirs) may be served.
+        media_root = os.path.abspath(os.path.join(WORKSPACE, "media"))
+        if not (file_path == media_root or file_path.startswith(media_root + os.sep)):
+            print(f"[media proxy] blocked path outside media root: {file_path}", file=sys.stderr)
+            self.send_error(403)
             return
         try:
             # Determine content type

@@ -16,12 +16,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Protocol
 
+from app.storage.atomic import rename_with_retry, replace_with_retry
+from app.storage.paths import StoragePaths
 from app.voice.runtime_compat import current_platform_label, current_system_name, find_usable_runtime_python
 
 
 ProgressCallback = Callable[[int], None]
 StatusCallback = Callable[[str], None]
 MigrationProgressCallback = Callable[["TTSBundleMigrationProgress"], None]
+DownloadProgressCallback = Callable[["TTSBundleDownloadProgress"], None]
 
 class DownloadCancelledError(Exception):
     """用户主动取消下载时抛出此异常，调用方据此判断是用户取消而非真正的错误。"""
@@ -91,6 +94,18 @@ class TTSBundleMigrationProgress:
     total_bytes: int
 
 
+@dataclass(frozen=True)
+class TTSBundleDownloadProgress:
+    """TTS 整合包下载阶段的详细进度。"""
+
+    status: str
+    downloaded_bytes: int
+    total_bytes: int
+    percent: int
+    resumed: bool = False
+    bytes_per_second: float = 0.0
+
+
 GENIE_TTS = TTSBundleEntry(
     key="genie_tts_server",
     label="Genie TTS CPU 整合包",
@@ -157,6 +172,8 @@ _MIGRATING_DIR_NAME = ".migrating"
 _MIGRATION_STATE_FILE = ".sakura_migration.json"
 _MIGRATION_TEMP_SUFFIX = ".__sakura_tmp__"
 _MIGRATION_COPY_CHUNK_SIZE = 16 * 1024 * 1024
+_NVIDIA_GPU_CACHE_TTL_SECONDS = 30.0
+_NVIDIA_GPU_CACHE: tuple[float, list[GPUInfo]] | None = None
 
 
 def format_platform_summary() -> str:
@@ -166,7 +183,19 @@ def format_platform_summary() -> str:
         return f"{platform.system()} {platform.release()}"
 
 
-def list_nvidia_gpus() -> list[GPUInfo]:
+def list_nvidia_gpus(*, force_refresh: bool = False) -> list[GPUInfo]:
+    global _NVIDIA_GPU_CACHE
+    now = time.monotonic()
+    if not force_refresh and _NVIDIA_GPU_CACHE is not None:
+        cached_at, cached = _NVIDIA_GPU_CACHE
+        if now - cached_at < _NVIDIA_GPU_CACHE_TTL_SECONDS:
+            return list(cached)
+    gpus = _probe_nvidia_gpus()
+    _NVIDIA_GPU_CACHE = (now, list(gpus))
+    return gpus
+
+
+def _probe_nvidia_gpus() -> list[GPUInfo]:
     # GPU 探测属于尽力而为：任何异常都按“未检测到 GPU”处理，避免拖垮设置页等调用方的构造。
     # 注意 shutil.which 也需保护——当 sys.platform 被伪造为 win32（如测试）但宿主非 Windows 时，
     # 其内部会访问 _winapi.NeedCurrentDirectoryForExePath，而非 Windows 上 _winapi 为 None 会抛 AttributeError。
@@ -284,7 +313,7 @@ def default_bundle_work_dir(entry: TTSBundleEntry, base_dir: Path) -> Path:
     """返回整合包对应的工作目录；已安装时解析真实解压根目录，未安装时返回预期目录。"""
 
     if entry.install_method == "script":
-        installed_dir = base_dir / "data" / "tts_bundles" / "installed" / entry.key
+        installed_dir = StoragePaths(base_dir).tts_bundle_installed_for(entry.key)
         if entry.work_dir_name:
             return installed_dir / entry.work_dir_name
         return installed_dir
@@ -305,7 +334,12 @@ def default_bundle_work_dir(entry: TTSBundleEntry, base_dir: Path) -> Path:
     return short_dir
 
 
-def default_provider_bundle_work_dir(provider: str, base_dir: Path) -> Path | None:
+def default_provider_bundle_work_dir(
+    provider: str,
+    base_dir: Path,
+    *,
+    gpus: list[GPUInfo] | None = None,
+) -> Path | None:
     """按 provider 选择整合包默认工作目录，自定义外部 provider 不返回目录。"""
 
     normalized = provider.strip().lower().replace("_", "-")
@@ -316,13 +350,34 @@ def default_provider_bundle_work_dir(provider: str, base_dir: Path) -> Path | No
 
     if not any(is_bundle_supported(entry) for entry in GPT_SOVITS_BUNDLES):
         return None
-    for entry in GPT_SOVITS_BUNDLES:
-        if not is_bundle_supported(entry):
-            continue
-        if _is_bundle_installed(entry, base_dir):
-            return default_bundle_work_dir(entry, base_dir)
-    recommended = recommend_gpt_sovits_bundle()
+    recommended = recommend_gpt_sovits_bundle(gpus)
     return default_bundle_work_dir(recommended, base_dir) if recommended is not None else None
+
+
+def default_provider_bundle_notice(
+    provider: str,
+    base_dir: Path,
+    *,
+    gpus: list[GPUInfo] | None = None,
+) -> str:
+    normalized = provider.strip().lower().replace("_", "-")
+    if normalized not in {"gpt-sovits", "gpt-so-vits", "gptsovits"}:
+        return ""
+    recommended = recommend_gpt_sovits_bundle(gpus)
+    if recommended is None or _is_bundle_installed(recommended, base_dir):
+        return ""
+    installed = [
+        entry
+        for entry in GPT_SOVITS_BUNDLES
+        if entry != recommended and is_bundle_supported(entry) and _is_bundle_installed(entry, base_dir)
+    ]
+    if not installed:
+        return ""
+    installed_labels = "、".join(entry.label for entry in installed)
+    return (
+        f"检测到已安装 {installed_labels}，但当前显卡推荐 {recommended.label}。"
+        "请下载匹配显卡的 GPT-SoVITS 整合包。"
+    )
 
 
 def is_provider_bundle_work_dir(path: Path, base_dir: Path) -> bool:
@@ -331,7 +386,7 @@ def is_provider_bundle_work_dir(path: Path, base_dir: Path) -> bool:
     resolved = path.resolve()
     for root in (
         (base_dir / "tts").resolve(),
-        (base_dir / "data" / "tts_bundles" / "installed").resolve(),
+        StoragePaths(base_dir).tts_bundles_installed_dir.resolve(),
     ):
         try:
             resolved.relative_to(root)
@@ -444,7 +499,7 @@ def migrate_bundle_to_short_path(
         )
 
     _migration_state_path(work_dir).unlink(missing_ok=True)
-    work_dir.replace(migration.target_dir)
+    rename_with_retry(work_dir, migration.target_dir)
     source_parent = migration.source_dir.parent
     shutil.rmtree(migration.source_dir, ignore_errors=True)
     _remove_empty_legacy_parents(source_parent)
@@ -480,6 +535,7 @@ def install_tts_bundle(
     check_cancel: Callable[[], None] | None = None,
     on_progress: ProgressCallback | None = None,
     on_status: StatusCallback | None = None,
+    on_download_progress: DownloadProgressCallback | None = None,
     urlopen: UrlOpenCallable = urllib.request.urlopen,
     extractor: Callable[[Path, Path], str | None] | None = None,
 ) -> TTSBundleInstallResult:
@@ -490,6 +546,7 @@ def install_tts_bundle(
             check_cancel=check_cancel,
             on_progress=on_progress,
             on_status=on_status,
+            on_download_progress=on_download_progress,
             urlopen=urlopen,
             extractor=extractor,
         )
@@ -512,6 +569,7 @@ def download_and_extract_bundle(
     check_cancel: Callable[[], None] | None = None,
     on_progress: ProgressCallback | None = None,
     on_status: StatusCallback | None = None,
+    on_download_progress: DownloadProgressCallback | None = None,
     urlopen: UrlOpenCallable = urllib.request.urlopen,
     extractor: Callable[[Path, Path], str | None] | None = None,
 ) -> Path:
@@ -534,7 +592,14 @@ def download_and_extract_bundle(
     _emit_progress(on_progress, 0)
     if _archive_verification_error(archive, entry, on_progress=on_progress) is not None:
         _emit_status(on_status, "download")
-        _download_archive(entry, archive, on_progress=on_progress, urlopen=urlopen, check_cancel=check_cancel)
+        _download_archive(
+            entry,
+            archive,
+            on_progress=on_progress,
+            on_download_progress=on_download_progress,
+            urlopen=urlopen,
+            check_cancel=check_cancel,
+        )
     _emit_progress(on_progress, _DOWNLOAD_PROGRESS_END)
 
     _emit_status(on_status, "extract")
@@ -543,6 +608,7 @@ def download_and_extract_bundle(
     error = extract(archive, tmp_dir)
     if error is not None:
         raise RuntimeError(f"解压 TTS 整合包失败：{error}")
+    _emit_status(on_status, "install")
     work_dir = _replace_installed_bundle_from_extract(tmp_dir, installed_dir)
     _emit_status(on_status, "cleanup")
     _cleanup_archive(archive)
@@ -559,7 +625,7 @@ def cleanup_stale_download_archives(base_dir: Path) -> list[Path]:
             continue
         if not _is_bundle_installed(entry, base_dir):
             continue
-        for downloads_dir in (base_dir / "tts" / "_dl", base_dir / "data" / "tts_bundles" / "downloads"):
+        for downloads_dir in (base_dir / "tts" / "_dl", StoragePaths(base_dir).tts_bundles_downloads_dir):
             archive = downloads_dir / entry.filename
             if not archive.is_file():
                 continue
@@ -585,7 +651,7 @@ def _run_script_bundle_installer(
         raise RuntimeError(f"{entry.label} 缺少安装脚本。")
 
     script = _resolve_installer_script(entry.installer_script, base_dir)
-    bundle_base = base_dir / "data" / "tts_bundles"
+    bundle_base = StoragePaths(base_dir).tts_bundles_dir
     installed_dir = bundle_base / "installed" / entry.key
     install_tmp_dir = bundle_base / "tmp" / entry.key
     downloads_dir = bundle_base / "downloads"
@@ -689,12 +755,12 @@ def _replace_installed_bundle_dir(source_dir: Path, target_dir: Path) -> None:
         shutil.rmtree(backup_dir, ignore_errors=True)
     had_previous = target_dir.exists()
     if had_previous:
-        target_dir.rename(backup_dir)
+        rename_with_retry(target_dir, backup_dir)
     try:
         shutil.move(str(source_dir), str(target_dir))
     except Exception:
         if had_previous and backup_dir.exists() and not target_dir.exists():
-            backup_dir.rename(target_dir)
+            rename_with_retry(backup_dir, target_dir)
         raise
     if had_previous:
         shutil.rmtree(backup_dir, ignore_errors=True)
@@ -758,7 +824,7 @@ def _short_bundle_install_dir(entry: TTSBundleEntry, base_dir: Path) -> Path:
 
 
 def _legacy_bundle_install_dir(entry: TTSBundleEntry, base_dir: Path) -> Path:
-    return base_dir / "data" / "tts_bundles" / "installed" / entry.key
+    return StoragePaths(base_dir).tts_bundle_installed_for(entry.key)
 
 
 def _is_bundle_installed(entry: TTSBundleEntry, base_dir: Path) -> bool:
@@ -770,19 +836,11 @@ def _is_bundle_installed(entry: TTSBundleEntry, base_dir: Path) -> bool:
 
 def _replace_installed_bundle_from_extract(tmp_dir: Path, installed_dir: Path) -> Path:
     root = _resolve_extracted_root(tmp_dir)
-    if installed_dir.exists():
-        shutil.rmtree(installed_dir, ignore_errors=True)
-    installed_dir.parent.mkdir(parents=True, exist_ok=True)
-
-    if root == tmp_dir.resolve():
-        installed_dir.mkdir(parents=True, exist_ok=True)
-        for child in list(tmp_dir.iterdir()):
-            shutil.move(str(child), str(installed_dir / child.name))
+    if not _is_installed_bundle_ready(root) and not (root / "api_v2.py").is_file():
+        raise RuntimeError(f"TTS 整合包解压后未找到可用运行时：{root}")
+    _replace_installed_bundle_dir(root, installed_dir)
+    if tmp_dir.exists() and tmp_dir != installed_dir:
         shutil.rmtree(tmp_dir, ignore_errors=True)
-        return installed_dir.resolve()
-
-    shutil.move(str(root), str(installed_dir))
-    shutil.rmtree(tmp_dir, ignore_errors=True)
     return installed_dir.resolve()
 
 
@@ -817,7 +875,7 @@ def _try_fast_migration_rename(migration: TTSBundleMigration) -> bool:
     try:
         if migration.source_dir.resolve().anchor != migration.target_dir.resolve().anchor:
             return False
-        migration.source_dir.rename(migration.target_dir)
+        rename_with_retry(migration.source_dir, migration.target_dir)
     except OSError:
         return False
     _cleanup_migration_work_dir(migration)
@@ -892,7 +950,7 @@ def _copy_file_resumable(source: Path, target: Path) -> None:
                 dst.write(chunk)
                 time.sleep(0)
         shutil.copystat(source, tmp_target)
-        os.replace(tmp_target, target)
+        replace_with_retry(tmp_target, target)
     except Exception:
         tmp_target.unlink(missing_ok=True)
         raise
@@ -989,6 +1047,23 @@ def _emit_status(callback: StatusCallback | None, value: str) -> None:
         callback(value)
 
 
+def _emit_download_progress(
+    callback: DownloadProgressCallback | None,
+    progress: TTSBundleDownloadProgress,
+) -> None:
+    if callback is not None:
+        callback(progress)
+
+
+def _download_percent(downloaded: int, total: int) -> int:
+    if total <= 0:
+        return _DOWNLOAD_PROGRESS_END
+    downloaded = max(0, min(downloaded, total))
+    return _VERIFY_PROGRESS_END + int(
+        (_DOWNLOAD_PROGRESS_END - _VERIFY_PROGRESS_END) * downloaded / total
+    )
+
+
 def _archive_verification_error(
     archive: Path,
     entry: TTSBundleEntry,
@@ -1015,45 +1090,107 @@ def _download_archive(
     archive: Path,
     *,
     on_progress: ProgressCallback | None,
+    on_download_progress: DownloadProgressCallback | None,
     urlopen: UrlOpenCallable,
     check_cancel: Callable[[], None] | None = None,
 ) -> None:
     part = archive.with_name(f"{archive.name}.part")
-    if part.exists():
-        part.unlink()
-    request = urllib.request.Request(
-        entry.download_url,
-        headers={"User-Agent": "Sakura-Desktop-Pet/1.0"},
-    )
-    hasher = hashlib.sha256()
-    downloaded = 0
+    resume_from = part.stat().st_size if part.is_file() else 0
+    if entry.size > 0 and resume_from > entry.size:
+        part.unlink(missing_ok=True)
+        resume_from = 0
+    if resume_from == entry.size and entry.size > 0:
+        actual_sha256 = _sha256_file(part)
+        if actual_sha256.lower() == entry.sha256.lower():
+            replace_with_retry(part, archive)
+            return
+        part.unlink(missing_ok=True)
+        resume_from = 0
+
+    headers = {"User-Agent": "Sakura-Desktop-Pet/1.0"}
+    if resume_from > 0:
+        headers["Range"] = f"bytes={resume_from}-"
+    request = urllib.request.Request(entry.download_url, headers=headers)
+
+    transfer_start = time.monotonic()
+    transfer_start_bytes = resume_from
+    downloaded = resume_from
+    resumed = resume_from > 0
     try:
         with urlopen(request, timeout=600) as response:  # type: ignore[attr-defined]
-            with part.open("wb") as file:
+            status_code = _response_status_code(response)
+            if resumed and status_code != 206:
+                part.unlink(missing_ok=True)
+                downloaded = 0
+                transfer_start_bytes = 0
+                resumed = False
+            mode = "ab" if resumed else "wb"
+            _emit_download_progress(
+                on_download_progress,
+                TTSBundleDownloadProgress(
+                    status="download",
+                    downloaded_bytes=downloaded,
+                    total_bytes=entry.size,
+                    percent=_download_percent(downloaded, entry.size),
+                    resumed=resumed,
+                ),
+            )
+            _emit_progress(on_progress, _download_percent(downloaded, entry.size))
+            with part.open(mode) as file:
                 while True:
                     chunk = response.read(_DOWNLOAD_CHUNK_SIZE)
                     if not chunk:
                         break
                     file.write(chunk)
-                    hasher.update(chunk)
                     if check_cancel is not None:
                         check_cancel()
                     downloaded += len(chunk)
-                    _emit_progress(
-                        on_progress,
-                        _VERIFY_PROGRESS_END
-                        + int((_DOWNLOAD_PROGRESS_END - _VERIFY_PROGRESS_END) * downloaded / entry.size),
+                    progress = _download_percent(downloaded, entry.size)
+                    elapsed = max(0.001, time.monotonic() - transfer_start)
+                    speed = max(0.0, (downloaded - transfer_start_bytes) / elapsed)
+                    _emit_progress(on_progress, progress)
+                    _emit_download_progress(
+                        on_download_progress,
+                        TTSBundleDownloadProgress(
+                            status="download",
+                            downloaded_bytes=downloaded,
+                            total_bytes=entry.size,
+                            percent=progress,
+                            resumed=resumed,
+                            bytes_per_second=speed,
+                        ),
                     )
         if downloaded != entry.size:
             raise RuntimeError(f"文件大小不匹配：期望 {entry.size}，实际 {downloaded}")
-        actual_sha256 = hasher.hexdigest()
+        actual_sha256 = _sha256_file(part)
         if actual_sha256.lower() != entry.sha256.lower():
+            part.unlink(missing_ok=True)
             raise RuntimeError(f"SHA256 不匹配：期望 {entry.sha256}，实际 {actual_sha256}")
-        part.replace(archive)
+        replace_with_retry(part, archive)
+    except DownloadCancelledError:
+        raise
     except Exception:
-        if part.exists():
+        if part.is_file() and entry.size > 0 and part.stat().st_size >= entry.size:
             part.unlink()
         raise
+
+
+def _response_status_code(response: object) -> int | None:
+    getcode = getattr(response, "getcode", None)
+    if callable(getcode):
+        try:
+            code = getcode()
+        except Exception:
+            return None
+        try:
+            return int(code) if code is not None else None
+        except (TypeError, ValueError):
+            return None
+    status = getattr(response, "status", None)
+    try:
+        return int(status) if status is not None else None
+    except (TypeError, ValueError):
+        return None
 
 
 def _sha256_file(

@@ -113,7 +113,7 @@ var UI = {
     }
 
     // Skill buttons
-    document.getElementById('btn-live2d').addEventListener('click', function() { showToast('Live2D - action triggered'); });
+    document.getElementById('btn-live2d').addEventListener('click', function() { self._openLive2dSettings(); });
     document.getElementById('btn-auto-paint').addEventListener('click', function() { self.autoPaint(); });
     document.getElementById('btn-manual-paint').addEventListener('click', function() { self.manualPaint(); });
     document.getElementById('btn-tts-voice').addEventListener('click', function() { self.ttsVoice(); });
@@ -327,6 +327,13 @@ var UI = {
       if (memViewerClose) {
         memViewerClose.addEventListener('click', function() {
           memViewerOverlay.classList.remove('open');
+        });
+      }
+      // Embedding viz toggle
+      var btnMemViz = document.getElementById('btn-mem-viz');
+      if (btnMemViz) {
+        btnMemViz.addEventListener('click', function() {
+          self._toggleMemViz();
         });
       }
       // Click outside to close
@@ -1298,7 +1305,7 @@ var UI = {
     // Text content
     var textEl = document.createElement('span');
     textEl.className = 'msg-text';
-    textEl.textContent = msg.content;
+    textEl.innerHTML = formatMsgText(msg.content);
     bubble.appendChild(textEl);
 
     // Edit + Regenerate buttons (on hover)
@@ -1533,7 +1540,7 @@ var UI = {
     bubble.innerHTML = '';
     var span = document.createElement('span');
     span.className = 'msg-text';
-    span.textContent = text || msg.content || '';
+    span.innerHTML = formatMsgText(text || msg.content || '');
     bubble.appendChild(span);
     // Re-render media if any
     if (msg.media) {
@@ -2105,9 +2112,14 @@ var UI = {
       img.src = this._resolveMediaPath(parsed.mediaPath);
       img.loading = 'lazy';
       img.addEventListener('click', function() { window.open(img.src, '_blank'); });
+      // Replace text content with cleaned version (strips MEDIA: line),
+      // then re-attach the image (innerHTML replaces children, so order matters)
+      bubble.innerHTML = formatMsgText(parsed.cleanText || '');
       bubble.appendChild(img);
-      // Replace text content with cleaned version (strips MEDIA: line)
-      bubble.textContent = parsed.cleanText || '';
+    } else {
+      // Streamed text was appended as plain text nodes; re-render with
+      // inline formatting (**bold**, *italic*, newlines) now that it's whole.
+      bubble.innerHTML = formatMsgText(text);
     }
 
     // Collapse long messages
@@ -3252,6 +3264,300 @@ var UI = {
     memViewerBody.innerHTML = html;
   },
 
+  // ── Live2D settings panel ──
+  _openLive2dSettings: function() {
+    var self = this;
+    var overlay = document.getElementById('live2d-settings-overlay');
+    if (!overlay) return;
+    overlay.classList.add('open');
+
+    var closeBtn = document.getElementById('live2d-settings-close');
+    var doneBtn = document.getElementById('live2d-settings-done');
+    function close() { overlay.classList.remove('open'); }
+    if (closeBtn) closeBtn.onclick = close;
+    if (doneBtn) doneBtn.onclick = close;
+    overlay.onclick = function(e) { if (e.target === overlay) close(); };
+
+    // Bridge status
+    var dot = document.getElementById('live2d-bridge-dot');
+    var statusEl = document.getElementById('live2d-bridge-status');
+    var startBtn = document.getElementById('live2d-bridge-start');
+    var openBtn = document.getElementById('live2d-bridge-open');
+
+    function setStatus(online) {
+      if (dot) dot.className = 'live2d-status-dot ' + (online ? 'on' : 'off');
+      if (statusEl) statusEl.textContent = online ? '在线 (19200)' : '离线 — 点击启动';
+      if (startBtn) startBtn.style.display = online ? 'none' : '';
+    }
+    function checkStatus() {
+      fetch('http://localhost:19200/api/status')
+        .then(function(r) { return r.json(); })
+        .then(function(d) { setStatus(!!d.ok); })
+        .catch(function() { setStatus(false); });
+    }
+    checkStatus();
+
+    if (startBtn) startBtn.onclick = function() {
+      startBtn.textContent = '启动中...';
+      fetch('http://localhost:19260/api/start-service', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Live2D Bridge' }),
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          startBtn.textContent = '启动';
+          if (d.ok) { setStatus(true); self._loadLive2dModels(); }
+          else showToast('启动失败: ' + (d.error || d.result || '未知'));
+        })
+        .catch(function(err) {
+          startBtn.textContent = '启动';
+          showToast('启动失败: ' + err.message);
+        });
+    };
+
+    if (openBtn) openBtn.onclick = function() {
+      window.open('http://localhost:19200/', '_blank');
+    };
+
+    // LLM link toggle (persists in settings, drives streaming TTS lip-sync)
+    var llmCheck = document.getElementById('live2d-llm-link');
+    var llmSwitch = document.getElementById('toggle-live2d-llm-switch');
+    if (llmCheck && llmSwitch) {
+      var st = getSettings();
+      llmCheck.checked = !!st.live2dLlmLink;
+      llmSwitch.classList.toggle('on', !!st.live2dLlmLink);
+      llmCheck.onchange = function() {
+        llmSwitch.classList.toggle('on', llmCheck.checked);
+        var s = getSettings();
+        s.live2dLlmLink = llmCheck.checked;
+        saveSettings(s);
+        if (llmCheck.checked) showToast('LLM 联动已开启 — AI 回复将驱动 Live2D 口型');
+      };
+      llmSwitch.onclick = function() { llmCheck.click(); };
+    }
+
+    this._loadLive2dModels();
+  },
+
+  _loadLive2dModels: function() {
+    var self = this;
+    var listEl = document.getElementById('live2d-model-list');
+    if (!listEl) return;
+    listEl.innerHTML = '<div class="live2d-model-loading">加载角色包中...</div>';
+    fetch('http://localhost:19200/api/models')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.ok) { listEl.innerHTML = '<div class="live2d-model-empty">加载失败: ' + escapeHtml(data.error || '') + '</div>'; return; }
+        var models = data.models || [];
+        if (!models.length) { listEl.innerHTML = '<div class="live2d-model-empty">未发现角色包（live2d/model/ 下需有含 .model3.json 的目录）</div>'; return; }
+        var html = '';
+        models.forEach(function(m) {
+          var first = m.models[0] || '';
+          var variants = m.models.length;
+          html += '<div class="live2d-model-item" data-model="' + escapeHtml(first) + '" data-name="' + escapeHtml(m.name) + '">' +
+            '<span class="model-radio"></span>' +
+            '<div><div class="model-name">' + escapeHtml(m.name) + '</div>' +
+            '<div class="model-sub">' + escapeHtml(first) + (variants > 1 ? ' (+' + (variants-1) + ' 变体)' : '') + '</div></div></div>';
+        });
+        listEl.innerHTML = html;
+        listEl.querySelectorAll('.live2d-model-item').forEach(function(el) {
+          el.addEventListener('click', function() {
+            var model = el.getAttribute('data-model');
+            if (!model) return;
+            // Optimistic UI
+            listEl.querySelectorAll('.live2d-model-item').forEach(function(x) { x.classList.remove('active'); });
+            el.classList.add('active');
+            fetch('http://localhost:19200/api/switch-model?model=' + encodeURIComponent(model))
+              .then(function(r) { return r.json(); })
+              .then(function(d) {
+                if (d.ok) {
+                  showToast('已切换 Live2D 角色: ' + (d.title || model));
+                } else {
+                  el.classList.remove('active');
+                  showToast('切换失败: ' + (d.error || ''));
+                }
+              })
+              .catch(function(err) {
+                el.classList.remove('active');
+                showToast('切换失败: ' + err.message);
+              });
+          });
+        });
+      })
+      .catch(function(err) {
+        listEl.innerHTML = '<div class="live2d-model-empty">Bridge 离线，无法加载角色包</div>';
+      });
+  },
+
+  // ── Embedding visualization (PCA-2D scatter) ──
+  _toggleMemViz: function() {
+    var vizEl = document.getElementById('memory-viewer-viz');
+    var bodyEl = document.getElementById('memory-viewer-body');
+    if (!vizEl) return;
+    var showing = vizEl.style.display !== 'none';
+    if (showing) {
+      vizEl.style.display = 'none';
+      bodyEl.style.display = '';
+      return;
+    }
+    vizEl.style.display = 'block';
+    bodyEl.style.display = 'none';
+    var self = this;
+    var canvas = document.getElementById('mem-viz-canvas');
+    if (!canvas) return;
+    canvas.innerHTML = '';
+    // Load data
+    fetch('http://localhost:19260/api/mem0-viz')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.ok || !data.points || data.points.length === 0) {
+          var legend = document.getElementById('mem-viz-legend');
+          if (legend) legend.innerHTML = '<div class="mem-viz-empty">暂无记忆数据</div>';
+          return;
+        }
+        self._drawMemViz(data.points);
+      })
+      .catch(function(err) {
+        var legend = document.getElementById('mem-viz-legend');
+        if (legend) legend.innerHTML = '<div class="mem-viz-empty">加载失败: ' + escapeHtml(err.message) + '</div>';
+      });
+  },
+
+  _drawMemViz: function(points) {
+    var canvas = document.getElementById('mem-viz-canvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var W = canvas.width, H = canvas.height;
+    var pad = 46; // room for labels
+
+    // Normalize character id (case-insensitive)
+    var palette = ['#e06c75', '#61afef', '#98c379', '#e5c07b', '#c678dd', '#56b6c2', '#d19a66'];
+    var charMap = {};
+    var charList = [];
+    points.forEach(function(p) {
+      var k = String(p.character || '?').toLowerCase();
+      if (!(k in charMap)) {
+        charMap[k] = { name: p.character || '?', color: palette[charList.length % palette.length] };
+        charList.push(k);
+      }
+    });
+
+    // Map x,y in [-1,1] to canvas
+    function mapX(x) { return pad + (x + 1) / 2 * (W - pad * 2); }
+    function mapY(y) { return pad + (1 - y) / 2 * (H - pad * 2); } // y flip for screen
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Background grid
+    ctx.fillStyle = 'rgba(0,0,0,0)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(128,128,128,0.12)';
+    ctx.lineWidth = 1;
+    for (var i = 0; i <= 4; i++) {
+      var gx = pad + i / 4 * (W - pad * 2);
+      var gy = pad + i / 4 * (H - pad * 2);
+      ctx.beginPath(); ctx.moveTo(gx, pad); ctx.lineTo(gx, H - pad); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pad, gy); ctx.lineTo(W - pad, gy); ctx.stroke();
+    }
+    // Axis labels
+    ctx.fillStyle = 'rgba(150,150,150,0.7)';
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('PCA 1', W / 2, H - 10);
+    ctx.save();
+    ctx.translate(12, H / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('PCA 2', 0, 0);
+    ctx.restore();
+
+    // Draw points (hover targets)
+    var dots = [];
+    var radius = Math.max(7, Math.min(14, 200 / Math.sqrt(points.length + 1)));
+    points.forEach(function(p, idx) {
+      var k = String(p.character || '?').toLowerCase();
+      var color = charMap[k].color;
+      var cx = mapX(p.x), cy = mapY(p.y);
+      // Glow
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius + 4, 0, Math.PI * 2);
+      ctx.fillStyle = color + '22';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      dots.push({ x: cx, y: cy, r: radius, p: p, color: color });
+    });
+
+    // Legend
+    var legend = document.getElementById('mem-viz-legend');
+    if (legend) {
+      var lh = '';
+      charList.forEach(function(k) {
+        var c = charMap[k];
+        lh += '<span class="mem-viz-legend-item"><i style="background:' + c.color + '"></i>' +
+              escapeHtml(c.name) + '</span>';
+      });
+      lh += '<span class="mem-viz-count">共 ' + points.length + ' 条记忆</span>';
+      legend.innerHTML = lh;
+    }
+
+    // Hover tooltip + click pin
+    var hoverEl = document.getElementById('mem-viz-hover');
+    var pinned = null;
+    function showTooltip(d, evt) {
+      if (!hoverEl) return;
+      var timeStr = d.p.time || '';
+      var txt = d.p.text || '';
+      hoverEl.innerHTML = '<div class="mem-viz-hover-name">' + escapeHtml(d.p.character || '?') + '</div>' +
+        '<div class="mem-viz-hover-time">' + escapeHtml(timeStr) + '</div>' +
+        '<div class="mem-viz-hover-text">' + escapeHtml(txt) + '</div>';
+      hoverEl.style.display = 'block';
+      var rect = canvas.getBoundingClientRect();
+      var px = (evt.clientX - rect.left) + 14;
+      var py = (evt.clientY - rect.top) + 14;
+      if (px + 260 > rect.width) px = (evt.clientX - rect.left) - 274;
+      if (py + 120 > rect.height) py = (evt.clientY - rect.top) - 130;
+      hoverEl.style.left = px + 'px';
+      hoverEl.style.top = py + 'px';
+    }
+    function hideTooltip() {
+      if (hoverEl && !pinned) hoverEl.style.display = 'none';
+    }
+    canvas.addEventListener('mousemove', function(evt) {
+      var rect = canvas.getBoundingClientRect();
+      var mx = evt.clientX - rect.left, my = evt.clientY - rect.top;
+      for (var i = dots.length - 1; i >= 0; i--) {
+        var d = dots[i];
+        var dx = mx - d.x, dy = my - d.y;
+        if (dx * dx + dy * dy <= d.r * d.r + 4) {
+          showTooltip(d, evt);
+          return;
+        }
+      }
+      hideTooltip();
+    });
+    canvas.addEventListener('mouseleave', hideTooltip);
+    canvas.addEventListener('click', function(evt) {
+      var rect = canvas.getBoundingClientRect();
+      var mx = evt.clientX - rect.left, my = evt.clientY - rect.top;
+      var hit = null;
+      for (var i = 0; i < dots.length; i++) {
+        var d = dots[i];
+        var dx = mx - d.x, dy = my - d.y;
+        if (dx * dx + dy * dy <= d.r * d.r + 4) { hit = d; break; }
+      }
+      if (hit) {
+        pinned = (pinned && pinned.p === hit.p) ? null : hit;
+        if (pinned) showTooltip(hit, evt); else hideTooltip();
+      }
+    });
+  },
+
   _renderSessionViewer: function(history) {
     var memViewerBody = document.getElementById('memory-viewer-body');
     if (!memViewerBody) return;
@@ -3298,6 +3604,20 @@ function escapeHtml(str) {
   var d = document.createElement('div');
   d.textContent = str;
   return d.innerHTML;
+}
+
+// Lightweight inline markdown for message text: **bold** -> <strong>.
+// HTML-escapes first, then formats, so user/LLM content can never inject markup.
+function formatMsgText(str) {
+  if (!str) return '';
+  var s = escapeHtml(str);
+  // **bold** (before *italic* so stars don't collide)
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // *italic* - never match inside a strong pair, keep single stars literal
+  s = s.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+  // newlines survive as <br> (bubble text is plain-text in origin)
+  s = s.replace(/\n/g, '<br>');
+  return s;
 }
 
 // ---- Boot ----

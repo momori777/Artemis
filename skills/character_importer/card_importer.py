@@ -44,6 +44,14 @@ ST_CHATS_DIR = _ST_HOME / "chats" if _ST_HOME else None
 # Files that are role-specific (swapped during switch)
 ROLE_FILES = ["SOUL.md", "IDENTITY.md"]
 ROOT_FILES = ["SOUL.md", "IDENTITY.md"]  # at workspace root
+# AGENTS.md is the ability hub; roleplay mode uses the full version,
+# tool mode swaps in a minimal version from skills/tool/AGENTS*.md
+AGENTS_FILES = ["AGENTS.md", "AGENTS_EN.md", "AGENTS_JA.md"]
+
+
+def _agents_bak_name(fname: str) -> str:
+    """AGENTS.md -> AGENTS.md.roleplay.bak (per-language backup name)."""
+    return fname + ".roleplay.bak"
 
 # TTS 权重切换相关
 # 从 workspace/config.yaml 读取 sovits_root
@@ -335,6 +343,9 @@ def do_switch(parsed: dict, source_name: str):
     mem_dir = ROLE_MEMORY_DIR / safe
     mem_dir.mkdir(parents=True, exist_ok=True)
 
+    # 从工具人模式切回角色：恢复完整版 AGENTS.md
+    _restore_roleplay_agents()
+
     # 切换 TTS 权重
     _switch_tts_weights(safe)
 
@@ -366,6 +377,9 @@ def do_switch_harem(name: str):
     if OPENCLAW_WS.exists():
         _copy_role_files(src, OPENCLAW_WS)
 
+    # 从工具人模式切回角色：恢复完整版 AGENTS.md
+    _restore_roleplay_agents()
+
     # 切换 TTS 权重
     _switch_tts_weights(safe)
 
@@ -382,6 +396,65 @@ def _copy_role_files(src: Path, dest: Path = WORKSPACE_ROOT):
             shutil.copy2(sf, dest / fname)
 
 
+def _agents_is_tool_version() -> bool:
+    """True if ALL root AGENTS*.md files already match skills/tool/AGENTS*.md."""
+    for fname in AGENTS_FILES:
+        tool_agents = TOOL_DIR / fname
+        root_agents = WORKSPACE_ROOT / fname
+        if not tool_agents.exists():
+            continue  # no tool variant for this language; nothing to compare
+        if not root_agents.exists():
+            return False
+        if root_agents.read_bytes() != tool_agents.read_bytes():
+            return False
+    return True
+
+
+def _backup_roleplay_agents():
+    """Back up the full roleplay AGENTS*.md (zh/en/ja) before switching to tool mode.
+    Keeps the FIRST captured roleplay version: once a backup exists it is never
+    overwritten, so an edit made while in tool mode cannot destroy the saved copy."""
+    for fname in AGENTS_FILES:
+        root_agents = WORKSPACE_ROOT / fname
+        bak = TOOL_DIR / _agents_bak_name(fname)
+        if not root_agents.exists():
+            continue
+        tool_agents = TOOL_DIR / fname
+        if tool_agents.exists() and root_agents.read_bytes() == tool_agents.read_bytes():
+            continue  # already tool version; nothing roleplay to preserve
+        if bak.exists():
+            continue  # keep the original roleplay copy; never clobber it
+        shutil.copy2(root_agents, bak)
+        print(f"  [AGENTS] 备份角色版 {fname} -> {bak.name}")
+
+
+def _install_tool_agents():
+    """Copy the minimal tool-mode AGENTS*.md (zh/en/ja) to root + workspace."""
+    for fname in AGENTS_FILES:
+        tool_agents = TOOL_DIR / fname
+        if not tool_agents.exists():
+            continue
+        shutil.copy2(tool_agents, WORKSPACE_ROOT / fname)
+        if OPENCLAW_WS.exists():
+            shutil.copy2(tool_agents, OPENCLAW_WS / fname)
+        print(f"  [AGENTS] 已切换为精简工具人版 {fname}")
+
+
+def _restore_roleplay_agents():
+    """Restore the full roleplay AGENTS*.md (zh/en/ja) when leaving tool mode."""
+    restored = False
+    for fname in AGENTS_FILES:
+        bak = TOOL_DIR / _agents_bak_name(fname)
+        if not bak.exists():
+            continue
+        shutil.copy2(bak, WORKSPACE_ROOT / fname)
+        if OPENCLAW_WS.exists():
+            shutil.copy2(bak, OPENCLAW_WS / fname)
+        print(f"  [AGENTS] 已恢复角色版 {fname}")
+        restored = True
+    return restored
+
+
 def do_switch_tool():
     """Switch to tool mode (no character roleplay, pure utility agent)."""
     src = TOOL_DIR
@@ -392,12 +465,17 @@ def do_switch_tool():
     # Save current
     old_key = save_current_to_harem()
 
+    # Keep the full roleplay AGENTS.md safe, then install the minimal one
+    _backup_roleplay_agents()
+
     # Copy tool mode files to root
     _copy_role_files(src)
 
     # Sync to workspace
     if OPENCLAW_WS.exists():
         _copy_role_files(src, OPENCLAW_WS)
+
+    _install_tool_agents()
 
     print(f"\n[OK] Switched to Tool Mode!")
     print(f"     Previous '{old_key}' saved to harem.")
@@ -512,8 +590,7 @@ def cmd_switch_harem(args):
 
 def cmd_switch_tool(args=None):
     """Switch to tool mode."""
-    active = get_active_character()
-    if active and active == "tool":
+    if _agents_is_tool_version():
         print("  Already in tool mode.")
         return
     do_switch_tool()

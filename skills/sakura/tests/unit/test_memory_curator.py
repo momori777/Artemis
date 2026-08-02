@@ -3,7 +3,10 @@ from __future__ import annotations
 import sqlite3
 import threading
 from pathlib import Path
+from typing import Any
 import uuid
+
+import pytest
 
 from app.agent.memory import MemoryStore
 from app.agent.memory_curator import (
@@ -12,63 +15,263 @@ from app.agent.memory_curator import (
     MemoryCurator,
     _entries_for_model,
 )
+from app.core.cancellation import CancellationToken, OperationCancelled
 from app.storage.chat_history import ChatHistoryEntry
 
 
-def test_memory_curator_writes_history_through_mem0() -> None:
-    fake = FakeMem0()
-    store = MemoryStore(
-        base_dir=_runtime_root("memory_curator"),
-        scope_id="sakura",
-        memory_client=fake,
-    )
-    curator = MemoryCurator(store)
+def test_curator_adds_memory_from_first_person_view() -> None:
+    store = FakeMemoryStore(existing=[{"id": "m1", "content": "主人喜欢猫"}])
+    api = FakeCurationApiClient(['{"operations":[{"op":"add","content":"主人默认用中文交流"}]}'])
+    curator = MemoryCurator(api, store, system_prompt="我是 Sakura，这是我的人格卡。")
 
     result = curator.curate_entries([_entry("user", "以后默认中文和我说话")])
 
     assert result.created == 1
-    assert result.processed_entries == 1
-    assert fake.calls[0]["infer"] is True
-    assert fake.calls[0]["user_id"] == "sakura"
-    assert fake.calls[0]["messages"][0]["content"] == "以后默认中文和我说话"
-
-
-def test_memory_curator_falls_back_when_mem0_returns_no_results() -> None:
-    fake = EmptyMem0()
-    store = MemoryStore(
-        base_dir=_runtime_root("memory_curator_fallback"),
-        scope_id="sakura",
-        memory_client=fake,
-    )
-    api_client = FakeFallbackApiClient()
-    curator = MemoryCurator(api_client, store)
-
-    result = curator.curate_entries([_entry("user", "明天我妈妈生日")])
-
-    assert result.created == 1
     assert result.returned == 1
-    assert result.event_counts == {"FALLBACK_ADD": 1}
-    assert fake.calls[0]["infer"] is True
-    assert fake.calls[1]["infer"] is False
-    assert fake.calls[1]["messages"] == "用户妈妈的生日是6月4日。"
-    assert fake.calls[1]["metadata"] == {"source": "curation_fallback"}
+    assert result.processed_entries == 1
+    assert store.created == [
+        {
+            "content": "主人默认用中文交流",
+            "layer": "semantic",
+            "category": "",
+            "importance": 0.5,
+            "confidence": 0.75,
+            "source": "self_curation",
+        }
+    ]
+    # 人格卡注入到第一人称整理的 system prompt。
+    assert "我是 Sakura，这是我的人格卡。" in api.calls[0]["system_prompt"]
+    # 现有记忆（带 id）注入到 user prompt，供模型对照去重。
+    user_content = api.calls[0]["messages"][0]["content"]
+    assert "[m1]" in user_content
+    assert "主人喜欢猫" in user_content
 
 
-def test_memory_curator_chunks_large_history_before_mem0() -> None:
-    fake = FakeMem0()
-    store = MemoryStore(
-        base_dir=_runtime_root("memory_curator_chunks"),
-        scope_id="sakura",
-        memory_client=fake,
+def test_curator_updates_system_prompt_for_next_curation() -> None:
+    store = FakeMemoryStore()
+    api = FakeCurationApiClient(['{"operations":[]}', '{"operations":[]}'])
+    curator = MemoryCurator(api, store, system_prompt="旧角色人格卡")
+
+    curator.curate_entries([_entry("user", "第一轮对话")])
+    curator.set_system_prompt("新角色人格卡")
+    curator.curate_entries([_entry("user", "第二轮对话")])
+
+    first_prompt = str(api.calls[0]["system_prompt"])
+    second_prompt = str(api.calls[1]["system_prompt"])
+    assert "旧角色人格卡" in first_prompt
+    assert "新角色人格卡" not in first_prompt
+    assert "新角色人格卡" in second_prompt
+    assert "旧角色人格卡" not in second_prompt
+
+
+def test_curator_snapshot_keeps_prompt_and_store_context() -> None:
+    active_store = FakeMemoryStore()
+    snapshot_store = FakeMemoryStore()
+    api = FakeCurationApiClient(['{"operations":[]}'])
+    curator = MemoryCurator(api, active_store, system_prompt="旧角色人格卡")
+
+    snapshot = curator.snapshot(memory_store=snapshot_store)
+    curator.set_system_prompt("新角色人格卡")
+
+    snapshot.curate_entries([_entry("user", "整理旧角色对话")])
+
+    prompt = str(api.calls[0]["system_prompt"])
+    assert "旧角色人格卡" in prompt
+    assert "新角色人格卡" not in prompt
+    assert snapshot.memory_store is snapshot_store
+
+
+def test_scoped_memory_store_keeps_scope_after_parent_switch() -> None:
+    mem0 = ScopeRecordingMem0()
+    root = _runtime_json_path("scoped_memory_store")
+    root.mkdir(parents=True, exist_ok=True)
+    store = MemoryStore(base_dir=root, scope_id="old-character", memory_client=mem0)
+    scoped_store = store.scoped("old-character")
+
+    store.set_scope("new-character")
+    scoped_store.list_memories(limit=1)
+    scoped_store.create_memory(
+        {"content": "旧角色记忆", "source": "self_curation"},
+        allow_sensitive=True,
     )
-    curator = MemoryCurator(store)
+
+    assert mem0.get_all_calls == [{"user_id": "old-character"}]
+    assert mem0.add_calls == [
+        {
+            "content": "旧角色记忆",
+            "user_id": "old-character",
+            "metadata_scope": "old-character",
+            "infer": False,
+        }
+    ]
+
+
+def test_curator_updates_and_deletes_existing_memories() -> None:
+    store = FakeMemoryStore(
+        existing=[
+            {"id": "m1", "content": "主人住在旧地址"},
+            {"id": "m2", "content": "一条过时的记忆"},
+        ]
+    )
+    operations = (
+        '{"operations":['
+        '{"op":"update","id":"m1","content":"主人搬到了新地址"},'
+        '{"op":"delete","id":"m2"}'
+        ']}'
+    )
+    api = FakeCurationApiClient([operations])
+    curator = MemoryCurator(api, store)
+
+    result = curator.curate_entries([_entry("user", "我搬家了，旧的别记了")])
+
+    assert result.updated == 1
+    assert result.archived == 1
+    assert result.returned == 2
+    assert store.updated == [
+        {
+            "id": "m1",
+            "content": "主人搬到了新地址",
+            "layer": "semantic",
+            "category": "",
+            "importance": 0.5,
+            "confidence": 0.75,
+            "source": "self_curation",
+        }
+    ]
+    assert store.deleted == [{"id": "m2"}]
+
+
+def test_curator_ignores_operations_with_unknown_id() -> None:
+    """模型幻觉出不存在的 id 时，更新/删除必须被忽略，避免误改误删。"""
+
+    store = FakeMemoryStore(existing=[{"id": "m1", "content": "真实记忆"}])
+    operations = (
+        '{"operations":['
+        '{"op":"delete","id":"ghost"},'
+        '{"op":"update","id":"ghost","content":"幻觉内容"}'
+        ']}'
+    )
+    api = FakeCurationApiClient([operations])
+    curator = MemoryCurator(api, store)
+
+    result = curator.curate_entries([_entry("user", "随便说说")])
+
+    assert store.deleted == []
+    assert store.updated == []
+    assert result.updated == 0
+    assert result.archived == 0
+    assert result.ignored == 2
+
+
+def test_curator_skips_low_confidence_and_sensitive_candidates() -> None:
+    store = FakeMemoryStore()
+    operations = (
+        '{"operations":['
+        '{"op":"add","content":"主人喜欢抹茶","confidence":0.4},'
+        '{"op":"add","content":"主人密码是 abc123","confidence":0.9}'
+        ']}'
+    )
+    api = FakeCurationApiClient([operations])
+    curator = MemoryCurator(api, store)
+
+    result = curator.curate_entries([_entry("user", "随便记一下")])
+
+    assert store.created == []
+    assert result.created == 0
+    assert result.ignored == 2
+
+
+def test_curator_merges_similar_memory_in_same_layer() -> None:
+    store = FakeMemoryStore(
+        existing=[
+            {
+                "id": "m1",
+                "content": "主人默认使用中文交流",
+                "layer": "procedural",
+                "category": "preference",
+            }
+        ]
+    )
+    operations = (
+        '{"operations":['
+        '{"op":"add","layer":"procedural","category":"preference",'
+        '"content":"主人默认使用简体中文交流","confidence":0.9}'
+        ']}'
+    )
+    api = FakeCurationApiClient([operations])
+    curator = MemoryCurator(api, store)
+
+    result = curator.curate_entries([_entry("user", "以后默认简体中文")])
+
+    assert result.created == 0
+    assert result.updated == 1
+    assert store.created == []
+    assert store.updated[0]["id"] == "m1"
+    assert store.updated[0]["layer"] == "procedural"
+
+
+def test_curator_chunks_large_history_into_separate_calls() -> None:
+    store = FakeMemoryStore()
+    api = FakeCurationApiClient(
+        [
+            '{"operations":[{"op":"add","content":"第一段事实"}]}',
+            '{"operations":[{"op":"add","content":"第二段事实"}]}',
+        ]
+    )
+    curator = MemoryCurator(api, store)
 
     result = curator.curate_entries([_entry("user", f"偏好 {index}") for index in range(35)])
 
+    # 35 条 > 单块上限 32，应拆成两块各发起一次整理。
+    assert len(api.calls) == 2
     assert result.created == 2
-    assert result.returned == 2
     assert result.processed_entries == 35
-    assert [len(call["messages"]) for call in fake.calls] == [32, 3]
+
+
+def test_curator_cancel_stops_after_current_chunk() -> None:
+    token = CancellationToken()
+    store = FakeMemoryStore()
+    api = CancellingCurationApiClient(
+        token,
+        [
+            '{"operations":[{"op":"add","content":"第一段事实"}]}',
+            '{"operations":[{"op":"add","content":"第二段事实"}]}',
+        ],
+    )
+    curator = MemoryCurator(api, store)
+
+    with pytest.raises(OperationCancelled):
+        curator.curate_entries(
+            [_entry("user", f"偏好 {index}") for index in range(35)],
+            cancel_checker=token.throw_if_cancelled,
+        )
+
+    # 抽取后即检测到取消，第二块不再发起。
+    assert len(api.calls) == 1
+
+
+def test_curator_ignores_non_dialog_entries() -> None:
+    store = FakeMemoryStore()
+    api = FakeCurationApiClient([])
+    curator = MemoryCurator(api, store)
+
+    result = curator.curate_entries([_entry("system", "内部记录")])
+
+    assert result.processed_entries == 1
+    assert result.created == 0
+    # 没有可整理的对话时不应调用模型。
+    assert api.calls == []
+
+
+def test_curator_without_api_client_skips_quietly() -> None:
+    store = FakeMemoryStore()
+    curator = MemoryCurator(None, store)
+
+    result = curator.curate_entries([_entry("user", "在吗")])
+
+    assert result.created == 0
+    assert result.processed_entries == 1
+    assert store.created == []
 
 
 def test_memory_delete_resets_mem0_curation_cache_for_current_scope() -> None:
@@ -93,21 +296,6 @@ def test_memory_delete_resets_mem0_curation_cache_for_current_scope() -> None:
     assert fake.count_history("memory-other") == 1
 
 
-def test_memory_curator_ignores_non_dialog_entries() -> None:
-    fake = FakeMem0()
-    store = MemoryStore(
-        base_dir=_runtime_root("memory_curator_empty"),
-        memory_client=fake,
-    )
-    curator = MemoryCurator(store)
-
-    result = curator.curate_entries([_entry("system", "内部记录")])
-
-    assert result.processed_entries == 1
-    assert result.created == 0
-    assert fake.calls == []
-
-
 def test_memory_curation_state_waits_until_trigger_turns() -> None:
     state = MemoryCurationState(_runtime_json_path("memory_curation_state"))
 
@@ -120,6 +308,19 @@ def test_memory_curation_state_waits_until_trigger_turns() -> None:
     state.increment_pending_turns()
 
     assert state.pending_turns() == DEFAULT_AUTO_MEMORY_TRIGGER_TURNS
+
+
+def test_memory_curation_state_consumes_pending_turns_without_advancing_history() -> None:
+    state = MemoryCurationState(_runtime_json_path("memory_curation_state_consume"))
+    state.mark_processed(12)
+    for _ in range(5):
+        state.increment_pending_turns()
+
+    state.consume_pending_turns(3)
+
+    snapshot = state.snapshot()
+    assert snapshot["processed_history_count"] == 12
+    assert snapshot["pending_turns"] == 2
 
 
 def test_memory_entries_ignore_tone_and_portrait_metadata() -> None:
@@ -178,10 +379,10 @@ def _entry(role: str, content: str) -> ChatHistoryEntry:
 def _runtime_json_path(name: str) -> Path:
     return (
         Path(__file__).resolve().parents[2]
-        / "__pycache__"
+        / "temp"
         / "test_runtime"
-        / name
         / uuid.uuid4().hex
+        / name
         / f"{name}.json"
     )
 
@@ -189,62 +390,94 @@ def _runtime_json_path(name: str) -> Path:
 def _runtime_root(name: str) -> Path:
     return (
         Path(__file__).resolve().parents[2]
-        / "__pycache__"
+        / "temp"
         / "test_runtime"
-        / name
         / uuid.uuid4().hex
+        / name
     )
 
 
-class FakeMem0:
-    def __init__(self) -> None:
+class FakeMemoryStore:
+    """记录整理写回操作的轻量替身，便于单测第一人称整理逻辑。"""
+
+    def __init__(self, existing: list[dict[str, Any]] | None = None) -> None:
+        self.existing = list(existing or [])
+        self.created: list[dict[str, Any]] = []
+        self.updated: list[dict[str, Any]] = []
+        self.deleted: list[dict[str, Any]] = []
+
+    def list_memories(self, *, limit: int) -> list[dict[str, Any]]:
+        return list(self.existing)
+
+    def create_memory(self, arguments, *, allow_sensitive=False, wait=True):  # type: ignore[no-untyped-def]
+        self.created.append(dict(arguments))
+        return {"ok": True}
+
+    def update_memory(self, arguments, *, allow_sensitive=False):  # type: ignore[no-untyped-def]
+        self.updated.append(dict(arguments))
+        return {}
+
+    def delete_memory(self, arguments):  # type: ignore[no-untyped-def]
+        self.deleted.append(dict(arguments))
+        return {}
+
+
+class FakeCurationApiClient:
+    """按调用顺序返回预设整理 JSON 的模型替身。"""
+
+    def __init__(self, responses: list[str]) -> None:
+        self.responses = list(responses)
         self.calls: list[dict[str, object]] = []
 
-    def add(self, messages, *, user_id=None, infer=True, metadata=None):  # type: ignore[no-untyped-def]
+    def complete_raw(self, system_prompt, messages, **chat_params):  # type: ignore[no-untyped-def]
+        index = len(self.calls)
         self.calls.append(
             {
+                "system_prompt": system_prompt,
                 "messages": messages,
+                "chat_params": chat_params,
+            }
+        )
+        if index >= len(self.responses):
+            return '{"operations":[]}'
+        return self.responses[index]
+
+
+class CancellingCurationApiClient(FakeCurationApiClient):
+    """首次抽取返回后立即触发取消，用于验证整理在块间停止。"""
+
+    def __init__(self, token: CancellationToken, responses: list[str]) -> None:
+        super().__init__(responses)
+        self.token = token
+
+    def complete_raw(self, system_prompt, messages, **chat_params):  # type: ignore[no-untyped-def]
+        raw = super().complete_raw(system_prompt, messages, **chat_params)
+        self.token.cancel()
+        return raw
+
+
+class ScopeRecordingMem0:
+    def __init__(self) -> None:
+        self.get_all_calls: list[dict[str, str]] = []
+        self.add_calls: list[dict[str, object]] = []
+
+    def get_all(self, *, filters, top_k):  # type: ignore[no-untyped-def]
+        self.get_all_calls.append(dict(filters))
+        return []
+
+    def add(self, content, *, user_id, metadata, infer):  # type: ignore[no-untyped-def]
+        self.add_calls.append(
+            {
+                "content": content,
                 "user_id": user_id,
+                "metadata_scope": metadata.get("scope"),
                 "infer": infer,
-                "metadata": metadata,
             }
         )
         return {
-            "results": [
-                {
-                    "id": "mem1",
-                    "memory": "主人希望默认用中文沟通",
-                    "user_id": user_id,
-                    "event": "ADD",
-                }
-            ]
-        }
-
-
-class EmptyMem0:
-    def __init__(self) -> None:
-        self.calls: list[dict[str, object]] = []
-
-    def add(self, messages, *, user_id=None, infer=True, metadata=None):  # type: ignore[no-untyped-def]
-        self.calls.append(
-            {
-                "messages": messages,
-                "user_id": user_id,
-                "infer": infer,
-                "metadata": metadata,
-            }
-        )
-        if infer:
-            return {"results": []}
-        return {
-            "results": [
-                {
-                    "id": "fallback-1",
-                    "memory": messages,
-                    "user_id": user_id,
-                    "event": "ADD",
-                }
-            ]
+            "id": "memory-001",
+            "memory": content,
+            "metadata": metadata,
         }
 
 
@@ -339,22 +572,6 @@ class FakeMem0Db:
             """
         )
         self.connection.commit()
-
-
-class FakeFallbackApiClient:
-    def __init__(self) -> None:
-        self.calls: list[dict[str, object]] = []
-
-    def complete_raw(self, system_prompt, messages, temperature=0.8, **chat_params):  # type: ignore[no-untyped-def]
-        self.calls.append(
-            {
-                "system_prompt": system_prompt,
-                "messages": messages,
-                "temperature": temperature,
-                "chat_params": chat_params,
-            }
-        )
-        return '{"memories":["用户妈妈的生日是6月4日。"]}'
 
 
 class FakeOpenAIClient:

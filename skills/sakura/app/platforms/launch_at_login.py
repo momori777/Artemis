@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import os
 import plistlib
-import shlex
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from app.storage.paths import StoragePaths
 
 
 LAUNCH_AT_LOGIN_LABEL = "com.rvosy.sakura.launch-at-login"
@@ -104,6 +105,33 @@ def set_launch_at_login_enabled(
     raise LaunchAtLoginError(f"Unsupported platform: {target.platform}")
 
 
+def is_launch_at_login_enabled(
+    base_dir: Path,
+    *,
+    platform: str | None = None,
+    home_dir: Path | None = None,
+    windows_registry: Any | None = None,
+) -> bool:
+    target = resolve_launch_at_login_target(base_dir, platform=platform)
+    if not target.supported:
+        raise LaunchAtLoginError(target.reason or "Launch at login is not supported.")
+    if target.platform == "macos":
+        return _macos_launch_agent_path(home_dir=home_dir).is_file()
+    if target.platform == "linux":
+        return _linux_autostart_path(home_dir=home_dir).is_file()
+    if target.platform == "windows":
+        winreg = windows_registry or _import_winreg()
+        key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
+        access = getattr(winreg, "KEY_QUERY_VALUE", 0)
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, access) as key:
+                winreg.QueryValueEx(key, WINDOWS_RUN_VALUE_NAME)
+        except FileNotFoundError:
+            return False
+        return True
+    return False
+
+
 def ensure_launch_at_login_state(
     base_dir: Path,
     enabled: bool,
@@ -157,7 +185,7 @@ def _set_macos_launch_agent_enabled(
 ) -> None:
     plist_path = _macos_launch_agent_path(home_dir=home_dir)
     if enabled:
-        logs_dir = base_dir / "data" / "logs"
+        logs_dir = StoragePaths(base_dir).logs_dir
         logs_dir.mkdir(parents=True, exist_ok=True)
         plist_path.parent.mkdir(parents=True, exist_ok=True)
         data = {
@@ -241,7 +269,7 @@ def _linux_autostart_path(*, home_dir: Path | None = None) -> Path:
 
 
 def _linux_desktop_entry(command: tuple[str, ...]) -> str:
-    exec_line = " ".join(shlex.quote(part) for part in command)
+    exec_line = " ".join(_desktop_exec_quote(part) for part in command)
     return "\n".join(
         (
             "[Desktop Entry]",
@@ -253,6 +281,13 @@ def _linux_desktop_entry(command: tuple[str, ...]) -> str:
             "",
         )
     )
+
+
+def _desktop_exec_quote(value: str) -> str:
+    escaped = str(value).replace("%", "%%")
+    escaped = escaped.replace("\\", "\\\\").replace('"', '\\"')
+    escaped = escaped.replace("`", "\\`").replace("$", "\\$")
+    return f'"{escaped}"'
 
 
 def _unlink_if_exists(path: Path) -> None:

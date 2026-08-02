@@ -7,8 +7,11 @@ from pathlib import Path
 import pytest
 
 import app.agent.mcp.provider as mcp_provider_module
-from app.agent.mcp.bridge import MCPBridge
-from app.agent.mcp.config import MCPServerConfig, load_mcp_config
+from app.agent.mcp.bridge import MCPBridge, MCPToolSpec
+from app.agent.mcp.config import MCPConfig, MCPServerConfig, load_mcp_config
+from app.agent.mcp.provider import MCPToolProvider
+from app.agent.tools import ToolRegistry
+from app.core.resource_manager import ResourceRegistry
 
 
 def test_mcp_runtime_token_prefers_current_python_scripts(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -59,11 +62,83 @@ def test_mcp_bridge_missing_stdio_command_has_actionable_error() -> None:
     bridge.close()
 
 
+def test_mcp_bridge_timeout_replaces_polluted_event_loop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    registry = ResourceRegistry()
+    bridge = MCPBridge(
+        MCPServerConfig(name="demo", transport="sse", url="https://example.com/mcp"),
+        default_call_timeout=1,
+        resource_registry=registry,
+    )
+    polluted_loop = bridge._loop_resource
+    monkeypatch.setattr(polluted_loop, "stop", lambda _timeout_ms: False)
+
+    bridge._invalidate_timed_out_connection()
+
+    assert bridge._loop_resource is not polluted_loop
+    assert bridge._loop_resource in registry._resources
+    bridge.close()
+
+
+def test_mcp_provider_closes_via_resource_registry_and_handlers_fail_closed() -> None:
+    registry = ResourceRegistry()
+    tool_registry = ToolRegistry()
+    bridge = _FakeBridge()
+    provider = MCPToolProvider(
+        MCPConfig(
+            enabled=True,
+            default_call_timeout=1,
+            servers=[
+                MCPServerConfig(
+                    name="demo",
+                    transport="stdio",
+                    command="python",
+                    name_prefix="",
+                )
+            ],
+        ),
+        bridge_factory=lambda _server, _timeout: bridge,
+        resource_registry=registry,
+    )
+
+    assert provider.register_tools(tool_registry) == 1
+    assert tool_registry.execute("echo", {"text": "hi"}).content == {"ok": {"text": "hi"}}
+
+    registry.stop_all()
+    closed_result = tool_registry.execute("echo", {"text": "late"}).content
+
+    assert bridge.closed_count == 1
+    assert closed_result["isError"] is True
+    assert "已关闭" in closed_result["error"]
+
+    provider.close()
+    registry.stop_all()
+    assert bridge.closed_count == 1
+
+
+class _FakeBridge:
+    def __init__(self) -> None:
+        self.closed_count = 0
+
+    def connect(self) -> None:
+        pass
+
+    def list_tools(self) -> list[MCPToolSpec]:
+        return [MCPToolSpec(name="echo", description="Echo", input_schema={"type": "object"})]
+
+    def call_tool(self, name: str, arguments: dict[str, object]) -> dict[str, object]:
+        return {"ok": arguments}
+
+    def close(self) -> None:
+        self.closed_count += 1
+
+
 def _runtime_root_path(name: str) -> Path:
     return (
         Path(__file__).resolve().parents[2]
-        / "__pycache__"
+        / "temp"
         / "test_runtime"
-        / name
         / uuid.uuid4().hex
+        / name
     )

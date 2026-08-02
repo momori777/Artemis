@@ -983,6 +983,206 @@ html,body{
   font-style: italic;
 }
 
+/* ── Memory embedding viz ── */
+.memory-viewer-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.memory-viewer-viz {
+  position: relative;
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-secondary);
+}
+.memory-viewer-viz canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--surface-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 8px);
+  cursor: crosshair;
+}
+.mem-viz-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  align-items: center;
+}
+.mem-viz-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.mem-viz-legend-item i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.mem-viz-count {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.mem-viz-empty {
+  color: var(--text-muted);
+  padding: 8px 0;
+  text-align: center;
+}
+.mem-viz-hover {
+  display: none;
+  position: absolute;
+  max-width: 260px;
+  background: var(--surface-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  pointer-events: none;
+  z-index: 30;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+}
+.mem-viz-hover-name {
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+.mem-viz-hover-time {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+.mem-viz-hover-text {
+  color: var(--text-primary);
+  word-break: break-word;
+  max-height: 90px;
+  overflow-y: auto;
+}
+.mem-viz-tip {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ── Live2D settings panel ── */
+#live2d-settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+}
+#live2d-settings-overlay.open { display: flex; }
+.live2d-settings-panel {
+  background: var(--surface-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  width: min(480px, 92vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.live2d-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-weight: 600;
+  font-size: 14px;
+}
+.live2d-settings-body {
+  padding: 14px 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+.live2d-settings-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-subtle);
+  text-align: right;
+}
+.live2d-section { margin-bottom: 16px; }
+.live2d-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.live2d-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.live2d-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #888;
+  flex: none;
+}
+.live2d-status-dot.on { background: #4caf50; }
+.live2d-status-dot.off { background: #e06c75; }
+.live2d-small-btn {
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+  margin-left: auto;
+}
+.live2d-small-btn:hover { background: var(--surface-tertiary, var(--surface-secondary)); }
+.live2d-model-list { display: flex; flex-direction: column; gap: 8px; }
+.live2d-model-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.live2d-model-item:hover { border-color: var(--accent); }
+.live2d-model-item.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.live2d-model-item .model-radio {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--text-muted);
+  flex: none;
+}
+.live2d-model-item.active .model-radio { border-color: var(--accent); background: var(--accent); }
+.live2d-model-item .model-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+.live2d-model-item .model-sub { font-size: 11px; color: var(--text-muted); }
+.live2d-model-loading, .live2d-model-empty {
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 8px 0;
+  text-align: center;
+}
+.live2d-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
 /* ── Remove old inline toggle rows ── */
 .mem0-write-row,.mem0-interval-wrap,.mem0-interval-input,.mem0-interval-input::-webkit-inner-spin-button{
   /* replaced by plugins popup */
