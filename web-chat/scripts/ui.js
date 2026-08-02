@@ -1909,10 +1909,10 @@ var UI = {
         self.scrollToBottom();
         // Step 2: submit the ComfyUI job via Artemis bridge
         var bridgeUrl = getSettings().bridgeUrl || 'http://localhost:19250';
-        // manage_llama: always true — 8GB VRAM, ComfyUI's 6.5GB model must own
-        // the GPU while drawing; bridge restarts llama afterwards. Same policy
-        // as _submitPaintJob (project's built-in config).
-        var manageLlama = true;
+        // manage_llama follows the stop-llama toggle in the input area
+        // (btn-stop-llama): active → bridge stops llama before drawing and
+        // restarts it after; inactive → llama stays alive.
+        var manageLlama = self._shouldManageLlama();
         // Inject user-forced paint settings (positive/negative/resolution)
         var forced = self._applyForcedPaint(data.prompt, data.negative || '', undefined, undefined, undefined);
         // Prepend quality tags if not already present (same as _submitPaintJob)
@@ -2118,9 +2118,8 @@ var UI = {
       return;
     }
 
-    var manageLlama = false;
-    var stopBtn = document.getElementById('btn-stop-llama');
-    if (stopBtn) manageLlama = stopBtn.classList.contains('active');
+    // manage_llama follows the stop-llama toggle in the input area
+    var manageLlama = self._shouldManageLlama();
 
     this.state.paintRegenerating = true;
     var row = this.$messages.querySelector('.msg-row[data-msg-index="' + assistantIndex + '"]');
@@ -2615,13 +2614,28 @@ var UI = {
           '</div>' +
         '</div>' +
         '<div class="paint-modal-footer">' +
-          '<span style="margin-right:auto;font-size:12px;color:var(--text-muted);align-self:center" id="paint-stop-llama-status">' + tr('paint_stop_llama_hint') + '</span>' +
+          '<span style="margin-right:auto;font-size:12px;color:var(--text-muted);align-self:center" id="paint-stop-llama-status"></span>' +
           '<button class="btn-secondary" id="paint-cancel">' + tr('paint_cancel') + '</button>' +
           '<button class="btn-primary" id="paint-generate"><i class="ph ph-image"></i> ' + tr('paint_generate') + '</button>' +
         '</div>' +
       '</div>';
 
     document.body.appendChild(overlay);
+
+    // Live llama-stop status (follows the input-area stop-llama toggle)
+    var llamaStatusEl = overlay.querySelector('#paint-stop-llama-status');
+    var updateLlamaStatus = function() {
+      if (!llamaStatusEl) return;
+      llamaStatusEl.textContent = self._shouldManageLlama() ? tr('paint_stop_llama_hint') : tr('paint_keep_llama_hint');
+    };
+    updateLlamaStatus();
+    var globalStopBtn = document.getElementById('btn-stop-llama');
+    var llamaObserver = null;
+    if (globalStopBtn) {
+      // Follow toggle state live; disconnect when modal closes
+      llamaObserver = new MutationObserver(updateLlamaStatus);
+      llamaObserver.observe(globalStopBtn, { attributes: true, attributeFilter: ['class'] });
+    }
 
     // Prefill forced injection values from settings
     var fPos = overlay.querySelector('#paint-forced-pos');
@@ -2646,7 +2660,10 @@ var UI = {
     };
     [fPos, fNeg, fW, fH, fS].forEach(function(el) { if (el) el.addEventListener('input', saveForced); });
 
-    var closeModal = function() { overlay.remove(); };
+    var closeModal = function() {
+      if (llamaObserver) llamaObserver.disconnect();
+      overlay.remove();
+    };
     overlay.querySelector('.paint-modal-close').addEventListener('click', closeModal);
     overlay.querySelector('#paint-cancel').addEventListener('click', closeModal);
     overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(); });
@@ -2667,8 +2684,8 @@ var UI = {
       var height = parseInt(overlay.querySelector('#paint-height').value) || 1024;
       var steps = parseInt(overlay.querySelector('#paint-steps').value) || 24;
       var cfg = parseFloat(overlay.querySelector('#paint-cfg').value) || 6.0;
-      // 8GB VRAM: always stop llama while drawing (bridge restarts it after)
-      var manage_llama = true;
+      // manage_llama follows the stop-llama toggle in the input area
+      var manage_llama = self._shouldManageLlama();
       if (manage_llama) self.appendSystemMsg('🎨 Stopping llama for painting...');
       closeModal();
 
@@ -2948,8 +2965,10 @@ var UI = {
       return;
     }
 
-    // 8GB VRAM: always stop llama while drawing (bridge restarts it after)
-    var manage_llama = true;
+    // manage_llama follows the stop-llama toggle in the input area
+    // (btn-stop-llama): active → bridge stops llama before drawing and
+    // restarts it after; inactive → llama stays alive.
+    var manage_llama = self._shouldManageLlama();
     
     // Show generating indicator
     var indicatorMsg = '🎨 Generating prompt (will stop llama after)...';
@@ -2994,6 +3013,14 @@ var UI = {
       });
   },
 
+  // manage_llama is driven by the persistent stop-llama toggle in the input
+  // area: active → stop llama before drawing (frees RAM/VRAM for ComfyUI);
+  // inactive → keep llama alive. All paint paths must read this, not hardcode.
+  _shouldManageLlama: function() {
+    var stopBtn = document.getElementById('btn-stop-llama');
+    return !!(stopBtn && stopBtn.classList.contains('active'));
+  },
+
   // Apply user-forced paint settings (Settings panel) onto a paint job.
   // Returns { positive, negative, width, height, steps } with forced values
   // merged on top of the LLM-generated ones.
@@ -3023,9 +3050,10 @@ var UI = {
 
   _submitPaintJob: function(prompt, negative, width, height, steps, cfg, manage_llama) {
     var self = this;
-    // manage_llama: always true — 8GB VRAM, ComfyUI's 6.5GB model must own
-    // the GPU while drawing; bridge restarts llama afterwards.
-    if (manage_llama === undefined) manage_llama = true;
+    // manage_llama follows the stop-llama toggle in the input area when not
+    // explicitly passed (bridge stops llama before drawing and restarts it
+    // after when true).
+    if (manage_llama === undefined) manage_llama = self._shouldManageLlama();
     // Prepend quality tags if not already present
     var qualityPrefix = 'masterpiece, best quality, highly detailed,';
     var hasQuality = /masterpiece|best.quality/i.test(prompt);
