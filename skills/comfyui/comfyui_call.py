@@ -68,9 +68,9 @@ HARD_TIMEOUT = 900  # 秒（推理最长 2min + llama 重启两轮含 VRAM 回�
 
 # ========== 默认参数 ==========
 DEFAULT_CKPT = "WAI-Nsfw-Illustrious-17.safetensors"
-DEFAULT_WIDTH = 1200
-DEFAULT_HEIGHT = 1500
-DEFAULT_STEPS = 30
+DEFAULT_WIDTH = 768  # 8GB VRAM safe (RTX 5070 Laptop); 1200x1500 OOMs
+DEFAULT_HEIGHT = 1024
+DEFAULT_STEPS = 24
 DEFAULT_CFG = 6.0
 DEFAULT_SAMPLER = "dpmpp_2s_ancestral"
 DEFAULT_SCHEDULER = "karras"

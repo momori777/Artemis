@@ -274,9 +274,9 @@ def api_comfyui():
     data = request.get_json(silent=True) or {}
     positive = data.get("positive", "").strip()
     negative = data.get("negative", "")
-    width = int(data.get("width", 1200))
-    height = int(data.get("height", 1500))
-    steps = int(data.get("steps", 30))
+    width = int(data.get("width", 768))                                                
+    height = int(data.get("height", 1024))                                              
+    steps = int(data.get("steps", 24))                                                
     cfg = float(data.get("cfg", 6.0))
     checkpoint = data.get("checkpoint", "WAI-Nsfw-Illustrious-17.safetensors")
 
