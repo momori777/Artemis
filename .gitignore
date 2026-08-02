@@ -142,9 +142,14 @@ skills/comfyui_core/**/*.bin
 # Ignore embedded git repos
 # Large files hosted on HuggingFace
 skills/sovits/GPT_SoVITS/pretrained_models/fast_langdetect/lid.176.bin
+# Runtime caches (g2p/nltk phoneme dicts)
+skills/sovits/**/*.pickle
 media/sakura.mp4
 media/demo_qqbot.mp4
 # TTS debug log (contains absolute paths)
 _tts_debug.txt
 # Claude Code local settings (may contain tokens)
 .claude/settings.local.json
+
+# tool-mode roleplay backups
+skills/tool/*.roleplay.bak

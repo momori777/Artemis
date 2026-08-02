@@ -250,6 +250,27 @@
     sp_freq_pen:             { zh: 'Freq Penalty',         ja: 'Freq Penalty',         en: 'Freq Penalty' },
     sp_pres_pen:             { zh: 'Pres Penalty',         ja: 'Pres Penalty',         en: 'Pres Penalty' },
     sp_max_tokens:           { zh: 'Max Tokens',           ja: 'Max Tokens',           en: 'Max Tokens' },
+
+    // Manual Paint modal
+    paint_manual_title:      { zh: '🎨 手动画图',          ja: '🎨 手動描画',            en: '🎨 Manual Paint' },
+    paint_pos_label:         { zh: '正向提示词',           ja: 'ポジティブプロンプト',   en: 'Positive Prompt' },
+    paint_pos_hint:          { zh: '（英文逗号分隔标签）', ja: '（英語、カンマ区切り）',  en: '(English, comma-separated tags)' },
+    paint_neg_label:         { zh: '负向提示词',           ja: 'ネガティブプロンプト',   en: 'Negative Prompt' },
+    paint_quick_presets:     { zh: '快速预设',             ja: 'クイックプリセット',    en: 'Quick Presets' },
+    paint_need_pos:          { zh: '请输入正向提示词',     ja: 'ポジティブプロンプトを入力してください', en: 'Please enter a positive prompt' },
+    paint_cancel:            { zh: '取消',                 ja: 'キャンセル',           en: 'Cancel' },
+    paint_generate:          { zh: '生成',                 ja: '生成',                 en: 'Generate' },
+    paint_stop_llama_hint:   { zh: '将停止 llama 以释放显存（生成后自动重启）', ja: 'llamaを停止してVRAM解放（生成後に自動再開）', en: 'Will stop llama to free VRAM (auto-restarts after)' },
+
+    // Forced injection (auto paint / regenerate)
+    paint_forced_title:      { zh: '🔒 AI 自动画图强制注入', ja: '🔒 AI自動描画の強制注入', en: '🔒 Forced Injection (Auto Paint)' },
+    paint_forced_hint:       { zh: '自动画图 / regenerate 时强制注入；不作用于本次手动绘制', ja: '自動描画・regenerate時に強制注入（手動描画には影響なし）', en: 'Forced into auto paint & regenerate (not this manual job)' },
+    paint_forced_pos:        { zh: '强制正面提示词（追加到自动 prompt）', ja: '強制ポジティブ（自動プロンプトに追加）', en: 'Forced positive (appended to auto prompt)' },
+    paint_forced_pos_ph:     { zh: '如: masterpiece, (shiki natsume:1.1), detailed eyes', ja: '例: masterpiece, (shiki natsume:1.1), detailed eyes', en: 'e.g. masterpiece, (shiki natsume:1.1), detailed eyes' },
+    paint_forced_neg:        { zh: '强制负面提示词（覆盖默认）', ja: '強制ネガティブ（デフォルトを上書き）', en: 'Forced negative (overrides default)' },
+    paint_forced_neg_ph:     { zh: '如: bad hands, extra fingers', ja: '例: bad hands, extra fingers', en: 'e.g. bad hands, extra fingers' },
+    paint_forced_res:        { zh: '强制分辨率（留空用默认）', ja: '強制解像度（空欄はデフォルト）', en: 'Forced resolution (blank = default)' },
+    paint_forced_res_hint:   { zh: '留空使用默认 768×1024×24', ja: '空欄はデフォルト 768×1024×24', en: 'Blank = default 768×1024×24' },
   };
 
   // ── State ──
