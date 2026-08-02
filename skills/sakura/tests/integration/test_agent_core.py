@@ -4,17 +4,20 @@ from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
 import json
 from pathlib import Path
+import stat
 import sys
 import threading
 import time
 from types import SimpleNamespace
 import uuid
+import zipfile
 
 import pytest
 
+import app.agent.memory as memory_module
 from app.agent.actions import AgentEvent, PendingToolAction
 from app.agent.builtin_tools import create_builtin_tool_registry
-from app.agent.memory import MemoryStore
+from app.agent.memory import MemoryModelImportError, MemoryStore
 from app.agent.mcp.bridge import MCPToolSpec
 from app.agent.mcp.config import load_mcp_config
 from app.agent.mcp.provider import MCPToolProvider, register_mcp_tools_from_config
@@ -28,10 +31,9 @@ from app.agent.screen_tools import (
     SCREEN_OBSERVATION_REQUEST_ACTION,
     create_screen_observation_tool,
 )
-from app.agent.tool_registry import Tool, ToolExecutionResult, ToolRegistry
+from app.agent.tools import Tool, ToolExecutionResult, ToolRegistry
 from app.config.settings_service import AppSettingsService
 from app.config.yaml_config import load_yaml_mapping
-from app.core.plugin_manager import SakuraPluginManager
 from app.llm.api_client import (
     ApiSettings,
     ApiRequestError,
@@ -40,13 +42,17 @@ from app.llm.api_client import (
     is_vision_unsupported_error,
     messages_contain_image,
 )
+from app.plugins.manager import PluginManager
 from app.llm.context_trimming import MAX_MODEL_CONTEXT_MESSAGES, trim_messages_for_model
 from app.llm.prompt_templates import (
     build_event_system_prompt,
-    build_proactive_check_tool_system_prompt,
+    build_screen_awareness_check_tool_system_prompt,
 )
-from app.agent.proactive_care import (
-    ProactiveCareSettings,
+from app.agent.screen_awareness import (
+    ScreenAwarenessSettings,
+    estimate_screen_context_batch_tokens_for_size,
+    estimate_screen_context_image_tokens_for_size,
+    screen_context_resolution_size,
 )
 from app.agent.screen_observation import (
     SCREEN_OBSERVATION_HISTORY_MARKER,
@@ -58,6 +64,30 @@ from app.agent.screen_observation import (
 
 
 def _legacy_complete_with_tools(self, system_prompt, messages, **_kwargs):  # type: ignore[no-untyped-def]
+    if _kwargs.get("tool_choice") == "none" and hasattr(self, "chat"):
+        reply = self.chat(system_prompt, messages)
+        if isinstance(reply, str):
+            content = reply
+        else:
+            content = json.dumps(
+                {
+                    "segments": [
+                        {
+                            "ja": getattr(segment, "text", ""),
+                            "zh": getattr(segment, "translation", ""),
+                            "tone": getattr(segment, "tone", "中性"),
+                            "portrait": getattr(segment, "portrait", ""),
+                        }
+                        for segment in getattr(reply, "segments", [])
+                    ]
+                },
+                ensure_ascii=False,
+            )
+        return ChatCompletionTurn(
+            content=content,
+            tool_calls=[],
+            message={"role": "assistant", "content": content},
+        )
     tools = _kwargs.get("tools") or []
     tool_names = [
         tool["function"]["name"]
@@ -179,21 +209,48 @@ def test_due_reminders_and_mark_completed() -> None:
     assert store.due_reminders(now) == []
 
 
-def test_proactive_care_settings_default_to_enabled() -> None:
-    service = AppSettingsService(_runtime_root_path("proactive_defaults"))
-    settings = service.load_proactive_care_settings()
+def test_screen_awareness_settings_default_to_enabled() -> None:
+    service = AppSettingsService(_runtime_root_path("screen_awareness_defaults"))
+    settings = service.load_screen_awareness_settings()
 
     assert settings.enabled
     assert settings.screen_context_enabled
     assert settings.check_interval_minutes == 2
     assert settings.cooldown_minutes == 10
     assert settings.screen_context_batch_limit == 6
+    assert settings.screen_context_resolution == "fullscreen"
 
 
-def test_proactive_care_settings_clamp_intervals() -> None:
-    service = AppSettingsService(_runtime_root_path("proactive_interval"))
+def test_screen_awareness_resolution_presets_keep_aspect_ratio_without_upscaling() -> None:
+    assert screen_context_resolution_size(3200, 2000, "1080p") == (1728, 1080)
+    assert screen_context_resolution_size(2000, 3200, "1080p") == (1080, 1728)
+    assert screen_context_resolution_size(1280, 720, "2160p") == (1280, 720)
+    assert screen_context_resolution_size(2560, 1440, "invalid") == (2560, 1440)
+
+
+def test_screen_awareness_token_estimate_uses_high_detail_rules() -> None:
+    assert estimate_screen_context_image_tokens_for_size(
+        1920,
+        1080,
+        model="gpt-4o",
+    ) == 1105
+    assert estimate_screen_context_image_tokens_for_size(
+        3840,
+        2160,
+        model="gpt-4o",
+    ) == 1105
+    assert estimate_screen_context_batch_tokens_for_size(
+        1920,
+        1080,
+        6,
+        model="gpt-4o",
+    ) == 6630
+
+
+def test_screen_awareness_settings_clamp_intervals() -> None:
+    service = AppSettingsService(_runtime_root_path("screen_awareness_interval"))
     service.save_system_values(
-        "proactive_care",
+        "screen_awareness",
         {
             "enabled": True,
             "screen_context_enabled": True,
@@ -203,7 +260,7 @@ def test_proactive_care_settings_clamp_intervals() -> None:
         },
     )
 
-    settings = service.load_proactive_care_settings().normalized()
+    settings = service.load_screen_awareness_settings().normalized()
 
     assert settings.enabled
     assert settings.screen_context_enabled
@@ -212,10 +269,10 @@ def test_proactive_care_settings_clamp_intervals() -> None:
     assert settings.screen_context_batch_limit == 20
 
 
-def test_proactive_care_settings_min_intervals_are_one_minute() -> None:
-    service = AppSettingsService(_runtime_root_path("proactive_min_interval"))
+def test_screen_awareness_settings_min_intervals_are_one_minute() -> None:
+    service = AppSettingsService(_runtime_root_path("screen_awareness_min_interval"))
     service.save_system_values(
-        "proactive_care",
+        "screen_awareness",
         {
             "check_interval_minutes": 0,
             "cooldown_minutes": 0,
@@ -223,57 +280,59 @@ def test_proactive_care_settings_min_intervals_are_one_minute() -> None:
         },
     )
 
-    settings = service.load_proactive_care_settings().normalized()
+    settings = service.load_screen_awareness_settings().normalized()
 
     assert settings.check_interval_minutes == 1
     assert settings.cooldown_minutes == 1
     assert settings.screen_context_batch_limit == 1
 
 
-def test_proactive_care_settings_invalid_cooldown_uses_default() -> None:
-    service = AppSettingsService(_runtime_root_path("proactive_invalid_cooldown"))
-    service.save_system_values("proactive_care", {"cooldown_minutes": "soon"})
+def test_screen_awareness_settings_invalid_cooldown_uses_default() -> None:
+    service = AppSettingsService(_runtime_root_path("screen_awareness_invalid_cooldown"))
+    service.save_system_values("screen_awareness", {"cooldown_minutes": "soon"})
 
-    settings = service.load_proactive_care_settings()
+    settings = service.load_screen_awareness_settings()
 
     assert settings.cooldown_minutes == 10
 
 
-def test_proactive_care_settings_invalid_batch_limit_uses_default() -> None:
-    service = AppSettingsService(_runtime_root_path("proactive_invalid_batch_limit"))
-    service.save_system_values("proactive_care", {"screen_context_batch_limit": "many"})
+def test_screen_awareness_settings_invalid_batch_limit_uses_default() -> None:
+    service = AppSettingsService(_runtime_root_path("screen_awareness_invalid_batch_limit"))
+    service.save_system_values("screen_awareness", {"screen_context_batch_limit": "many"})
 
-    settings = service.load_proactive_care_settings()
+    settings = service.load_screen_awareness_settings()
 
     assert settings.screen_context_batch_limit == 6
 
 
-def test_proactive_care_settings_save_writes_yaml() -> None:
-    service = AppSettingsService(_runtime_root_path("proactive_save_cooldown"))
+def test_screen_awareness_settings_save_writes_yaml() -> None:
+    service = AppSettingsService(_runtime_root_path("screen_awareness_save_cooldown"))
 
-    service.save_proactive_care_settings(
-        ProactiveCareSettings(
+    service.save_screen_awareness_settings(
+        ScreenAwarenessSettings(
             enabled=True,
             screen_context_enabled=True,
             check_interval_minutes=3,
             cooldown_minutes=7,
             screen_context_batch_limit=4,
+            screen_context_resolution="1080p",
         )
     )
 
     config = load_yaml_mapping(service.system_config_path)
-    assert config["proactive_care"]["enabled"] is True
-    assert config["proactive_care"]["screen_context_enabled"] is True
-    assert config["proactive_care"]["check_interval_minutes"] == 3
-    assert config["proactive_care"]["cooldown_minutes"] == 7
-    assert config["proactive_care"]["screen_context_batch_limit"] == 4
+    assert config["screen_awareness"]["enabled"] is True
+    assert config["screen_awareness"]["screen_context_enabled"] is True
+    assert config["screen_awareness"]["check_interval_minutes"] == 3
+    assert config["screen_awareness"]["cooldown_minutes"] == 7
+    assert config["screen_awareness"]["screen_context_batch_limit"] == 4
+    assert config["screen_awareness"]["screen_context_resolution"] == "1080p"
 
 
-def test_proactive_care_settings_save_normalizes_enabled_flag() -> None:
-    service = AppSettingsService(_runtime_root_path("proactive_save_sync_enabled"))
+def test_screen_awareness_settings_save_normalizes_enabled_flag() -> None:
+    service = AppSettingsService(_runtime_root_path("screen_awareness_save_sync_enabled"))
 
-    service.save_proactive_care_settings(
-        ProactiveCareSettings(
+    service.save_screen_awareness_settings(
+        ScreenAwarenessSettings(
             enabled=True,
             screen_context_enabled=False,
             check_interval_minutes=3,
@@ -282,29 +341,29 @@ def test_proactive_care_settings_save_normalizes_enabled_flag() -> None:
     )
 
     config = load_yaml_mapping(service.system_config_path)
-    assert config["proactive_care"]["enabled"] is False
-    assert config["proactive_care"]["screen_context_enabled"] is False
+    assert config["screen_awareness"]["enabled"] is True
+    assert config["screen_awareness"]["screen_context_enabled"] is False
 
 
-def test_proactive_care_screen_context_flag_controls_active_care() -> None:
-    enabled_settings = ProactiveCareSettings(
+def test_screen_awareness_screen_context_flag_controls_active_care() -> None:
+    enabled_settings = ScreenAwarenessSettings(
         enabled=True,
         screen_context_enabled=True,
         check_interval_minutes=20,
     )
-    care_disabled_settings = ProactiveCareSettings(
+    care_disabled_settings = ScreenAwarenessSettings(
         enabled=False,
         screen_context_enabled=True,
         check_interval_minutes=20,
     )
-    screen_disabled_settings = ProactiveCareSettings(
+    screen_disabled_settings = ScreenAwarenessSettings(
         enabled=True,
         screen_context_enabled=False,
         check_interval_minutes=20,
     )
 
     assert enabled_settings.allows_screen_context()
-    assert care_disabled_settings.allows_screen_context()
+    assert not care_disabled_settings.allows_screen_context()
     assert not screen_disabled_settings.allows_screen_context()
 
 
@@ -337,6 +396,18 @@ def test_memory_store_builds_local_mem0_config() -> None:
     assert "memory/text" in config["custom_instructions"]
 
 
+def test_memory_download_failure_suggests_manual_import_or_proxy_restart() -> None:
+    message = memory_module._format_memory_load_error(
+        RuntimeError("offline"),
+        embedding_download=True,
+    )
+
+    assert "models--sentence-transformers--all-MiniLM-L6-v2.zip" in message
+    assert "https://github.com/Rvosy/Sakura/releases/download/v0.9.7/" in message
+    assert "设置页手动导入" in message
+    assert "开启代理并重启 Sakura" in message
+
+
 def test_memory_store_reuses_runtime_when_api_settings_unchanged() -> None:
     settings = ApiSettings(
         base_url="https://api.example.com/v1",
@@ -352,6 +423,7 @@ def test_memory_store_reuses_runtime_when_api_settings_unchanged() -> None:
     assert store._memory is sentinel
 
 
+@pytest.mark.allow_memory_preload
 def test_memory_store_preload_only_creates_runtime_once() -> None:
     class CountingMemoryStore(MemoryStore):
         def __init__(self) -> None:
@@ -376,11 +448,33 @@ def test_memory_store_returns_failed_response_for_nonblocking_memory_tools() -> 
     store._load_error = "Cannot send a request, as the client has been closed."
 
     result = store.search_memory({"query": "偏好"}, wait=False)
+    update_result = store.update_memory(
+        {"id": "memory-001", "content": "主人喜欢低糖咖啡"},
+        wait=False,
+    )
 
     assert result["status"] == "failed"
     assert "普通聊天仍可继续" in result["message"]
     assert result["memories"] == []
     assert "client has been closed" in result["error"]
+    assert update_result["status"] == "failed"
+    assert "client has been closed" in update_result["error"]
+
+
+def test_memory_store_downgrades_closed_client_during_search() -> None:
+    class ClosedClientMemory:
+        def search(self, *_args, **_kwargs):  # type: ignore[no-untyped-def]
+            raise RuntimeError("Cannot send a request, as the client has been closed.")
+
+    store = MemoryStore(base_dir=_runtime_root_path("memory_closed_client_search"))
+    store._memory = ClosedClientMemory()
+
+    result = store.search_memory({"query": "偏好"})
+
+    assert result["status"] == "failed"
+    assert "普通聊天仍可继续" in result["message"]
+    assert "client has been closed" in result["error"]
+    assert store._memory is None
 
 
 def test_memory_store_reload_keeps_old_runtime_until_new_runtime_is_ready() -> None:
@@ -597,6 +691,191 @@ def test_memory_store_ignores_incomplete_local_embedding_cache(monkeypatch) -> N
     }
 
 
+@pytest.mark.parametrize(
+    "prefix",
+    [
+        "",
+        "models--sentence-transformers--all-MiniLM-L6-v2",
+        "hub/models--sentence-transformers--all-MiniLM-L6-v2",
+        "hf-cache/hub/models--sentence-transformers--all-MiniLM-L6-v2",
+    ],
+)
+def test_memory_store_imports_embedding_model_archive_structures(prefix: str) -> None:
+    root = _runtime_root_path("memory_model_import")
+    archive_path = root / "models--sentence-transformers--all-MiniLM-L6-v2.zip"
+    _write_memory_model_zip(archive_path, prefix=prefix)
+    store = MemoryStore(base_dir=root, memory_client=FakeMem0())
+
+    result = store.import_embedding_model_archive(archive_path)
+
+    expected_model_dir = (
+        root
+        / "runtime"
+        / "hf-cache"
+        / "hub"
+        / "models--sentence-transformers--all-MiniLM-L6-v2"
+    )
+    assert result.model_dir == expected_model_dir
+    assert result.snapshot_count == 1
+    assert (expected_model_dir / "snapshots" / "revision" / "model.safetensors").is_file()
+    assert store.needs_embedding_model_download() is False
+
+
+def test_memory_store_downloads_embedding_model_to_project_cache(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    root = _runtime_root_path("memory_model_download")
+    calls: list[tuple[str, Path]] = []
+
+    def fake_download(repo_id: str, cache_folder: Path) -> str:
+        calls.append((repo_id, cache_folder))
+        snapshot = (
+            cache_folder
+            / "models--sentence-transformers--all-MiniLM-L6-v2"
+            / "snapshots"
+            / "revision"
+        )
+        snapshot.mkdir(parents=True)
+        (snapshot / "model.safetensors").write_bytes(b"fake")
+        return str(snapshot)
+
+    monkeypatch.setattr(memory_module, "_download_hf_snapshot", fake_download)
+    store = MemoryStore(base_dir=root, memory_client=FakeMem0())
+
+    result = store.download_embedding_model()
+
+    expected_cache = root / "runtime" / "hf-cache" / "hub"
+    expected_model_dir = expected_cache / "models--sentence-transformers--all-MiniLM-L6-v2"
+    assert calls == [("sentence-transformers/all-MiniLM-L6-v2", expected_cache)]
+    assert result.cache_folder == expected_cache
+    assert result.model_dir == expected_model_dir
+    assert result.snapshot_count == 1
+    assert store.needs_embedding_model_download() is False
+
+
+def test_memory_hf_snapshot_download_uses_minimal_file_allowlist(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    captured: dict[str, object] = {}
+
+    def fake_snapshot_download(**kwargs):  # type: ignore[no-untyped-def]
+        captured.update(kwargs)
+        return "snapshot"
+
+    monkeypatch.setitem(
+        sys.modules,
+        "huggingface_hub",
+        SimpleNamespace(snapshot_download=fake_snapshot_download),
+    )
+
+    result = memory_module._download_hf_snapshot(
+        "sentence-transformers/all-MiniLM-L6-v2",
+        Path("runtime/hf-cache/hub"),
+    )
+
+    assert result == "snapshot"
+    assert captured["repo_id"] == "sentence-transformers/all-MiniLM-L6-v2"
+    assert captured["allow_patterns"] == list(memory_module.DEFAULT_EMBEDDING_MODEL_ALLOW_PATTERNS)
+    assert "onnx/*" not in captured["allow_patterns"]
+    assert "openvino/*" not in captured["allow_patterns"]
+    assert "tf_model.h5" not in captured["allow_patterns"]
+    assert "rust_model.ot" not in captured["allow_patterns"]
+
+
+def test_memory_store_import_does_not_reload_ready_runtime() -> None:
+    root = _runtime_root_path("memory_model_import_ready")
+    archive_path = root / "models--sentence-transformers--all-MiniLM-L6-v2.zip"
+    _write_memory_model_zip(archive_path, prefix="")
+    runtime = ClosableMemoryRuntime()
+    store = MemoryStore(base_dir=root, memory_client=runtime)
+
+    store.import_embedding_model_archive(archive_path)
+
+    assert store.is_ready() is True
+    assert runtime.memory_closed is False
+    assert runtime.client.closed is False
+
+
+def test_memory_store_reset_runtime_closes_qdrant_client() -> None:
+    runtime = ClosableMemoryRuntime()
+    store = MemoryStore(base_dir=_runtime_root_path("memory_reset_closes_runtime"))
+    store._memory = runtime  # type: ignore[attr-defined]
+
+    store.reset_runtime()
+
+    assert runtime.memory_closed is True
+    assert runtime.client.closed is True
+
+
+def test_memory_store_rejects_incomplete_embedding_model_archive(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    root = _runtime_root_path("memory_model_import_incomplete")
+    monkeypatch.setenv("HF_HOME", str(root / "empty_hf_home"))
+    monkeypatch.delenv("SENTENCE_TRANSFORMERS_HOME", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_CACHE", raising=False)
+    monkeypatch.delenv("TRANSFORMERS_CACHE", raising=False)
+    archive_path = root / "bad.zip"
+    _write_memory_model_zip(
+        archive_path,
+        prefix="models--sentence-transformers--all-MiniLM-L6-v2",
+        include_weight=False,
+    )
+    store = MemoryStore(base_dir=root, memory_client=FakeMem0())
+
+    with pytest.raises(MemoryModelImportError):
+        store.import_embedding_model_archive(archive_path)
+
+    assert store.needs_embedding_model_download() is True
+
+
+def test_memory_store_import_failure_keeps_existing_embedding_cache() -> None:
+    root = _runtime_root_path("memory_model_import_keeps_existing")
+    existing_snapshot = (
+        root
+        / "runtime"
+        / "hf-cache"
+        / "hub"
+        / "models--sentence-transformers--all-MiniLM-L6-v2"
+        / "snapshots"
+        / "existing"
+    )
+    existing_snapshot.mkdir(parents=True)
+    (existing_snapshot / "model.safetensors").write_text("existing", encoding="utf-8")
+    archive_path = root / "bad.zip"
+    _write_memory_model_zip(
+        archive_path,
+        prefix="models--sentence-transformers--all-MiniLM-L6-v2",
+        include_weight=False,
+    )
+    store = MemoryStore(base_dir=root, memory_client=FakeMem0())
+
+    with pytest.raises(MemoryModelImportError):
+        store.import_embedding_model_archive(archive_path)
+
+    assert (existing_snapshot / "model.safetensors").read_text(encoding="utf-8") == "existing"
+    assert store.needs_embedding_model_download() is False
+
+
+@pytest.mark.parametrize(
+    "member_name",
+    [
+        "../models--sentence-transformers--all-MiniLM-L6-v2/snapshots/revision/model.safetensors",
+        "models--other--model/snapshots/revision/model.safetensors",
+        "models--sentence-transformers--all-MiniLM-L6-v2/snapshots/revision/model.safetensors",
+    ],
+)
+def test_memory_store_rejects_unsafe_or_wrong_embedding_model_archive(member_name: str) -> None:
+    root = _runtime_root_path("memory_model_import_rejects")
+    archive_path = root / "bad.zip"
+    archive_path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        if member_name.startswith("models--sentence-transformers"):
+            info = zipfile.ZipInfo(member_name)
+            info.external_attr = (stat.S_IFLNK | 0o777) << 16
+            zf.writestr(info, "target")
+        else:
+            zf.writestr(member_name, "bad")
+    store = MemoryStore(base_dir=root, memory_client=FakeMem0())
+
+    with pytest.raises(MemoryModelImportError):
+        store.import_embedding_model_archive(archive_path)
+
+
 def test_memory_store_create_update_search_and_delete() -> None:
     fake = FakeMem0()
     store = MemoryStore(base_dir=_runtime_root_path("memory"), scope_id="sakura", memory_client=fake)
@@ -621,6 +900,111 @@ def test_memory_store_create_update_search_and_delete() -> None:
     assert store.list_memories() == []
 
 
+def test_memory_store_lists_all_memories_without_limit() -> None:
+    fake = FakeMem0()
+    fake.records = [
+        {"id": str(index), "memory": f"memory-{index}", "user_id": "sakura", "metadata": {}}
+        for index in range(201)
+    ]
+    store = MemoryStore(
+        base_dir=_runtime_root_path("memory_list_all"), scope_id="sakura", memory_client=fake
+    )
+
+    assert len(store.list_memories(limit=None)) == 201
+
+
+def test_memory_store_forget_missing_id_is_idempotent() -> None:
+    fake = FakeMem0RaisesOnMissingDelete()
+    store = MemoryStore(base_dir=_runtime_root_path("memory_missing_forget"), scope_id="sakura", memory_client=fake)
+
+    result = store.forget_memory({"id": "missing-id"})
+
+    assert result["forgotten"] == {"id": "missing-id", "content": ""}
+    assert result["memory"] == {"id": "missing-id", "content": ""}
+    assert result["already_missing"] is True
+
+
+def test_memory_store_defaults_legacy_records_to_semantic_layer() -> None:
+    fake = FakeMem0()
+    store = MemoryStore(base_dir=_runtime_root_path("memory_legacy_layer"), scope_id="sakura", memory_client=fake)
+    created = store.create_memory({"content": "主人喜欢低糖咖啡"})["memory"]
+
+    assert created["layer"] == "semantic"
+    assert created["metadata"]["layer"] == "semantic"
+    assert created["scope"] == "sakura"
+
+
+def test_memory_store_builds_layered_context_with_core_profile() -> None:
+    fake = FakeMem0()
+    store = MemoryStore(base_dir=_runtime_root_path("memory_context"), scope_id="sakura", memory_client=fake)
+    store.create_memory(
+        {
+            "content": "主人希望默认使用简体中文回答",
+            "layer": "procedural",
+            "category": "preference",
+            "confidence": 0.9,
+        }
+    )
+    store.create_memory(
+        {
+            "content": "Sakura 正在升级记忆系统",
+            "layer": "session",
+            "category": "project",
+        }
+    )
+    store.create_memory(
+        {
+            "content": "主人喜欢低糖咖啡",
+            "layer": "semantic",
+            "category": "preference",
+        }
+    )
+    store.create_memory(
+        {
+            "content": "上次讨论过记忆注入策略",
+            "layer": "episodic",
+            "category": "project",
+        }
+    )
+    store.create_memory(
+        {
+            "content": "主人长期偏好中文沟通",
+            "layer": "core_profile",
+            "category": "profile",
+        }
+    )
+
+    context = store.build_memory_context("", mode="tool")
+
+    assert "【常驻档案】" in context
+    assert "主人长期偏好中文沟通" in context
+    assert "【当前任务记忆】" in context
+    assert "【相关长期事实】" in context
+    assert "【协作规则与偏好】" in context
+    episodic_context = store.build_memory_context("上次", mode="event")
+    assert "【过往事件总结】" in episodic_context
+
+
+def test_memory_store_searches_and_converts_core_profile() -> None:
+    fake = FakeMem0()
+    store = MemoryStore(base_dir=_runtime_root_path("memory_core_profile"), scope_id="sakura", memory_client=fake)
+    created = store.create_memory({"content": "临时普通记忆"})["memory"]
+
+    converted = store.update_memory(
+        {
+            "id": created["id"],
+            "content": "主人长期偏好中文沟通",
+            "layer": "core_profile",
+            "category": "profile",
+        }
+    )["memory"]
+    result = store.search_memory({"layer": "core_profile", "query": "中文"})
+
+    assert converted["id"] == "core_profile:sakura"
+    assert result["memories"] == [converted]
+    assert fake.records == []
+
+
 def test_memory_store_uses_vendored_mem0_path_first() -> None:
     from app.agent.memory import MEM0_VENDOR_ROOT, install_mem0_vendor
 
@@ -640,7 +1024,33 @@ def test_builtin_registry_registers_mem0_memory_tools() -> None:
 
     assert descriptions["memory_search"]["group"] == "memory"
     assert descriptions["memory_remember"]["group"] == "memory"
+    assert descriptions["memory_update"]["group"] == "memory"
     assert descriptions["memory_forget"]["group"] == "memory"
+
+
+def test_builtin_memory_update_tool_updates_existing_memory() -> None:
+    fake = FakeMem0()
+    registry = create_builtin_tool_registry(
+        _runtime_root_path("builtin_memory_update_tool"),
+        memory=MemoryStore(memory_client=fake),
+    )
+    remember_result = registry.execute(
+        "memory_remember",
+        {"content": "主人喜欢热咖啡"},
+    )
+    memory_id = remember_result.content["memory"]["id"]
+
+    update_result = registry.execute(
+        "memory_update",
+        {
+            "memory_id": memory_id,
+            "content": "主人喜欢低糖热咖啡",
+        },
+    )
+
+    assert update_result.success
+    assert update_result.content["memory"]["id"] == memory_id
+    assert update_result.content["memory"]["content"] == "主人喜欢低糖热咖啡"
 
 
 def test_tool_registry_requires_confirmation_returns_pending_action() -> None:
@@ -725,7 +1135,7 @@ def test_tool_registry_free_access_keeps_high_risk_confirmation() -> None:
     assert result.tool_name == "run_external_action"
 
 
-def test_tool_registry_free_access_allows_playwright_actions() -> None:
+def test_tool_registry_free_access_keeps_sensitive_playwright_confirmation() -> None:
     registry = ToolRegistry(
         [
             Tool(
@@ -752,8 +1162,8 @@ def test_tool_registry_free_access_allows_playwright_actions() -> None:
     )
     evaluate_result = registry.prepare_or_execute("playwright_evaluate", {})
 
-    assert not isinstance(navigate_result, PendingToolAction)
-    assert navigate_result.success
+    assert isinstance(navigate_result, PendingToolAction)
+    assert navigate_result.tool_name == "playwright_navigate"
     assert isinstance(evaluate_result, PendingToolAction)
     assert evaluate_result.tool_name == "playwright_evaluate"
 
@@ -969,6 +1379,24 @@ servers:
     provider.close()
 
 
+def test_mcp_provider_closed_tool_returns_failed_result() -> None:
+    root = _runtime_root_path("mcp_closed_tool")
+    registry = ToolRegistry()
+    provider = MCPToolProvider(
+        load_mcp_config(_write_mcp_config(root, "name_prefix: demo_")),
+        bridge_factory=_FakeMCPBridge,
+    )
+    provider.register_tools(registry)
+    tool = registry.get("demo_echo")
+    assert tool is not None
+
+    provider.close()
+    result = tool.handler({"message": "hello"})
+
+    assert result["isError"] is True
+    assert "连接已关闭" in result["error"]
+
+
 def test_mcp_provider_skips_disabled_server() -> None:
     root = _runtime_root_path("mcp_disabled_server")
     registry = ToolRegistry()
@@ -984,7 +1412,15 @@ def test_mcp_provider_skips_disabled_server() -> None:
     provider.close()
 
 
-def test_mcp_runtime_settings_force_disables_windows_server() -> None:
+def test_mcp_runtime_settings_force_disables_windows_server(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from app.agent.mcp import DesktopMCP
+
+    # apply 现在按平台选择 server；固定为 Windows，测试 windows server 的启用路径。
+    monkeypatch.setattr(
+        "app.agent.mcp.settings.resolve_desktop_mcp",
+        lambda platform=None: DesktopMCP(server_name="windows", label="Windows MCP"),
+    )
+
     config_path = _runtime_root_path("mcp_runtime_override") / "mcp.yaml"
     config_path.parent.mkdir(parents=True, exist_ok=True)
     config_path.write_text(
@@ -1005,18 +1441,60 @@ servers:
     )
 
     assert config.servers[0].name == "windows"
-    assert not config.servers[0].enabled
+    assert config.servers[0].enabled
 
 
-def test_settings_service_saves_and_loads_windows_mcp_as_disabled() -> None:
+def test_mcp_runtime_settings_disables_builtin_desktop_servers_on_unsupported_platform(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setattr("app.agent.mcp.settings.resolve_desktop_mcp", lambda platform=None: None)
+
+    config_path = _runtime_root_path("mcp_runtime_unsupported_desktop") / "mcp.yaml"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
+        """
+enabled: true
+servers:
+  windows:
+    enabled: true
+    transport: stdio
+    command: python
+  macos:
+    enabled: true
+    transport: stdio
+    command: python
+  custom:
+    enabled: true
+    transport: stdio
+    command: python
+""".strip(),
+        encoding="utf-8",
+    )
+
+    config = apply_mcp_runtime_settings(
+        load_mcp_config(config_path),
+        MCPRuntimeSettings(windows_enabled=True),
+    )
+
+    enabled_by_name = {server.name: server.enabled for server in config.servers}
+    assert enabled_by_name == {"windows": False, "macos": False, "custom": True}
+
+
+def test_settings_service_saves_and_loads_experimental_windows_mcp() -> None:
     service = AppSettingsService(_runtime_root_path("mcp_runtime_save"))
 
     service.save_mcp_runtime_settings(MCPRuntimeSettings(windows_enabled=True))
 
-    assert not service.load_mcp_runtime_settings().windows_enabled
+    assert service.load_mcp_runtime_settings().windows_enabled
 
 
-def test_register_mcp_tools_skips_unavailable_windows_mcp() -> None:
+def test_register_mcp_tools_loads_experimental_windows_mcp_when_enabled(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from app.agent.mcp import DesktopMCP
+
+    # 注册路径内部会调用 apply；固定为 Windows，确保 windows server 被启用并注册。
+    monkeypatch.setattr(
+        "app.agent.mcp.settings.resolve_desktop_mcp",
+        lambda platform=None: DesktopMCP(server_name="windows", label="Windows MCP"),
+    )
+
     root = _runtime_root_path("mcp_register_windows_override")
     config_dir = root / "data" / "config"
     config_dir.mkdir(parents=True)
@@ -1041,8 +1519,9 @@ servers:
         runtime_settings=MCPRuntimeSettings(windows_enabled=True),
     )
 
-    assert provider is None
-    assert registry.get("windows__echo") is None
+    assert provider is not None
+    assert registry.get("windows__echo") is not None
+    provider.close()
 
 
 def test_mcp_provider_filters_tools_and_applies_tool_policies() -> None:
@@ -1148,7 +1627,7 @@ def test_builtin_registry_excludes_internal_browser_tools() -> None:
 
 def test_playwright_plugin_registers_native_browser_tools() -> None:
     registry = create_builtin_tool_registry(Path(__file__).resolve().parents[2])
-    manager = SakuraPluginManager(Path(__file__).resolve().parents[2])
+    manager = PluginManager(Path(__file__).resolve().parents[2])
 
     manager.load_from_config(registry)
     names = {tool.name for tool in registry.all()}
@@ -1185,24 +1664,26 @@ def test_playwright_search_web_returns_structured_results(monkeypatch: pytest.Mo
 
     class ResultEl:
         def query_selector(self, selector: str):  # type: ignore[no-untyped-def]
-            if selector == ".result__title":
+            if selector == "h2":
                 return TitleEl()
-            if selector == ".result__snippet":
+            if selector == "p":
                 return SnippetEl()
-            if selector == ".result__url":
+            if selector == ".b_attribution cite":
                 return DisplayUrlEl()
-            if selector == ".result__a":
+            if selector == "h2 a":
                 return LinkEl()
             return None
 
     class Page:
-        url = "https://html.duckduckgo.com/html/?q=%E4%BA%8C%E9%98%B6%E5%A0%82%E7%9C%9F%E7%BA%A2"
+        url = "https://www.bing.com/search?q=%E4%BA%8C%E9%98%B6%E5%A0%82%E7%9C%9F%E7%BA%A2"
+        navigated: list[str] = []
 
-        def goto(self, *_args, **_kwargs):  # type: ignore[no-untyped-def]
+        def goto(self, url, **_kwargs):  # type: ignore[no-untyped-def]
+            self.navigated.append(url)
             return None
 
         def query_selector_all(self, selector: str):  # type: ignore[no-untyped-def]
-            return [ResultEl()] if selector == ".result__body" else []
+            return [ResultEl()] if selector == "li.b_algo" else []
 
     from plugins.playwright_browser import browser
 
@@ -1210,10 +1691,12 @@ def test_playwright_search_web_returns_structured_results(monkeypatch: pytest.Mo
     monkeypatch.setattr(browser, "_bg_executor", None)
     monkeypatch.setattr(browser, "_browser_thread_id", None)
     monkeypatch.setattr(browser, "_use_bg_thread", True)
-    monkeypatch.setattr(browser, "_ensure_browser", lambda: Page())
+    page = Page()
+    monkeypatch.setattr(browser, "_ensure_browser", lambda: page)
 
     result = browser.search_web("二阶堂真红")
 
+    assert page.navigated == ["https://www.bing.com/search?q=%E4%BA%8C%E9%98%B6%E5%A0%82%E7%9C%9F%E7%BA%A2"]
     assert "萌娘百科 - 二阶堂真红" in result
     assert "二阶堂真红是《五彩斑斓的世界》系列角色。" in result
     assert "zh.moegirl.org.cn" in result
@@ -1239,13 +1722,13 @@ def test_playwright_search_web_registry_keeps_default_limit(monkeypatch: pytest.
 
     class ResultEl:
         def query_selector(self, selector: str):  # type: ignore[no-untyped-def]
-            if selector == ".result__title":
+            if selector == "h2":
                 return TitleEl()
-            if selector == ".result__snippet":
+            if selector == "p":
                 return SnippetEl()
-            if selector == ".result__url":
+            if selector == ".b_attribution cite":
                 return DisplayUrlEl()
-            if selector == ".result__a":
+            if selector == "h2 a":
                 return LinkEl()
             return None
 
@@ -1254,7 +1737,7 @@ def test_playwright_search_web_registry_keeps_default_limit(monkeypatch: pytest.
             return None
 
         def query_selector_all(self, selector: str):  # type: ignore[no-untyped-def]
-            return [ResultEl()] if selector == ".result__body" else []
+            return [ResultEl()] if selector == "li.b_algo" else []
 
     from plugins.playwright_browser import browser
 
@@ -1265,7 +1748,7 @@ def test_playwright_search_web_registry_keeps_default_limit(monkeypatch: pytest.
     monkeypatch.setattr(browser, "_ensure_browser", lambda: Page())
 
     registry = ToolRegistry()
-    manager = SakuraPluginManager(Path(__file__).resolve().parents[2])
+    manager = PluginManager(Path(__file__).resolve().parents[2])
     manager.load_from_config(registry)
     try:
         result = registry.execute("playwright_search_web", {"query": "二阶堂真红 百科"})
@@ -1459,8 +1942,10 @@ def test_agent_runtime_can_continue_tool_loop_after_tool_results() -> None:
     assert [action.payload["tool_name"] for action in result.actions] == ["first_tool", "second_tool"]
     assert len(client.prompts) == 3
     assert not client.final_chat_called
-    assert "这是第 1 步" in client.prompts[0]
-    assert "这是第 2 步" in client.prompts[1]
+    # 步数等易变状态已移出系统提示，改由 api_client 注入 runtime_context；
+    # 因此静态系统提示在多步之间保持一致（利于前缀缓存与角色稳定）。
+    assert "这是第 1 步" not in client.prompts[0]
+    assert client.prompts[0] == client.prompts[1] == client.prompts[2]
 
 
 def test_agent_runtime_stops_tool_loop_at_turn_limit() -> None:
@@ -2724,8 +3209,8 @@ def test_vision_unsupported_error_gets_local_fallback_reply() -> None:
     assert not result.actions
 
 
-def test_proactive_check_tool_prompt_uses_single_segment_heading() -> None:
-    prompt = build_proactive_check_tool_system_prompt(
+def test_screen_awareness_check_tool_prompt_uses_single_segment_heading() -> None:
+    prompt = build_screen_awareness_check_tool_system_prompt(
         "你是 Sakura。",
         ["中性"],
         ["站立待机"],
@@ -2739,39 +3224,39 @@ def test_proactive_check_tool_prompt_uses_single_segment_heading() -> None:
     )
 
     assert prompt.count("分段规则：") == 1
-    assert "主动屏幕检查事件" in prompt
+    assert "主动屏幕感知事件" in prompt
     assert "这是第 1 步" in prompt
     assert "每步最多请求 3 个工具，整轮最多 8 个工具" in prompt
     assert "主人正在整理提示词。" in prompt
     assert "2026-06-01T08:00:00+08:00" in prompt
     assert "额外规则。" in prompt
     assert "JSON 格式如下" in prompt
-    assert "主动感知回复决策流程" in prompt
-    assert "主动感知场景策略" in prompt
+    assert "主动屏幕感知回复决策流程" in prompt
+    assert "主动屏幕感知场景策略" in prompt
     assert "最终回复必须至少包含一个来自 screen_contexts 或 visual_contexts 的具体可见信息" in prompt
     assert "图片/角色/女性照片" in prompt
     assert "不确定时就普通问候" not in prompt
 
 
-def test_proactive_check_event_prompt_reuses_segment_rules() -> None:
+def test_screen_awareness_check_event_prompt_reuses_segment_rules() -> None:
     prompt = build_event_system_prompt(
         "你是 Sakura。",
         ["中性"],
         ["站立待机"],
-        event_type="proactive_check",
+        event_type="screen_awareness_check",
     )
 
     assert prompt.count("分段规则：") == 1
-    assert "低打扰主动搭话" in prompt
-    assert "屏幕画面和近期对话充分时，可以展开到 2-4 段" in prompt
+    assert "低打扰主动屏幕感知" in prompt
+    assert "根据一段时间内的屏幕变化找自然话题" in prompt
     assert "主动搭话时不要固定使用同一种语气" in prompt
     assert "先阅读 recent_conversation" in prompt
     assert "把 screen_contexts/visual_contexts 和 recent_conversation 交叉对照" in prompt
     assert "只有画面确实为空、黑屏、桌面无内容" in prompt
 
 
-def test_proactive_check_event_generates_segmented_reply() -> None:
-    class ProactiveClient:
+def test_screen_awareness_check_event_generates_segmented_reply() -> None:
+    class ScreenAwarenessClient:
         def __init__(self) -> None:
             self.prompts: list[str] = []
             self.messages: list[list[dict[str, object]]] = []
@@ -2786,7 +3271,7 @@ def test_proactive_check_event_generates_segmented_reply() -> None:
 
         complete_with_tools = _legacy_complete_with_tools
 
-    client = ProactiveClient()
+    client = ScreenAwarenessClient()
     runtime = AgentRuntime(
         api_client=client,  # type: ignore[arg-type]
         system_prompt="你是 Sakura。",
@@ -2794,7 +3279,7 @@ def test_proactive_check_event_generates_segmented_reply() -> None:
 
     result = runtime.handle_event(
         AgentEvent(
-            type="proactive_check",
+            type="screen_awareness_check",
             payload={
                 "seconds_since_pet_interaction": 1800,
                 "check_interval_minutes": 20,
@@ -2803,21 +3288,22 @@ def test_proactive_check_event_generates_segmented_reply() -> None:
         )
     )
 
-    assert "低打扰主动搭话" in client.prompts[0]
+    assert "低打扰主动屏幕感知" in client.prompts[0]
     assert "只表示用户一段时间没有和桌宠交互" in client.prompts[0]
     assert "不要据此推断用户离开" in client.prompts[0]
+    assert "不要主动催睡觉、休息或喝水" in client.prompts[0]
     assert "真实可见或已知的具体内容" in client.prompts[0]
-    assert "自然搭话、提问或提醒用户" in client.prompts[0]
+    assert "基于屏幕内容找话题" in client.prompts[0]
     assert "tone 和 portrait 要根据内容选择" in client.prompts[0]
-    assert "自然搭话" in str(client.messages[0][0]["content"])
+    assert "主动屏幕感知事件" in str(client.messages[0][0]["content"])
     assert "seconds_since_pet_interaction" in str(client.messages[0][0]["content"])
     assert "idle_seconds" not in str(client.messages[0][0]["content"])
     assert result.reply.translation == "稍微休息一下吧。"
-    assert result.actions[0].payload["event_type"] == "proactive_check"
+    assert result.actions[0].payload["event_type"] == "screen_awareness_check"
 
 
-def test_proactive_check_event_attaches_screen_context_image() -> None:
-    class ProactiveImageClient:
+def test_screen_awareness_check_event_attaches_screen_context_image() -> None:
+    class ScreenAwarenessImageClient:
         def __init__(self) -> None:
             self.prompts: list[str] = []
             self.messages: list[list[dict[str, object]]] = []
@@ -2832,7 +3318,7 @@ def test_proactive_check_event_attaches_screen_context_image() -> None:
 
         complete_with_tools = _legacy_complete_with_tools
 
-    client = ProactiveImageClient()
+    client = ScreenAwarenessImageClient()
     runtime = AgentRuntime(
         api_client=client,  # type: ignore[arg-type]
         system_prompt="你是 Sakura。",
@@ -2840,7 +3326,7 @@ def test_proactive_check_event_attaches_screen_context_image() -> None:
 
     runtime.handle_event(
         AgentEvent(
-            type="proactive_check",
+            type="screen_awareness_check",
             payload={
                 "screen_context": {
                     "data_url": "data:image/jpeg;base64,abc123",
@@ -2856,19 +3342,20 @@ def test_proactive_check_event_attaches_screen_context_image() -> None:
     content = client.messages[0][0]["content"]
     assert isinstance(content, list)
     assert content[1]["image_url"]["url"] == "data:image/jpeg;base64,abc123"
+    assert content[1]["image_url"]["detail"] == "high"
     assert "abc123" not in content[0]["text"]
     assert "image_attached" in content[0]["text"]
     assert "先理解屏幕画面本身" in client.prompts[0]
-    assert "自然评论、提问或轻提醒" in client.prompts[0]
+    assert "自然评论、接续任务、提问或轻量协助" in client.prompts[0]
     assert "不要编造看不清" in client.prompts[0]
     assert "不要再请求 observe_screen" in client.prompts[0]
     assert "主动搭话时不要固定使用同一种语气" in client.prompts[0]
-    assert "自然搭话" in content[0]["text"]
+    assert "基于屏幕内容找话题" in content[0]["text"]
 
 
-def test_proactive_check_event_attaches_screen_context_image_batch() -> None:
+def test_screen_awareness_check_event_attaches_screen_context_image_batch() -> None:
     event = AgentEvent(
-        type="proactive_check",
+        type="screen_awareness_check",
         payload={
             "screen_contexts": [
                 {
@@ -2896,15 +3383,17 @@ def test_proactive_check_event_attaches_screen_context_image_batch() -> None:
     assert isinstance(content, list)
     assert content[1]["image_url"]["url"] == "data:image/jpeg;base64,first"
     assert content[2]["image_url"]["url"] == "data:image/jpeg;base64,second"
+    assert content[1]["image_url"]["detail"] == "high"
+    assert content[2]["image_url"]["detail"] == "high"
     assert "first" not in content[0]["text"]
     assert "second" not in content[0]["text"]
     assert "image_attached" in content[0]["text"]
     assert "screen_contexts" in content[0]["text"]
 
 
-def test_proactive_check_event_includes_recent_conversation_text() -> None:
+def test_screen_awareness_check_event_includes_recent_conversation_text() -> None:
     event = AgentEvent(
-        type="proactive_check",
+        type="screen_awareness_check",
         payload={
             "recent_conversation": [
                 {"role": "user", "content": "访问 GitHub 看看 Sakura 内容"},
@@ -2926,6 +3415,7 @@ def test_proactive_check_event_includes_recent_conversation_text() -> None:
 
     assert isinstance(content, list)
     assert content[1]["image_url"]["url"] == "data:image/jpeg;base64,screen"
+    assert content[1]["image_url"]["detail"] == "high"
     assert "recent_conversation" in content[0]["text"]
     assert "访问 GitHub 看看 Sakura 内容" in content[0]["text"]
     assert "我打开看看。" in content[0]["text"]
@@ -2933,10 +3423,10 @@ def test_proactive_check_event_includes_recent_conversation_text() -> None:
     assert "image_attached" in content[0]["text"]
 
 
-def test_proactive_check_event_redacts_screen_context_image_batch() -> None:
+def test_screen_awareness_check_event_redacts_screen_context_image_batch() -> None:
     redacted = _redact_event_for_model(
         AgentEvent(
-            type="proactive_check",
+            type="screen_awareness_check",
             payload={
                 "screen_contexts": [
                     {"data_url": "data:image/jpeg;base64,first", "width": 800},
@@ -2953,10 +3443,10 @@ def test_proactive_check_event_redacts_screen_context_image_batch() -> None:
     ]
 
 
-def test_proactive_check_event_sanitizes_recent_conversation() -> None:
+def test_screen_awareness_check_event_sanitizes_recent_conversation() -> None:
     redacted = _redact_event_for_model(
         AgentEvent(
-            type="proactive_check",
+            type="screen_awareness_check",
             payload={
                 "recent_conversation": [
                     {"role": "system", "content": "不要注入系统消息"},
@@ -2981,8 +3471,8 @@ def test_proactive_check_event_sanitizes_recent_conversation() -> None:
     assert "不要注入系统消息" not in str(recent_conversation)
 
 
-def test_proactive_check_event_can_continue_tool_loop_after_tool_results() -> None:
-    class ProactiveToolClient:
+def test_screen_awareness_check_event_can_continue_tool_loop_after_tool_results() -> None:
+    class ScreenAwarenessToolClient:
         def __init__(self) -> None:
             self.prompts: list[str] = []
             self.messages: list[list[dict[str, object]]] = []
@@ -3017,7 +3507,7 @@ def test_proactive_check_event_can_continue_tool_loop_after_tool_results() -> No
             )
         ]
     )
-    client = ProactiveToolClient()
+    client = ScreenAwarenessToolClient()
     runtime = AgentRuntime(
         api_client=client,  # type: ignore[arg-type]
         system_prompt="你是 Sakura。",
@@ -3026,7 +3516,7 @@ def test_proactive_check_event_can_continue_tool_loop_after_tool_results() -> No
 
     result = runtime.handle_event(
         AgentEvent(
-            type="proactive_check",
+            type="screen_awareness_check",
             payload={
                 "seconds_since_pet_interaction": 1800,
                 "screen_context_allowed": False,
@@ -3038,12 +3528,12 @@ def test_proactive_check_event_can_continue_tool_loop_after_tool_results() -> No
     assert [action.type for action in result.actions] == ["event", "tool_call"]
     assert result.actions[1].payload["tool_name"] == "playwright_get_text"
     assert len(client.prompts) == 2
-    assert "主动检查事件" in client.prompts[0]
+    assert "主动屏幕感知事件" in client.prompts[0]
     assert "不要为了显得主动而循环调用工具" in client.prompts[0]
 
 
-def test_proactive_check_can_request_screen_when_screen_context_allowed() -> None:
-    class ProactiveScreenClient:
+def test_screen_awareness_check_can_request_screen_when_screen_context_allowed() -> None:
+    class ScreenAwarenessScreenClient:
         def __init__(self) -> None:
             self.prompts: list[str] = []
 
@@ -3056,7 +3546,7 @@ def test_proactive_check_can_request_screen_when_screen_context_allowed() -> Non
 
         complete_with_tools = _legacy_complete_with_tools
 
-    client = ProactiveScreenClient()
+    client = ScreenAwarenessScreenClient()
     runtime = AgentRuntime(
         api_client=client,  # type: ignore[arg-type]
         system_prompt="你是 Sakura。",
@@ -3065,7 +3555,7 @@ def test_proactive_check_can_request_screen_when_screen_context_allowed() -> Non
 
     result = runtime.handle_event(
         AgentEvent(
-            type="proactive_check",
+            type="screen_awareness_check",
             payload={
                 "seconds_since_pet_interaction": 1800,
                 "screen_context_allowed": True,
@@ -3079,8 +3569,8 @@ def test_proactive_check_can_request_screen_when_screen_context_allowed() -> Non
     assert result.actions[1].payload["reason"] == "想看看主人现在在做什么"
 
 
-def test_proactive_check_hides_screen_tool_when_screen_context_disallowed() -> None:
-    class ProactiveScreenClient:
+def test_screen_awareness_check_hides_screen_tool_when_screen_context_disallowed() -> None:
+    class ScreenAwarenessScreenClient:
         def __init__(self) -> None:
             self.prompts: list[str] = []
 
@@ -3090,7 +3580,7 @@ def test_proactive_check_hides_screen_tool_when_screen_context_disallowed() -> N
 
         complete_with_tools = _legacy_complete_with_tools
 
-    client = ProactiveScreenClient()
+    client = ScreenAwarenessScreenClient()
     runtime = AgentRuntime(
         api_client=client,  # type: ignore[arg-type]
         system_prompt="你是 Sakura。",
@@ -3100,7 +3590,7 @@ def test_proactive_check_hides_screen_tool_when_screen_context_disallowed() -> N
 
     result = runtime.handle_event(
         AgentEvent(
-            type="proactive_check",
+            type="screen_awareness_check",
             payload={
                 "seconds_since_pet_interaction": 1800,
                 "screen_context_allowed": False,
@@ -3113,21 +3603,21 @@ def test_proactive_check_hides_screen_tool_when_screen_context_disallowed() -> N
     assert not any(action.type == SCREEN_OBSERVATION_REQUEST_ACTION for action in result.actions)
 
 
-def test_proactive_check_vision_unsupported_uses_safe_fallback() -> None:
-    class ProactiveVisionUnsupportedClient:
+def test_screen_awareness_check_vision_unsupported_uses_silent_fallback() -> None:
+    class ScreenAwarenessVisionUnsupportedClient:
         def complete_raw(self, *_args, **_kwargs) -> str:  # type: ignore[no-untyped-def]
             raise ApiRequestError("model does not support image_url content")
 
         complete_with_tools = _legacy_complete_with_tools
 
     runtime = AgentRuntime(
-        api_client=ProactiveVisionUnsupportedClient(),  # type: ignore[arg-type]
+        api_client=ScreenAwarenessVisionUnsupportedClient(),  # type: ignore[arg-type]
         system_prompt="你是 Sakura。",
     )
 
     result = runtime.handle_event(
         AgentEvent(
-            type="proactive_check",
+            type="screen_awareness_check",
             payload={
                 "screen_context": {
                     "data_url": "data:image/jpeg;base64,abc123",
@@ -3138,8 +3628,7 @@ def test_proactive_check_vision_unsupported_uses_safe_fallback() -> None:
         )
     )
 
-    assert "不会乱猜" in result.reply.translation
-    assert result.actions[0].payload["event_type"] == "proactive_check"
+    assert result.reply.segments == []
 
 
 def test_plain_text_messages_do_not_contain_image() -> None:
@@ -3152,7 +3641,24 @@ def _runtime_json_path(name: str) -> Path:
 
 
 def _runtime_root_path(name: str) -> Path:
-    return Path(__file__).resolve().parents[2] / "__pycache__" / "test_runtime" / name / uuid.uuid4().hex
+    return Path(__file__).resolve().parents[2] / "temp" / "test_runtime" / uuid.uuid4().hex / name
+
+
+def _write_memory_model_zip(
+    archive_path: Path,
+    *,
+    prefix: str,
+    include_weight: bool = True,
+) -> None:
+    archive_path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        revision = f"{prefix}/snapshots/revision" if prefix else "snapshots/revision"
+        zf.writestr(f"{revision}/config.json", "{}")
+        if not prefix:
+            zf.writestr("refs/main", "revision")
+            zf.writestr("blobs/fake", "fake")
+        if include_weight:
+            zf.writestr(f"{revision}/model.safetensors", "fake")
 
 
 class FakeMem0:
@@ -3209,6 +3715,36 @@ class FakeMem0:
             for record in self.records
             if user_id is None or record.get("user_id") == user_id
         ]
+
+
+class FakeMem0RaisesOnMissingDelete(FakeMem0):
+    def delete(self, memory_id):  # type: ignore[no-untyped-def]
+        if self.get(memory_id) is None:
+            raise ValueError(f"Memory with id {memory_id} not found")
+        return super().delete(memory_id)
+
+
+class ClosableClient:
+    def __init__(self) -> None:
+        self.closed = False
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class ClosableVectorStore:
+    def __init__(self, client: ClosableClient) -> None:
+        self.client = client
+
+
+class ClosableMemoryRuntime:
+    def __init__(self) -> None:
+        self.client = ClosableClient()
+        self.vector_store = ClosableVectorStore(self.client)
+        self.memory_closed = False
+
+    def close(self) -> None:
+        self.memory_closed = True
 
 
 def _write_mcp_config(root: Path, server_body: str) -> Path:

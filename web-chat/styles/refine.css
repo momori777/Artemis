@@ -7,8 +7,8 @@
 
 /* ---------- 1. Typography ---------- */
 :root{
-  --font-sans:"Geist","Noto Sans SC",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --font-mono:"Geist Mono","Cascadia Code",ui-monospace,monospace;
+  --font-sans:"Geist","Noto Sans SC","Microsoft YaHei UI","Microsoft YaHei","PingFang SC",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"Geist Mono","Cascadia Code","JetBrains Mono",ui-monospace,monospace;
 
   /* type scale, 1.2 ratio off a 14px base */
   --t-xs:11px;
@@ -54,11 +54,19 @@ body{
   --bg-elevated:#201d21;
   --bg-overlay:#282429;
 
-  /* text: warm off-white, never pure white */
-  --text-primary:#ece7e6;
+  /* text: bright warm cream, light but never pure white */
+  --text-primary:#f4e6d0;
   --text-secondary:#a49d9e;
   --text-muted:#847d80;
   --text-inverse:#131114;
+
+  /* character bubble surface: dark default, flipped to light by [data-theme="light"] */
+  --bubble-char-bg:
+    radial-gradient(130% 100% at 10% 0%, rgba(224,139,139,0.055), transparent 55%),
+    linear-gradient(180deg,#1d1a1f 0%,#19171b 62%,#161418 100%);
+  --bubble-char-border:rgba(239,230,219,0.09);
+  --bubble-char-border-hover:rgba(239,230,219,0.16);
+  --bubble-char-fade:rgba(30,24,26,0.92);
 
   /* single rose accent, unchanged hue, tuned for AA on dark */
   --accent:#e08b8b;
@@ -99,6 +107,14 @@ body{
   --text-secondary:#544e50;
   --text-muted:#7d7679;
   --text-inverse:#fbfaf9;
+
+  /* character bubble surface: light parchment, dark ink */
+  --bubble-char-bg:
+    radial-gradient(130% 100% at 10% 0%, rgba(184,86,89,0.055), transparent 55%),
+    linear-gradient(180deg,#fdfbf9 0%,#f6f2ef 62%,#f1ece8 100%);
+  --bubble-char-border:rgba(0,0,0,0.08);
+  --bubble-char-border-hover:rgba(184,86,89,0.38);
+  --bubble-char-fade:rgba(241,237,233,0.95);
 
   --accent:#b85659;
   --accent-soft:rgba(184,86,89,0.10);
@@ -183,14 +199,18 @@ body{
   transition:border-color var(--dur-fast) linear;
 }
 
-/* character: reads as a surface sitting on the page */
+/* character: soft lit surface, faint rose bloom, warm parchment text */
 .msg-row.char .msg-bubble{
-  background:var(--bg-surface);
-  border:1px solid var(--border-subtle);
+  background:var(--bubble-char-bg);
+  border:1px solid var(--bubble-char-border);
   border-top-left-radius:5px;
-  box-shadow:var(--bezel),var(--shadow-sm);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.05),var(--shadow-sm);
+  color:var(--text-primary);
 }
-.msg-row.char:hover .msg-bubble{border-color:var(--border-moderate)}
+.msg-row.char:hover .msg-bubble{
+  border-color:var(--bubble-char-border-hover);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.06),var(--shadow-sm);
+}
 
 /* user: tinted, warmer, clearly the speaker's own voice */
 .msg-row.user .msg-bubble{
@@ -198,12 +218,15 @@ body{
   border:1px solid rgba(224,139,139,0.22);
   border-top-right-radius:5px;
   box-shadow:inset 0 1px 0 rgba(255,255,255,0.06),var(--shadow-sm);
+  color:var(--text-primary);
 }
 
 /* in-bubble text rhythm */
 .msg-bubble p+p{margin-top:0.68em}
 .msg-bubble em{color:var(--text-secondary);font-style:italic}
-.msg-bubble strong{color:var(--text-primary);font-weight:600}
+.msg-bubble strong{color:var(--accent-hover);font-weight:700}
+.msg-bubble strong em,
+.msg-bubble em strong{color:var(--accent-hover)}
 .msg-bubble code{
   font-family:var(--font-mono);
   font-size:0.88em;
@@ -238,7 +261,7 @@ body{
   background:linear-gradient(transparent,var(--bg-surface) 82%);
 }
 .msg-row.user .msg-bubble.long-collapsed::after{
-  background:linear-gradient(transparent,rgba(30,24,26,0.92) 86%);
+  background:linear-gradient(transparent,var(--bubble-char-fade) 86%);
 }
 
 /* ---------- 6. Header: thinner, quieter, sticky glass ---------- */

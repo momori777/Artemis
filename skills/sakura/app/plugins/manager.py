@@ -4,28 +4,65 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
-import inspect
 import re
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 
-from app.agent.tool_registry import ToolRegistry
-from app.core.debug_log import debug_log
-from app.plugins.adapters import contribution_to_app_tool
-from app.plugins.capabilities import PluginCapabilities
+from app.agent.tools.registry import Tool
+from app.agent.tools import ToolRegistry
+from app.core.runtime_log import log_event
+from app.core.resource_manager import DEFAULT_THREAD_SHUTDOWN_WAIT_MS, ResourceRegistry
+from app.plugins.base import PluginBase, PluginContext
+from app.plugins.capabilities import PluginCapabilities, PluginCapabilityRegistry
 from app.plugins.discovery import PluginDiscovery
-from app.plugins.models import PluginManifest, PluginSpec, ToolContribution
-from sdk.plugin import PluginBase
-from sdk.plugin_host_context import PluginContext, PluginHostContext
-from sdk.register import PluginCapabilityRegistry
-from sdk.types import PluginManifestView
+from app.plugins.events import PluginEventBus, ScopedEventBus
+from app.plugins.models import (
+    KNOWN_PLUGIN_PERMISSIONS,
+    PERMISSION_CHAT_UI,
+    PERMISSION_CONTEXT_PROVIDER,
+    PERMISSION_EVENT_APP,
+    PERMISSION_EVENT_CHARACTER,
+    PERMISSION_EVENT_MESSAGE,
+    PERMISSION_EVENT_TTS,
+    PERMISSION_PLUGIN_SETTINGS,
+    PERMISSION_PROMPT_PATCH,
+    PERMISSION_RENDERER,
+    PERMISSION_TOOL,
+    PERMISSION_TOOLS_TAB,
+    SUPPORTED_API_VERSIONS,
+    ContextProviderContribution,
+    PluginEvent,
+    PluginManifest,
+    PluginManifestView,
+    PluginSettingsContribution,
+    PluginSpec,
+    RendererContribution,
+    ToolContribution,
+)
+from app.plugins.services import PluginServices
+from app.storage.paths import StoragePaths, sanitize_file_stem
 
 
 OPENAI_TOOL_NAME_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
+PLUGIN_EVENT_APP_START = "app.start"
+PLUGIN_EVENT_USER_MESSAGE = "message.user"
+PLUGIN_EVENT_AI_MESSAGE = "message.ai"
+PLUGIN_EVENT_TTS_START = "tts.start"
+PLUGIN_EVENT_TTS_END = "tts.end"
+PLUGIN_EVENT_CHARACTER_LOADED = "character.loaded"
+
+_EVENT_HOOKS: dict[str, tuple[str, str]] = {
+    PLUGIN_EVENT_APP_START: ("on_app_start", PERMISSION_EVENT_APP),
+    PLUGIN_EVENT_USER_MESSAGE: ("on_user_message", PERMISSION_EVENT_MESSAGE),
+    PLUGIN_EVENT_AI_MESSAGE: ("on_ai_message", PERMISSION_EVENT_MESSAGE),
+    PLUGIN_EVENT_TTS_START: ("on_tts_start", PERMISSION_EVENT_TTS),
+    PLUGIN_EVENT_TTS_END: ("on_tts_end", PERMISSION_EVENT_TTS),
+    PLUGIN_EVENT_CHARACTER_LOADED: ("on_character_loaded", PERMISSION_EVENT_CHARACTER),
+}
 
 @dataclass
 class PluginLoadResult:
@@ -40,26 +77,66 @@ class PluginLoadResult:
 
 @dataclass
 class PluginManager:
-    """发现、加载、校验并收集插件贡献。"""
+    """发现、加载、校验并收集 Sakura 插件贡献。"""
 
     base_dir: Path
+    resource_registry: ResourceRegistry | None = None
     _loaded: list[PluginLoadResult] = field(default_factory=list)
     _plugins: list[PluginBase] = field(default_factory=list)
+    _active_plugins: list[tuple[PluginBase, PluginManifest]] = field(default_factory=list)
+    _event_bus: PluginEventBus = field(default_factory=PluginEventBus)
+    _services: PluginServices = field(default_factory=PluginServices)
+    _registered_tool_registry: ToolRegistry | None = None
+    _registered_tools: dict[str, Tool] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self.resource_registry = self.resource_registry or ResourceRegistry()
+        self._services.set_resource_registry(self.resource_registry)
+
+    @property
+    def event_bus(self) -> PluginEventBus:
+        """宿主用于 emit 的事件总线。"""
+        return self._event_bus
+
+    @property
+    def services(self) -> PluginServices:
+        """宿主用于注入真实后端的服务门面。"""
+        return self._services
+
+    def emit_bus_event(self, event_name: str, payload: dict[str, Any] | None = None) -> None:
+        """向事件总线派发事件（供宿主在关键时机调用）。"""
+        self._event_bus.emit(event_name, payload)
 
     def load_from_config(self, tool_registry: ToolRegistry) -> None:
-        """兼容旧 SakuraPluginManager 调用：加载并注册插件工具。"""
+        """加载配置中的启用插件并注册工具。"""
         self.load_all(tool_registry)
 
     def load_all(self, tool_registry: ToolRegistry | None = None) -> list[PluginLoadResult]:
         """加载所有启用插件；传入 ToolRegistry 时同步注册工具贡献。"""
+        self.shutdown_all()
         specs = PluginDiscovery(self.base_dir).discover_enabled()
         results: list[PluginLoadResult] = []
         known_tool_names = _tool_names_from_registry(tool_registry)
+        known_renderer_types: set[str] = set()
+        known_plugin_keys: dict[str, str] = {}
+        self._plugins = []
+        self._active_plugins = []
         for spec in specs:
-            result = self._load_one(spec, tool_registry, known_tool_names)
+            result = self._load_one(
+                spec,
+                tool_registry,
+                known_tool_names,
+                known_renderer_types,
+                known_plugin_keys,
+            )
             results.append(result)
+            if result.loaded and result.capabilities is not None:
+                known_renderer_types.update(
+                    _normalize_renderer_type(renderer.renderer_type)
+                    for renderer in result.capabilities.renderers
+                )
             if result.error and spec.required:
-                debug_log(
+                log_event(
                     "PluginManager",
                     "必需插件加载失败，中止",
                     {"entry": spec.entry, "plugin_id": spec.plugin_id, "error": result.error},
@@ -73,66 +150,134 @@ class PluginManager:
         spec: PluginSpec,
         tool_registry: ToolRegistry | None,
         known_tool_names: set[str],
+        known_renderer_types: set[str],
+        known_plugin_keys: dict[str, str],
     ) -> PluginLoadResult:
         result = PluginLoadResult(spec=spec)
         plugin: PluginBase | None = None
         try:
-            _clear_legacy_registered_tools()
             plugin = _import_plugin(self.base_dir, spec)
-            manifest = _build_manifest(self.base_dir, plugin, spec)
+            manifest = _build_manifest(plugin, spec)
+            _validate_manifest(manifest)
+            plugin_key = sanitize_file_stem(manifest.plugin_id).casefold()
+            existing_plugin_id = known_plugin_keys.get(plugin_key)
+            if existing_plugin_id is not None:
+                raise ValueError(
+                    f"插件 id 与已加载插件发生冲突：{manifest.plugin_id} / {existing_plugin_id}"
+                )
             result.manifest = manifest
 
             capability_registry = PluginCapabilityRegistry()
-            context = _build_plugin_context(self.base_dir, manifest)
+            context = _build_plugin_context(
+                self.base_dir,
+                manifest,
+                event_bus=self._event_bus,
+                services=self._services.for_plugin(
+                    manifest.plugin_id,
+                    manifest.permissions,
+                ),
+            )
             _initialize_plugin(plugin, capability_registry, context)
+            all_tool_contributions = list(capability_registry.tools)
 
-            tools = [
-                *capability_registry.tools,
-                *_consume_legacy_registered_tool_contributions(),
-            ]
-            _validate_tool_contributions(tools, known_tool_names)
+            _validate_capability_permissions(
+                capability_registry,
+                manifest.permissions,
+            )
+            _validate_tool_contributions(all_tool_contributions, known_tool_names)
+            _validate_renderer_contributions(capability_registry.renderers, known_renderer_types)
 
             capabilities = PluginCapabilities(
                 plugin_id=manifest.plugin_id,
-                tools=list(tools),
-                settings_panels=list(capability_registry.settings_panels),
+                tools=list(all_tool_contributions),
+                plugin_settings=[
+                    replace(settings, plugin_id=manifest.plugin_id)
+                    for settings in capability_registry.plugin_settings
+                ],
                 tools_tabs=list(capability_registry.tools_tabs),
                 chat_ui_widgets=list(capability_registry.chat_ui_widgets),
                 prompt_patches=list(capability_registry.prompt_patches),
+                context_providers=list(capability_registry.context_providers),
+                renderers=[
+                    replace(renderer, plugin_id=manifest.plugin_id)
+                    for renderer in capability_registry.renderers
+                ],
             )
             if tool_registry is not None:
                 for contribution in capabilities.tools:
-                    tool_registry.register(contribution_to_app_tool(contribution))
+                    app_tool = _contribution_to_app_tool(contribution)
+                    tool_registry.register(app_tool)
+                    self._registered_tool_registry = tool_registry
+                    self._registered_tools[contribution.name] = app_tool
                     known_tool_names.add(contribution.name)
             else:
                 known_tool_names.update(contribution.name for contribution in capabilities.tools)
             result.capabilities = capabilities
             result.loaded = True
             self._plugins.append(plugin)
-            debug_log(
+            self._active_plugins.append((plugin, manifest))
+            known_plugin_keys[plugin_key] = manifest.plugin_id
+            log_event(
                 "PluginManager",
                 "插件已加载",
                 {
                     "plugin_id": manifest.plugin_id,
                     "tools": len(capabilities.tools),
                     "tools_tabs": len(capabilities.tools_tabs),
-                    "settings_panels": len(capabilities.settings_panels),
+                    "plugin_settings": len(capabilities.plugin_settings),
                     "chat_ui_widgets": len(capabilities.chat_ui_widgets),
                     "prompt_patches": len(capabilities.prompt_patches),
+                    "context_providers": len(capabilities.context_providers),
+                    "renderers": len(capabilities.renderers),
                 },
             )
         except Exception as exc:
             result.error = str(exc)
             if plugin is not None:
                 _shutdown_quietly(plugin)
-            debug_log(
+            # 加载失败时清理可能已注册的事件订阅，避免残留 handler。
+            if result.manifest is not None:
+                self._services.resources.stop_plugin(result.manifest.plugin_id)
+                self._event_bus.remove_plugin(result.manifest.plugin_id)
+            log_event(
                 "PluginManager",
                 "插件加载失败",
                 {"entry": spec.entry, "plugin_id": spec.plugin_id, "error": str(exc)},
             )
-        finally:
-            _clear_legacy_registered_tools()
         return result
+
+    def emit_event(
+        self,
+        event_type: str,
+        payload: dict[str, Any] | None = None,
+        *,
+        source: str = "host",
+    ) -> None:
+        """向拥有对应权限的插件派发生命周期事件。"""
+        hook = _EVENT_HOOKS.get(event_type)
+        if hook is None:
+            log_event("PluginManager", "拒绝未知插件事件", {"event_type": event_type})
+            raise ValueError(f"未知插件事件：{event_type}")
+        hook_name, permission = hook
+        event = PluginEvent(event_type=event_type, payload=payload or {}, source=source)
+        for plugin, manifest in list(self._active_plugins):
+            if permission not in manifest.permissions:
+                continue
+            callback = getattr(plugin, hook_name, None)
+            if not callable(callback):
+                continue
+            try:
+                callback(event)
+            except Exception as exc:  # noqa: BLE001
+                log_event(
+                    "PluginManager",
+                    "插件事件 hook 失败",
+                    {
+                        "plugin_id": manifest.plugin_id,
+                        "event_type": event_type,
+                        "error": str(exc),
+                    },
+                )
 
     def collect_tools(self) -> list[ToolContribution]:
         tools: list[ToolContribution] = []
@@ -141,12 +286,12 @@ class PluginManager:
                 tools.extend(result.capabilities.tools)
         return tools
 
-    def collect_settings_panels(self) -> list:
-        panels: list = []
+    def collect_plugin_settings(self) -> list[PluginSettingsContribution]:
+        settings: list[PluginSettingsContribution] = []
         for result in self._loaded:
             if result.capabilities:
-                panels.extend(result.capabilities.settings_panels)
-        return panels
+                settings.extend(result.capabilities.plugin_settings)
+        return settings
 
     def collect_tools_tabs(self) -> list:
         tabs: list = []
@@ -169,13 +314,27 @@ class PluginManager:
                 patches.extend(result.capabilities.prompt_patches)
         return patches
 
+    def collect_context_providers(self) -> list[ContextProviderContribution]:
+        providers: list[ContextProviderContribution] = []
+        for result in self._loaded:
+            if result.capabilities:
+                providers.extend(result.capabilities.context_providers)
+        return providers
+
+    def collect_renderers(self) -> list[RendererContribution]:
+        renderers: list[RendererContribution] = []
+        for result in self._loaded:
+            if result.capabilities:
+                renderers.extend(result.capabilities.renderers)
+        return renderers
+
     @property
     def tools_tabs(self) -> list:
         return self.collect_tools_tabs()
 
     @property
-    def settings_panels(self) -> list:
-        return self.collect_settings_panels()
+    def plugin_settings(self) -> list[PluginSettingsContribution]:
+        return self.collect_plugin_settings()
 
     @property
     def chat_ui_widgets(self) -> list:
@@ -185,10 +344,32 @@ class PluginManager:
     def prompt_patches(self) -> list:
         return self.collect_prompt_patches()
 
+    @property
+    def context_providers(self) -> list[ContextProviderContribution]:
+        return self.collect_context_providers()
+
+    @property
+    def renderers(self) -> list[RendererContribution]:
+        return self.collect_renderers()
+
     def shutdown_all(self) -> None:
-        """逆序关闭所有已加载插件。"""
-        for plugin in reversed(self._plugins):
+        """逆序关闭所有已加载插件，并清理其事件订阅；可重复调用。"""
+        active_plugins = list(reversed(self._active_plugins))
+        self._active_plugins = []
+        for plugin, manifest in active_plugins:
+            self._services.resources.stop_plugin(
+                manifest.plugin_id,
+                DEFAULT_THREAD_SHUTDOWN_WAIT_MS,
+            )
             _shutdown_quietly(plugin)
+            self._event_bus.remove_plugin(manifest.plugin_id)
+        registry = self._registered_tool_registry
+        if registry is not None:
+            for name, tool in list(self._registered_tools.items()):
+                registry.unregister(name, expected=tool)
+        self._registered_tool_registry = None
+        self._registered_tools.clear()
+        self._plugins = []
 
     @property
     def loaded_count(self) -> int:
@@ -225,19 +406,20 @@ def _import_plugin(base_dir: Path, spec: PluginSpec) -> PluginBase:
 
 def _import_plugin_module(base_dir: Path, spec: PluginSpec, module_name: str) -> ModuleType:
     plugin_root = spec.plugin_root
-    if plugin_root is not None and not module_name.startswith("plugins."):
-        file_module = _module_file_from_relative_entry(plugin_root, module_name)
-        if file_module.is_file() and not _is_current_project_root(base_dir):
-            return _load_module_from_file(spec.plugin_id or plugin_root.name, module_name, file_module)
-        package_module = _package_module_name(plugin_root, module_name)
-        if package_module:
-            _ensure_sys_path(base_dir)
-            try:
-                return importlib.import_module(package_module)
-            except ModuleNotFoundError:
-                pass
-        if file_module.is_file():
-            return _load_module_from_file(spec.plugin_id or plugin_root.name, module_name, file_module)
+    if plugin_root is None:
+        raise ValueError(f"插件缺少根目录：{spec.plugin_id or spec.entry}")
+    file_module = _module_file_from_relative_entry(plugin_root, module_name)
+    if file_module.is_file() and not _is_current_project_root(base_dir):
+        return _load_module_from_file(spec.plugin_id or plugin_root.name, module_name, file_module)
+    package_module = _package_module_name(plugin_root, module_name)
+    if package_module:
+        _ensure_sys_path(base_dir)
+        try:
+            return importlib.import_module(package_module)
+        except ModuleNotFoundError:
+            pass
+    if file_module.is_file():
+        return _load_module_from_file(spec.plugin_id or plugin_root.name, module_name, file_module)
     _ensure_sys_path(base_dir)
     return importlib.import_module(module_name)
 
@@ -282,15 +464,15 @@ def _is_current_project_root(base_dir: Path) -> bool:
         return False
 
 
-def _build_manifest(base_dir: Path, plugin: PluginBase, spec: PluginSpec) -> PluginManifest:
+def _build_manifest(plugin: PluginBase, spec: PluginSpec) -> PluginManifest:
     plugin_id = _string_attr(plugin, "plugin_id") or spec.plugin_id
     if not plugin_id:
         raise ValueError(f"插件缺少 plugin_id：{spec.entry}")
     version = _string_attr(plugin, "plugin_version") or spec.version
-    plugin_root = spec.plugin_root or _plugin_root_from_entry(base_dir, spec.entry, spec.plugin_id)
     return PluginManifest(
         plugin_id=plugin_id,
         name=spec.name or plugin_id,
+        author=spec.author,
         description=spec.description,
         version=version or "0.0.0",
         api_version=spec.api_version,
@@ -298,8 +480,41 @@ def _build_manifest(base_dir: Path, plugin: PluginBase, spec: PluginSpec) -> Plu
         enabled=spec.enabled,
         required=spec.required,
         entry=spec.entry,
-        plugin_root=plugin_root,
+        permissions=spec.permissions,
+        plugin_root=spec.plugin_root,
     )
+
+
+def _validate_manifest(manifest: PluginManifest) -> None:
+    if manifest.api_version not in SUPPORTED_API_VERSIONS:
+        supported = ", ".join(str(version) for version in sorted(SUPPORTED_API_VERSIONS))
+        raise ValueError(
+            f"插件 API 版本不支持：{manifest.api_version}（当前支持 {supported}）"
+        )
+    if not manifest.permissions:
+        raise ValueError("插件缺少 permissions 声明")
+    unknown = sorted(set(manifest.permissions) - KNOWN_PLUGIN_PERMISSIONS)
+    if unknown:
+        raise ValueError(f"插件声明了未知权限：{', '.join(unknown)}")
+
+
+def _validate_capability_permissions(
+    registry: PluginCapabilityRegistry,
+    permissions: tuple[str, ...],
+) -> None:
+    permission_set = set(permissions)
+    checks = (
+        (registry.tools, PERMISSION_TOOL, "工具"),
+        (registry.tools_tabs, PERMISSION_TOOLS_TAB, "工具页"),
+        (registry.plugin_settings, PERMISSION_PLUGIN_SETTINGS, "插件设置"),
+        (registry.chat_ui_widgets, PERMISSION_CHAT_UI, "聊天 UI"),
+        (registry.prompt_patches, PERMISSION_PROMPT_PATCH, "提示词补丁"),
+        (registry.context_providers, PERMISSION_CONTEXT_PROVIDER, "上下文提供者"),
+        (registry.renderers, PERMISSION_RENDERER, "角色渲染器"),
+    )
+    for contributions, permission, label in checks:
+        if contributions and permission not in permission_set:
+            raise ValueError(f"插件贡献了{label}，但未声明权限 {permission}")
 
 
 def _string_attr(plugin: PluginBase, name: str) -> str:
@@ -309,25 +524,39 @@ def _string_attr(plugin: PluginBase, name: str) -> str:
     return ""
 
 
-def _build_plugin_context(base_dir: Path, manifest: PluginManifest) -> PluginContext:
+def _build_plugin_context(
+    base_dir: Path,
+    manifest: PluginManifest,
+    *,
+    event_bus: PluginEventBus | None = None,
+    services: Any = None,
+) -> PluginContext:
     plugin_root = manifest.plugin_root or base_dir / "plugins" / manifest.plugin_id
-    data_dir = base_dir / "data" / "plugins" / manifest.plugin_id
+    data_dir = StoragePaths(base_dir).plugin_data_for(manifest.plugin_id)
     data_dir.mkdir(parents=True, exist_ok=True)
     manifest_view = PluginManifestView(
         plugin_id=manifest.plugin_id,
         name=manifest.name,
+        author=manifest.author,
         description=manifest.description,
         version=manifest.version,
         api_version=manifest.api_version,
         priority=manifest.priority,
         enabled=manifest.enabled,
         required=manifest.required,
+        permissions=manifest.permissions,
+    )
+    # 每插件一个 ScopedEventBus（只开放订阅）；services 为共享门面。
+    scoped_events = (
+        ScopedEventBus(event_bus, manifest.plugin_id) if event_bus is not None else None
     )
     return PluginContext(
         base_dir=base_dir,
         plugin_root=plugin_root,
         data_dir=data_dir,
         manifest=manifest_view,
+        events=scoped_events,
+        services=services,
     )
 
 
@@ -336,16 +565,8 @@ def _initialize_plugin(
     register: PluginCapabilityRegistry,
     context: PluginContext,
 ) -> None:
-    initialize = plugin.initialize
-    parameter_count = len(inspect.signature(initialize).parameters)
-    if parameter_count >= 3:
-        initialize(  # type: ignore[misc]
-            register,
-            context.plugin_root,
-            PluginHostContext(base_dir=context.base_dir),
-        )
-        return
-    initialize(register, context)  # type: ignore[misc]
+    """初始化插件。"""
+    plugin.initialize(register, context)
 
 
 def _validate_tool_contributions(
@@ -363,70 +584,47 @@ def _validate_tool_contributions(
         local_tool_names.add(contribution.name)
 
 
-def _clear_legacy_registered_tools() -> None:
-    module = sys.modules.get("sdk.tool_registry")
-    clear = getattr(module, "clear_registered_tools", None) if module is not None else None
-    if callable(clear):
-        clear()
+def _normalize_renderer_type(renderer_type: str) -> str:
+    return str(renderer_type or "").strip().lower()
 
 
-def _consume_legacy_registered_tool_contributions() -> list[ToolContribution]:
-    module = sys.modules.get("sdk.tool_registry")
-    registered_tools = getattr(module, "registered_tools", None) if module is not None else None
-    if not callable(registered_tools):
-        return []
-    contributions: list[ToolContribution] = []
-    for registered in registered_tools():
-        parameters = getattr(registered, "parameters", {})
-        func = getattr(registered, "func", None)
-        contributions.append(
-            ToolContribution(
-                name=str(getattr(registered, "name", "")),
-                description=str(getattr(registered, "description", "")),
-                parameters=parameters if isinstance(parameters, dict) else {},
-                handler=_legacy_tool_handler(func, parameters if isinstance(parameters, dict) else {}),
-                group=str(getattr(registered, "group", "default")),
-                risk=str(getattr(registered, "risk", "low")),
-                requires_confirmation=bool(getattr(registered, "requires_confirmation", False)),
-            )
-        )
-    _clear_legacy_registered_tools()
-    return contributions
+def _validate_renderer_contributions(
+    renderers: list[RendererContribution],
+    known_renderer_types: set[str],
+) -> None:
+    local_types: set[str] = set()
+    for contribution in renderers:
+        renderer_type = _normalize_renderer_type(contribution.renderer_type)
+        if not renderer_type:
+            raise ValueError("插件渲染器缺少 renderer_type")
+        if renderer_type == "default":
+            raise ValueError("插件不能注册保留渲染器类型：default")
+        if not callable(contribution.create):
+            raise ValueError(f"插件渲染器缺少创建函数：{renderer_type}")
+        if renderer_type in known_renderer_types or renderer_type in local_types:
+            raise ValueError(f"插件渲染器类型重复：{renderer_type}")
+        local_types.add(renderer_type)
 
 
-def _legacy_tool_handler(func: Any, parameters: dict[str, Any]) -> Any:
-    if not callable(func):
-        return None
-
-    def handler(arguments: dict[str, Any]) -> Any:
-        properties = parameters.get("properties")
-        if not isinstance(properties, dict):
-            return func(**arguments)
-        kwargs = {
-            name: arguments[name]
-            for name in properties
-            if name in arguments
-        }
-        return func(**kwargs)
-
-    return handler
-
-
-def _plugin_root_from_entry(base_dir: Path, entry: str, plugin_id: str) -> Path:
-    module_name = entry.partition(":")[0]
-    parts = module_name.split(".")
-    if len(parts) >= 2 and parts[0] == "plugins":
-        return base_dir / "plugins" / parts[1]
-    if plugin_id:
-        return base_dir / "plugins" / plugin_id
-    return base_dir / "plugins"
+def _contribution_to_app_tool(contribution: ToolContribution) -> Tool:
+    return Tool(
+        name=contribution.name,
+        description=contribution.description,
+        parameters=contribution.parameters,
+        handler=contribution.handler,
+        requires_confirmation=contribution.requires_confirmation,
+        group=contribution.group,
+        risk=contribution.risk,
+        capability=contribution.capability,
+        source="plugin",
+    )
 
 
 def _shutdown_quietly(plugin: PluginBase) -> None:
     try:
         plugin.shutdown()
     except Exception as exc:
-        debug_log(
+        log_event(
             "PluginManager",
             "插件关闭失败",
             {"plugin": getattr(plugin, "plugin_id", "unknown"), "error": str(exc)},

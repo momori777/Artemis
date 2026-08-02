@@ -19,6 +19,7 @@ from PySide6.QtWidgets import QGraphicsOpacityEffect, QLabel, QMessageBox, QWidg
 from app.config.character_loader import CharacterProfile
 from app.llm.chat_reply import ChatSegment
 from app.ui.portrait_utils import should_crossfade_portrait
+from app.ui.error_messages import format_failure_message
 
 
 PORTRAIT_TRANSITION_MS = 300
@@ -135,7 +136,11 @@ class PortraitController(QObject):
             QMessageBox.critical(
                 self.parent_widget,
                 "立绘加载失败",
-                f"无法加载立绘：{target_path}",
+                format_failure_message(
+                    "当前角色的立绘无法读取或解码。",
+                    "请确认图片存在、格式受支持且文件没有损坏。",
+                    f"立绘路径：{target_path}",
+                ),
             )
         self.pixmap_cache[target_path] = pixmap
         return pixmap
@@ -144,14 +149,18 @@ class PortraitController(QObject):
         scale = self.portrait_scale_percent / 100
         target_width = round(PORTRAIT_BASE_MAX_WIDTH * scale)
         target_height = round(PORTRAIT_BASE_MAX_HEIGHT * scale)
+        # HiDPI:按物理像素(逻辑尺寸 × dpr)缩放并标记 dpr,否则 retina 上立绘被拉伸成半分辨率(糊)。
+        # 逻辑尺寸(deviceIndependentSize)不变,故不影响舞台布局,只提升清晰度。
+        dpr = label.devicePixelRatioF() or 1.0
         scaled = pixmap.scaled(
-            target_width,
-            target_height,
+            round(target_width * dpr),
+            round(target_height * dpr),
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
+        scaled.setDevicePixelRatio(dpr)
         label.setPixmap(scaled)
-        label.resize(scaled.size())
+        label.resize(scaled.deviceIndependentSize().toSize())
 
     def _crossfade(self, next_pixmap: QPixmap) -> None:
         self._stop_transition(finish_current=True)
