@@ -1657,11 +1657,16 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
         model_id = req_data.get("model", "local/qwen3.6-35b")
 
-        # Reasoning toggle — restart llama in background, return error for now
+        # Reasoning toggle — restart llama in background, return error for now.
+        # NOTE: "auto" (default) is a flexible mode that already handles both
+        # reasoning and non-reasoning prompts, so a manually-started llama with
+        # -rea auto must NOT be force-restarted just because the frontend asks
+        # for reasoning on/off. Only restart when we KNOW the running llama was
+        # pinned to the opposite mode.
         if model_id.startswith("local/"):
             reasoning_on = req_data.get("reasoning", "off") == "on"
             desired = "on" if reasoning_on else "off"
-            if _llama_rea_state != desired:
+            if _llama_rea_state != "auto" and _llama_rea_state != desired:
                 self.send_json({"error": f"Restarting llama with -rea {desired}, please retry in ~30s"}, 503)
                 threading.Thread(target=_set_llama_rea, args=(desired,), daemon=True).start()
                 return
@@ -1982,24 +1987,54 @@ Conversation:
                 data=data,
                 headers={"Content-Type": "application/json"}
             )
-            resp = urllib.request.urlopen(req, timeout=60)
+            resp = urllib.request.urlopen(req, timeout=120)
             result = json.loads(resp.read())
             msg = result.get("choices", [{}])[0].get("message", {})
             content = msg.get("content", "") or msg.get("reasoning_content", "")
 
-            # Parse JSON from response
-            # Try to find JSON block
+            # Parse JSON from response.
+            # The model often wraps the answer in a long thinking block
+            # (reasoning_content) that may contain stray braces, so prefer
+            # extracting the "prompt"/"negative" fields directly.
             import re
-            json_match = re.search(r'\{[^}]+\}', content, re.DOTALL)
-            if json_match:
-                prompt_data = json.loads(json_match.group())
+            prompt_text = ""
+            negative_text = ""
+            try:
+                # 1) Whole response is valid JSON
+                prompt_data = json.loads(content)
+                prompt_text = prompt_data.get("prompt", "")
+                negative_text = prompt_data.get("negative", "")
+            except Exception:
+                pass
+            if not prompt_text:
+                # 2) Field-level extraction (robust against thinking noise)
+                pm = re.search(r'"prompt"\s*:\s*"([^"]{1,500})"', content)
+                nm = re.search(r'"negative"\s*:\s*"([^"]{1,500})"', content)
+                if pm:
+                    prompt_text = pm.group(1)
+                if nm:
+                    negative_text = nm.group(1)
+            if not prompt_text:
+                # 3) Old-style whole-object match
+                json_match = re.search(r'\{[^{}]*\}', content, re.DOTALL)
+                if json_match:
+                    try:
+                        prompt_data = json.loads(json_match.group())
+                        prompt_text = prompt_data.get("prompt", "")
+                        negative_text = prompt_data.get("negative", "")
+                    except Exception:
+                        pass
+            if prompt_text:
                 self.send_json({
-                    "prompt": prompt_data.get("prompt", ""),
-                    "negative": prompt_data.get("negative", "bad quality, worst quality, blurry"),
+                    "prompt": prompt_text.strip(),
+                    "negative": negative_text.strip() or "bad quality, worst quality, blurry",
                 })
             else:
-                # Fallback: treat the whole response as prompt
-                prompt_text = content.strip().strip('"').strip("'")
+                # Fallback: strip any thinking preamble, keep last clean line
+                lines = [l.strip() for l in content.splitlines() if l.strip()]
+                clean_lines = [l for l in lines if not re.match(r'^(Here.s a thinking|1\.\s|\*\*Analyze|I need to)', l)]
+                prompt_text = " ".join(clean_lines) if clean_lines else content
+                prompt_text = prompt_text.strip().strip('"').strip("'")
                 if len(prompt_text) > 500:
                     prompt_text = prompt_text[:500]
                 self.send_json({

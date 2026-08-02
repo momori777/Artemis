@@ -1779,6 +1779,23 @@ html,body{
   outline: none;
 }
 .paint-param input:focus { border-color: var(--accent); }
+.paint-forced-block {
+  border: 1px dashed var(--border-moderate);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--bg-overlay);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.paint-forced-title {
+  font-size: 12px; font-weight: 600;
+  color: var(--accent);
+}
+.paint-forced-hint {
+  font-size: 11px; color: var(--text-muted);
+  line-height: 1.4;
+}
+.paint-forced-block .paint-prompt-input { font-size: 11px; padding: 8px 10px; }
+.paint-forced-block .paint-param input { font-size: 12px; padding: 5px 7px; }
 .paint-modal-footer {
   display: flex; justify-content: flex-end; align-items:center; gap: 10px;
   padding: 14px 20px;

@@ -1312,6 +1312,11 @@ var UI = {
     var btnsRow = document.createElement('div');
     btnsRow.className = 'msg-btns';
 
+    // Image messages: paint jobs (stored ComfyUI params) OR LLM-provided
+    // MEDIA: images. Both get an image re-roll affordance below.
+    var isImageMsg = msg.paint || msg.mediaType === 'image' ||
+      (msg.media && /.(png|jpe?g|webp|gif)$/i.test(msg.media));
+
     var editBtn = document.createElement('button');
     editBtn.className = 'msg-edit-btn';
     editBtn.innerHTML = '<i class="ph ph-pencil-simple"></i>';
@@ -1321,20 +1326,23 @@ var UI = {
       self.startEditMessage(row, index, msg);
     });
     // Editing text on an image-only message makes no sense.
-    if (!msg.paint) btnsRow.appendChild(editBtn);
+    if (!isImageMsg) btnsRow.appendChild(editBtn);
 
     if (!isUser && msg.role === 'assistant') {
       var regenBtn = document.createElement('button');
       regenBtn.className = 'msg-regen-btn';
-      if (msg.paint) {
+      if (isImageMsg) {
         // Image messages get their own re-roll affordance so it is obvious the
-        // action re-runs the image job, not the text model.
+        // action regenerates the image, not the text model. Paint messages
+        // re-run the ComfyUI job; LLM MEDIA: images re-ask the LLM.
         regenBtn.classList.add('msg-repaint-btn');
         regenBtn.innerHTML = '<i class="ph ph-image"></i>';
         regenBtn.title = msg.paintParams && msg.paintParams.positive
           ? 'Re-roll this image'
-          : 'No prompt stored for this image';
-        if (!(msg.paintParams && msg.paintParams.positive)) {
+          : 'Regenerate image';
+        // Paint message with NO stored params cannot be re-run: nothing to
+        // replay to ComfyUI. (LLM MEDIA: images CAN be regenerated via LLM.)
+        if (msg.paint && !(msg.paintParams && msg.paintParams.positive)) {
           regenBtn.disabled = true;
           regenBtn.classList.add('is-disabled');
         }
@@ -1603,8 +1611,22 @@ var UI = {
     if (msg.role === 'assistant') {
       var regenBtn2 = document.createElement('button');
       regenBtn2.className = 'msg-regen-btn';
-      regenBtn2.innerHTML = '<i class="ph ph-arrows-clockwise"></i>';
-      regenBtn2.title = 'Regenerate reply';
+      var isImgMsg2 = msg.paint || msg.mediaType === 'image' ||
+        (msg.media && /.(png|jpe?g|webp|gif)$/i.test(msg.media));
+      if (isImgMsg2) {
+        regenBtn2.classList.add('msg-repaint-btn');
+        regenBtn2.innerHTML = '<i class="ph ph-image"></i>';
+        regenBtn2.title = msg.paintParams && msg.paintParams.positive
+          ? 'Re-roll this image'
+          : 'Regenerate image';
+        if (msg.paint && !(msg.paintParams && msg.paintParams.positive)) {
+          regenBtn2.disabled = true;
+          regenBtn2.classList.add('is-disabled');
+        }
+      } else {
+        regenBtn2.innerHTML = '<i class="ph ph-arrows-clockwise"></i>';
+        regenBtn2.title = 'Regenerate reply';
+      }
       regenBtn2.addEventListener('click', function(e) {
         e.stopPropagation();
         self.regenerateMessage(index);
@@ -1624,10 +1646,23 @@ var UI = {
     if (this.state.streaming) return;
 
     // Image messages carry no text, so the LLM text-stream path cannot
-    // regenerate them. Re-run the image job instead.
+    // regenerate them. Route by image type + model capability:
+    //   - paint message (stored ComfyUI params)  -> re-run ComfyUI job
+    //   - local model (no image capability)      -> re-draw via ComfyUI
+    //   - cloud model                            -> re-ask LLM for a MEDIA image
     var target = this.state.messages[assistantIndex];
-    if (target && target.paint) {
-      this._regeneratePaint(assistantIndex);
+    var targetIsImage = target && (target.paint || target.mediaType === 'image' ||
+      (target.media && /.(png|jpe?g|webp|gif)$/i.test(target.media)));
+    if (targetIsImage) {
+      if (target.paintParams && target.paintParams.positive) {
+        this._regeneratePaint(assistantIndex);
+      } else if ((getSettings().model || '').indexOf('local') === 0) {
+        // Local models cannot emit MEDIA: image lines. Re-draw the image
+        // through ComfyUI so "regenerate" actually produces a new picture.
+        this._regenImageViaComfyUI(assistantIndex);
+      } else {
+        this._regenerateMediaImage(assistantIndex);
+      }
       return;
     }
 
@@ -1685,6 +1720,16 @@ var UI = {
         .slice(0, lastGoodIdx + 1)
         .filter(function(n) { return n.role !== 'system' && !n._pending; })
         .map(function(n) { return { role: n.role, content: n.content }; });
+
+      // MEDIA: image being regenerated in tree mode: ask the LLM to produce a
+      // fresh image rather than a plain text reply.
+      if (target && target.mediaType === 'image' &&
+          !(target.paintParams && target.paintParams.positive)) {
+        replayMsgs.push({
+          role: 'user',
+          content: 'Please generate a NEW image for your previous reply. Return the image using a line starting with "MEDIA:" followed by the image path or URL.',
+        });
+      }
 
       self.hideTyping();
       self.createStreamBubble();
@@ -1811,6 +1856,239 @@ var UI = {
       },
       function(err) {
         console.warn('Regenerate stream failed:', err.message);
+        self.hideTyping();
+        var bubble = document.getElementById('stream-bubble');
+        if (bubble) bubble.remove();
+        self.doFallback(err.message);
+        saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
+        self.state.streaming = false;
+        self.$sendBtn.disabled = false;
+        self.$input.focus();
+      }
+    );
+  },
+
+  // ---- Regenerate a MEDIA image via ComfyUI (local model, no image cap) ----
+  // Local LLMs (llama) are text-only and never emit MEDIA: image lines, so
+  // "regenerate picture" would silently keep the old image. Instead, ask the
+  // daemon to craft a prompt from the conversation, then re-draw through the
+  // Artemis bridge (ComfyUI) and swap the image in place.
+  _regenImageViaComfyUI: function(assistantIndex) {
+    var self = this;
+    var msg = this.state.messages[assistantIndex];
+    if (!msg || msg.role !== 'assistant') return;
+
+    var triggerUserIdx = assistantIndex - 1;
+    if (triggerUserIdx < 0 || this.state.messages[triggerUserIdx].role !== 'user') {
+      console.warn('No user message immediately before image index', assistantIndex);
+      return;
+    }
+
+    this.showTyping();
+    this.state.streaming = true;
+    this.$sendBtn.disabled = true;
+    showToast('Regenerating image via ComfyUI...');
+
+    var charId = this.state.currentCharId || 'natsume';
+    var recentMessages = this.state.messages.slice(-10);
+
+    // Step 1: daemon generates a paint prompt from conversation context
+    // (uses local llama if online, deterministic fallback otherwise).
+    fetch('http://localhost:19260/api/gen-prompt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ characterId: charId, messages: recentMessages }),
+      signal: AbortSignal.timeout(120000),
+    })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (!data.prompt) {
+          throw new Error(data.error || 'prompt generation failed');
+        }
+        self.appendSystemMsg('✨ Prompt: ' + data.prompt.substring(0, 80) + '...');
+        self.scrollToBottom();
+        // Step 2: submit the ComfyUI job via Artemis bridge
+        var bridgeUrl = getSettings().bridgeUrl || 'http://localhost:19250';
+        // manage_llama: always true — 8GB VRAM, ComfyUI's 6.5GB model must own
+        // the GPU while drawing; bridge restarts llama afterwards. Same policy
+        // as _submitPaintJob (project's built-in config).
+        var manageLlama = true;
+        // Inject user-forced paint settings (positive/negative/resolution)
+        var forced = self._applyForcedPaint(data.prompt, data.negative || '', undefined, undefined, undefined);
+        // Prepend quality tags if not already present (same as _submitPaintJob)
+        var hasQuality = /masterpiece|best.quality/i.test(forced.positive || '');
+        var finalPositive = hasQuality ? forced.positive : 'masterpiece, best quality, highly detailed, ' + forced.positive;
+        var params = {
+          positive: finalPositive,
+          negative: forced.negative || 'worst quality, bad quality, low quality, blurry, lowres, bad anatomy, extra fingers, missing fingers, extra limbs, deformed, disfigured, watermark, text, signature, jpeg artifacts, censored',
+          width: forced.width || 768, height: forced.height || 1024, steps: forced.steps || 24, cfg: 6.0,
+          checkpoint: 'WAI-Nsfw-Illustrious-17.safetensors',
+          manage_llama: manageLlama,
+        };
+        return fetch(bridgeUrl + '/api/comfyui', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(params),
+          signal: AbortSignal.timeout(5000),
+        }).then(function(res) { return res.json(); }).then(function(d) {
+          if (!d.job_id) throw new Error(d.error || 'job submission failed');
+          self.appendSystemMsg('🖼️ Re-drawing image... (job: ' + d.job_id.substring(0, 8) + ')');
+          self.scrollToBottom();
+          return self._pollImageRegen(assistantIndex, d.job_id, msg, triggerUserIdx);
+        });
+      })
+      .catch(function(err) {
+        console.warn('Image re-draw failed:', err.message);
+        self.hideTyping();
+        self.state.streaming = false;
+        self.$sendBtn.disabled = false;
+        showToast('Regenerate image failed: ' + err.message);
+      });
+  },
+
+  // Poll a ComfyUI job and swap the regenerated image into the message slot.
+  _pollImageRegen: function(assistantIndex, jobId, oldMsg, triggerUserIdx) {
+    var self = this;
+    var bridgeUrl = getSettings().bridgeUrl || 'http://localhost:19250';
+    var attempt = 0;
+    var maxAttempts = 180;
+
+    var interval = setInterval(function() {
+      attempt++;
+      fetch(bridgeUrl + '/api/jobs/' + jobId, { signal: AbortSignal.timeout(3000) })
+        .then(function(res) { return res.json(); })
+        .then(function(job) {
+          if (job.status === 'done') {
+            clearInterval(interval);
+            var imgPath = job.path;
+            var newMsg = {
+              role: 'assistant', content: oldMsg.content || '', time: self.formatTime(new Date()),
+              media: imgPath, mediaType: 'image', paint: true,
+              paintParams: oldMsg.paintParams || null,
+            };
+            // Replace the old image message in place.
+            var msgs = self.state.messages;
+            for (var i = 0; i < msgs.length; i++) {
+              if (msgs[i] === oldMsg || i === assistantIndex) {
+                msgs[i] = newMsg;
+                break;
+              }
+            }
+            self.$messages.innerHTML = '';
+            for (var mi = 0; mi < msgs.length; mi++) {
+              self.$messages.appendChild(self.renderMessage(msgs[mi], mi));
+            }
+            saveChatHistory(self.state.currentCharId, self.state.currentSessionId, msgs);
+            self.hideTyping();
+            self.state.streaming = false;
+            self.$sendBtn.disabled = false;
+            self.$input.focus();
+            showToast('Image regenerated');
+          } else if (job.status === 'failed') {
+            clearInterval(interval);
+            self.hideTyping();
+            self.state.streaming = false;
+            self.$sendBtn.disabled = false;
+            showToast('Image re-draw failed: ' + (job.error || 'unknown'));
+            self.appendSystemMsg('💔 Image re-draw failed: ' + (job.error || 'unknown'));
+            self.scrollToBottom();
+          }
+        })
+        .catch(function() {});
+
+      if (attempt >= maxAttempts) {
+        clearInterval(interval);
+        self.hideTyping();
+        self.state.streaming = false;
+        self.$sendBtn.disabled = false;
+        self.appendSystemMsg('⏰ Image re-draw timed out');
+        self.scrollToBottom();
+      }
+    }, 3000);
+  },
+
+  // ---- Regenerate an LLM-provided image (MEDIA: message, no paint params) ----
+  // Cloud/LLM replies can carry a MEDIA: image with no stored ComfyUI params.
+  // Re-ask the LLM (same conversation turn) to produce a fresh image instead
+  // of silently falling back to the text-regenerate path.
+  _regenerateMediaImage: function(assistantIndex) {
+    var self = this;
+    var msg = this.state.messages[assistantIndex];
+    if (!msg || msg.role !== 'assistant') return;
+
+    var triggerUserIdx = assistantIndex - 1;
+    if (triggerUserIdx < 0 || this.state.messages[triggerUserIdx].role !== 'user') {
+      console.warn('No user message immediately before image index', assistantIndex);
+      return;
+    }
+
+    msg.regenerated = true;
+    this.state.messages.splice(assistantIndex, 1);
+
+    var rows = this.$messages.querySelectorAll('.msg-row');
+    rows.forEach(function(row) {
+      var idx = parseInt(row.dataset.msgIndex);
+      if (idx === assistantIndex) {
+        row.remove();
+      }
+    });
+
+    this.showTyping();
+    this.state.streaming = true;
+    this.$sendBtn.disabled = true;
+
+    var replayMessages = this.state.messages.slice(0, triggerUserIdx + 1);
+
+    var settings = getSettings();
+    settings.characterId = this.state.currentCharId || 'natsume';
+    var currentChar = getChar(this.state.currentCharId);
+    if (currentChar && currentChar.imported && currentChar.systemPrompt) {
+      settings.systemPrompt = currentChar.systemPrompt;
+    }
+
+    if (this.state.messages[triggerUserIdx]) {
+      replayMessages.push({
+        role: 'user',
+        content: 'Please generate a NEW image for your previous reply. Return the image using a line starting with "MEDIA:" followed by the image path or URL.',
+      });
+    }
+
+    self.hideTyping();
+    self.createStreamBubble();
+
+    ApiClient.chatStream(
+      replayMessages,
+      settings,
+      function(token, type) { self.appendStreamToken(token, type); },
+      function(result) {
+        self.finalizeStream(result.text);
+        var parsed = self._parseMediaFromText(result.text);
+        var cleanText = parsed.cleanText;
+        var newMsg = { role: 'assistant', content: cleanText, time: self.formatTime(new Date()) };
+        if (result.media) newMsg.media = result.media;
+        else if (parsed.mediaPath) newMsg.media = self._resolveMediaPath(parsed.mediaPath);
+        newMsg.mediaType = 'image';
+        // LLM did not return a new image (e.g. local llama has no image
+        // capability): keep the original image so the message is not replaced
+        // by a text-only reply.
+        if (!newMsg.media && msg.media) {
+          newMsg.media = msg.media;
+          if (msg.mediaType) newMsg.mediaType = msg.mediaType;
+          if (!newMsg.content) newMsg.content = msg.content || '';
+        }
+        self.state.messages.splice(triggerUserIdx + 1, 0, newMsg);
+        self.$messages.innerHTML = '';
+        for (var mi = 0; mi < self.state.messages.length; mi++) {
+          self.$messages.appendChild(self.renderMessage(self.state.messages[mi], mi));
+        }
+        saveChatHistory(self.state.currentCharId, self.state.currentSessionId, self.state.messages);
+        self.state.streaming = false;
+        self.$sendBtn.disabled = false;
+        self.$input.focus();
+        showToast('Image regenerated');
+      },
+      function(err) {
+        console.warn('Image regenerate stream failed:', err.message);
         self.hideTyping();
         var bubble = document.getElementById('stream-bubble');
         if (bubble) bubble.remove();
@@ -2291,21 +2569,23 @@ var UI = {
     var self = this;
     if (this.state.streaming) return;
 
+    var s = getSettings() || {};
+
     // Build and show a proper prompt modal
     var overlay = document.createElement('div');
     overlay.className = 'paint-modal-overlay';
     overlay.innerHTML =
       '<div class="paint-modal">' +
         '<div class="paint-modal-header">' +
-          '<span>🎨 Manual Paint</span>' +
+          '<span>' + tr('paint_manual_title') + '</span>' +
           '<button class="paint-modal-close">&times;</button>' +
         '</div>' +
         '<div class="paint-modal-body">' +
-          '<label>Positive Prompt <span style="color:var(--text-muted);font-size:11px">(English, comma-separated tags)</span></label>' +
+          '<label>' + tr('paint_pos_label') + ' <span style="color:var(--text-muted);font-size:11px">' + tr('paint_pos_hint') + '</span></label>' +
           '<textarea class="paint-prompt-input" id="paint-pos-prompt" rows="4" placeholder="masterpiece, best quality, 1girl, natsume, white hair, red eyes, standing, cherry blossom..."></textarea>' +
-          '<label>Negative Prompt</label>' +
+          '<label>' + tr('paint_neg_label') + '</label>' +
           '<textarea class="paint-prompt-input" id="paint-neg-prompt" rows="2">worst quality, bad quality, low quality, blurry, lowres, bad anatomy, extra fingers, missing fingers, extra limbs, deformed, disfigured, watermark, text, signature, jpeg artifacts</textarea>' +
-          '<label>Quick Presets</label>' +
+          '<label>' + tr('paint_quick_presets') + '</label>' +
           '<div class="paint-preset-row">' +
             '<button class="paint-preset-btn" data-prompt="masterpiece, best quality, 1girl, natsume, white hair, red eyes, school uniform, standing, cherry blossom, soft lighting, detailed">Natsume</button>' +
             '<button class="paint-preset-btn" data-prompt="masterpiece, best quality, 1girl, sakura, silver pink hair, light blue eyes, school uniform, serious expression, moonlight, detailed">Sakura</button>' +
@@ -2313,20 +2593,58 @@ var UI = {
             '<button class="paint-preset-btn" data-prompt="masterpiece, best quality, 1girl, enola, brown hair, gentle smile, casual clothes, soft lighting, warm atmosphere">Enola</button>' +
           '</div>' +
           '<div class="paint-param-row">' +
-            '<div class="paint-param"><label>W</label><input type="number" id="paint-width" value="1200" min="256" max="2048" step="64"></div>' +
-            '<div class="paint-param"><label>H</label><input type="number" id="paint-height" value="1500" min="256" max="2048" step="64"></div>' +
-            '<div class="paint-param"><label>Steps</label><input type="number" id="paint-steps" value="30" min="5" max="100"></div>' +
+            '<div class="paint-param"><label>W</label><input type="number" id="paint-width" value="768" min="256" max="2048" step="64"></div>' +
+            '<div class="paint-param"><label>H</label><input type="number" id="paint-height" value="1024" min="256" max="2048" step="64"></div>' +
+            '<div class="paint-param"><label>Steps</label><input type="number" id="paint-steps" value="24" min="5" max="100"></div>' +
             '<div class="paint-param"><label>CFG</label><input type="number" id="paint-cfg" value="6.0" min="1" max="20" step="0.5"></div>' +
+          '</div>' +
+          '<div class="paint-forced-block">' +
+            '<div class="paint-forced-title">🔒 ' + tr('paint_forced_title') + '</div>' +
+            '<div class="paint-forced-hint">' + tr('paint_forced_hint') + '</div>' +
+            '<label>' + tr('paint_forced_pos') + '</label>' +
+            '<input class="paint-prompt-input" id="paint-forced-pos" placeholder="' + tr('paint_forced_pos_ph') + '">' +
+            '<label>' + tr('paint_forced_neg') + '</label>' +
+            '<input class="paint-prompt-input" id="paint-forced-neg" placeholder="' + tr('paint_forced_neg_ph') + '">' +
+            '<label>' + tr('paint_forced_res') + '</label>' +
+            '<div class="paint-param-row">' +
+              '<div class="paint-param"><label>W</label><input type="number" id="paint-forced-width" min="256" max="2048" step="64"></div>' +
+              '<div class="paint-param"><label>H</label><input type="number" id="paint-forced-height" min="256" max="2048" step="64"></div>' +
+              '<div class="paint-param"><label>Steps</label><input type="number" id="paint-forced-steps" min="5" max="100"></div>' +
+            '</div>' +
+            '<div class="paint-forced-hint">' + tr('paint_forced_res_hint') + '</div>' +
           '</div>' +
         '</div>' +
         '<div class="paint-modal-footer">' +
-          '<span style="margin-right:auto;font-size:12px;color:var(--text-muted);align-self:center" id="paint-stop-llama-status"></span>' +
-          '<button class="btn-secondary" id="paint-cancel">Cancel</button>' +
-          '<button class="btn-primary" id="paint-generate"><i class="ph ph-image"></i> Generate</button>' +
+          '<span style="margin-right:auto;font-size:12px;color:var(--text-muted);align-self:center" id="paint-stop-llama-status">' + tr('paint_stop_llama_hint') + '</span>' +
+          '<button class="btn-secondary" id="paint-cancel">' + tr('paint_cancel') + '</button>' +
+          '<button class="btn-primary" id="paint-generate"><i class="ph ph-image"></i> ' + tr('paint_generate') + '</button>' +
         '</div>' +
       '</div>';
 
     document.body.appendChild(overlay);
+
+    // Prefill forced injection values from settings
+    var fPos = overlay.querySelector('#paint-forced-pos');
+    var fNeg = overlay.querySelector('#paint-forced-neg');
+    var fW = overlay.querySelector('#paint-forced-width');
+    var fH = overlay.querySelector('#paint-forced-height');
+    var fS = overlay.querySelector('#paint-forced-steps');
+    if (fPos) fPos.value = s.paintPositive || '';
+    if (fNeg) fNeg.value = s.paintNegative || '';
+    if (fW && s.paintWidth) fW.value = s.paintWidth;
+    if (fH && s.paintHeight) fH.value = s.paintHeight;
+    if (fS && s.paintSteps) fS.value = s.paintSteps;
+    // Persist forced injection values back to settings on change
+    var saveForced = function() {
+      var st = getSettings();
+      st.paintPositive = fPos ? fPos.value.trim() : (st.paintPositive || '');
+      st.paintNegative = fNeg ? fNeg.value.trim() : (st.paintNegative || '');
+      st.paintWidth = fW ? (parseInt(fW.value) || undefined) : st.paintWidth;
+      st.paintHeight = fH ? (parseInt(fH.value) || undefined) : st.paintHeight;
+      st.paintSteps = fS ? (parseInt(fS.value) || undefined) : st.paintSteps;
+      saveSettings(st);
+    };
+    [fPos, fNeg, fW, fH, fS].forEach(function(el) { if (el) el.addEventListener('input', saveForced); });
 
     var closeModal = function() { overlay.remove(); };
     overlay.querySelector('.paint-modal-close').addEventListener('click', closeModal);
@@ -2343,13 +2661,14 @@ var UI = {
     // Generate
     overlay.querySelector('#paint-generate').addEventListener('click', function() {
       var pos = overlay.querySelector('#paint-pos-prompt').value.trim();
-      if (!pos) { showToast('Please enter a positive prompt'); return; }
+      if (!pos) { showToast(tr('paint_need_pos')); return; }
       var neg = overlay.querySelector('#paint-neg-prompt').value.trim();
-      var width = parseInt(overlay.querySelector('#paint-width').value) || 1200;
-      var height = parseInt(overlay.querySelector('#paint-height').value) || 1500;
-      var steps = parseInt(overlay.querySelector('#paint-steps').value) || 30;
+      var width = parseInt(overlay.querySelector('#paint-width').value) || 768;
+      var height = parseInt(overlay.querySelector('#paint-height').value) || 1024;
+      var steps = parseInt(overlay.querySelector('#paint-steps').value) || 24;
       var cfg = parseFloat(overlay.querySelector('#paint-cfg').value) || 6.0;
-      var manage_llama = document.getElementById('btn-stop-llama').classList.contains('active');
+      // 8GB VRAM: always stop llama while drawing (bridge restarts it after)
+      var manage_llama = true;
       if (manage_llama) self.appendSystemMsg('🎨 Stopping llama for painting...');
       closeModal();
 
@@ -2629,10 +2948,11 @@ var UI = {
       return;
     }
 
-    var manage_llama = document.getElementById('btn-stop-llama').classList.contains('active');
+    // 8GB VRAM: always stop llama while drawing (bridge restarts it after)
+    var manage_llama = true;
     
     // Show generating indicator
-    var indicatorMsg = manage_llama ? '🎨 Generating prompt (will stop llama after)...' : '🎨 Generating prompt...';
+    var indicatorMsg = '🎨 Generating prompt (will stop llama after)...';
     self.appendSystemMsg(indicatorMsg);
     this.scrollToBottom();
 
@@ -2647,16 +2967,22 @@ var UI = {
         characterId: charId,
         messages: recentMessages,
       }),
-      signal: AbortSignal.timeout(60000),
+      signal: AbortSignal.timeout(120000),
     })
       .then(function(res) { return res.json(); })
       .then(function(data) {
         if (data.prompt) {
           self.appendSystemMsg('✨ Prompt: ' + data.prompt.substring(0, 80) + '...');
           self.scrollToBottom();
+          // Inject user-forced paint settings (positive/negative/resolution)
+          var forced = self._applyForcedPaint(data.prompt, data.negative || 'bad quality, worst quality, blurry, distorted, lowres, bad anatomy, extra fingers, watermark, text', undefined, undefined, undefined);
+          if (forced.positive !== data.prompt) {
+            self.appendSystemMsg('🔒 Forced prompt: ' + forced.positive.substring(0, 80) + '...');
+            self.scrollToBottom();
+          }
           // Step 2: Now submit the job (bridge will stop llama if manage_llama is set)
           if (manage_llama) self.appendSystemMsg('🎨 Submitting paint job (stopping llama)...');
-          self._submitPaintJob(data.prompt, data.negative || 'bad quality, worst quality, blurry, distorted, lowres, bad anatomy, extra fingers, watermark, text', undefined, undefined, undefined, undefined, manage_llama);
+          self._submitPaintJob(forced.positive, forced.negative, forced.width, forced.height, forced.steps, undefined, manage_llama);
         } else {
           self.appendSystemMsg('⚠️ Failed to generate paint prompt: ' + (data.error || 'unknown'));
           self.scrollToBottom();
@@ -2668,10 +2994,38 @@ var UI = {
       });
   },
 
+  // Apply user-forced paint settings (Settings panel) onto a paint job.
+  // Returns { positive, negative, width, height, steps } with forced values
+  // merged on top of the LLM-generated ones.
+  _applyForcedPaint: function(positive, negative, width, height, steps) {
+    var s = getSettings() || {};
+    var out = {
+      positive: positive,
+      negative: negative,
+      width: width,
+      height: height,
+      steps: steps,
+    };
+    // Forced positive prompt: append to whatever the LLM generated
+    if (s.paintPositive) {
+      out.positive = (positive || '') + (positive ? ', ' : '') + s.paintPositive;
+    }
+    // Forced negative prompt: replace the default/generated negative entirely
+    if (s.paintNegative) {
+      out.negative = s.paintNegative;
+    }
+    // Forced resolution / steps
+    if (s.paintWidth) out.width = s.paintWidth;
+    if (s.paintHeight) out.height = s.paintHeight;
+    if (s.paintSteps) out.steps = s.paintSteps;
+    return out;
+  },
+
   _submitPaintJob: function(prompt, negative, width, height, steps, cfg, manage_llama) {
     var self = this;
-    // manage_llama defaults to false (keep llama running)
-    if (manage_llama === undefined) manage_llama = false;
+    // manage_llama: always true — 8GB VRAM, ComfyUI's 6.5GB model must own
+    // the GPU while drawing; bridge restarts llama afterwards.
+    if (manage_llama === undefined) manage_llama = true;
     // Prepend quality tags if not already present
     var qualityPrefix = 'masterpiece, best quality, highly detailed,';
     var hasQuality = /masterpiece|best.quality/i.test(prompt);
@@ -2683,9 +3037,9 @@ var UI = {
     var params = {
       positive: finalPositive,
       negative: finalNegative,
-      width: width || 1200,
-      height: height || 1500,
-      steps: steps || 30,
+      width: width || 768,
+      height: height || 1024,
+      steps: steps || 24,
       cfg: cfg || 6.0,
       checkpoint: 'WAI-Nsfw-Illustrious-17.safetensors',
       manage_llama: manage_llama,
