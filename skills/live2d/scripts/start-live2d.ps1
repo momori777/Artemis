@@ -1,4 +1,4 @@
-# Live2D Bridge 鍚姩鑴氭湰
+﻿# Live2D Bridge 鍚姩鑴氭湰
 # 鐢ㄦ硶: powershell -File start-live2d.ps1
 # 鎴? powershell -File start-live2d.ps1 -NoBrowser
 
@@ -19,7 +19,7 @@ try {
   $nodeVer = node --version 2>&1
   Write-Host "鉁?Node.js: $nodeVer"
 } catch {
-  Write-Host "鉂?Node.js 鏈畨瑁呮垨涓嶅湪 PATH 涓? -ForegroundColor Red
+  Write-Host "鉂?Node.js 鏈畨瑁呮垨涓嶅湪 PATH 涓?" -ForegroundColor Red
   Write-Host "   璇峰厛瀹夎: https://nodejs.org/"
   pause
   exit 1
@@ -35,9 +35,9 @@ if ($LASTEXITCODE -ne 0) {
     pause
     exit 1
   }
-  Write-Host "鉁?ws 宸插畨瑁?
+  Write-Host "鉁?ws 宸插畨瑁?"
 } else {
-  Write-Host "鉁?ws 妯″潡宸插氨缁?
+  Write-Host "鉁?ws 妯″潡宸插氨缁?"
 }
 
 # 3. Check model
@@ -114,7 +114,7 @@ for ($i = 0; $i -lt 20; $i++) {
 if ($ready) {
   Write-Host "鉁?Live2D Bridge 杩愯涓?" -ForegroundColor Green
 } else {
-  Write-Host "鈿狅笍  Bridge 杩涚▼宸插惎鍔ㄤ絾 HTTP 灏氭湭鍝嶅簲锛屽彲鑳介渶瑕佺瓑寰呭嚑绉? -ForegroundColor Yellow
+  Write-Host "鈿狅笍  Bridge 杩涚▼宸插惎鍔ㄤ絾 HTTP 灏氭湭鍝嶅簲锛屽彲鑳介渶瑕佺瓑寰呭嚑绉?" -ForegroundColor Yellow
 }
 
 # 6. Open browser
@@ -131,7 +131,7 @@ Write-Host "馃搵 蹇€熸祴璇曞懡浠?" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  琛ㄦ儏:  curl http://localhost:19200/api/expression?name=happy"
 Write-Host "  鍔ㄤ綔:  curl http://localhost:19200/api/motion?name=mtn_01"
-Write-Host "  娑堟伅:  curl http://localhost:19200/api/message?text=銇撱倱銇仭銇?
+Write-Host "  娑堟伅:  curl http://localhost:19200/api/message?text=銇撱倱銇仭銇"
 Write-Host "  璇磋瘽:  curl http://localhost:19200/api/speak?action=start&text=銇娿伅銈堛亞"
 Write-Host "  缁勫悎:  curl http://localhost:19200/api/emotion?expression=happy&text=濂姐亶"
 Write-Host "  閲嶇疆:  curl http://localhost:19200/api/reset"
@@ -145,4 +145,4 @@ $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 Write-Host ""
 Write-Host "馃洃 鍏抽棴 Live2D Bridge..." -ForegroundColor Yellow
 $process.Kill()
-Write-Host "   宸插叧闂?
+Write-Host "   宸插叧闂?"

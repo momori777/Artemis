@@ -1,18 +1,18 @@
-# setup-llama.ps1
-# AI Girlfriend �?四季夏目 · llama.cpp 一键部�?(Windows)
+﻿# setup-llama.ps1
+# AI Girlfriend —四季夏目 · llama.cpp 一键部署(Windows)
 #
-# 自动检测硬�? GPU/VRAM, CPU cores, RAM
-# 自动推荐并生成最�?llama-server 启动配置
-# 自动下载/编译 llama.cpp (可�?
+# 自动检测硬件 GPU/VRAM, CPU cores, RAM
+# 自动推荐并生成最优llama-server 启动配置
+# 自动下载/编译 llama.cpp (可选
 #
 # 用法:
 #   powershell -File setup-llama.ps1
 #   powershell -File setup-llama.ps1 -ModelPath "D:\models\my-model.gguf"
-#   powershell -File setup-llama.ps1 -BuildLlama   # 也编�?llama.cpp
+#   powershell -File setup-llama.ps1 -BuildLlama   # 也编译llama.cpp
 #
 # 前置:
 #   1. 已通过 download-models.ps1 下载模型
-#   2. 模型路径默认�?./llm/ 下的 Qwen GGUF
+#   2. 模型路径默认为./llm/ 下的 Qwen GGUF
 
 param(
     [string]$ModelPath = "",
@@ -31,7 +31,7 @@ $ErrorActionPreference = "Stop"
 # ============================================================================
 Write-Host ""
 Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "�? AI Girlfriend �?四季夏目 · llama.cpp Auto Setup           �? -ForegroundColor Cyan
+Write-Host "║ AI Girlfriend —四季夏目 · llama.cpp Auto Setup           ║" -ForegroundColor Cyan
 Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
 
@@ -77,7 +77,7 @@ if ($gpus.Count -gt 0) {
         Write-Host "  GPU:      $($g.Name) ($($g.VRAM_GB) GB VRAM)" -ForegroundColor Gray
     }
 } else {
-    Write-Host "  GPU:      [UNKNOWN �?no NVIDIA/AMD GPU detected via WMI]" -ForegroundColor Yellow
+    Write-Host "  GPU:      [UNKNOWN —no NVIDIA/AMD GPU detected via WMI]" -ForegroundColor Yellow
     $gpus = @(@{ Name = "Unknown Intel iGPU"; VRAM_GB = 0; VRAM_MB = 0 })
 }
 
@@ -100,7 +100,7 @@ try {
         }
     }
 } catch {
-    Write-Host "  CUDA:     [nvcc not found �?if using pre-built llama.cpp binaries, this is fine]" -ForegroundColor Gray
+    Write-Host "  CUDA:     [nvcc not found —if using pre-built llama.cpp binaries, this is fine]" -ForegroundColor Gray
 }
 
 # Pick primary GPU (first discrete)
@@ -157,17 +157,17 @@ if ($vramGB -le 0) {
     $ramBudgetGB = $modelSizeGB + $kvCacheGB + 2
     $gpuMode = "CPU-ONLY"
     Write-Host "    Total VRAM:   N/A (no GPU detected)" -ForegroundColor Gray
-    Write-Host "    �?CPU-only mode" -ForegroundColor Yellow
+    Write-Host "    →CPU-only mode" -ForegroundColor Yellow
 } elseif ($vramGB -le 4) {
-    # Tiny GPU �?offload what we can, rest CPU
+    # Tiny GPU —offload what we can, rest CPU
     $ngl = [math]::Floor($vramGB / 0.5)  # rough: ~500MB per layer
     $kvCacheGB = [math]::Min([math]::Floor($totalRamGB * 0.15), 6)
     $ramBudgetGB = $modelSizeGB + $kvCacheGB + 2
     $gpuMode = "HYBRID (GPU offload limited)"
     Write-Host "    Total VRAM:   $vramGB GB" -ForegroundColor Gray
-    Write-Host "    Model fits?   NO �?CPU offload needed for $(($modelSizeGB - $vramGB).ToString('F1')) GB" -ForegroundColor Yellow
+    Write-Host "    Model fits?   NO —CPU offload needed for $(($modelSizeGB - $vramGB).ToString('F1')) GB" -ForegroundColor Yellow
 } elseif ($vramGB -le 8) {
-    # 6-8 GB �?RTX 2060/3060/4060/5070 laptop range
+    # 6-8 GB —RTX 2060/3060/4060/5070 laptop range
     $ngl = 41  # ~5GB for model, ~3GB headroom for KV+OS
     $kvCacheGB = 1.5
     $ramBudgetGB = $modelSizeGB - $vramGB + $kvCacheGB + 4
@@ -178,22 +178,22 @@ if ($vramGB -le 0) {
     Write-Host "    KV Cache:     $kvCacheGB GB" -ForegroundColor Gray
     Write-Host "    Free VRAM:    ~$($vramGB - 5.6) GB (for TTS/ComfyUI to fill)" -ForegroundColor Gray
 } elseif ($vramGB -le 16) {
-    # 12-16 GB �?RTX 4070/4080/5080 range
+    # 12-16 GB —RTX 4070/4080/5080 range
     $ngl = 99  # all layers
     $kvCacheGB = 3
     $ramBudgetGB = 8  # system + overhead
     $gpuMode = "FULL GPU (all layers on GPU)"
     Write-Host "    Total VRAM:   $vramGB GB" -ForegroundColor Gray
-    Write-Host "    Model fits?   YES �?full GPU offload" -ForegroundColor Green
+    Write-Host "    Model fits?   YES —full GPU offload" -ForegroundColor Green
     Write-Host "    KV Cache:     $kvCacheGB GB" -ForegroundColor Gray
 } else {
-    # 24+ GB �?RTX 4090/5090
+    # 24+ GB —RTX 4090/5090
     $ngl = 99
     $kvCacheGB = 6
     $ramBudgetGB = 8
     $gpuMode = "FULL GPU BEAST MODE"
     Write-Host "    Total VRAM:   $vramGB GB 🚀" -ForegroundColor Gray
-    Write-Host "    Model fits?   EASILY �?full GPU + generous KV cache" -ForegroundColor Green
+    Write-Host "    Model fits?   EASILY —full GPU + generous KV cache" -ForegroundColor Green
 }
 
 # ── Thread configuration ──
@@ -234,7 +234,8 @@ $llamaArgs = @(
     '--no-mmap',
     '--batch-size', $batchSize.ToString(),
     '--ubatch-size', $ubatch.ToString(),
-    '--threads', $threads.ToString()$ApiKey`"",
+    '--threads', $threads.ToString(),
+    '--api-key', "`"$ApiKey`"",
     '-rea', 'off',
     '--jinja',
     '--cache-ram', '2048',
@@ -355,7 +356,7 @@ if (-not $llamaExe) {
             $restartScript = "$vllmDir\restart-llama.ps1"
             Write-Host "  Creating restart script: $restartScript" -ForegroundColor Gray
             $restartContent = @"
-# restart-llama.ps1 �?Auto-generated by setup-llama.ps1
+# restart-llama.ps1 —Auto-generated by setup-llama.ps1
 # Kills existing llama-server and starts a new one
 
 `$exe = "$llamaExe"
@@ -449,7 +450,7 @@ Write-Host "  Hardware report: $reportPath" -ForegroundColor Gray
 
 # ── Launch script ──
 $launchContent = @"
-# launch-llama.ps1 �?Auto-generated by setup-llama.ps1
+# launch-llama.ps1 —Auto-generated by setup-llama.ps1
 # Start llama-server with optimized parameters
 #
 # Generated for: $($primaryGpu.Name), $($primaryGpu.VRAM_GB) GB VRAM, $cpuCores cores, $totalRamGB GB RAM
@@ -463,7 +464,7 @@ $launchContent = @"
 `$exe = "$($llamaExe.Source)"
 
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host " AI Girlfriend �?llama-server" -ForegroundColor Cyan
+Write-Host " AI Girlfriend —llama-server" -ForegroundColor Cyan
 Write-Host " GPU: $($primaryGpu.Name) | VRAM: $($primaryGpu.VRAM_GB) GB" -ForegroundColor Cyan
 Write-Host " Mode: $gpuMode" -ForegroundColor Cyan
 Write-Host " Port: $Port" -ForegroundColor Cyan
@@ -492,7 +493,7 @@ for (`$i = 1; `$i -le 30; `$i++) {
     } catch {
         Start-Sleep -Seconds 1
         if (`$i -eq 30) {
-            Write-Host "Timeout �?server may still be loading. Check http://127.0.0.1:8080/health" -ForegroundColor Yellow
+            Write-Host "Timeout —server may still be loading. Check http://127.0.0.1:8080/health" -ForegroundColor Yellow
         }
     }
 }
@@ -508,7 +509,7 @@ Write-Host "  Launch script:  $launchPath" -ForegroundColor Green
 
 # ── Watchdog ──
 $watchdogContent = @"
-# llama-watchdog.ps1 �?Auto-generated by setup-llama.ps1
+# llama-watchdog.ps1 —Auto-generated by setup-llama.ps1
 # Health check for llama-server. Configure in Windows Task Scheduler to run every 10 min.
 
 `$logFile = "$outputDir\watchdog.log"
@@ -520,7 +521,7 @@ log "=== watchdog check ==="
 
 `$proc = Get-Process llama-server -ErrorAction SilentlyContinue
 if (-not `$proc) {
-    log "llama-server not running �?restarting..."
+    log "llama-server not running —restarting..."
     Start-Process powershell -ArgumentList '-File', '$launchPath' -WindowStyle Hidden
     log "restart triggered"
     exit 0
@@ -536,8 +537,8 @@ try {
     log "health check failed: `$_"
 }
 
-# Process alive but port dead �?kill and restart
-log "process alive but dead port �?forcing restart..."
+# Process alive but port dead →kill and restart
+log "process alive but dead port —forcing restart..."
 Stop-Process -Id `$proc.Id -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 3
 Start-Process powershell -ArgumentList '-File', '$launchPath' -WindowStyle Hidden
@@ -571,19 +572,19 @@ Write-Host "  Task Scheduler: $schedPath" -ForegroundColor Gray
 # ============================================================================
 Write-Host ""
 Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "�? Setup Complete!                                           �? -ForegroundColor Green
+Write-Host "║ Setup Complete!                                           ║" -ForegroundColor Green
 Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Hardware:    $($primaryGpu.Name) �?$($primaryGpu.VRAM_GB) GB VRAM" -ForegroundColor White
+Write-Host "  Hardware:    $($primaryGpu.Name) —$($primaryGpu.VRAM_GB) GB VRAM" -ForegroundColor White
 Write-Host "  CPU:         $cpuCores cores | RAM: $totalRamGB GB" -ForegroundColor White
 Write-Host "  Mode:        $gpuMode" -ForegroundColor White
 Write-Host "  Model:       $modelSizeGB GB GGUF" -ForegroundColor White
 Write-Host ""
 Write-Host "  Generated files in: $outputDir\" -ForegroundColor Cyan
-Write-Host "    launch-llama.ps1      �?Start llama-server" -ForegroundColor White
-Write-Host "    llama-watchdog.ps1    �?Health check (Task Scheduler)" -ForegroundColor White
-Write-Host "    setup-task-scheduler.ps1 �?Register watchdog task" -ForegroundColor White
-Write-Host "    hardware-report.md    �?Your machine specs" -ForegroundColor White
+Write-Host "    launch-llama.ps1      —Start llama-server" -ForegroundColor White
+Write-Host "    llama-watchdog.ps1    —Health check (Task Scheduler)" -ForegroundColor White
+Write-Host "    setup-task-scheduler.ps1 —Register watchdog task" -ForegroundColor White
+Write-Host "    hardware-report.md    —Your machine specs" -ForegroundColor White
 Write-Host ""
 Write-Host "  Quick Start:" -ForegroundColor Cyan
 Write-Host "    1. Run .\llama-config\launch-llama.ps1" -ForegroundColor White
