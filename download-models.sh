@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # download-models.sh
-# AI Girlfriend 四季夏目 �?One-click model download script (Linux / macOS)
+# AI Girlfriend 四季夏目 —One-click model download script (Linux / macOS)
 #
 # Downloads all 5 model files (~31.7 GB) from HuggingFace
 # Requires: huggingface-cli (pip install huggingface_hub)
@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-# 国内用户通过 hf-mirror.com 加速下�?
+# 国内用户通过 hf-mirror.com 加速下载
 export HF_ENDPOINT="https://hf-mirror.com"
 
 HF_REPO="TAOTAO777/ai-girlfriend-natsume"
@@ -23,8 +23,8 @@ BASE_DIR="${1:-.}"
 BASE_DIR="$(mkdir -p "$BASE_DIR" && cd "$BASE_DIR" && pwd)"
 
 echo "╔══════════════════════════════════════════════════════╗"
-echo "�? AI Girlfriend �?四季夏目 · Model Downloader         �?
-echo "�? $HF_REPO                                          �?
+echo "║ AI Girlfriend —四季夏目 · Model Downloader         ║"
+echo "║ $HF_REPO                                          ║"
 echo "╚══════════════════════════════════════════════════════╝"
 echo ""
 
@@ -70,17 +70,17 @@ mkdir -p "$BASE_DIR/live2d-model"
 echo ""
 echo "Download directory: $BASE_DIR"
 echo "Target: $HF_REPO"
-echo "Total: ~31.7 GB �?this may take 30-90 minutes depending on network"
+echo "Total: ~31.7 GB —this may take 30-90 minutes depending on network"
 echo ""
 
 # Model file list: repo_path|local_path|description
 MODELS=(
-    "llm/Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf|Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf|LLM GGUF �?LuffyTheFox Genesis Hermes V6 APEX Compact (16.11 GB)"
-    "comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors|comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors|ComfyUI Checkpoint �?WAI (6.46 GB)"
-    "comfyui-checkpoints/miaomiaoHarem_v20.safetensors|comfyui-checkpoints/miaomiaoHarem_v20.safetensors|ComfyUI Checkpoint �?Miaomiao (6.46 GB)"
+    "llm/Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf|Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf|LLM GGUF —LuffyTheFox Genesis Hermes V6 APEX Compact (16.11 GB)"
+    "comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors|comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors|ComfyUI Checkpoint —WAI (6.46 GB)"
+    "comfyui-checkpoints/miaomiaoHarem_v20.safetensors|comfyui-checkpoints/miaomiaoHarem_v20.safetensors|ComfyUI Checkpoint —Miaomiao (6.46 GB)"
     "gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt|gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt|GPT-SoVITS ckpt (~155 MB)"
     "gpt-sovits-weights/SoVITS_weights_v2Pro/xxx_e20_s6240.pth|gpt-sovits-weights/SoVITS_weights_v2Pro/xxx_e20_s6240.pth|GPT-SoVITS pth (~135 MB)"
-    "live2d-model/shiki_natsume.tar.gz|live2d-model/shiki_natsume.tar.gz|Live2D Model �?Shiki Natsume (~209 MB)"
+    "live2d-model/shiki_natsume.tar.gz|live2d-model/shiki_natsume.tar.gz|Live2D Model —Shiki Natsume (~209 MB)"
 )
 
 TOTAL=${#MODELS[@]}
@@ -94,7 +94,7 @@ for ENTRY in "${MODELS[@]}"; do
     
     # Check if already exists
     if [ -f "$FULL_LOCAL" ]; then
-        echo "[$CURRENT/$TOTAL] $DESC �?already exists, skipping"
+        echo "[$CURRENT/$TOTAL] $DESC —already exists, skipping"
         continue
     fi
     
