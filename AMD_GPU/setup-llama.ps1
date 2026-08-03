@@ -1,4 +1,4 @@
-# setup-llama.ps1 (AMD GPU / Vulkan 版)
+﻿# setup-llama.ps1 (AMD GPU / Vulkan 版)
 # AI Girlfriend — 四季夏目 · llama.cpp 一键部署 (Windows)
 #
 # 与 NVIDIA 版的区别:
@@ -206,7 +206,8 @@ $llamaArgs = @(
     '--cpu-moe',
     '--batch-size', $batchSize.ToString(),
     '--ubatch-size', $ubatch.ToString(),
-    '--threads', $threads.ToString()$ApiKey`"",
+    '--threads', $threads.ToString(),
+    '--api-key', "`"$ApiKey`"",
     '-rea', 'off',
     '--jinja',
     '--cache-ram', '2048',

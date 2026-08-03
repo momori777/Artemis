@@ -1,8 +1,8 @@
-# download-models.ps1
-# AI Girlfriend 四季夏目 �?一键模型下载脚�?(Windows PowerShell)
+﻿# download-models.ps1
+# AI Girlfriend 四季夏目 —一键模型下载脚本(Windows PowerShell)
 #
-# �?HuggingFace 下载全部 5 个模型文�?(~31.7 GB)
-# 需�? huggingface-cli (pip install huggingface_hub)
+# 从HuggingFace 下载全部 5 个模型文件(~31.7 GB)
+# 需要 huggingface-cli (pip install huggingface_hub)
 #
 # 用法:
 #   powershell -File download-models.ps1
@@ -10,7 +10,7 @@
 #
 # 首次使用需登录:
 #   huggingface-cli login
-#   或设�?$env:HF_TOKEN
+#   或设置$env:HF_TOKEN
 
 param(
     [string]$BaseDir = ".",
@@ -20,7 +20,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# 国内用户通过 hf-mirror.com 加速下�?
+# 国内用户通过 hf-mirror.com 加速下载
 $env:HF_ENDPOINT = "https://hf-mirror.com"
 
 if ($Live2DOnly) {
@@ -29,12 +29,12 @@ if ($Live2DOnly) {
 }
 
 Write-Host "╔══════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "�? AI Girlfriend �?四季夏目 · Model Downloader         �? -ForegroundColor Cyan
-Write-Host "�? $HFRepo                                          �? -ForegroundColor Cyan
+Write-Host "║ AI Girlfriend —四季夏目 · Model Downloader         ║" -ForegroundColor Cyan
+Write-Host "║ $HFRepo                                          ║" -ForegroundColor Cyan
 Write-Host "╚══════════════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
 
-# 检�?huggingface-cli
+# 检查huggingface-cli
 $hf = Get-Command huggingface-cli -ErrorAction SilentlyContinue
 if (-not $hf) {
     # Try hf CLI
@@ -47,19 +47,19 @@ if (-not $hf) {
 
 Write-Host "Download tool: $($hf.Source)" -ForegroundColor Gray
 
-# 检查认�?
+# 检查认证
 Write-Host "Checking auth..." -ForegroundColor Gray
 $auth = & $hf auth whoami 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
     Write-Host "╔══════════════════════════════════════════════════════╗" -ForegroundColor Yellow
-    Write-Host "�? Not logged in to HuggingFace!                       �? -ForegroundColor Yellow
-    Write-Host "�?                                                     �? -ForegroundColor Yellow
-    Write-Host "�? Please login first:                                 �? -ForegroundColor Yellow
-    Write-Host "�?   huggingface-cli login                             �? -ForegroundColor Yellow
-    Write-Host "�?                                                     �? -ForegroundColor Yellow
-    Write-Host "�? Or set environment variable:                        �? -ForegroundColor Yellow
-    Write-Host '�?   $env:HF_TOKEN = "hf_xxx..."                       �? -ForegroundColor Yellow
+    Write-Host "║ Not logged in to HuggingFace!                       ║" -ForegroundColor Yellow
+    Write-Host "║                                                     ║" -ForegroundColor Yellow
+    Write-Host "║ Please login first:                                 ║" -ForegroundColor Yellow
+    Write-Host "║   huggingface-cli login                             ║" -ForegroundColor Yellow
+    Write-Host "║                                                     ║" -ForegroundColor Yellow
+    Write-Host "║ Or set environment variable:                        ║" -ForegroundColor Yellow
+    Write-Host '║   $env:HF_TOKEN = "hf_xxx..."                       ║' -ForegroundColor Yellow
     Write-Host "╚══════════════════════════════════════════════════════╝" -ForegroundColor Yellow
     exit 1
 }
@@ -82,14 +82,14 @@ foreach ($d in $Dirs) {
 Write-Host ""
 Write-Host "Download directory: $BaseDir" -ForegroundColor Cyan
 Write-Host "Target: $HFRepo" -ForegroundColor Cyan
-Write-Host "Total: ~31.7 GB �?this may take 30-90 minutes depending on network" -ForegroundColor Cyan
+Write-Host "Total: ~31.7 GB —this may take 30-90 minutes depending on network" -ForegroundColor Cyan
 Write-Host ""
 
 # 模型文件清单 (repo_path, local_path, description)
 $Models = @(
-    @{RepoPath="llm/Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf"; LocalPath="E:\Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf"; Desc="LLM GGUF �?LuffyTheFox Genesis Hermes V6 APEX Compact (16.11 GB)"},
-    @{RepoPath="comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors"; LocalPath="$BaseDir\comfyui-checkpoints\WAI-Nsfw-Illustrious-17.safetensors"; Desc="ComfyUI Checkpoint �?WAI (6.46 GB)"},
-    @{RepoPath="comfyui-checkpoints/miaomiaoHarem_v20.safetensors"; LocalPath="$BaseDir\comfyui-checkpoints\miaomiaoHarem_v20.safetensors"; Desc="ComfyUI Checkpoint �?Miaomiao (6.46 GB)"},
+    @{RepoPath="llm/Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf"; LocalPath="E:\Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf"; Desc="LLM GGUF —LuffyTheFox Genesis Hermes V6 APEX Compact (16.11 GB)"},
+    @{RepoPath="comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors"; LocalPath="$BaseDir\comfyui-checkpoints\WAI-Nsfw-Illustrious-17.safetensors"; Desc="ComfyUI Checkpoint —WAI (6.46 GB)"},
+    @{RepoPath="comfyui-checkpoints/miaomiaoHarem_v20.safetensors"; LocalPath="$BaseDir\comfyui-checkpoints\miaomiaoHarem_v20.safetensors"; Desc="ComfyUI Checkpoint —Miaomiao (6.46 GB)"},
     @{RepoPath="gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt"; LocalPath="$BaseDir\gpt-sovits-weights\GPT_weights_v2Pro\xxx-e30.ckpt"; Desc="GPT-SoVITS ckpt (155 MB)"},
     @{RepoPath="gpt-sovits-weights/SoVITS_weights_v2Pro/xxx_e20_s6240.pth"; LocalPath="$BaseDir\gpt-sovits-weights\SoVITS_weights_v2Pro\xxx_e20_s6240.pth"; Desc="GPT-SoVITS pth (135 MB)"}
 )
@@ -99,7 +99,7 @@ $Live2D = @{
     RepoPath = "live2d-model/shiki_natsume.tar.gz"
     ArchivePath = "$BaseDir\live2d-model\shiki_natsume.tar.gz"
     ExtractDir = "$BaseDir\live2d\model"
-    Desc = "Live2D Model �?Shiki Natsume (~209 MB)"
+    Desc = "Live2D Model —Shiki Natsume (~209 MB)"
 }
 
 $total = $Models.Count
@@ -112,7 +112,7 @@ foreach ($m in $Models) {
     # 检查是否已存在
     if (Test-Path $m.LocalPath) {
         $existingSize = (Get-Item $m.LocalPath).Length
-        Write-Host "[$current/$total] $($m.Desc) �?already exists, skipping" -ForegroundColor DarkGray
+        Write-Host "[$current/$total] $($m.Desc) —already exists, skipping" -ForegroundColor DarkGray
         continue
     }
     
@@ -131,21 +131,21 @@ foreach ($m in $Models) {
     if ($exitCode -eq 0) {
         Write-Host "         OK ($elapsed s)" -ForegroundColor Green
     } else {
-        Write-Host "         FAILED ($elapsed s) �?exit code $exitCode" -ForegroundColor Red
+        Write-Host "         FAILED ($elapsed s) —exit code $exitCode" -ForegroundColor Red
         $failed += $m.Desc
     }
     Write-Host ""
 }
 
 # ============================================
-# Live2D 模型下载 (tar.gz 需要解�?
+# Live2D 模型下载 (tar.gz 需要解压
 # ============================================
 $current++
 $total++
 
 $live2dMarker = Join-Path $Live2D.ExtractDir "shiki_natsume\final\shiki_natsume.model3.json"
 if (Test-Path $live2dMarker) {
-    Write-Host "[$current/$total] $($Live2D.Desc) �?already exists, skipping" -ForegroundColor DarkGray
+    Write-Host "[$current/$total] $($Live2D.Desc) —already exists, skipping" -ForegroundColor DarkGray
 } else {
     Write-Host "[$current/$total] Downloading $($Live2D.Desc)..." -ForegroundColor Yellow
     Write-Host "         From: $($Live2D.RepoPath)" -ForegroundColor Gray
@@ -170,13 +170,13 @@ if (Test-Path $live2dMarker) {
             $failed += $Live2D.Desc
         }
     } else {
-        Write-Host "         FAILED ($elapsed s) �?exit code $exitCode" -ForegroundColor Red
+        Write-Host "         FAILED ($elapsed s) —exit code $exitCode" -ForegroundColor Red
         $failed += $Live2D.Desc
     }
 }
 Write-Host ""
 
-# 汇�?
+# 汇总
 Write-Host "══════════════════════════════════════════════════════" -ForegroundColor Cyan
 $finalTotal = $total
 $finalSuccess = $finalTotal - $failed.Count
