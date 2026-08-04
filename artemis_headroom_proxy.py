@@ -541,13 +541,13 @@ def register_headroom_endpoint(app):
             )
 
             if stream:
-                resp = urllib.request.urlopen(req, timeout=300)
+                resp = urllib.request.urlopen(req, timeout=600)
                 def generate():
                     for line_bytes in resp:
                         yield line_bytes
                 return Response(generate(), content_type="text/event-stream")
             else:
-                resp = urllib.request.urlopen(req, timeout=300)
+                resp = urllib.request.urlopen(req, timeout=600)
                 return jsonify(json.loads(resp.read()))
 
         except urllib.error.HTTPError as e:
