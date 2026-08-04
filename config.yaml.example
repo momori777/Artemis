@@ -54,7 +54,7 @@ tts_temp_output_dir: "C:\\Users\\<你的用户�?\\.openclaw\\media\\qqbot\\audi
 # llama.cpp (本地 LLM)
 # ============================================================
 llama_exe: "D:\\AI_Girlfriend\\llama-server\\llama-server.exe"
-llama_model: "E:\\Hermes3.6-35B-A3B-Uncensored-Genesis-V7-APEX-Compact.gguf"
+llama_model: "E:\\Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf"
 llama_port: 8080
 llama_log_dir: "llama-server/restart-logs"
 restart_script: "skills/shared/restart_llama_degraded.ps1"
