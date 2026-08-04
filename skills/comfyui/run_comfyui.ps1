@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$positive,
     [string]$negative,
     [int]$seed = -1,

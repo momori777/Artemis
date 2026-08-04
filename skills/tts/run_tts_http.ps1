@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 <#
 .SYNOPSIS
     GPT-SoVITS HTTP TTS 调用脚本 — 不停 llama 版本

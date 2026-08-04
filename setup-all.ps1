@@ -1,4 +1,4 @@
-# setup-all.ps1
+﻿# setup-all.ps1
 # ╔═══════════════════════════════════════════════════════════════════╗
 # ║  AI Girlfriend — 四季夏目 · 全自动一键部署                          ║
 # ║  One command: Models → llama.cpp → OpenClaw → Ready             ║

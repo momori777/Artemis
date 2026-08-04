@@ -1,4 +1,4 @@
-# Artemis Studio Launcher
+﻿# Artemis Studio Launcher
 # 交互式 PySide6 GUI — TTS + ComfyUI，完全不走 llama 生命周期管理
 #
 # 使用方式:

@@ -1,4 +1,4 @@
-# download-llama.ps1
+﻿# download-llama.ps1
 # 自动下载最新版 llama-server (CUDA 12.x, Windows x64)
 # 解压到当前目录的 llama-server\ 下
 

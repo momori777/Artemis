@@ -1,5 +1,5 @@
 @echo off
-REM restart_llama_rea.bat —重启 llama-server 切换 reasoning 模式
+REM restart_llama_rea.bat — 重启 llama-server 切换 reasoning 模式
 REM 用法: restart_llama_rea.bat [on|off]
 
 setlocal enabledelayedexpansion

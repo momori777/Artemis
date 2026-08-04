@@ -1,4 +1,4 @@
-# GPT-SoVITS v2Pro API 启动脚本
+﻿# GPT-SoVITS v2Pro API 启动脚本
 # 使用 v2Pro 底模 + 自定义训练模型
 # 启动后通过 http://127.0.0.1:9880/tts 调用
 
