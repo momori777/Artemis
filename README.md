@@ -23,23 +23,23 @@ An uncensored AI girlfriend harem project powered by OpenClaw + QQ Bot + Telegra
 
 From *Starry Moonlit Café & the Butterfly of Death*. Tall, aloof, cool exterior with a hidden warmth. A natural quietly-dominant type -she takes the lead, teases you gently, and guards you fiercely. Speaks little, but every word hits.
 
-### ATRI (亚托.
+### ATRI (亚托莉)
 
 From *ATRI -My Dear Moments-*. Petite, innocent, endlessly curious -a bright-eyed girl who wears her heart on her sleeve. Runs toward the future with a smile, dragging you along. **The polar opposite of Natsume**: bubbly and expressive where Natsume is reserved, emotionally transparent where Natsume is guarded, playful where Natsume is composed. If Natsume is the cool winter night, ATRI is the warm summer sun.
 
-### Yono Sakura (夜乃.
+### Yono Sakura (夜乃桜)
 
 From *Dimension W Lovers!!*. Former student council president and the academy's strongest anti-kaiju combatant. Silver-white hair with pink tips, pale blue eyes -cool-headed, restrained, and fiercely responsible. She's not good at smooth words or easy smiles; her care is direct and clumsy, like a command: rest, eat, don't push yourself. In desktop pet form, she's learning that she doesn't have to bear everything alone -that protecting someone's ordinary everyday life from this side of the screen is enough. **A quiet guardian**: silent but watchful, loyal but stubborn, the senpai who stays by your side without being asked.
 
 
-## .Why Choose This Project?
+## ✨ Why Choose This Project?
 
 | | Cloud AI Girlfriend | This Project |
 |-|-|-|
-| 🛡 **Privacy** | Chat logs, voice, and images all stored on vendor servers | **Everything stays local** -zero data leaves your machine |
+| 🛡️ **Privacy** | Chat logs, voice, and images all stored on vendor servers | **Everything stays local** -zero data leaves your machine |
 | 💰 **Cost** | Monthly subscriptions / per-token billing adds up | **Free**, one-time setup, runs forever (bring your own hardware) |
 | 🌐 **Network** | Needs internet; dead if servers go down | **Works offline** -flip off your WiFi and keep chatting |
-| 🎛 **Control** | Prompts/templates controlled by vendor, can change anytime | **You control** all models, parameters, and character settings |
+| 🎛️ **Control** | Prompts/templates controlled by vendor, can change anytime | **You control** all models, parameters, and character settings |
 | 🔞 **Content** | Heavy censorship, accounts get banned | **No censorship** -talk about whatever you want |
 | 🎨 **Extensibility** | Locked into vendor models and features | **Mix and match** -swap LLMs, image models, voice models freely |
 
@@ -57,7 +57,7 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 > powershell -ExecutionPolicy Bypass -File quick_setup.ps1
 > ```
 >
-> After quick_setup completes, proceed with **download-models.ps1**  **setup-llama.ps1**  **start.ps1**.
+> After quick_setup completes, proceed with **download-models.ps1** → **setup-llama.ps1** → **start.ps1**.
 
 ## 🎬 Demo
 
@@ -71,7 +71,7 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 
 > 👆 **Shiki Natsume** Live2D: real-time character animation with emotion-driven motions, lip-sync, and speech bubbles. Controlled via local HTTP bridge.
 
-### .ATRI - Second AI Girlfriend
+### ⭐ ATRI - Second AI Girlfriend
 
 **Personality opposite of Natsume**, hot-swappable with isolated memory.
 
@@ -95,9 +95,9 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 
 ![Web Chat Demo](media/webchat-demo.gif)
 
-> 👆 **Web Chat**: browser-based chat interface at `http://127.0.0.1:19270` - an alternative to QQ/Telegram bots. Connects directly to local daemon proxy  llama.cpp server.no thing stop and running well even in 8GB VRAM!!!!!
+> 👆 **Web Chat**: browser-based chat interface at `http://127.0.0.1:19270` - an alternative to QQ/Telegram bots. Connects directly to local daemon proxy → llama.cpp server.no thing stop and running well even in 8GB VRAM!!!!!
 
-### 🎙.TTS Voice Workshop
+### 🎙️ TTS Voice Workshop
 
 <video src="media/tts_workshop_small.mp4" controls width="800"></video>
 
@@ -123,10 +123,10 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 | 🔄 **Character Hot-Swap** | One-click switch from sidebar dropdown, memories and chat context preserved per character |
 | 🃏 **Card Import** | Drag-drop or select SillyTavern PNG/JSON character cards, auto-parses metadata and persona |
 | 🤖 **Model Selector** | Choose local llama / DeepSeek / Grok from Settings dropdown, routes through daemon proxy |
-| 💬 **Real LLM Chat** | Streaming replies via daemon `/api/chat`  llama.cpp `/v1/chat/completions`, no fake fallbacks |
+| 💬 **Real LLM Chat** | Streaming replies via daemon `/api/chat` → llama.cpp `/v1/chat/completions`, no fake fallbacks |
 | 📱 **Responsive** | Mobile sidebar collapse, adaptive bubble layout, works on desktop and tablet |
 | 💾 **Local Storage** | Multi-session chat history, settings, and character state persisted in browser localStorage |
-| 🎛 **Artemis Studio** | Built-in TTS + ComfyUI placeholder panel (voice/image generation controlled via agent subprocesses) |
+| 🎛️ **Artemis Studio** | Built-in TTS + ComfyUI placeholder panel (voice/image generation controlled via agent subprocesses) |
 
 ## Hardware
 
@@ -164,31 +164,31 @@ Qwen3.6-35B (Language Mind) ←→ Cosmos 3 Nano (Physical Mind)
 
 | Year | GPU | Cosmos Status |
 |------|-----|---------------|
-| 2026 | RTX 5070 (8-12GB) | .Archived, detection ready |
+| 2026 | RTX 5070 (8-12GB) | ❌ Archived, detection ready |
 | 2027-28 | RTX 5090 (32GB) | ⚠️ Nano FP8 inference feasible |
-| 2029-30 | Rubin Workstation (96GB) | .LLM + Cosmos co-resident |
+| 2029-30 | Rubin Workstation (96GB) | ✅ LLM + Cosmos co-resident |
 
 ### Current Status
 
-- .Repo archived at `skills/cosmos/`
-- .Bridge design `imagination.md` + `cosmos_check.py` ready
-- .Qwen .Cosmos dual-mind architecture designed
+- ✅ Repo archived at `skills/cosmos/`
+- ✅ Bridge design `imagination.md` + `cosmos_check.py` ready
+- ✅ Qwen ↔ Cosmos dual-mind architecture designed
 - 📋 Waiting for ~24GB+ VRAM hardware
 
 
 ## Features
 
 
-- 🔄 **Multi-Character Hot-Swap** - One-click switch between AI girlfriends (Natsume .ATRI .Sakura); SOUL/IDENTITY/TTS weights/Live2D model all switch automatically, memories isolated per character
+- 🔄 **Multi-Character Hot-Swap** - One-click switch between AI girlfriends (Natsume ⇄ ATRI ⇄ Sakura); SOUL/IDENTITY/TTS weights/Live2D model all switch automatically, memories isolated per character
 - 🃏 **SillyTavern Character Card Import** - Auto-detect and import PNG/JSON character cards; agent auto-switches persona on import
 - 💬 **Chat Log Import** - Import SillyTavern JSONL conversation logs into `memory/role_play/<character>/`; agent restores context on role switch
 - 🎤 **TTS Voice Synthesis** -Local GPT-SoVITS inference, Japanese voice (emotion-matched per dialogue), 3 character voice models (Natsume / ATRI / Sakura)
 - 🎤 **ASR Speech Recognition** -Local Faster-Whisper small model (~1.5GB VRAM), coexists with llama; 99-language support
 - 🎨 **AI Image Generation** -Local ComfyUI inference, SDXL/Illustrious models, 3 character prompt templates
-- 🖥 *Sakura Desktop Pet** -PySide6 desktop companion with proactive care, screen observation & local LLM awareness; supports 3 characters
+- 🖥️**Sakura Desktop Pet** -PySide6 desktop companion with proactive care, screen observation & local LLM awareness; supports 3 characters
 - 🎭 **Live2D Character Model** -Real-time Live2D rendering with emotion-driven expressions & speech bubbles (Natsume / ATRI L2D; Sakura portrait mode)
-- 🧠 **Smart VRAM Tiering** - Auto-detects GPU VRAM and picks the right strategy:  2GB keeps everything online (llama + skills); 8GB hot-swaps llama for GPU-heavy tasks; <8GB safe mode. Zero manual config
-- 🎛 **Artemis Studio Console** - Visual TTS + ComfyUI workshop, DIY voice & images anytime regardless of llama status - a true offline creative suite
+- 🧠 **Smart VRAM Tiering** - Auto-detects GPU VRAM and picks the right strategy: ≥12GB keeps everything online (llama + skills); 8GB hot-swaps llama for GPU-heavy tasks; <8GB safe mode. Zero manual config
+- 🎛️ **Artemis Studio Console** - Visual TTS + ComfyUI workshop, DIY voice & images anytime regardless of llama status - a true offline creative suite
 - 💾 **Roleplay Memory** -Daily conversation summaries per character in `memory/role_play/`
 - 🧠 **Long-term Memory System** -Powered by [headroom](https://github.com/chopratejas/headroom) (SmartCrusher + CCR) and [mem0](https://github.com/mem0ai/mem0) (Qdrant vector database):
   - **Chinese Embedding Boost** - Added BGE-small-zh-v1.5 alongside all-MiniLM-L6-v2 for more accurate CN/JP/EN hybrid memory retrieval
@@ -294,13 +294,13 @@ Qwen3.6 MoE uses SSM (Gated Delta Net) hybrid attention with `--kv-unified`.
 The system auto-detects GPU VRAM and selects the optimal run mode - no manual config:
 
 ```
-┌─────────────────────────────────────────────────────────────.
-.VRAM Tier               .TTS        .ComfyUI    llama   .
-├─────────────────────────────────────────────────────────────.
-.Tier 0: <8GB            .Stop llama .Stop llama.Killed  .
-.Tier 1: 8-12GB (current) .Stop llama .Stop llama.Killed  .
-.Tier 2:  2GB           .No kill    .No kill   .Always on.
-└─────────────────────────────────────────────────────────────.
+┌─────────────────────────────────────────────────────────────┐
+│ VRAM Tier               │ TTS        │ ComfyUI   │ llama   │
+├─────────────────────────────────────────────────────────────┤
+│ Tier 0: <8GB            │ Stop llama │ Stop llama│ Killed  │
+│ Tier 1: 8-12GB (current) │ Stop llama │ Stop llama│ Killed  │
+│ Tier 2: ≥12GB           │ No kill    │ No kill   │ Always on│
+└─────────────────────────────────────────────────────────────┘
 ```
 
 **Current setup (8GB VRAM)**:
@@ -308,7 +308,7 @@ The system auto-detects GPU VRAM and selects the optimal run mode - no manual co
 8 GB Total VRAM
 ├── llama-server resident: ~5.8 GB (model 4.6G + KV cache 1.2G)
 ├── Free: ~2.2 GB
-.
+│
 ├── TTS inference: stop llama →~8 GB free →resume llama (~70s)
 ├── ComfyUI generation: stop llama →~8 GB free →resume llama (~120s)
 ├── Artemis Studio (TTS/ComfyUI workshop): standalone - works regardless of llama
@@ -344,65 +344,65 @@ The system auto-detects GPU VRAM and selects the optimal run mode - no manual co
 ├── README.md                         # This file
 ├── .gitignore
 ├── live2d/                           # Live2D character model (Cubism 4 Core)
-.  ├── index.html                    # Default (Shiki Natsume)
-.  ├── index_atri.html               # ATRI variant
-.  ├── index_upper.html              # Natsume upper-body variant
-.  ├── index_atri_upper.html         # ATRI upper-body variant
-.  ├── live2dcubismcore.min.js       # Cubism Core 4 (207 KB)
-.  ├── plid-v5-bundle.js             # pixi-live2d-display v0.5.0 bundle
-.  ├── live2d-bridge.mjs             # HTTP (19200) + WebSocket (19201) bridge
-.  ├── switch_model.ps1              # Model switcher (natsume / atri)
-.  ├── pixi.min.js, pixi-shim.js     # PIXI.js v7 rendering
-.  ├── model/shiki_natsume/          # Natsume model (14 textures, 42 motions, 41 sounds)
-.  └── model/atri/                   # ATRI model (2 textures, 620 voice mp3, 8 motions)
+│   ├── index.html                    # Default (Shiki Natsume)
+│   ├── index_atri.html               # ATRI variant
+│   ├── index_upper.html              # Natsume upper-body variant
+│   ├── index_atri_upper.html         # ATRI upper-body variant
+│   ├── live2dcubismcore.min.js       # Cubism Core 4 (207 KB)
+│   ├── plid-v5-bundle.js             # pixi-live2d-display v0.5.0 bundle
+│   ├── live2d-bridge.mjs             # HTTP (19200) + WebSocket (19201) bridge
+│   ├── switch_model.ps1              # Model switcher (natsume / atri)
+│   ├── pixi.min.js, pixi-shim.js     # PIXI.js v7 rendering
+│   ├── model/shiki_natsume/          # Natsume model (14 textures, 42 motions, 41 sounds)
+│   └── model/atri/                   # ATRI model (2 textures, 620 voice mp3, 8 motions)
 ├── ren_pro_jp/                       # Ren'Py dialog engine (planned)
 ├── memory/                           # [.gitignore] Runtime memory
-.  └── role_play/                    # Roleplay conversation logs
+│   └── role_play/                    # Roleplay conversation logs
 ├── media/                            # [.gitignore] Generated media
-.  ├── audio/                        # TTS voice output
-.  ├── images/                       # ComfyUI image output
-.  └── *.gif                         # README demo GIFs
+│   ├── audio/                        # TTS voice output
+│   ├── images/                       # ComfyUI image output
+│   └── *.gif                         # README demo GIFs
 ├── docs/
-.  ├── telegram-setup.md             # Telegram Bot setup guide
-.  └── qqbot-setup.md                # QQ Bot setup guide
+│   ├── telegram-setup.md             # Telegram Bot setup guide
+│   └── qqbot-setup.md                # QQ Bot setup guide
 └── skills/
     ├── live2d/                       # Live2D control skill
-    .  ├── SKILL.md                  # Motion/expression reference + API guide
-    .  ├── scripts/start-live2d.ps1  # Live2D launcher
-    .  └── media/                    # Shared media output
+    │   ├── SKILL.md                  # Motion/expression reference + API guide
+    │   ├── scripts/start-live2d.ps1  # Live2D launcher
+    │   └── media/                    # Shared media output
     ├── tts/
-    .  ├── SKILL.md                  # TTS invocation guide
-    .  ├── run_tts.ps1               # TTS launcher script
-    .  ├── tts_call.py               # GPT-SoVITS inference
-    .  └── ref_wavs/                 # Reference audio clips
+    │   ├── SKILL.md                  # TTS invocation guide
+    │   ├── run_tts.ps1               # TTS launcher script
+    │   ├── tts_call.py               # GPT-SoVITS inference
+    │   └── ref_wavs/                 # Reference audio clips
     ├── comfyui/
-    .  ├── SKILL.md                  # ComfyUI invocation guide
-    .  ├── run_comfyui.ps1           # ComfyUI launcher script
-    .  ├── comfyui_call.py           # ComfyUI inference
-    .  ├── prompt_template.md        # Character prompt template
-    .  └── custom_prompt.txt         # Custom extra prompt
+    │   ├── SKILL.md                  # ComfyUI invocation guide
+    │   ├── run_comfyui.ps1           # ComfyUI launcher script
+    │   ├── comfyui_call.py           # ComfyUI inference
+    │   ├── prompt_template.md        # Character prompt template
+    │   └── custom_prompt.txt         # Custom extra prompt
     ├── asr/                          # Speech recognition skill
-    .  ├── run_asr.ps1               # Faster-Whisper launcher (~1.5GB VRAM)
-    .  └── asr_call.py               # Whisper small model inference
+    │   ├── run_asr.ps1               # Faster-Whisper launcher (~1.5GB VRAM)
+    │   └── asr_call.py               # Whisper small model inference
     ├── shared/                       # Shared infrastructure
-    .  ├── embedding_server.py       # OpenAI-compatible embedding API (9999, dual model)
-    .  ├── mem0_bridge.py            # mem0 Qdrant →OpenClaw memory bridge
-    .  ├── start_embedding_server.ps1 # Auto-start embedding server
-    .  ├── vram.py                   # VRAM tier auto-detection
-    .  ├── VRAM_LEVELS.md             # VRAM tier documentation
-    .  ├── llama_lifecycle.py        # Llama start/stop management
-    .  └── llama_utils.py            # Llama utility functions
+    │   ├── embedding_server.py       # OpenAI-compatible embedding API (9999, dual model)
+    │   ├── mem0_bridge.py            # mem0 Qdrant →OpenClaw memory bridge
+    │   ├── start_embedding_server.ps1 # Auto-start embedding server
+    │   ├── vram.py                   # VRAM tier auto-detection
+    │   ├── VRAM_LEVELS.md             # VRAM tier documentation
+    │   ├── llama_lifecycle.py        # Llama start/stop management
+    │   └── llama_utils.py            # Llama utility functions
     ├── sakura/                       # Sakura Desktop Pet (PySide6 GUI)
-    .  ├── SKILL.md                  # Sakura skill documentation
-    .  ├── main.py                   # Application entry point
-    .  ├── install.bat               # Windows dependency installer
-    .  ├── start.bat                 # Windows launcher
-    .  └── app/                      # Source code
+    │   ├── SKILL.md                  # Sakura skill documentation
+    │   ├── main.py                   # Application entry point
+    │   ├── install.bat               # Windows dependency installer
+    │   ├── start.bat                 # Windows launcher
+    │   └── app/                      # Source code
     ├── cosmos/                       # 🔮 NVIDIA Cosmos WFM (future hardware)
-    .  ├── BRIDGE_REFERENCE.md       # Cosmos .AI Girlfriend bridge design
-    .  ├── cosmos_check.py           # Hardware VRAM detection script
-    .  ├── cookbooks/                # Official tutorial examples
-    .  └── README.md                 # Upstream documentation
+    │   ├── BRIDGE_REFERENCE.md       # Cosmos ↔ AI Girlfriend bridge design
+    │   ├── cosmos_check.py           # Hardware VRAM detection script
+    │   ├── cookbooks/                # Official tutorial examples
+    │   └── README.md                 # Upstream documentation
     ├── llama-management.md           # VRAM management architecture doc
     ├── llama-watchdog.ps1            # Llama health check
     ├── cleanup_orphans.ps1           # Orphan process cleanup
@@ -416,18 +416,18 @@ Artemis now supports **Claude Code** as a parallel agent runtime alongside OpenC
 ### How it works
 
 ```
-┌─────────────────────────────────────────────────────────.
-. Task Board (http://127.0.0.1:19280)                    .
-. Create task  assignee: agent  notstarted             .
-└───────────────────────┬─────────────────────────────────.
-                        .SQLite (.claude/task_queue.db)
-                        .
-┌─────────────────────────────────────────────────────────.
-. Claude Code (terminal)                                 .
-. CLAUDE.md  getNextTask()  ongoing  execute          .
-. Artemis tools .TTS / ComfyUI / Live2D / memory        .
-. reply()  updateTaskStatus(completed)                  .
-└─────────────────────────────────────────────────────────.
+┌─────────────────────────────────────────────────────────┐
+│  Task Board (http://127.0.0.1:19280)                    │
+│  Create task → assignee: agent → notstarted             │
+└───────────────────────┬─────────────────────────────────┘
+                        │ SQLite (.claude/task_queue.db)
+                        ▼
+┌─────────────────────────────────────────────────────────┐
+│  Claude Code (terminal)                                 │
+│  CLAUDE.md → getNextTask() → ongoing → execute          │
+│  Artemis tools → TTS / ComfyUI / Live2D / memory        │
+│  reply() → updateTaskStatus(completed)                  │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ### AgentRQ-Style Task Loop
@@ -500,10 +500,10 @@ Then open **http://127.0.0.1:19280** - create tasks, watch Claude Code pick them
 |-|-|-|-|
 | **Embedding** | Background process | ❌No | all-MiniLM-L6-v2 + BGE-small-zh-v1.5 dual models (CPU, port 9999) -OpenClaw memory search + mem0 bridge |
 | **Live2D** | HTTP exec | ❌No | Direct HTTP calls to `localhost:19200` bridge |
-| **Web Chat** | Browser | .No | Local daemon proxy to llama :8080, port 19270 frontend, real-time chat with full character/multi-session support |
-| **Claude Code** | Terminal (MCP) | .No | Parallel agent runtime via .claude/artemis_mcp_server.py, uses llama :8080 directly |
-| **TTS** | sessions_spawn | 🔶 VRAM-tiered |  2GB: no kill; 8GB: stop llama →GPT-SoVITS →restart llama |
-| **ComfyUI** | sessions_spawn | 🔶 VRAM-tiered |  2GB: no kill; 8GB: stop llama →image gen →restart llama |
+| **Web Chat** | Browser | ❌ No | Local daemon proxy to llama :8080, port 19270 frontend, real-time chat with full character/multi-session support |
+| **Claude Code** | Terminal (MCP) | ❌ No | Parallel agent runtime via .claude/artemis_mcp_server.py, uses llama :8080 directly |
+| **TTS** | sessions_spawn | 🔶 VRAM-tiered | ≥12GB: no kill; 8GB: stop llama →GPT-SoVITS →restart llama |
+| **ComfyUI** | sessions_spawn | 🔶 VRAM-tiered | ≥12GB: no kill; 8GB: stop llama →image gen →restart llama |
 | **ASR** | sessions_spawn | ❌No | Faster-Whisper small (~1.5GB VRAM, coexists with llama) |
 | **Sakura** | Shared llama-client | ❌No | Detects llama down →waits →auto-resumes |
 | **Artemis Studio** | Desktop console | ❌No | TTS/ComfyUI visual workshop, standalone - works regardless of llama status |
@@ -523,7 +523,7 @@ Then open **http://127.0.0.1:19280** - create tasks, watch Claude Code pick them
 | [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display) | v0.5.0 (bundled) | Live2D WebGL renderer |
 | Live2D Cubism Core | 4.x (bundled: `live2d/live2dcubismcore.min.js`) | Live2D physics/animation |
 
->  *TTS, ComfyUI, and Live2D are fully self-contained.** No external downloads at runtime -all model weights (`skills/sovits/`, `skills/comfyui_core/`), Python scripts, JS libraries (`live2d/pixi.min.js`, `live2d/plid-v5-bundle.js`), and Cubism Core 4 (`live2d/live2dcubismcore.min.js`) are bundled locally.
+> ✨**TTS, ComfyUI, and Live2D are fully self-contained.** No external downloads at runtime -all model weights (`skills/sovits/`, `skills/comfyui_core/`), Python scripts, JS libraries (`live2d/pixi.min.js`, `live2d/plid-v5-bundle.js`), and Cubism Core 4 (`live2d/live2dcubismcore.min.js`) are bundled locally.
 >
 > 🧠 **Headroom token-saving** -`skills/headroom/` (SmartCrusher + ContentRouter + CCR). Compress large tool outputs in dev scenarios before they hit the context window. See AGENTS.md for API usage.
 | headroom | Bundled (`skills/headroom/`) | SmartCrusher context compression + ContentRouter + CCR |
@@ -662,9 +662,9 @@ schtasks /create /tn "cleanup-orphans" `
 <table>
 <tr><td colspan="2" align="center"><b>User Entry</b></td></tr>
 <tr><td colspan="2" align="center">QQ Bot &nbsp;|&nbsp; Telegram Bot &nbsp;|&nbsp; WebChat &nbsp;|&nbsp; Claude Code (MCP) &nbsp;|&nbsp; Artemis Studio Console</td></tr>
-<tr><td colspan="2" align="center"> /td></tr>
+<tr><td colspan="2" align="center">↓</td></tr>
 <tr><td colspan="2" align="center"><b>OpenClaw Gateway</b> (port 18789) &nbsp;──&nbsp; <b>Claude Code MCP</b> (stdio) &nbsp;──&nbsp; <b>Sakura Desktop Pet</b> (PySide6, shared llama-client)</td></tr>
-<tr><td colspan="2" align="center"> /td></tr>
+<tr><td colspan="2" align="center">↓</td></tr>
 <tr>
 <td width="50%" valign="top">
 
@@ -692,9 +692,9 @@ schtasks /create /tn "cleanup-orphans" `
 | memory_search | OpenClaw native hybrid search (vector+BM25) |
 | mem0_bridge | Qdrant read/write bridge |
 | Qdrant DB | collection: sakura_memories, 4 user_id scopes |
-| CCR | Extracts facts every 8 turns .Qdrant |
+| CCR | Extracts facts every 8 turns → Qdrant |
 | SmartCrusher | 24 msg/40K char hard cap |
-| mem0_sync_cron | Every 30min: Qdrant  _mem0_auto.md |
+| mem0_sync_cron | Every 30min: Qdrant → _mem0_auto.md |
 
 </td>
 </tr>
@@ -706,15 +706,15 @@ Immutable capability instructions with per-character memory isolation:
 
 | Layer | File | Purpose | On Switch |
 |-|-|-|-|
-| **Capability Hub** | `AGENTS.md` | ComfyUI/TTS/Live2D instructions | 🛡.Immutable |
-| **Quick Reference** | `TOOLS.md` | Tool invocation cheatsheet | 🛡.Immutable |
+| **Capability Hub** | `AGENTS.md` | ComfyUI/TTS/Live2D instructions | 🛡️ Immutable |
+| **Quick Reference** | `TOOLS.md` | Tool invocation cheatsheet | 🛡️ Immutable |
 | **Character Persona** | `SOUL.md` | Current character's personality/tone | 🔄 Hot-swapped |
 | **Character Data** | `IDENTITY.md` | Character name/settings | 🔄 Hot-swapped |
-| **User Profile** | `USER.md` | Boyfriend name/preferences | 🛡.Immutable |
+| **User Profile** | `USER.md` | Boyfriend name/preferences | 🛡️ Immutable |
 | **Harem Archive** | `skills/harem/<char>/` | Character card source of truth | 📦 Read-only |
 | **Short-term Memory** | `memory/role_play/<char>/` | Daily conversations YYYY-MM-DD.md | 🔀 Per-char isolated |
 | **Long-term Memory** | Qdrant `user_id=<char>` | Vector long-term memories | 🔀 Per-char isolated |
-| **Sync Cache** | `_mem0_auto.md` | Qdrant  markdown (30min) | 🔀 Per-char isolated |
+| **Sync Cache** | `_mem0_auto.md` | Qdrant → markdown (30min) | 🔀 Per-char isolated |
 
 > Recall priority: Vector long-term memories > handwritten daily notes > SOUL base persona
 
@@ -740,18 +740,18 @@ A complete web-based AI girlfriend chat interface, served locally at `http://127
 
 | Skill | Location | Llama Interaction | Notes |
 |-|-|-|-|
-| **WebChat** | `web-chat/` | .HTTP proxy | Port 19270, daemon-backed, multi-char |
-| **Embedding** | `skills/shared/` | .No GPU | Dual model CPU, port 9999 |
-| **Live2D** | `skills/live2d/` | .HTTP only | Bridge :19200, separate process |
+| **WebChat** | `web-chat/` | ❌ HTTP proxy | Port 19270, daemon-backed, multi-char |
+| **Embedding** | `skills/shared/` | ❌ No GPU | Dual model CPU, port 9999 |
+| **Live2D** | `skills/live2d/` | ❌ HTTP only | Bridge :19200, separate process |
 | **TTS** | `skills/tts/` | 🔶 VRAM-tiered | Tier 2: no kill, Tier 0/1: stop llama |
 | **ComfyUI** | `skills/comfyui/` | 🔶 VRAM-tiered | Same as above |
-| **ASR** | `skills/asr/` | .Coexist (1.5GB) | Faster-Whisper small |
-| **Sakura** | `skills/sakura/` | .Shared client | Built-in CCR + mem0 |
-| **Artemis Studio** | `artemis_studio.py` | .Standalone | Desktop console, TTS+ComfyUI workshop |
+| **ASR** | `skills/asr/` | ❌ Coexist (1.5GB) | Faster-Whisper small |
+| **Sakura** | `skills/sakura/` | ❌ Shared client | Built-in CCR + mem0 |
+| **Artemis Studio** | `artemis_studio.py` | ❌ Standalone | Desktop console, TTS+ComfyUI workshop |
 | **SmartCrusher** | `skills/shared/context_trimming.py` | - | 24 msg/40K cap |
 | **CCR** | `skills/sakura/app/agent/memory_curator.py` | - | Every 8 turns fact extraction |
 | **mem0 Bridge** | `skills/shared/mem0_bridge.py` | - | CLI search/add/sync |
-| **Auto-Sync** | `skills/shared/mem0_sync_cron.py` | - | 30min Qdrant  md |
+| **Auto-Sync** | `skills/shared/mem0_sync_cron.py` | - | 30min Qdrant → md |
 | **Character Importer** | `skills/character_importer/` | - | PNG/JSON card import |
 
 **VRAM Orchestration Flow**:
@@ -759,7 +759,7 @@ A complete web-based AI girlfriend chat interface, served locally at `http://127
 2. Main session receives user request →assembles command
 3. `sessions_spawn(mode="run")` creates sub-session
 4. Tier 0/1: `stop_llama()` frees VRAM →TTS/ComfyUI inference →`start_llama()` resumes
-5. Tier 2 ( 2GB): direct inference, llama stays online
+5. Tier 2 (≥12GB): direct inference, llama stays online
 6. Artemis Studio, Live2D, Embedding stay active throughout -unaffected
 7. Sub-session writes `.task_flags` →announces back to main session
 8. Main session reads media files →sends via `<qqmedia>` / `MEDIA:`
@@ -771,6 +771,15 @@ A complete web-based AI girlfriend chat interface, served locally at `http://127
 - **RTX 50xx (Blackwell) + CUDA 13.x = `munmap_chunk(): invalid pointer` crash** -CUDA 13.x has known memory management incompatibility with llama.cpp on Blackwell GPUs. **Solution: use pre-built llama.cpp binaries compiled with CUDA 12.x** (not self-compiled with CUDA 13.x). Download from [llama.cpp Releases](https://github.com/ggml-org/llama.cpp/releases), choose `cudart-llama-bin-win-cuda-12.4-x64.zip`. RTX 5070 Ti is fully compatible with CUDA 12.x drivers.
 - Llama-server is offline for ~60-120s during TTS/ComfyUI inference on 8GB VRAM (Tier 1) - conversation pauses, but Live2D + Artemis Studio keep running. On 12GB+ (Tier 2), no interruption at all
 - Sub-sessions use **local model** (same as main), DeepSeek as optional fallback
+- **The `cron` tool must be denied for the local llama model** -llama.cpp's GBNF grammar converter rejects any JSON Schema `pattern` that is not fully anchored with `^...$`. OpenClaw's cron tool declares `pattern: "\\S"` on nested properties (`job.declarationKey`, `job.displayName`), so **every** request carrying the full toolset fails with `400 JSON schema conversion failed: Pattern must start with '^' and end with '$'`, then silently falls back to the remote model. Only nested/array-level patterns trigger it; top-level ones convert fine. Fix in `~/.openclaw/openclaw.json`:
+  ```jsonc
+  "tools": {
+    "byProvider": {
+      "llama/qwen3.6-35b": { "deny": ["cron"] }
+    }
+  }
+  ```
+  `tools.*` does not hot-reload, so restart the gateway afterwards. Scheduling still works through remote-model sessions.
 - Llama-server does not support cross-turn prompt cache reuse (SSM limitation) -use periodic `/reset`
 - **Live2D requires Cubism Core 4** (not 5 or 6) -pixi-live2d-display v0.5.0 is built for Cubism 4 Framework; Core 5+ causes clipping/layer failures. **Core 4 is bundled** in live2d/live2dcubismcore.min.js - no CDN needed.
 - All model files protected by `.gitignore`
