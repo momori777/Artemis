@@ -209,7 +209,7 @@ Qwen3.6-35B（言語の心）  ←→  Cosmos 3 Nano（物理の心）
 
 | モデル | 用途 | サイズ |
 |-|-|-|
-| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V6 APEX Compact** (GGUF) | チャット LLM | 16.11 GB |
+| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V7 APEX Compact** (GGUF) | チャット LLM | 16.11 GB |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI 生成（デフォルト） | 6.46 GB |
 | **miaomiaoHarem_v20** | ComfyUI 生成（バックアップ） | 6.46 GB |
 | **GPT-SoVITS 音声重み** | TTS 音声合成 | ~303 MB |
@@ -252,13 +252,13 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-d
 
 ## ローカル LLM パフォーマンス
 
-llama.cpp 経由で LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V6 (MoE, 16.10 GiB, 34.66B パラメータ) を実行。
+llama.cpp 経由で LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V7 (MoE, 16.10 GiB, 34.66B パラメータ) を実行。
 
 ### 起動コマンド
 
 ```powershell
 llama-server.exe `
-  -m "Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf" `
+  -m "Hermes3.6-35B-A3B-Uncensored-Genesis-V7-APEX-Compact.gguf" `
   -c 120000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
   --cpu-moe --cpu-mask 0xFFFFFFFF `
@@ -622,7 +622,7 @@ powershell -File start.ps1
 
 起動シーケンス:
 ```
-[1/7] llama-server        （8080、Genesis Hermes V6、--no-mmap）
+[1/7] llama-server        （8080、Genesis Hermes V7、--no-mmap）
 [2/7] 埋め込みサーバー    （9999、all-MiniLM + BGE 二重モデル、CPU、~100MB RAM）
 [3/7] VRAM テア検出      （TTS/ComfyUI が llama を停止するかどうかを自動選択）
 [4/7] Live2D ブリッジ    （19200、pixi-live2d-display）

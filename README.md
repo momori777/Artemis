@@ -207,7 +207,7 @@ See [`models.yaml`](models.yaml) for full details.
 
 | Model | Purpose | Size |
 |-|-|-|
-| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V6 APEX Compact** (GGUF) | Chat LLM | 16.11 GB |
+| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V7 APEX Compact** (GGUF) | Chat LLM | 16.11 GB |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI generation (default) | 6.46 GB |
 | **miaomiaoHarem_v20** | ComfyUI generation (backup) | 6.46 GB |
 | **GPT-SoVITS voice weights** | TTS voice synthesis | ~303 MB |
@@ -250,13 +250,13 @@ All Python/PS scripts read paths from `config.yaml` -no hardcoded paths to edit.
 
 ## Local LLM Performance
 
-Running LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V6 (MoE, 16.10 GiB, 34.66B params) via llama.cpp.
+Running LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V7 (MoE, 16.10 GiB, 34.66B params) via llama.cpp.
 
 ### Launch Command
 
 ```powershell
 llama-server.exe `
-  -m "Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf" `
+  -m "Hermes3.6-35B-A3B-Uncensored-Genesis-V7-APEX-Compact.gguf" `
   -c 120000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
   --cpu-moe --cpu-mask 0xFFFFFFFF `
@@ -620,7 +620,7 @@ powershell -File start.ps1
 
 Startup sequence:
 ```
-[1/7] llama-server        (8080, Genesis Hermes V6, --no-mmap)
+[1/7] llama-server        (8080, Genesis Hermes V7, --no-mmap)
 [2/7] Embedding Server    (9999, all-MiniLM + BGE dual models, CPU, ~100MB RAM)
 [3/7] VRAM Tier Detection (auto-selects whether TTS/ComfyUI stops llama)
 [4/7] Live2D Bridge       (19200, pixi-live2d-display)
