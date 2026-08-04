@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   降级重启 llama-server (Vulkan 版) — ngl 固定 99，逐级降低 batch_size/ubatch_size
   用于 VRAM 不足时手动恢复
