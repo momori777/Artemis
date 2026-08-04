@@ -52,6 +52,7 @@ __pycache__/
 *.7z
 # llama 环境（由 download-llama.ps1 自动下载）
 llama-server/
+llama-server.bak.*/
 
 # llama 运行日志（仅根目录）
 /*llama*.txt

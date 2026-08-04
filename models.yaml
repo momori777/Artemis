@@ -1,4 +1,4 @@
-﻿# 模型清单 �?AI Girlfriend 四季夏目
+# 模型清单 — AI Girlfriend 四季夏目
 #
 # 所有模型托管在 HuggingFace:
 #   https://huggingface.co/TAOTAO777/ai-girlfriend-natsume
@@ -7,18 +7,18 @@
 #   huggingface-cli download TAOTAO777/ai-girlfriend-natsume <repo_path> --local-dir <你的目录>
 #   或直接在 HF 网页下载单个文件
 #
-# 路径配置: 首次 clone 后运�?quick_setup.ps1 一键填�?config.yaml
-# 模型下载后更新此文件�?local_path 指向你本地的实际目录
+# 路径配置: 首次 clone 后运行 quick_setup.ps1 一键填写 config.yaml
+# 模型下载后更新此文件的 local_path 指向你本地的实际目录
 
 # ============================================================
 # 路径变量
-# 为了克隆后直接可�? 以下路径�?quick_setup.ps1 自动填写.
-# 手动配置: 复制 .env.example 或运�?quick_setup.ps1
+# 为了克隆后直接可用, 以下路径由 quick_setup.ps1 自动填写.
+# 手动配置: 复制 .env.example 或运行 quick_setup.ps1
 # ============================================================
 
 models:
   # =========================================================================
-  # 当前活跃 �?LuffyTheFox Qwen3.6-35B Genesis Hermes V6 APEX Compact
+  # 当前活跃 — LuffyTheFox Qwen3.6-35B Genesis Hermes V6 APEX Compact
   # =========================================================================
   - name: LuffyTheFox Qwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V6-APEX-Compact
     type: GGUF (APEX Compact, ~16 GB, 34.66B MoE, 8/256 experts)
@@ -26,16 +26,16 @@ models:
     note: 当前活跃模型，Genesis Hermes V6 + APEX Compact 量化
 
   # =========================================================================
-  # 原模�?�?Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact（已删除�?
+  # 原模型 — Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact（已删除）
   # =========================================================================
   - name: Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact
     type: GGUF (Q4_K, 16.11 GB, 34.66B MoE, 8/256 experts)
     upstream: https://huggingface.co/mudler/Qwen3.6-35B-A3B-uncensored-heretic-APEX-GGUF
     license: Apache 2.0 (Qwen upstream)
-    note: 已从 HF 仓库删除，仅保留参�?
+    note: 已从 HF 仓库删除，仅保留参考
 
   # =========================================================================
-  # ComfyUI 文生�?Checkpoints
+  # ComfyUI 文生图 Checkpoints
   # =========================================================================
   - name: WAI-Nsfw-Illustrious-17
     type: safetensors (SDXL/Illustrious, 6.46 GB)
@@ -45,7 +45,7 @@ models:
     download: |
       huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors --local-dir checkpoints
     upstream: https://civitai.com/models/1185480/wai-nsfw-illustrious
-    note: 二次元角色生成默认模�?
+    note: 二次元角色生成默认模型
 
   - name: miaomiaoHarem_v20
     type: safetensors (6.46 GB)
@@ -55,10 +55,10 @@ models:
     download: |
       huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui-checkpoints/miaomiaoHarem_v20.safetensors --local-dir checkpoints
     upstream: https://civitai.com/models/1033365/miaomiaoharem
-    note: 备用模型，动漫后宫风�?
+    note: 备用模型，动漫后宫风格
 
   # =========================================================================
-  # GPT-SoVITS v2 Pro �?声优权重（自训练�?
+  # GPT-SoVITS v2 Pro — 声优权重（自训练）
   # =========================================================================
   - name: GPT-SoVITS 声优权重
     type: SoVITS ckpt + GPT pth (共约 303 MB)
@@ -66,7 +66,7 @@ models:
     files:
       - repo_path: gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt
         local_path: ${SOVITS_ROOT:-GPT-SoVITS}/GPT_weights_v2Pro/
-        note: SoVITS 权重（命名交叉：GPT目录放ckpt，SoVITS目录放pth�?
+        note: SoVITS 权重（命名交叉：GPT目录放ckpt，SoVITS目录放pth）
       - repo_path: gpt-sovits-weights/SoVITS_weights_v2Pro/xxx_e20_s6240.pth
         local_path: ${SOVITS_ROOT:-GPT-SoVITS}/SoVITS_weights_v2Pro/
         note: GPT 权重（配对使用）
@@ -74,7 +74,7 @@ models:
       huggingface-cli download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/ --local-dir gpt-sovits-weights --include "*.ckpt" "*.pth"
     note: 自训练声优模型，需两个文件配对使用。用你自己的声优数据训练替代
 
-  # GPT-SoVITS 预训练底�?/ 依赖模型 (推理必需)
+  # GPT-SoVITS 预训练底模 / 依赖模型 (推理必需)
   - name: SoVITS pretrained models
     type: pretrained ckpt (共约 350 MB)
     repo: TAOTAO777/ai-girlfriend-natsume
@@ -84,21 +84,21 @@ models:
         note: 声纹提取(Speaker Verification)底模，所有语种必需
       - repo_path: gpt-sovits-weights/pretrained_models/chinese-hubert-base/
         local_path: ${SOVITS_ROOT:-skills/sovits}/GPT_SoVITS/pretrained_models/chinese-hubert-base/
-        note: 中文声纹特征提取，中文必需 (日语可选下�?
+        note: 中文声纹特征提取，中文必需 (日语可选下载)
       - repo_path: gpt-sovits-weights/pretrained_models/chinese-roberta-wwm-ext-large/
         local_path: ${SOVITS_ROOT:-skills/sovits}/GPT_SoVITS/pretrained_models/chinese-roberta-wwm-ext-large/
-        note: 中文BERT G2P，中文必需 (日语可选下�?
+        note: 中文BERT G2P，中文必需 (日语可选下载)
     download: |
       huggingface-cli download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/pretrained_models/ --local-dir gpt-sovits-weights/pretrained_models
-    note: 声纹提取底模(必装) + 中文模型(仅中文用户需�?
+    note: 声纹提取底模(必装) + 中文模型(仅中文用户需装)
 
   # =========================================================================
-  # 本地 Embedding 模型 �?语义记忆向量�?
+  # 本地 Embedding 模型 — 语义记忆向量化
   # =========================================================================
   - name: all-MiniLM-L6-v2
     type: sentence-transformer (384-dim, ~80 MB)
     repo: sentence-transformers/all-MiniLM-L6-v2
-    repo_path: N/A (自动下载�?HF cache)
+    repo_path: N/A (自动下载到 HF cache)
     local_path: ${HF_HOME:-skills/sakura/runtime/hf-cache/}
     download: |
       首启自动下载: python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
@@ -106,13 +106,13 @@ models:
     mirror: TOATAO777/ai-girlfriend-natsume/embedding/all-MiniLM-L6-v2
     license: Apache 2.0
     note: |
-      �?OpenClaw memory_search �?Sakura mem0 提供本地语义向量化，384 �?
+      为 OpenClaw memory_search 和 Sakura mem0 提供本地语义向量化，384 维
       服务: skills/shared/embedding_server.py (端口 9999)
-      CPU 推理，毫秒级延迟，不�?VRAM
-      自行备份�?TAOTAO777/ai-girlfriend-natsume
+      CPU 推理，毫秒级延迟，不占 VRAM
+      自行备份至 TAOTAO777/ai-girlfriend-natsume
 
   # =========================================================================
-  # Live2D 角色模型 �?四季夏目 (Shiki Natsume)
+  # Live2D 角色模型 — 四季夏目 (Shiki Natsume)
   # =========================================================================
   - name: shiki-natsume-live2d
     type: Live2D Model (Cubism 3, ~209 MB)
@@ -124,12 +124,12 @@ models:
       tar -xzf live2d-model/shiki_natsume.tar.gz -C live2d/model/
     note: |
       四季夏目 Live2D 角色模型 (Cubism 3 moc3 + 14 textures + 41 motions)
-      解压�?live2d/model/shiki_natsume/
-      网盘备用: (待上�?
-      不提交到 GitHub (�?.gitignore)
+      解压到 live2d/model/shiki_natsume/
+      网盘备用: (待上传)
+      不提交到 GitHub (见 .gitignore)
 
   # =========================================================================
-  # Faster-Whisper �?语音识别 (ASR)
+  # Faster-Whisper — 语音识别 (ASR)
   # =========================================================================
   - name: whisper-small
     type: CTranslate2 (faster-whisper, 461 MB, ~1.5GB VRAM GPU)
