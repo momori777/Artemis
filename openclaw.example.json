@@ -1,5 +1,5 @@
 {
-  "_comment": "Copy this file to openclaw.json and fill in your API keys. Then restart OpenClaw Gateway.",
+  "_comment": "Copy this file to openclaw.json and fill in your API keys. Then restart OpenClaw Gateway. Note: tools.byProvider denies the cron tool for the local llama model because llama.cpp's GBNF converter rejects non-anchored JSON Schema patterns; without it every local request fails with HTTP 400.",
   "gateway": {
     "mode": "local",
     "auth": {
@@ -26,42 +26,20 @@
   "models": {
     "mode": "merge",
     "providers": {
-      "deepseek": {
-        "baseUrl": "https://api.deepseek.com/v1",
-        "api": "openai-completions",
-        "apiKey": "",
-        "models": [
-          {
-            "id": "deepseek-v4-flash",
-            "name": "deepseek-v4-flash",
-            "contextWindow": 604800,
-            "maxTokens": 16000,
-            "reasoning": true
-          },
-          {
-            "id": "deepseek-v4-pro",
-            "name": "deepseek-v4-pro",
-            "contextWindow": 604800,
-            "maxTokens": 131072,
-            "reasoning": true
-          }
-        ],
-        "timeoutSeconds": 900
-      },
       "llama": {
         "baseUrl": "http://127.0.0.1:8080/v1",
         "api": "openai-completions",
         "apiKey": "",
+        "timeoutSeconds": 600,
         "models": [
           {
             "id": "qwen3.6-35b",
             "name": "qwen3.6 35B",
-            "contextWindow": 12000,
+            "contextWindow": 120000,
             "maxTokens": 8096,
-            "reasoning": true
+            "reasoning": false
           }
-        ],
-        "timeoutSeconds": 600
+        ]
       },
       "local-llama": {
         "baseUrl": "http://127.0.0.1:19251/v1",
@@ -86,9 +64,72 @@
           {
             "id": "qwen3.6-35b",
             "name": "qwen3.6 35B via Headroom",
-            "contextWindow": 12000,
+            "contextWindow": 120000,
             "maxTokens": 8096,
+            "reasoning": false
+          },
+          {
+            "id": "deepseek-v4-flash",
+            "name": "deepseek-v4-flash via Headroom",
+            "contextWindow": 500000,
+            "maxTokens": 131072,
             "reasoning": true
+          },
+          {
+            "id": "deepseek-v4-pro",
+            "name": "deepseek-v4-pro via Headroom",
+            "contextWindow": 204800,
+            "maxTokens": 131072,
+            "reasoning": true
+          },
+          {
+            "id": "gemini-3.6-flash",
+            "name": "gemini-3.6-flash via Headroom",
+            "contextWindow": 320000,
+            "maxTokens": 131072,
+            "reasoning": true
+          },
+          {
+            "id": "gemini-3.5-flash",
+            "name": "gemini-3.5-flash via Headroom",
+            "contextWindow": 320000,
+            "maxTokens": 131072,
+            "reasoning": true
+          },
+          {
+            "id": "claude-opus-4-8",
+            "name": "claude-opus-4-8 via Headroom",
+            "contextWindow": 400000,
+            "maxTokens": 16000,
+            "reasoning": true
+          },
+          {
+            "id": "grok-4.5",
+            "name": "grok-4.5 via Headroom",
+            "contextWindow": 204800,
+            "maxTokens": 131072,
+            "reasoning": true
+          },
+          {
+            "id": "grok-4.2-fast",
+            "name": "grok-4.2-fast via Headroom",
+            "contextWindow": 204800,
+            "maxTokens": 131072,
+            "reasoning": true
+          },
+          {
+            "id": "glm-5.2",
+            "name": "GLM-5.2 via Headroom",
+            "contextWindow": 204800,
+            "maxTokens": 131072,
+            "reasoning": true
+          },
+          {
+            "id": "glm-4-flash",
+            "name": "GLM-4-Flash via Headroom",
+            "contextWindow": 128000,
+            "maxTokens": 8192,
+            "reasoning": false
           }
         ]
       }
@@ -98,6 +139,15 @@
     "entries": {
       "qqbot": {
         "enabled": true
+      }
+    }
+  },
+  "tools": {
+    "byProvider": {
+      "llama/qwen3.6-35b": {
+        "deny": [
+          "cron"
+        ]
       }
     }
   }
