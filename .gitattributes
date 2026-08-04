@@ -1,0 +1,44 @@
+# 默认: 由 Git 自行判断文本/二进制
+* text=auto
+
+# ── Shell 脚本必须是 LF ──
+# CRLF 会让 bash 把 'MODELS=(\r' 之类识别为未闭合, 报
+# "syntax error near unexpected token" —— Linux/macOS 用户 clone 后
+# 脚本直接无法运行。
+*.sh    text eol=lf
+*.bash  text eol=lf
+
+# ── Windows 脚本保持 CRLF ──
+*.ps1   text eol=crlf
+*.psm1  text eol=crlf
+*.cmd   text eol=crlf
+*.bat   text eol=crlf
+
+# ── 二进制: 不做行尾/编码转换 ──
+*.gguf          binary
+*.safetensors   binary
+*.ckpt          binary
+*.pth           binary
+*.pt            binary
+*.onnx          binary
+*.bin           binary
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.webp          binary
+*.gif           binary
+*.ico           binary
+*.mp3           binary
+*.wav           binary
+*.mp4           binary
+*.tar.gz        binary
+*.zip           binary
+*.7z            binary
+*.moc3          binary
+*.exe           binary
+*.dll           binary
+
+# Live2D 模型资源: 保持原样, 避免行尾转换破坏
+*.model3.json   text eol=lf
+*.motion3.json  text eol=lf
+*.physics3.json text eol=lf

@@ -290,9 +290,17 @@ LLAMA_EXE=""
 if command -v llama-server &>/dev/null; then
     LLAMA_EXE="llama-server"
 elif [[ -f "./llama.cpp/build/bin/llama-server" ]]; then
-    LLAMA_EXE="$(command -v realpath &>/dev/null && realpath ./llama.cpp/build/bin/llama-server || { cd ./llama.cpp/build/bin && pwd; }/llama-server)"
+    if command -v realpath &>/dev/null; then
+        LLAMA_EXE="$(realpath ./llama.cpp/build/bin/llama-server)"
+    else
+        LLAMA_EXE="$(cd ./llama.cpp/build/bin && pwd)/llama-server"
+    fi
 elif [[ -f "../llama.cpp/build/bin/llama-server" ]]; then
-    LLAMA_EXE="$(command -v realpath &>/dev/null && realpath ../llama.cpp/build/bin/llama-server || { cd ../llama.cpp/build/bin && pwd; }/llama-server)"
+    if command -v realpath &>/dev/null; then
+        LLAMA_EXE="$(realpath ../llama.cpp/build/bin/llama-server)"
+    else
+        LLAMA_EXE="$(cd ../llama.cpp/build/bin && pwd)/llama-server"
+    fi
 fi
 
 if [[ -z "$LLAMA_EXE" ]]; then

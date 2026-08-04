@@ -1,4 +1,4 @@
-# start.ps1 — 一键启停全部 Shiki 服务
+﻿# start.ps1 — 一键启停全部 Shiki 服务
 # Usage:
 #   .\start.ps1       启动全部服务
 #   .\start.ps1 -Stop  停止全部服务（等价于 shutdown_all.py）

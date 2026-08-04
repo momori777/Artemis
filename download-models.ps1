@@ -1,5 +1,5 @@
 ﻿# download-models.ps1
-# AI Girlfriend 四季夏目 —一键模型下载脚本(Windows PowerShell)
+# AI Girlfriend 四季夏目 — 一键模型下载脚本(Windows PowerShell)
 #
 # 从HuggingFace 下载全部 5 个模型文件(~31.7 GB)
 # 需要 huggingface-cli (pip install huggingface_hub)
@@ -29,7 +29,7 @@ if ($Live2DOnly) {
 }
 
 Write-Host "╔══════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║ AI Girlfriend —四季夏目 · Model Downloader         ║" -ForegroundColor Cyan
+Write-Host "║  AI Girlfriend — 四季夏目 · Model Downloader         ║" -ForegroundColor Cyan
 Write-Host "║ $HFRepo                                          ║" -ForegroundColor Cyan
 Write-Host "╚══════════════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
@@ -82,14 +82,14 @@ foreach ($d in $Dirs) {
 Write-Host ""
 Write-Host "Download directory: $BaseDir" -ForegroundColor Cyan
 Write-Host "Target: $HFRepo" -ForegroundColor Cyan
-Write-Host "Total: ~31.7 GB —this may take 30-90 minutes depending on network" -ForegroundColor Cyan
+Write-Host "Total: ~31.7 GB — this may take 30-90 minutes depending on network" -ForegroundColor Cyan
 Write-Host ""
 
 # 模型文件清单 (repo_path, local_path, description)
 $Models = @(
-    @{RepoPath="llm/Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf"; LocalPath="E:\Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf"; Desc="LLM GGUF —LuffyTheFox Genesis Hermes V6 APEX Compact (16.11 GB)"},
-    @{RepoPath="comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors"; LocalPath="$BaseDir\comfyui-checkpoints\WAI-Nsfw-Illustrious-17.safetensors"; Desc="ComfyUI Checkpoint —WAI (6.46 GB)"},
-    @{RepoPath="comfyui-checkpoints/miaomiaoHarem_v20.safetensors"; LocalPath="$BaseDir\comfyui-checkpoints\miaomiaoHarem_v20.safetensors"; Desc="ComfyUI Checkpoint —Miaomiao (6.46 GB)"},
+    @{RepoPath="llm/Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf"; LocalPath="E:\Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf"; Desc="LLM GGUF — LuffyTheFox Genesis Hermes V6 APEX Compact (16.11 GB)"},
+    @{RepoPath="comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors"; LocalPath="$BaseDir\comfyui-checkpoints\WAI-Nsfw-Illustrious-17.safetensors"; Desc="ComfyUI Checkpoint — WAI (6.46 GB)"},
+    @{RepoPath="comfyui-checkpoints/miaomiaoHarem_v20.safetensors"; LocalPath="$BaseDir\comfyui-checkpoints\miaomiaoHarem_v20.safetensors"; Desc="ComfyUI Checkpoint — Miaomiao (6.46 GB)"},
     @{RepoPath="gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt"; LocalPath="$BaseDir\gpt-sovits-weights\GPT_weights_v2Pro\xxx-e30.ckpt"; Desc="GPT-SoVITS ckpt (155 MB)"},
     @{RepoPath="gpt-sovits-weights/SoVITS_weights_v2Pro/xxx_e20_s6240.pth"; LocalPath="$BaseDir\gpt-sovits-weights\SoVITS_weights_v2Pro\xxx_e20_s6240.pth"; Desc="GPT-SoVITS pth (135 MB)"}
 )
@@ -99,7 +99,7 @@ $Live2D = @{
     RepoPath = "live2d-model/shiki_natsume.tar.gz"
     ArchivePath = "$BaseDir\live2d-model\shiki_natsume.tar.gz"
     ExtractDir = "$BaseDir\live2d\model"
-    Desc = "Live2D Model —Shiki Natsume (~209 MB)"
+    Desc = "Live2D Model — Shiki Natsume (~209 MB)"
 }
 
 $total = $Models.Count
@@ -112,7 +112,7 @@ foreach ($m in $Models) {
     # 检查是否已存在
     if (Test-Path $m.LocalPath) {
         $existingSize = (Get-Item $m.LocalPath).Length
-        Write-Host "[$current/$total] $($m.Desc) —already exists, skipping" -ForegroundColor DarkGray
+        Write-Host "[$current/$total] $($m.Desc) — already exists, skipping" -ForegroundColor DarkGray
         continue
     }
     
@@ -131,7 +131,7 @@ foreach ($m in $Models) {
     if ($exitCode -eq 0) {
         Write-Host "         OK ($elapsed s)" -ForegroundColor Green
     } else {
-        Write-Host "         FAILED ($elapsed s) —exit code $exitCode" -ForegroundColor Red
+        Write-Host "         FAILED ($elapsed s) — exit code $exitCode" -ForegroundColor Red
         $failed += $m.Desc
     }
     Write-Host ""
@@ -145,7 +145,7 @@ $total++
 
 $live2dMarker = Join-Path $Live2D.ExtractDir "shiki_natsume\final\shiki_natsume.model3.json"
 if (Test-Path $live2dMarker) {
-    Write-Host "[$current/$total] $($Live2D.Desc) —already exists, skipping" -ForegroundColor DarkGray
+    Write-Host "[$current/$total] $($Live2D.Desc) — already exists, skipping" -ForegroundColor DarkGray
 } else {
     Write-Host "[$current/$total] Downloading $($Live2D.Desc)..." -ForegroundColor Yellow
     Write-Host "         From: $($Live2D.RepoPath)" -ForegroundColor Gray
@@ -170,7 +170,7 @@ if (Test-Path $live2dMarker) {
             $failed += $Live2D.Desc
         }
     } else {
-        Write-Host "         FAILED ($elapsed s) —exit code $exitCode" -ForegroundColor Red
+        Write-Host "         FAILED ($elapsed s) — exit code $exitCode" -ForegroundColor Red
         $failed += $Live2D.Desc
     }
 }

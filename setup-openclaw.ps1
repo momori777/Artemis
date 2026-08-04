@@ -1,4 +1,4 @@
-# setup-openclaw.ps1
+﻿# setup-openclaw.ps1
 # AI Girlfriend — 四季夏目 · OpenClaw 一键部署 (Windows PowerShell)
 #
 # 自动完成:

@@ -1,4 +1,4 @@
-# AI Girlfriend 优化验证脚本
+﻿# AI Girlfriend 优化验证脚本
 # 用途：快速验证配置读取和路由逻辑
 
 Write-Host "=== AI Girlfriend 优化验证 ===" -ForegroundColor Cyan

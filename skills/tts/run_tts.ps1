@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$text,
     [string]$lang = 'ja',
     [string]$mood = 'auto',
