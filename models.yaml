@@ -18,12 +18,12 @@
 
 models:
   # =========================================================================
-  # 当前活跃 — LuffyTheFox Qwen3.6-35B Genesis Hermes V6 APEX Compact
+  # 当前活跃 — LuffyTheFox Qwen3.6-35B Genesis Hermes V7 APEX Compact
   # =========================================================================
-  - name: LuffyTheFox Qwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V6-APEX-Compact
+  - name: LuffyTheFox Qwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V7-APEX-Compact
     type: GGUF (APEX Compact, ~16 GB, 34.66B MoE, 8/256 experts)
-    local_path: "E:/Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf"
-    note: 当前活跃模型，Genesis Hermes V6 + APEX Compact 量化
+    local_path: "E:/Hermes3.6-35B-A3B-Uncensored-Genesis-V7-APEX-Compact.gguf"
+    note: 当前活跃模型，Genesis Hermes V7 + APEX Compact 量化
 
   # =========================================================================
   # 原模型 — Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact（已删除）
