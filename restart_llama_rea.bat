@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 REM restart_llama_rea.bat — 重启 llama-server 切换 reasoning 模式
 REM 用法: restart_llama_rea.bat [on|off]
 
@@ -20,7 +20,7 @@ echo Port 8080 released.
 
 REM 启动 llama
 start "" /B %PROJECT_DIR%\llama-server\llama-server.exe ^
-  -m E:\Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf ^
+  -m E:\Hermes3.6-35B-A3B-Uncensored-Genesis-V7-APEX-Compact.gguf ^
   -c 150000 --flash-attn on ^
   -ctk q8_0 -ctv q8_0 ^
   --no-mmap --cpu-moe ^
