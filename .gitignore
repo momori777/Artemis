@@ -79,8 +79,6 @@ ren_pro_jp/node_modules/
 live2d/live2dcubismcore.min.js
 # 模型文件（大文件，托管HF/网盘 ?
 live2d/model/
-!live2d/model/atri/
-!live2d/model/shiki_natsume/
 # 第三 ?JS 包（ ?npm 安装 ?CDN 加载 ?
 live2d/plid-v5-bundle.js
 live2d/pixi.min.js
@@ -149,8 +147,11 @@ media/sakura.mp4
 media/demo_qqbot.mp4
 # TTS debug log (contains absolute paths)
 _tts_debug.txt
-# Claude Code local settings (may contain tokens)
-.claude/settings.local.json
+# Claude Code 本地配置（含 token/路径）不提交
+.claude/
 
 # tool-mode roleplay backups
 skills/tool/*.roleplay.bak
+
+# 编码损坏的 harem 备份(本地留档, 不入库)
+skills/harem_corrupt_bak_*/

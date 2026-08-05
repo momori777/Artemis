@@ -150,7 +150,7 @@ if (Test-Online $llamaPort "llama-server") {
 
     $llamaArgs = @(
         '-m', $llamaModel,
-        '-c', '120000',
+        '-c', $llamaCtx,
         '--flash-attn', 'on',
         '-ctk', 'q8_0',
         '-ctv', 'q8_0',
@@ -160,6 +160,7 @@ if (Test-Online $llamaPort "llama-server") {
         '--ubatch-size', '2048',
         '--threads', '24',
         '-rea', 'off',
+        '--reasoning-format', 'deepseek',
         '--jinja',
         '--cache-ram', '3000',
         '--parallel', '1',
@@ -285,7 +286,7 @@ if (Test-Online 19251 "Headroom Proxy") {
         try {
             $ocCfg = Get-Content $ocJson -Raw -Encoding UTF8 | ConvertFrom-Json
             $headroomBase = "http://127.0.0.1:19251/v1"
-            $llamaCtx = if ($config.llama.context) { [int]$config.llama.context } else { 120000 }
+            $llamaCtx = if ($config.llama.context) { [int]$config.llama.context } else { 150000 }
             $llamaPort = if ($config.llama_port) { $config.llama_port } else { 8080 }
 
             # 收集 sidecar 路由
@@ -323,7 +324,7 @@ if (Test-Online 19251 "Headroom Proxy") {
                 id = "llama-local"
                 name = "Local Llama (Headroom+Mem0)"
                 contextWindow = $llamaCtx
-                maxTokens = 8192
+                maxTokens = 12000
                 reasoning = $false
                 compat = [PSCustomObject]@{
                     supportsReasoningEffort = $false

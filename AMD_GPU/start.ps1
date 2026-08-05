@@ -104,13 +104,14 @@ if (Test-Online $llamaPort "llama-server") {
     # - --no-mmap: 保留，避免 16GB 模型吃满系统 RAM
     $llamaArgs = @(
         '-m', $llamaModel,
-        '-c', '120000',
+        '-c', '150000',
         '-ngl', '99',
         '--cpu-moe',
         '--batch-size', '2048',
         '--ubatch-size', '1024',
         '--threads', '24',
         '-rea', 'off',
+        '--reasoning-format', 'deepseek',
         '--jinja',
         '--cache-ram', '5000',
         '--parallel', '1',

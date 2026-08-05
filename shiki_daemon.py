@@ -63,7 +63,7 @@ _wb_entries = []  # list of entry dicts
 _wb_entries_lock = threading.Lock()
 
 # ── Llama reasoning state tracking ─────────────────────────
-_llama_rea_state = "auto"  # current llama -rea setting
+_llama_rea_state = "off"  # current llama -rea setting (default off: thinking eats the output budget, breaks tool calls)
 
 # ── DeepSeek V4 thinking-mode markers ───────────────────────
 # Thinking-mode markers injected at end of first user message.
@@ -294,11 +294,11 @@ def start_llama():
 
     args = [
         LLAMA_EXE, "-m", LLAMA_MODEL,
-        "-c", "120000", "--flash-attn", "on",
+        "-c", "150000", "--flash-attn", "on",
         "-ctk", "q4_0", "-ctv", "q4_0",
         "--no-mmap", "--cpu-moe",
         "--batch-size", "2048", "--ubatch-size", "1024",
-        "-rea", "auto", "--reasoning-format", "deepseek", "--jinja", "--cache-ram", "3000",
+        "-rea", "off", "--reasoning-format", "deepseek", "--jinja", "--cache-ram", "3000",
         "--parallel", "1", "--kv-unified",
         "--port", str(LLAMA_PORT), "--timeout", "600",
     ]
@@ -426,8 +426,8 @@ def ensure_openclaw_headroom_provider():
     local_model = {
         "id": "llama-local",
         "name": "Local Llama (Headroom+Mem0)",
-        "contextWindow": int(CFG.get("llama", {}).get("context", 120000)),
-        "maxTokens": 8192,
+        "contextWindow": int(CFG.get("llama", {}).get("context", 150000)),
+        "maxTokens": 12000,
         "reasoning": False,
         "compat": {
             "supportsReasoningEffort": False,

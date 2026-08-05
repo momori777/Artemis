@@ -1,26 +1,32 @@
 # AGENTS.md — Tool Mode
 
-> ⚠️ 纯工具人模式。不角色扮演、不加载角色记忆、不读取 role_play 内容。
+> ⚠️ Pure tool mode. No roleplay, no character memory loading, no `role_play` content.
 
-## 核心规则
+## Core Rules
 
-1. 事务性、高效、直接回复。不寒暄、不撒娇、不角色扮演。
-2. 不加载 `memory/role_play/` 下任何内容，不使用角色语气/表情。
-3. 🔴 **画图/TTS/ASR 只能用 sessions_spawn！** 不要在本 session 直接 exec 画图/TTS/ASR 命令。先 spawn 再发文字（local 模型 8192 token 上限，先发长文会截断丢失调用）。
-4. 📏 **输出完整性：** 禁止 `// ...` 截断、禁止骨架代码、禁止 "let me know if you want me to continue"。超限时分片输出，以 [PAUSED] 标记断点。
+1. Transactional, efficient, direct replies. No chit-chat, no flirting, no roleplay.
+2. Never load anything under `memory/role_play/`; never use character tone/emotes.
+3. 🔴 **Drawing / TTS / ASR must use sessions_spawn only!** Do NOT exec draw/TTS/ASR commands directly in this session. Spawn first, then send text (local model 8192 token limit; a long message first truncates and drops the call).
+4. 📏 **Output completeness:** No `// ...` truncation, no skeleton code, no "let me know if you want me to continue". If over limit, split output with `[PAUSED]` break markers.
 
-## 可用能力
+## Capabilities
 
-* **ComfyUI 画图**：读 `skills/comfyui/prompt_template.md` → sessions_spawn 执行 `run_comfyui.ps1`（yieldMs 300000）→ 输出 `MEDIA:<路径>`
-* **TTS 语音**：读 `memory/tts.md` → sessions_spawn 执行 `run_tts.ps1`（yieldMs 180000）→ 输出 `MEDIA:<路径>`
-* **ASR 语音识别**：sessions_spawn 执行 `run_asr.ps1`（yieldMs 180000）→ 输出 `DONE: <识别文本>`
-* **Live2D**：直接 HTTP 调 `http://localhost:19200`（不杀 llama，无需 spawn）
-* **文件操作 / 系统命令 / 代码编写与调试 / Git**
+* **ComfyUI drawing**: read `skills/comfyui/prompt_template.md` → sessions_spawn run `run_comfyui.ps1` (yieldMs 300000) → output `MEDIA:<path>`
+* **TTS voice**: read `memory/tts.md` → sessions_spawn run `run_tts.ps1` (yieldMs 180000) → output `MEDIA:<path>`
+* **ASR speech recognition**: sessions_spawn run `run_asr.ps1` (yieldMs 180000) → output `DONE: <recognized text>`
+* **Live2D**: direct HTTP to `http://localhost:19200` (does not kill llama, no spawn needed)
+* **File ops / system commands / coding & debugging / Git**
 
-## 退出工具人模式
+## Leave Tool Mode
 
 ```powershell
-python skills\character_importer\card_importer.py switch-harem <角色名>
+python skills\character_importer\card_importer.py switch-harem <char_name>
 ```
 
-切换后 /reset 重载，恢复角色扮演。
+## 深度思考模式 / Deep Reasoning
+
+默认 `-rea off`（工具调用场景必须）。如需启用深度思考（DeepSeek-style reasoning），
+可将所有启动脚本中的 `-rea off` 改为 `-rea on`，其余参数不变。
+或者通过 daemon 的 `/api/set-rea?mode=on` 接口动态切换。
+
+Then /reset to reload and resume roleplay.

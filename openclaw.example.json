@@ -35,8 +35,8 @@
           {
             "id": "qwen3.6-35b",
             "name": "qwen3.6 35B",
-            "contextWindow": 120000,
-            "maxTokens": 8096,
+            "contextWindow": 150000,
+            "maxTokens": 12000,
             "reasoning": false
           }
         ]
@@ -51,8 +51,8 @@
           {
             "id": "llama-local",
             "name": "Local Llama (Headroom+Mem0)",
-            "contextWindow": 120000,
-            "maxTokens": 8192,
+            "contextWindow": 150000,
+            "maxTokens": 12000,
             "reasoning": false,
             "compat": {
               "supportsReasoningEffort": false,
@@ -64,8 +64,8 @@
           {
             "id": "qwen3.6-35b",
             "name": "qwen3.6 35B via Headroom",
-            "contextWindow": 120000,
-            "maxTokens": 8096,
+            "contextWindow": 150000,
+            "maxTokens": 12000,
             "reasoning": false
           },
           {
@@ -145,6 +145,16 @@
   "tools": {
     "byProvider": {
       "llama/qwen3.6-35b": {
+        "deny": [
+          "cron"
+        ]
+      },
+      "local-llama/qwen3.6-35b": {
+        "deny": [
+          "cron"
+        ]
+      },
+      "local-llama/llama-local": {
         "deny": [
           "cron"
         ]

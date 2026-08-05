@@ -254,7 +254,7 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-d
 ```powershell
 llama-server.exe `
   -m "Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf" `
-  -c 120000 `
+  -c 150000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
   --cpu-moe --cpu-mask 0xFFFFFFFF `
   --batch-size 4096 --ubatch-size 2048 `

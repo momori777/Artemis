@@ -74,7 +74,7 @@ llama_log_dir: "llama-server/restart-logs"
 restart_script: "skills/shared/restart_llama_degraded.ps1"
 
 llama:
-  context: 120000
+  context: 150000
   batch_size: 2048
   ubatch_size: 1024
   cache_ram: 5000

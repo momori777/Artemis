@@ -357,7 +357,7 @@ def stop_llama(port=8080, wait_vram_stable=True):
 
 
 def start_llama(port=8080, exe_path=None, model_path=None,
-                log_dir=None, timeout=180, use_mmap=False, rea_mode="auto"):
+                log_dir=None, timeout=180, use_mmap=False, rea_mode="off"):
     """
     启动 llama-server 并等待就绪。
 
@@ -414,7 +414,7 @@ def start_llama(port=8080, exe_path=None, model_path=None,
     args = [
         exe_path or "llama-server.exe",
         "-m", model_path or "",
-        "-c", "120000",
+        "-c", "150000",
         "--flash-attn", "on",
         "-ctk", "q4_0",
         "-ctv", "q4_0",
@@ -590,7 +590,7 @@ if __name__ == "__main__":
         exe = sys.argv[3] if len(sys.argv) > 3 else None
         model = sys.argv[4] if len(sys.argv) > 4 else None
         log_dir = sys.argv[5] if len(sys.argv) > 5 else None
-        rea_mode = sys.argv[6] if len(sys.argv) > 6 else "auto"
+        rea_mode = sys.argv[6] if len(sys.argv) > 6 else "off"
         # Temporarily patch START_ARGS rea for this run
         start_llama(port, exe_path=exe, model_path=model, log_dir=log_dir, rea_mode=rea_mode)
         print(f"[OK] llama started with -rea {rea_mode}")
