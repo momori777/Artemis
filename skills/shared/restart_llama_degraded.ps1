@@ -123,7 +123,7 @@ for ($i = $startIdx; $i -lt $batchSizes.Count; $i++) {
 
   $llaArgs = @(
     '-m', $model,
-    '-c', '120000',
+    '-c', '150000',
     '--flash-attn', 'on',
     '-ctk', 'q8_0',
     '-ctv', 'q8_0',

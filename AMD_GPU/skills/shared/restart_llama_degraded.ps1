@@ -128,7 +128,7 @@ for ($i = $startIdx; $i -lt $batchSizes.Count; $i++) {
 
   $llaArgs = @(
     '-m', $model,
-    '-c', '120000',
+    '-c', '150000',
     '-ngl', '99',
     '--cpu-moe',
     '--batch-size', "$bs",

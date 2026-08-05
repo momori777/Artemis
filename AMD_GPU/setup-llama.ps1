@@ -12,7 +12,7 @@
 
 param(
     [string]$ModelPath = "",
-    [int]$ContextSize = 120000,
+    [int]$ContextSize = 150000,
     [int]$Port = 8080,
     [switch]$BuildLlama,
     [switch]$DryRun,

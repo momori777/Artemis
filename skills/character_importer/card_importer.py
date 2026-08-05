@@ -44,9 +44,19 @@ ST_CHATS_DIR = _ST_HOME / "chats" if _ST_HOME else None
 # Files that are role-specific (swapped during switch)
 ROLE_FILES = ["SOUL.md", "IDENTITY.md"]
 ROOT_FILES = ["SOUL.md", "IDENTITY.md"]  # at workspace root
-# AGENTS.md is the ability hub; roleplay mode uses the full version,
-# tool mode swaps in a minimal version from skills/tool/AGENTS*.md
-AGENTS_FILES = ["AGENTS.md", "AGENTS_EN.md", "AGENTS_JA.md"]
+# AGENTS.md is the ONLY agent file the runtime actually reads at the repo root.
+# Tool mode swaps in skills/tool/AGENTS.md (English); roleplay mode restores the
+# roleplay copy from skills/tool/AGENTS.md.roleplay.bak.
+# The other language editions are reference docs kept out of the swap:
+#   root:        AGENTS_roleplay_EN/CN/JA.md   (lite roleplay, for readers)
+#   skills/tool: AGENTS_roleplay_full_*.md / AGENTS_roleplay_lite_*.md / AGENTS_CN.md / AGENTS_JA.md
+# Keep this list at ["AGENTS.md"] so switching never overwrites those docs.
+AGENTS_FILES = ["AGENTS.md"]
+
+# Canonical roleplay AGENTS doc shipped in the repo (tracked by git).
+# Used as fallback when skills/tool/*.roleplay.bak is absent, e.g. a fresh clone,
+# since .gitignore excludes skills/tool/*.roleplay.bak.
+ROLEPLAY_CANONICAL = "AGENTS_roleplay_lite_EN.md"
 
 
 def _agents_bak_name(fname: str) -> str:
@@ -356,12 +366,49 @@ def do_switch(parsed: dict, source_name: str):
     print(f"     Run /reset to reload.")
 
 
-def do_switch_harem(name: str):
-    """Switch to an existing harem member by name."""
+def _fuzzy_match_harem(name: str) -> Optional[Path]:
+    """Find a harem member dir by exact name, then by fuzzy/substring match.
+
+    Supports: case-insensitive, partial names (e.g. '夏目' -> '四季夏目'),
+    and latin/romaji aliases. Returns the matched dir or None.
+    """
     safe = normalize_chara_name(name).lower().replace(" ", "-")
+
+    # 1. Exact match
     src = HAREM_DIR / safe
-    if not src.exists() or not (src / "SOUL.md").exists():
-        print(f"[X] Harem member '{name}' not found in {src}")
+    if src.exists() and (src / "SOUL.md").exists():
+        return src
+
+    # 2. Fuzzy: substring match on directory name (both directions)
+    candidates = []
+    for d in HAREM_DIR.iterdir():
+        if not d.is_dir() or not (d / "SOUL.md").exists():
+            continue
+        d_lower = d.name.lower().replace(" ", "-")
+        if not safe:
+            continue
+        if safe in d_lower or d_lower in safe:
+            candidates.append(d)
+
+    if not candidates:
+        return None
+    if len(candidates) == 1:
+        return candidates[0]
+    # Multiple candidates: prefer startswith / exact-keyword matches
+    for d in candidates:
+        d_lower = d.name.lower().replace(" ", "-")
+        if d_lower.startswith(safe) or safe.startswith(d_lower):
+            return d
+    # Otherwise return the shortest name (most likely the canonical one)
+    candidates.sort(key=lambda d: len(d.name))
+    return candidates[0]
+
+
+def do_switch_harem(name: str):
+    """Switch to an existing harem member by name (fuzzy match supported)."""
+    src = _fuzzy_match_harem(name)
+    if src is None:
+        print(f"[X] Harem member '{name}' not found.")
         members = discover_harem()
         if members:
             print(f"  Available: {', '.join(m['name'] for m in members)}")
@@ -381,9 +428,9 @@ def do_switch_harem(name: str):
     _restore_roleplay_agents()
 
     # 切换 TTS 权重
-    _switch_tts_weights(safe)
+    _switch_tts_weights(src.name)
 
-    print(f"\n[OK] Switched to '{name}' from harem!")
+    print(f"\n[OK] Switched to '{src.name}' from harem!")
     print(f"     Previous '{old_key}' saved.")
     print(f"     Run /reset to reload.")
 
@@ -441,16 +488,27 @@ def _install_tool_agents():
 
 
 def _restore_roleplay_agents():
-    """Restore the full roleplay AGENTS*.md (zh/en/ja) when leaving tool mode."""
+    """Restore the roleplay AGENTS.md when leaving tool mode.
+
+    Source priority:
+      1. skills/tool/AGENTS.md.roleplay.bak  - local snapshot of the user's own
+         roleplay edits. Gitignored, so it only exists on machines that have
+         switched to tool mode at least once.
+      2. skills/tool/AGENTS_roleplay_lite_EN.md - canonical roleplay doc shipped
+         in the repo. This is the fallback that makes a fresh clone work.
+    """
     restored = False
     for fname in AGENTS_FILES:
         bak = TOOL_DIR / _agents_bak_name(fname)
-        if not bak.exists():
+        src = bak if bak.exists() else (TOOL_DIR / ROLEPLAY_CANONICAL)
+        if not src.exists():
+            print(f"  [!] 未找到角色版来源 ({bak.name} / {ROLEPLAY_CANONICAL})，跳过 {fname}")
             continue
-        shutil.copy2(bak, WORKSPACE_ROOT / fname)
+        shutil.copy2(src, WORKSPACE_ROOT / fname)
         if OPENCLAW_WS.exists():
-            shutil.copy2(bak, OPENCLAW_WS / fname)
-        print(f"  [AGENTS] 已恢复角色版 {fname}")
+            shutil.copy2(src, OPENCLAW_WS / fname)
+        origin = "本地备份" if src == bak else f"仓库版 {ROLEPLAY_CANONICAL}"
+        print(f"  [AGENTS] 已恢复角色版 {fname} (来源: {origin})")
         restored = True
     return restored
 
