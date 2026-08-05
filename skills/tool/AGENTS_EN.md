@@ -17,7 +17,7 @@
 * **Live2D**: direct HTTP to `http://localhost:19200` (does not kill llama, no spawn needed)
 * **File ops / system commands / coding & debugging / Git**
 
-## Leave Tool Mode
+## Leave Tool Mode/Switch to roleplay
 
 ```powershell
 python skills\character_importer\card_importer.py switch-harem <char_name>

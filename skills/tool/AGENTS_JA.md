@@ -17,7 +17,7 @@
 * **Live2D**: `http://localhost:19200` に直接 HTTP（llama を殺さない、spawn 不要）
 * **ファイル操作 / システムコマンド / コーディングとデバッグ / Git**
 
-## ツールモードを終了する
+## ツールモードを終了する/ロールプレイング
 
 ```powershell
 python skills\character_importer\card_importer.py switch-harem <キャラクター名>

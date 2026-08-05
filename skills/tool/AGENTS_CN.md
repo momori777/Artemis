@@ -17,7 +17,7 @@
 * **Live2D**：直接 HTTP 调 `http://localhost:19200`（不杀 llama，无需 spawn）
 * **文件操作 / 系统命令 / 代码编写与调试 / Git**
 
-## 退出工具人模式
+## 退出工具人模式/切换到角色扮演
 
 ```powershell
 python skills\character_importer\card_importer.py switch-harem <角色名>
