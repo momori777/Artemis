@@ -1,4 +1,4 @@
-# AI Girlfriend - 路径配置文件 (模板)
+﻿# AI Girlfriend - 路径配置文件 (模板)
 # 每个人环境和盘符不同，clone后复制此文件为 config.yaml 并修改路径。
 # 自动配置方式: 运行 quick_setup.ps1 交互式填写
 # 手动配置方式: 复制此文件为 config.yaml，修改下面各路径
@@ -68,7 +68,7 @@ tts_temp_output_dir: "填写 TTS 临时输出目录"
 # llama.cpp (本地 LLM)
 # ============================================================
 llama_exe: "填写 llama-server.exe 路径，例如 D:\\AI_Girlfriend\\llama-server\\llama-server.exe"
-llama_model: "填写 GGUF 模型文件路径，例如 E:\\Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf"
+llama_model: "填写 GGUF 模型文件路径，例如 E:\\Hermes3.6-35B-A3B-Uncensored-Genesis-V7-APEX-Compact.gguf"
 llama_port: 8080
 llama_log_dir: "llama-server/restart-logs"
 restart_script: "skills/shared/restart_llama_degraded.ps1"
