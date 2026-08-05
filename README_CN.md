@@ -1,4 +1,4 @@
-四号女友投票中,请在issue里完成投票
+﻿四号女友投票中,请在issue里完成投票
 
 配置教程BV16XTV6fEoH
 
@@ -207,7 +207,7 @@ Qwen3.6-35B (语言心智) ←→ Cosmos 3 Nano (物理心智)
 
 | 模型 | 用途 | 大小 |
 |-|-|-|
-| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V6 APEX Compact** (GGUF) | 聊天 LLM | 16.11 GB |
+| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V7 APEX Compact** (GGUF) | 聊天 LLM | 16.11 GB |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI 画图(默认) | 6.46 GB |
 | **miaomiaoHarem_v20** | ComfyUI 画图(备用) | 6.46 GB |
 | **GPT-SoVITS 语音权重** | TTS 语音合成 | ~303 MB |
@@ -247,13 +247,13 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-d
 
 ## 本地 LLM 性能
 
-通过 llama.cpp 运行 LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V6 (MoE, 16.10 GiB, 34.66B 参数)。
+通过 llama.cpp 运行 LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V7 (MoE, 16.10 GiB, 34.66B 参数)。
 
 ### 启动命令
 
 ```powershell
 llama-server.exe `
-  -m "Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf" `
+  -m "Hermes3.6-35B-A3B-Uncensored-Genesis-V7-APEX-Compact.gguf" `
   -c 150000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
   --cpu-moe --cpu-mask 0xFFFFFFFF `
@@ -621,7 +621,7 @@ powershell -File start.ps1
 
 启动顺序:
 ```
-[1/8] llama-server        (8080, Genesis Hermes V6, --no-mmap)
+[1/8] llama-server        (8080, Genesis Hermes V7, --no-mmap)
 [2/8] Embedding Server    (9999, all-MiniLM + BGE 双模型, CPU, ~100MB 内存)
 [3/8] VRAM 分档检测       (自动判断 TTS/ComfyUI 是否停 llama)
 [4/8] Headroom Proxy      (19251, mem0 记忆注入 + SmartCrusher 压缩 + 云端路由)
