@@ -553,7 +553,7 @@ def start_llama(port=8080, exe_path=None, model_path=None,
     args = [
         exe_path or "llama-server.exe",
         "-m", model_path or "",
-        "-c", "120000",
+        "-c", "150000",
         "-ngl", str(ngl),
         "--cpu-moe",
         "--batch-size", str(batch_size),

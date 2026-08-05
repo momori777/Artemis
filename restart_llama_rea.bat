@@ -4,7 +4,7 @@ REM 用法: restart_llama_rea.bat [on|off]
 
 setlocal enabledelayedexpansion
 set "REA_MODE=%1"
-if "%REA_MODE%"=="" set "REA_MODE=auto"
+if "%REA_MODE%"=="" set "REA_MODE=off"
 
 set "PROJECT_DIR=%~dp0"
 echo [%date% %time%] Switching llama to -rea %REA_MODE% >> %PROJECT_DIR%\rea_switch.log
@@ -21,7 +21,7 @@ echo Port 8080 released.
 REM 启动 llama
 start "" /B %PROJECT_DIR%\llama-server\llama-server.exe ^
   -m E:\Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf ^
-  -c 120000 --flash-attn on ^
+  -c 150000 --flash-attn on ^
   -ctk q8_0 -ctv q8_0 ^
   --no-mmap --cpu-moe ^
   --batch-size 2048 --ubatch-size 1024 ^

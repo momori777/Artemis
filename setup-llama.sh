@@ -20,7 +20,7 @@ set -euo pipefail
 # Args
 # ============================================================================
 MODEL_PATH=""
-CONTEXT_SIZE=120000
+CONTEXT_SIZE=150000
 PORT=8080
 BUILD_LLAMA=false
 DRY_RUN=false

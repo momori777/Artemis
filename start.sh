@@ -107,13 +107,14 @@ else
 
     nohup "$LLAMA_EXE" \
         -m "$LLAMA_MODEL" \
-        -c 120000 \
+        -c 150000 \
         --flash-attn on \
         -ctk q8_0 -ctv q8_0 \
         --batch-size 2048 \
         --ubatch-size 1024 \
         --threads "$(nproc)" \
         --jinja \
+        -rea off \
         --cache-ram 3000 \
         --parallel 1 \
         --port "$LLAMA_PORT" \
