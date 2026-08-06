@@ -211,8 +211,21 @@ def _wait_for_llama_ready(port=8080, timeout=180, label="[LLAMA]"):
 
     # 阶段 4: /v1/chat/completions 端点验证（OpenClaw 用这个）
     v1_deadline = min(time.time() + 60, deadline + 10)
+    # 从 config.yaml 读取模型名（或 fallback）
+    _test_model = "local-model"
+    try:
+        _dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        _cfg_path = os.path.join(_dir, "config.yaml")
+        if os.path.exists(_cfg_path):
+            import yaml
+            with open(_cfg_path, "r", encoding="utf-8") as _f:
+                _cfg = yaml.safe_load(_f) or {}
+            _mp = _cfg.get("llama_model", "")
+            _test_model = _cfg.get("llama_model_name", "") or os.path.basename(_mp) if _mp else "local-model"
+    except Exception:
+        pass
     chat_payload = _json.dumps({
-        "model": "qwen3.6-35b",
+        "model": _test_model,
         "messages": [{"role": "user", "content": "hi"}],
         "max_tokens": 1,
         "temperature": 0,
@@ -366,6 +379,28 @@ def start_llama(port=8080, exe_path=None, model_path=None,
     """
     print("[LLAMA] 启动 llama-server...", file=sys.stderr, flush=True)
 
+    # 从 config.yaml 读取 llama 参数（与 shiki_daemon.py / start.ps1 对齐）
+    _cfg = {}
+    try:
+        _dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        _cfg_path = os.path.join(_dir, "config.yaml")
+        if os.path.exists(_cfg_path):
+            import yaml
+            with open(_cfg_path, "r", encoding="utf-8") as _f:
+                _cfg = yaml.safe_load(_f) or {}
+    except Exception:
+        pass
+    _llm_cfg = _cfg.get("llama", {}) if _cfg else {}
+    _ctx = _llm_cfg.get("context", 150000)
+    _batch = _llm_cfg.get("batch_size", 4096)
+    _ubatch = _llm_cfg.get("ubatch_size", 2048)
+    _threads = _llm_cfg.get("threads", 24)
+    _ctk = _llm_cfg.get("ctk", "q4_0")
+    _ctv = _llm_cfg.get("ctv", "q4_0")
+    _ngl = _llm_cfg.get("ngl", 41)
+    _cache_ram = _llm_cfg.get("cache_ram", 5000)
+    _model_name = _cfg.get("llama_model_name", "") or os.path.basename(model_path or "") if model_path else "local-model"
+
     # VRAM 激进清理 — ComfyUI 推理后 tensor 可能还被驱动持有
     try:
         import torch
@@ -405,40 +440,66 @@ def start_llama(port=8080, exe_path=None, model_path=None,
                 break
             time.sleep(0.5)
 
-    # Build args — mmap 模式由 use_mmap 参数控制。
-    # ComfyUI 推理后 RSS 未完全回收，用 mmap 避免 15GB pinned RAM 分配失败。
-    # q4_0 on KV halves VRAM usage while stable up to 50K+ tokens.
-    batch_size = 4096
-    ubatch_size = 2048
+    # Build args — 统一解析：从 config.yaml + model_profiles 匹配
+    try:
+        import sys as _sys
+        _sys_path_backup = list(_sys.path)
+        _sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        from skills.shared.llama_config import resolve_llama_params, build_llama_args as _build_llama_args
+        _sys.path = _sys_path_backup
+        _params = resolve_llama_params(_cfg, model_path=model_path or _cfg.get("llama_model", ""))
+        # 用传入参数覆盖（调用方如 bridge 可能传不同 exe_path / port / rea_mode）
+        if exe_path:
+            _params["exe_path"] = exe_path
+        _params["port"] = port
+        _params["rea_mode"] = rea_mode
+        _params["log_dir"] = log_dir or _params.get("log_dir", "")
+        args = _build_llama_args(_params)
+    except Exception as _e:
+        # 降级：老逻辑
+        print(f"[LLAMA] llama_config resolve failed ({_e}), using legacy args",
+              file=sys.stderr, flush=True)
+        args = [
+            exe_path or "llama-server.exe",
+            "-m", model_path or "",
+            "-c", str(_ctx),
+            "--flash-attn", "on",
+            "-ctk", _ctk,
+            "-ctv", _ctv,
+        ]
+        if not use_mmap:
+            args.append("--no-mmap")
+        args += [
+            "--cpu-moe",
+            "--cpu-mask", "0xFFFFFFFF",
+            "--batch-size", str(_batch),
+            "--ubatch-size", str(_ubatch),
+            "--threads", str(_threads),
+            "-ngl", str(_ngl),
+            "-rea", rea_mode, "--reasoning-format", "deepseek",
+            "--jinja",
+            "--cache-ram", str(_cache_ram),
+            "--parallel", "1",
+            "--kv-unified",
+            "--no-warmup",
+        ]
+        _model_name_lower = _model_name.lower()
+        if "mtp" in _model_name_lower:
+            _mtp_n = _llm_cfg.get("spec_draft_n_max", 1)
+            print(f"[LLAMA] MTP model detected: adding --spec-type draft-mtp --spec-draft-n-max {_mtp_n}",
+                  file=sys.stderr, flush=True)
+            args += ["--spec-type", "draft-mtp", "--spec-draft-n-max", str(_mtp_n)]
 
-    args = [
-        exe_path or "llama-server.exe",
-        "-m", model_path or "",
-        "-c", "150000",
-        "--flash-attn", "on",
-        "-ctk", "q4_0",
-        "-ctv", "q4_0",
-    ]
-
-    # mmap 模式：use_mmap=True 用 mmap（从磁盘映射，省 RAM），
-    # 否则 --no-mmap（全部加载到 RAM，需 ~15GB）。
-    # ComfyUI 回调传 use_mmap=True 避免推理后 RAM OOM。
-    if not use_mmap:
-        args.append("--no-mmap")
-
-    args += [
-        "--cpu-moe",
-        "--cpu-mask", "0xFFFFFFFF",
-        "--batch-size", str(batch_size),
-        "--ubatch-size", str(ubatch_size),
-
-        "-rea", rea_mode, "--reasoning-format", "deepseek",
-        "--jinja",
-        "--cache-ram", "5000",
-        "--parallel", "1",
-        "--kv-unified",
-        "--no-warmup",
-    ]
+    # mmap 覆盖：ComfyUI 回调传 use_mmap=True 避免推理后 RAM OOM
+    # 如果 use_mmap=True 且 args 中有 --no-mmap，去掉它
+    if use_mmap:
+        try:
+            args.remove("--no-mmap")
+        except ValueError:
+            pass
+    else:
+        if "--no-mmap" not in args:
+            args.append("--no-mmap")
 
     if log_dir:
         os.makedirs(log_dir, exist_ok=True)

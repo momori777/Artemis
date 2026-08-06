@@ -27,14 +27,26 @@ var ApiClient = {
           return { id: m.id, name: m.name };
         });
         if (models.length === 0) {
-          models = [{ id: 'local/qwen3.6-35b', name: 'Local (Llama)' }];
+          models = [{ id: 'local-model', name: 'Local (Llama)' }];
         }
         self._modelsCache = models;
         return models;
       })
       .catch(function () {
-        return [{ id: 'local/qwen3.6-35b', name: 'Local (Llama)' }];
+        self._modelsCache = [{ id: 'local-model', name: 'Local (Llama)' }];
+        return self._modelsCache;
       });
+  },
+
+  /**
+   * 返回默认模型 ID：优先已加载模型列表的第一个，
+   * 否则回退到通用占位 'local-model'（daemon 会把 local/* 路由到本地 llama-server）。
+   */
+  getDefaultModel: function () {
+    if (this._modelsCache && this._modelsCache.length) {
+      return this._modelsCache[0].id;
+    }
+    return 'local-model';
   },
 
   /**
@@ -54,7 +66,7 @@ var ApiClient = {
   },
 
   chatStream: async function (messages, settings, onToken, onComplete, onError) {
-    var model = settings.model || 'local/qwen3.6-35b';
+    var model = settings.model || this.getDefaultModel();
     var characterId = settings.characterId || 'natsume';
     // Merge sampler params from sampler panel (SillyTavern-style permanent overrides)
     var samplerParams = {};
@@ -195,7 +207,7 @@ var ApiClient = {
   },
 
   nonStreamChat: function (messages, settings) {
-    var model = settings.model || 'local/qwen3.6-35b';
+    var model = settings.model || this.getDefaultModel();
     var characterId = settings.characterId || 'natsume';
     var body = {
       model: model,

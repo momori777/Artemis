@@ -147,8 +147,10 @@ media/sakura.mp4
 media/demo_qqbot.mp4
 # TTS debug log (contains absolute paths)
 _tts_debug.txt
-# Claude Code 本地配置（含 token/路径）不提交
-.claude/
+# Claude Code — 本地配置/运行时数据不提交，源码提交
+.claude/settings.local.json
+.claude/task_queue.db
+.claude/__pycache__/
 
 # tool-mode roleplay backups
 skills/tool/*.roleplay.bak
