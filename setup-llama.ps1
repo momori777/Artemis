@@ -114,15 +114,39 @@ $vramGB = $primaryGpu.VRAM_GB
 Write-Host "[2/5] Detecting model..." -ForegroundColor Yellow
 
 if (-not $ModelPath) {
-    $defaults = @(
-        "E:\Hermes3.6-35B-A3B-Uncensored-Genesis-V7-APEX-Compact.gguf",
-        ".\models\Hermes3.6-35B-A3B-Uncensored-Genesis-V7-APEX-Compact.gguf",
-        "Hermes3.6-35B-A3B-Uncensored-Genesis-V7-APEX-Compact.gguf"
-    )
-    foreach ($p in $defaults) {
-        if (Test-Path $p) {
-            $ModelPath = (Resolve-Path $p).Path
-            break
+    # 优先从 config.yaml 读取模型路径
+    $configPath = Join-Path $PSScriptRoot "config.yaml"
+    if (Test-Path $configPath) {
+        $configRaw = Get-Content $configPath -Raw -Encoding UTF8
+        $m = [regex]::Match($configRaw, "(?m)^\s*llama_model\s*:\s*"?(.+?)"?\s*$")
+        if ($m.Success) {
+            $cfgPath = $m.Groups[1].Value.Trim('"').Trim()
+            if (Test-Path $cfgPath) {
+                $ModelPath = (Resolve-Path $cfgPath).Path
+            }
+        }
+    }
+
+    # 如果 config.yaml 没有或路径无效，fallback 到模糊搜索
+    if (-not $ModelPath) {
+        $searchDirs = @(
+            (Join-Path $PSScriptRoot "models"),
+            (Join-Path $PSScriptRoot "llm"),
+            $PSScriptRoot
+        )
+        $found = $null
+        foreach ($dir in $searchDirs) {
+            if (Test-Path $dir) {
+                $ggufs = Get-ChildItem -Path $dir -Filter "*.gguf" -ErrorAction SilentlyContinue
+                if ($ggufs) {
+                    $found = $ggufs | Sort-Object Length -Descending | Select-Object -First 1
+                    break
+                }
+            }
+        }
+        if ($found) {
+            $ModelPath = $found.FullName
+            Write-Host "  Auto-detected: $($found.Name)" -ForegroundColor Green
         }
     }
 }

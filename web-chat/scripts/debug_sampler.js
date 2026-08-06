@@ -27,6 +27,24 @@
     var self = this;
     _origInitDebug.call(this);
 
+    // Populate debug model dropdown from backend (dynamic, no hardcoded model ids)
+    if (typeof ApiClient !== 'undefined' && typeof ApiClient.fetchModels === 'function') {
+      ApiClient.fetchModels().then(function(models) {
+        var select = document.getElementById('debug-model');
+        if (!select || !models || !models.length) return;
+        var current = select.value;
+        var html = models.map(function(m) {
+          var sel = (current && m.id === current) ? ' selected' : '';
+          return '<option value="' + m.id + '"' + sel + '>' + m.name + ' (' + m.id + ')</option>';
+        }).join('');
+        if (!html) return;
+        select.innerHTML = html;
+        // 保留用户已选中的模型（若还在列表中）
+        var stillExists = models.some(function(m) { return m.id === current; });
+        if (current && stillExists) select.value = current;
+      }).catch(function() { /* keep hardcoded fallback options */ });
+    }
+
     // Inject preset buttons
     this._injectPresets();
     // Enhance sliders
@@ -205,7 +223,7 @@
     messages.push({role:'user',content:userText});
 
     var body = {
-      model: (document.getElementById('debug-model')?.value) || 'local/qwen3.6-35b',
+      model: (document.getElementById('debug-model')?.value) || ApiClient.getDefaultModel(),
       messages: messages,
       stream: false,
       max_tokens: parseInt((document.getElementById('debug-max-tokens')?.value)||2048),

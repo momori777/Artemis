@@ -47,9 +47,9 @@ _CFG = _load_config()
 
 LLAMA_PORT = int(os.environ.get("LLAMA_PORT", str(_CFG.get("llama_port", 8080))))
 LLAMA_URL = f"http://127.0.0.1:{LLAMA_PORT}/v1/chat/completions"
-# 模型名从 config.yaml 读取，fallback 到环境变量
+# 模型名：优先 llama_model_name，否则取 basename，再 fallback 环境变量
 _model_path = _CFG.get("llama_model", "")
-LLAMA_MODEL = os.path.basename(_model_path) if _model_path else os.environ.get("LLAMA_MODEL", "local-model")
+LLAMA_MODEL = _CFG.get("llama_model_name", "") or os.path.basename(_model_path) if _model_path else os.environ.get("LLAMA_MODEL", "local-model")
 
 # ── Headroom 关键参数 (与 context_trimming.py 对齐) ──────────
 HEADROOM_RECENT_FULL_ROUNDS = 4   # 最近 N 轮完整保留

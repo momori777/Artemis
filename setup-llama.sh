@@ -149,25 +149,43 @@ fi
 # ============================================================================
 echo -e "${YELLOW}[2/5] Detecting model...${NC}"
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 if [[ -z "$MODEL_PATH" ]]; then
-    for p in \
-        "/e/Hermes3.6-35B-A3B-Uncensored-Genesis-V5-APEX-Compact.gguf" \
-        "./models/Hermes3.6-35B-A3B-Uncensored-Genesis-V5-APEX-Compact.gguf" \
-        "Hermes3.6-35B-A3B-Uncensored-Genesis-V5-APEX-Compact.gguf"; do
-        if [[ -f "$p" ]]; then
-            MODEL_PATH="$(realpath "$p")"
-            break
+    # 优先从 config.yaml 读取模型路径
+    CONFIG_FILE="$SCRIPT_DIR/config.yaml"
+    if [[ -f "$CONFIG_FILE" ]]; then
+        CFG_PATH=$(grep -E '^[[:space:]]*llama_model[[:space:]]*:' "$CONFIG_FILE" | head -1 | sed -E 's/^[[:space:]]*llama_model[[:space:]]*:[[:space:]]*"?([^"]*?)"?[[:space:]]*$/\1/' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        if [[ -n "$CFG_PATH" && -f "$CFG_PATH" ]]; then
+            MODEL_PATH="$(realpath "$CFG_PATH" 2>/dev/null)"
+            echo -e "  ${GREEN}Using model from config.yaml: $CFG_PATH${NC}"
+        fi
+    fi
+fi
+
+if [[ -z "$MODEL_PATH" ]] || [[ ! -f "$MODEL_PATH" ]]; then
+    # Fallback: 模糊搜索 .gguf 文件
+    SEARCH_DIRS=("$SCRIPT_DIR/models" "$SCRIPT_DIR/llm" "$SCRIPT_DIR")
+    for dir in "${SEARCH_DIRS[@]}"; do
+        if [[ -d "$dir" ]]; then
+            GGUFS=($(find "$dir" -maxdepth 1 -name "*.gguf" -type f 2>/dev/null | sort -r))
+            if [[ ${#GGUFS[@]} -gt 0 ]]; then
+                MODEL_PATH="${GGUFS[0]}"
+                echo -e "  ${GREEN}Auto-detected: $(basename "$MODEL_PATH")${NC}"
+                break
+            fi
         fi
     done
 fi
 
 if [[ -z "$MODEL_PATH" ]] || [[ ! -f "$MODEL_PATH" ]]; then
     echo -e "  ${YELLOW}No model found. Search paths:${NC}"
-    echo -e "    - ./llm/Qwen3.6-35B-A3B-APEX-I-Compact.gguf"
-    echo -e "    - ./models/llm/"
-    echo -e "    - ./llm/"
+    echo -e "    - $SCRIPT_DIR/models/*.gguf"
+    echo -e "    - $SCRIPT_DIR/llm/*.gguf"
+    echo -e "    - $SCRIPT_DIR/*.gguf"
     echo ""
     echo -e "  ${YELLOW}Run download-models.sh first, or specify --model <path>.${NC}"
+    echo -e "  ${YELLOW}Or set llama_model in config.yaml${NC}"
     exit 1
 fi
 

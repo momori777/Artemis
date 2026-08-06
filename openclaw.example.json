@@ -38,6 +38,13 @@
             "contextWindow": 150000,
             "maxTokens": 12000,
             "reasoning": false
+          },
+          {
+            "id": "qwen3.6-27b",
+            "name": "qwen3.6 27B",
+            "contextWindow": 150000,
+            "maxTokens": 12000,
+            "reasoning": false
           }
         ]
       },
@@ -145,6 +152,11 @@
   "tools": {
     "byProvider": {
       "llama/qwen3.6-35b": {
+        "deny": [
+          "cron"
+        ]
+      },
+      "llama/qwen3.6-27b": {
         "deny": [
           "cron"
         ]

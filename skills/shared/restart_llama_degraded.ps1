@@ -87,6 +87,78 @@ Write-Host ""
 Write-Host "Cleaning up existing processes..." -ForegroundColor Yellow
 Kill-AllLlama
 
+# ===== 统一参数解析：从 llama_config.py 获取基础参数，降级时逐级降 batch =====
+$pythonExe = $null
+if (Get-Command python -ErrorAction SilentlyContinue) { $pythonExe = (Get-Command python).Source }
+if (-not $pythonExe -and (Get-Command python3 -ErrorAction SilentlyContinue)) { $pythonExe = (Get-Command python3).Source }
+
+$baseArgs = $null
+if ($pythonExe) {
+  try {
+    $llamaCfgScript = Join-Path $scriptRoot "skills\shared\llama_config.py"
+    $jsonOut = & $pythonExe $llamaCfgScript --args-only 2>$null | Out-String
+    $parsed = $jsonOut | ConvertFrom-Json
+    if ($parsed -is [array] -and $parsed.Count -gt 0) {
+      $baseArgs = @($parsed | ForEach-Object { [string]$_ })
+      Write-Host "  [llama-config] profile-matched args" -ForegroundColor DarkGray
+    }
+  } catch {
+    Write-Host "  WARNING: llama_config.py failed, using degraded fallback" -ForegroundColor Yellow
+  }
+}
+
+if (-not $baseArgs) {
+  # 降级：正则从 config.yaml 读取
+  $llamaCtx     = & { $m = [regex]::Match($configRaw, "(?m)^llama:\s*$"); if ($m.Success) { $s = $configRaw.Substring($m.Index + $m.Length); $e = [regex]::Match($s, "(?m)^[a-z][a-z_]+:"); $sec = if ($e.Success) { $s.Substring(0, $e.Index) } else { $s }; $vm = [regex]::Match($sec, "(?m)^\s*context\s*:\s*(\d+)"); if ($vm.Success) { $vm.Groups[1].Value } else { '150000' } } else { '150000' } }
+  $llamaCtk     = & { $m = [regex]::Match($configRaw, "(?m)^llama:\s*$"); if ($m.Success) { $s = $configRaw.Substring($m.Index + $m.Length); $e = [regex]::Match($s, "(?m)^[a-z][a-z_]+:"); $sec = if ($e.Success) { $s.Substring(0, $e.Index) } else { $s }; $vm = [regex]::Match($sec, "(?m)^\s*ctk\s*:\s*`"?(\S+?)`"?\s*$"); if ($vm.Success) { $vm.Groups[1].Value.Trim('"') } else { 'q8_0' } } else { 'q8_0' } }
+  $llamaCtv     = & { $m = [regex]::Match($configRaw, "(?m)^llama:\s*$"); if ($m.Success) { $s = $configRaw.Substring($m.Index + $m.Length); $e = [regex]::Match($s, "(?m)^[a-z][a-z_]+:"); $sec = if ($e.Success) { $s.Substring(0, $e.Index) } else { $s }; $vm = [regex]::Match($sec, "(?m)^\s*ctv\s*:\s*`"?(\S+?)`"?\s*$"); if ($vm.Success) { $vm.Groups[1].Value.Trim('"') } else { 'q8_0' } } else { 'q8_0' } }
+  $llamaCacheRam = & { $m = [regex]::Match($configRaw, "(?m)^llama:\s*$"); if ($m.Success) { $s = $configRaw.Substring($m.Index + $m.Length); $e = [regex]::Match($s, "(?m)^[a-z][a-z_]+:"); $sec = if ($e.Success) { $s.Substring(0, $e.Index) } else { $s }; $vm = [regex]::Match($sec, "(?m)^\s*cache_ram\s*:\s*(\d+)"); if ($vm.Success) { $vm.Groups[1].Value } else { '3000' } } else { '3000' } }
+  $specDraftNMax = & { $m = [regex]::Match($configRaw, "(?m)^llama:\s*$"); if ($m.Success) { $s = $configRaw.Substring($m.Index + $m.Length); $e = [regex]::Match($s, "(?m)^[a-z][a-z_]+:"); $sec = if ($e.Success) { $s.Substring(0, $e.Index) } else { $s }; $vm = [regex]::Match($sec, "(?m)^\s*spec_draft_n_max\s*:\s*(\d+)"); if ($vm.Success) { $vm.Groups[1].Value } else { '1' } } else { '1' } }
+
+  $baseArgs = @(
+    '-m', $model,
+    '-c', $llamaCtx,
+    '--flash-attn', 'on',
+    '-ctk', $llamaCtk,
+    '-ctv', $llamaCtv,
+    '-ngl', '41',
+    '--batch-size', '0',  # placeholder, will be overwritten
+    '--ubatch-size', '0', # placeholder
+    '--threads', '24',
+    '-rea', 'off',
+    '--jinja',
+    '--cache-ram', $llamaCacheRam,
+    '--parallel', '1',
+    '--kv-unified',
+    '--no-mmap',
+    '--no-warmup',
+    '--port', $port
+  )
+
+  # 模型类型检测：MoE (含 cpu_moe) vs Dense
+  $modelBasename = [System.IO.Path]::GetFileNameWithoutExtension($model)
+  $isDenseModel = $modelBasename -match '27b|dense'
+  if (-not $isDenseModel) {
+    $baseArgs += '--cpu-moe'
+  }
+
+  # 模型别名 (--alias)
+  $llamaModelName = & { $m = [regex]::Match($configRaw, "(?m)^\s*llama_model_name\s*:\s*`"?(.+?)`"?\s*$"); if ($m.Success) { $m.Groups[1].Value.Trim('"').Trim() } else { '' } }
+  if ($llamaModelName) {
+    $baseArgs += '--alias', $llamaModelName
+  } else {
+    $modelBasename = [System.IO.Path]::GetFileNameWithoutExtension($model)
+    $baseArgs += '--alias', $modelBasename
+  }
+
+  # MTP 检测
+  $modelBasename = [System.IO.Path]::GetFileNameWithoutExtension($model)
+  if ($modelBasename -match 'mtp') {
+    Write-Host "  MTP model detected: adding --spec-type draft-mtp --spec-draft-n-max $specDraftNMax" -ForegroundColor Cyan
+    $baseArgs += '--spec-type', 'draft-mtp', '--spec-draft-n-max', $specDraftNMax
+  }
+}
+
 # 降级表：三个并行数组
 $batchSizes    = @(4096, 2048, 1024, 512)
 $ubatchSizes   = @(2048, 1024, 512,  256)
@@ -121,28 +193,21 @@ for ($i = $startIdx; $i -lt $batchSizes.Count; $i++) {
 
   $logFile = if ($logDir) { Join-Path $logDir "llama_degraded_$(Get-Date -Format 'yyyyMMddHHmm').log" } else { $null }
 
-  $llaArgs = @(
-    '-m', $model,
-    '-c', '150000',
-    '--flash-attn', 'on',
-    '-ctk', 'q8_0',
-    '-ctv', 'q8_0',
-    '-ngl', '41',
-    '--cpu-moe',
-    '--batch-size', "$bs",
-    '--ubatch-size', "$us",
-    '--threads', '24',
-    '-rea', 'off',
-    '--jinja',
-    '--cache-ram', '5000',
-    '--parallel', '1',
-    '--kv-unified',
-    '--no-mmap',
-    '--no-warmup',
-    '--port', $port
-  )
+  # 从 baseArgs 构建：替换 --batch-size 和 --ubatch-size 的值
+  $llaArgs = @($baseArgs | ForEach-Object { [string]$_ })
+  for ($j = 0; $j -lt $llaArgs.Count; $j++) {
+    if ($llaArgs[$j] -eq '--batch-size' -and ($j + 1) -lt $llaArgs.Count) {
+      $llaArgs[$j + 1] = "$bs"
+    } elseif ($llaArgs[$j] -eq '--ubatch-size' -and ($j + 1) -lt $llaArgs.Count) {
+      $llaArgs[$j + 1] = "$us"
+    }
+  }
 
-  $proc = Start-Process -FilePath $exe -ArgumentList $llaArgs -NoNewWindow -PassThru
+  # 从 baseArgs 中分离 exe 路径（llama_config --args-only 第一个元素是 exe_path）
+  $degradedExe = $baseArgs[0]
+  $llaArgs = @($llaArgs | Select-Object -Skip 1)
+
+  $proc = Start-Process -FilePath $degradedExe -ArgumentList $llaArgs -NoNewWindow -PassThru
 
   if (Test-LlamaReady -timeoutSeconds 120) {
     $started = $true

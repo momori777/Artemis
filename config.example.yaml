@@ -68,7 +68,12 @@ tts_temp_output_dir: "填写 TTS 临时输出目录"
 # llama.cpp (本地 LLM)
 # ============================================================
 llama_exe: "填写 llama-server.exe 路径，例如 D:\\AI_Girlfriend\\llama-server\\llama-server.exe"
-llama_model: "填写 GGUF 模型文件路径，例如 E:\\Hermes3.6-35B-A3B-Uncensored-Genesis-V7-APEX-Compact.gguf"
+llama_model: "填写 GGUF 模型文件路径，例如 E:\\Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf"
+
+# API 响应中显示的模型名称（留空则自动取 llama_model 的文件名）
+llama_model_name: ""
+# OpenAI 兼容 API 的 model id（默认 local/<模型名>）
+llama_model_id: ""
 llama_port: 8080
 llama_log_dir: "llama-server/restart-logs"
 restart_script: "skills/shared/restart_llama_degraded.ps1"
@@ -82,6 +87,46 @@ llama:
   ctv: q8_0
   threads: 24
   ngl: 41
+  # MTP(多 token 预测)投机解码，模型名含 mtp 时自动启用
+  spec_draft_n_max: 1
+
+# ---- 模型预设表 (model_profiles) ----
+# 所有启动入口 (shiki_daemon.py / start.ps1 / llama_lifecycle.py /
+# restart_llama_degraded.ps1 / restart_llama_rea.bat) 都会读取这里：
+# 按 llama_model 文件名包含 match 中任意关键字来匹配预设，
+# 命中后该预设的 params 覆盖上方 llama 区块的默认值。
+# 未命中任何预设时使用 llama 区块默认值。
+model_profiles:
+  # ── Qwen3.6-27B-Fable (MTP, Q4_K_S) ──
+  - name: "qwen3.6-27b-fable-mtp"
+    match: ["qwen3.6-27b-fable", "qwen3.6-27b"]
+    params:
+      ctk: q4_0
+      ctv: q4_0
+      batch_size: 4096
+      ubatch_size: 2048
+      threads: 24
+      cpu_moe: false
+      cpu_mask: ""
+      cache_ram: 0          # 0 = 不传 --cache-ram
+      no_warmup: false
+      spec_draft_n_max: 1
+      rea: off
+  # ── Hermes3.6-35B Genesis V7 (MTP, APEX Compact, MoE) ──
+  - name: "hermes3.6-35b-genesis-v7-mtp"
+    match: ["hermes3.6-35b-genesis", "hermes3.6-35b"]
+    params:
+      ctk: q4_0
+      ctv: q4_0
+      batch_size: 4096
+      ubatch_size: 2048
+      threads: 24
+      cpu_moe: true
+      cpu_mask: "0xFFFFFFFF"
+      cache_ram: 3000
+      no_warmup: true
+      spec_draft_n_max: 2
+      rea: off
 
 # ============================================================
 # Memory & Embedding（长期记忆 + 向量库）
@@ -92,3 +137,5 @@ mem0_bridge: "C:\\Users\\<你的用户名>\\.openclaw\\workspace\\skills\\shared
 mem0_sync_cron: "C:\\Users\\<你的用户名>\\.openclaw\\workspace\\skills\\shared\\mem0_sync_cron.py"
 embedding_dir: "填写 embedding 模型缓存路径，例如 C:\\Users\\<你的用户名>\\Desktop\\vllm\\models\\embedding\\all-MiniLM-L6-v2"
 embedding_server: "C:\\Users\\<你的用户名>\\.openclaw\\workspace\\skills\\shared\\start_embedding_server.ps1"
+
+

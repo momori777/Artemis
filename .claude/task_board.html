@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Artemis Task Board</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --muted: #8b949e;
+    --accent: #7c3aed;
+    --accent-glow: #a78bfa;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --blue: #58a6ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .container { max-width: 900px; margin: 0 auto; padding: 32px 20px; }
+
+  /* Header */
+  header { margin-bottom: 32px; }
+  h1 { font-size: 24px; font-weight: 600; color: var(--accent-glow); letter-spacing: -0.5px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  /* Stats strip */
+  .stats { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; flex: 1; min-width: 100px; text-align: center; }
+  .stat-card .num { font-size: 28px; font-weight: 700; }
+  .stat-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+  .stat-card.pending .num { color: var(--yellow); }
+  .stat-card.ongoing .num { color: var(--blue); }
+  .stat-card.completed .num { color: var(--green); }
+
+  /* Create form */
+  .create-form { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+  .create-form h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--accent-glow); }
+  .form-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .form-row input, .form-row textarea { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; color: var(--text); font-size: 13px; font-family: inherit; }
+  .form-row textarea { resize: vertical; min-height: 60px; }
+  .btn { padding: 10px 20px; border-radius: 6px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #6d28d9; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 4px; }
+  .btn-done { background: #1a3a1a; color: var(--green); border: 1px solid #2d5a2d; }
+  .btn-done:hover { background: #2d5a2d; }
+  .btn-start { background: #1a2a3a; color: var(--blue); border: 1px solid #2d4a5a; }
+  .btn-start:hover { background: #2d4a5a; }
+
+  /* Task cards */
+  .section-title { font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+  .task-list { display: flex; flex-direction: column; gap: 10px; }
+  .task-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; transition: border-color 0.2s; cursor: pointer; }
+  .task-card:hover { border-color: var(--accent); }
+  .task-card.selected { border-color: var(--accent-glow); box-shadow: 0 0 0 1px var(--accent); }
+  .task-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .task-id { font-family: monospace; font-size: 11px; color: var(--muted); background: var(--bg); padding: 2px 6px; border-radius: 4px; }
+  .task-status { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
+  .task-status.notstarted { background: #2d2a1a; color: var(--yellow); }
+  .task-status.ongoing { background: #1a2a3a; color: var(--blue); }
+  .task-status.completed { background: #1a3a1a; color: var(--green); }
+  .task-status.blocked { background: #3a1a1a; color: var(--red); }
+  .task-title { font-size: 15px; font-weight: 600; flex: 1; }
+  .task-body { color: var(--muted); font-size: 13px; line-height: 1.5; margin-bottom: 10px; white-space: pre-wrap; }
+  .task-meta { display: flex; gap: 16px; font-size: 11px; color: var(--muted); }
+  .task-actions { display: flex; gap: 6px; margin-top: 10px; }
+
+  /* Detail panel */
+  .detail-panel { display: none; background: var(--card); border: 1px solid var(--accent); border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+  .detail-panel.open { display: block; }
+  .messages { margin: 16px 0; max-height: 300px; overflow-y: auto; }
+  .msg { padding: 10px 12px; border-radius: 6px; margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+  .msg.agent { background: #1a1a2e; border-left: 3px solid var(--accent); }
+  .msg.human { background: #1a2e1a; border-left: 3px solid var(--green); }
+  .msg.system { background: #2d2d1a; border-left: 3px solid var(--yellow); font-size: 12px; }
+  .msg-sender { font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; }
+  .refresh-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .refresh-bar .last { font-size: 12px; color: var(--muted); }
+
+  .empty { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🌸 Artemis Task Board</h1>
+    <div class="subtitle">AgentRQ-compatible · Claude Code task queue · <span id="character">loading...</span></div>
+  </header>
+
+  <div class="stats">
+    <div class="stat-card pending"><div class="num" id="stat-pending">-</div><div class="label">Pending</div></div>
+    <div class="stat-card ongoing"><div class="num" id="stat-ongoing">-</div><div class="label">Ongoing</div></div>
+    <div class="stat-card completed"><div class="num" id="stat-completed">-</div><div class="label">Done</div></div>
+  </div>
+
+  <div class="create-form">
+    <h2>📝 New Task for Claude Code</h2>
+    <div class="form-row">
+      <input id="new-title" placeholder="Task title (e.g., Draw Natsume at the beach)" />
+    </div>
+    <div class="form-row">
+      <textarea id="new-body" placeholder="Describe what you want Claude Code to do...&#10;&#10;e.g. Use ComfyUI, TTS, or memory tools. Be specific about style, character, and output."></textarea>
+    </div>
+    <div class="form-row" style="justify-content: flex-end;">
+      <button class="btn btn-primary" onclick="createTask()">+ Create Task</button>
+    </div>
+  </div>
+
+  <div class="refresh-bar">
+    <div class="section-title">Tasks</div>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <span class="last">Updated: <span id="last-refresh">-</span></span>
+      <button class="btn btn-sm btn-start" onclick="refresh()">⟳ Refresh</button>
+    </div>
+  </div>
+
+  <div class="detail-panel" id="detail-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div>
+        <h3 id="detail-title" style="font-size:16px;"></h3>
+        <span id="detail-status" style="font-size:11px;"></span>
+      </div>
+      <button class="btn btn-sm btn-start" onclick="document.getElementById('detail-panel').classList.remove('open');document.querySelectorAll('.task-card').forEach(c=>c.classList.remove('selected'));">✕</button>
+    </div>
+    <div id="detail-body" style="color:var(--muted);font-size:13px;white-space:pre-wrap;margin-bottom:12px;"></div>
+    <div class="section-title" style="font-size:12px;">Messages</div>
+    <div class="messages" id="detail-messages"></div>
+  </div>
+
+  <div class="task-list" id="task-list">
+    <div class="empty">Loading tasks...</div>
+  </div>
+</div>
+
+<script>
+const CWD = window.__artemis_workspace__ || '';
+let tasks = [];
+let selectedId = null;
+
+async function api(path, method='GET', body=null) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const resp = await fetch(`/api/tasks${path}`, opts);
+  return resp.json();
+}
+
+function statusClass(s) { return s; }
+function statusTag(s) { return `<span class="task-status ${s}">${s}</span>`; }
+
+async function refresh() {
+  try {
+    const data = await api('/list');
+    tasks = data.tasks || [];
+    document.getElementById('stat-pending').textContent = data.pending || 0;
+    document.getElementById('stat-ongoing').textContent = data.ongoing || 0;
+    document.getElementById('stat-completed').textContent = data.completed || 0;
+    document.getElementById('last-refresh').textContent = new Date().toLocaleTimeString();
+    document.getElementById('character').textContent = data.character || 'unknown';
+
+    const list = document.getElementById('task-list');
+    if (tasks.length === 0) {
+      list.innerHTML = '<div class="empty">No tasks yet. Create one above! 🎉</div>';
+      return;
+    }
+    list.innerHTML = tasks.map(t => `
+      <div class="task-card ${t.id === selectedId ? 'selected' : ''}" onclick="openTask('${t.id}')">
+        <div class="task-header">
+          <span class="task-id">#${t.id}</span>
+          ${statusTag(t.status)}
+          <span class="task-title">${esc(t.title)}</span>
+        </div>
+        <div class="task-body">${esc(t.body).substring(0,150)}${t.body.length>150?'...':''}</div>
+        <div class="task-meta">
+          <span>👤 ${t.assignee}</span>
+          <span>🕐 ${t.created_at}</span>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function createTask() {
+  const title = document.getElementById('new-title').value.trim();
+  const body = document.getElementById('new-body').value.trim();
+  if (!title) return alert('Title required');
+  const result = await api('/create', 'POST', { title, body, assignee: 'agent' });
+  if (result.ok) {
+    document.getElementById('new-title').value = '';
+    document.getElementById('new-body').value = '';
+    refresh();
+  } else {
+    alert('Failed: ' + (result.error||'unknown'));
+  }
+}
+
+async function openTask(id) {
+  selectedId = id;
+  document.querySelectorAll('.task-card').forEach(c => c.classList.remove('selected'));
+  const card = [...document.querySelectorAll('.task-card')].find(c => c.querySelector('.task-id')?.textContent.includes(id));
+  if (card) card.classList.add('selected');
+
+  const data = await api(`/get/${id}`);
+  if (!data.ok) return;
+  const t = data.task;
+  document.getElementById('detail-panel').classList.add('open');
+  document.getElementById('detail-title').textContent = t.title;
+  document.getElementById('detail-status').innerHTML = statusTag(t.status);
+  document.getElementById('detail-body').textContent = t.body || '(no description)';
+  const msgs = data.messages || [];
+  document.getElementById('detail-messages').innerHTML = msgs.length === 0
+    ? '<div style="color:var(--muted);font-size:12px;">No messages yet.</div>'
+    : msgs.map(m => `
+      <div class="msg ${m.sender}">
+        <div class="msg-sender">${m.sender} · ${m.created_at}</div>
+        ${esc(m.text)}
+      </div>
+    `).join('');
+}
+
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+refresh();
+setInterval(refresh, 10000);
+</script>
+</body>
+</html>
