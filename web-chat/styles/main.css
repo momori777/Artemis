@@ -1779,6 +1779,18 @@ html,body{
   outline: none;
 }
 .paint-param input:focus { border-color: var(--accent); }
+.paint-param select, .paint-checkpoint-select {
+  width: 100%; padding: 6px 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-ui, 'Geist', sans-serif);
+  outline: none;
+  cursor: pointer;
+}
+.paint-param select:focus, .paint-checkpoint-select:focus { border-color: var(--accent); }
 .paint-forced-block {
   border: 1px dashed var(--border-moderate);
   border-radius: 10px;
