@@ -148,27 +148,89 @@ if (Test-Online $llamaPort "llama-server") {
     Get-Process llama-server -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 1
 
-    $llamaArgs = @(
-        '-m', $llamaModel,
-        '-c', $llamaCtx,
-        '--flash-attn', 'on',
-        '-ctk', 'q8_0',
-        '-ctv', 'q8_0',
-        '--no-mmap',
-        '--cpu-moe',
-        '--batch-size', '4096',
-        '--ubatch-size', '2048',
-        '--threads', '24',
-        '-rea', 'off',
-        '--reasoning-format', 'deepseek',
-        '--jinja',
-        '--cache-ram', '3000',
-        '--parallel', '1',
-        '--kv-unified',
-        '--no-mmap',
-        '--port', $llamaPort,
-        '--timeout', '600'
-    )
+    # ===== 统一参数解析：调用 llama_config.py (config.yaml + model_profiles) =====
+    # 找不到 python 时降级到正则读取 llama 区块
+    $pythonExe = $null
+    foreach ($cand in @((Get-Command python -ErrorAction SilentlyContinue).Source, (Get-Command python3 -ErrorAction SilentlyContinue).Source)) {
+        if ($cand) { $pythonExe = $cand; break }
+    }
+    $llamaArgs = $null
+    if ($pythonExe) {
+        try {
+            $llamaCfgScript = Join-Path $scriptRoot "skills\shared\llama_config.py"
+            $jsonOut = & $pythonExe $llamaCfgScript --args-only 2>$null | Out-String
+            $parsed = $jsonOut | ConvertFrom-Json
+            if ($parsed -is [array] -and $parsed.Count -gt 0) {
+                # args[0] 是 exe 路径，分离出来（Start-Process -FilePath 单独传）
+                $llamaArgs = @($parsed | Select-Object -Skip 1 | ForEach-Object { [string]$_ })
+                Write-Host "  [llama-config] profile-matched args ($($llamaArgs.Count) items)" -ForegroundColor DarkGray
+            }
+        } catch {
+            Write-Host "  WARNING: llama_config.py failed, falling back to regex parsing" -ForegroundColor Yellow
+        }
+    }
+
+    if (-not $llamaArgs) {
+        # 降级：从 config.yaml llama: 区块读取参数（内联匹配，避免 function 定义引发的解析器警告）
+        $llamaSection = & { $m = [regex]::Match($configRaw, "(?m)^llama:\s*$"); if ($m.Success) { $s = $configRaw.Substring($m.Index + $m.Length); $e = [regex]::Match($s, "(?m)^[a-z][a-z_]+:"); if ($e.Success) { $s.Substring(0, $e.Index) } else { $s } } else { '' } }
+        function _GetCfg($k, $d) { $vm = [regex]::Match($llamaSection, "(?m)^\s*$k\s*:\s*`"?(.+?)`"?\s*$"); if ($vm.Success) { $vm.Groups[1].Value.Trim('"').Trim() } else { $d } }
+
+        $llamaCtx     = _GetCfg 'context' 150000
+        $llamaNgl     = _GetCfg 'ngl' 41
+        $llamaBatch   = _GetCfg 'batch_size' 2048
+        $llamaUbatch  = _GetCfg 'ubatch_size' 1024
+        $llamaThreads = _GetCfg 'threads' 24
+        $llamaCtk     = _GetCfg 'ctk' "q8_0"
+        $llamaCtv     = _GetCfg 'ctv' "q8_0"
+        $llamaCacheRam = _GetCfg 'cache_ram' 3000
+
+        $llamaArgs = @(
+            '-m', $llamaModel,
+            '-c', $llamaCtx,
+            '--flash-attn', 'on',
+            '-ctk', $llamaCtk,
+            '-ctv', $llamaCtv,
+            '--no-mmap',
+            '--batch-size', $llamaBatch,
+            '--ubatch-size', $llamaUbatch,
+            '--threads', $llamaThreads,
+            '-rea', 'off',
+            '--reasoning-format', 'deepseek',
+            '--jinja',
+            '--cache-ram', $llamaCacheRam,
+            '--parallel', '1',
+            '--kv-unified',
+            '--no-mmap',
+            '-ngl', $llamaNgl,
+            '--port', $llamaPort,
+            '--timeout', '600'
+        )
+
+        # ===== 模型类型检测：MoE (含 cpu_moe) vs Dense =====
+        $modelBasename = [System.IO.Path]::GetFileNameWithoutExtension($llamaModel)
+        $isDenseModel = $modelBasename -match '27b|dense'
+        if (-not $isDenseModel) {
+            # MoE 模型需要 --cpu-moe（8GB VRAM 不够 GPU MoE）
+            $llamaArgs += '--cpu-moe'
+        }
+
+        # ===== 模型别名 (--alias) =====
+        $llamaModelName = _GetCfg 'llama_model_name' ''
+        if ($llamaModelName) {
+            $llamaArgs += '--alias', $llamaModelName
+        } else {
+            $modelBasename = [System.IO.Path]::GetFileNameWithoutExtension($llamaModel)
+            $llamaArgs += '--alias', $modelBasename
+        }
+
+        # ===== MTP 自动检测：模型名含 "mtp" 时启用投机解码 =====
+        $specDraftNMax = _GetCfg 'spec_draft_n_max' 1
+        $modelBasename = [System.IO.Path]::GetFileNameWithoutExtension($llamaModel)
+        if ($modelBasename -match 'mtp') {
+            Write-Host "  MTP model detected: adding --spec-type draft-mtp --spec-draft-n-max $specDraftNMax" -ForegroundColor Cyan
+            $llamaArgs += '--spec-type', 'draft-mtp', '--spec-draft-n-max', $specDraftNMax
+        }
+    }
 
     $llamaErrLog = Join-Path $llamaLogDir "llama-err.log"
     $null = New-Item -ItemType Directory -Force -Path $llamaLogDir -ErrorAction SilentlyContinue

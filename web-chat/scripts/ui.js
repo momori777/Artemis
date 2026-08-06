@@ -3423,7 +3423,7 @@ var UI = {
       var s = getSettings();
       s.apiBase = document.getElementById('setting-api-base').value.trim() || 'http://localhost:18789';
       s.bridgeUrl = document.getElementById('setting-bridge-url').value.trim() || 'http://localhost:19250';
-      s.model = document.getElementById('setting-model-select').value || 'local/qwen3.6-35b';
+      s.model = document.getElementById('setting-model-select').value || ApiClient.getDefaultModel();
       s.streamEnabled = document.getElementById('setting-stream').checked;
       s.reasoningEnabled = document.getElementById('setting-reasoning').checked;
       s.mem0Enhanced = document.getElementById('setting-mem0') ? document.getElementById('setting-mem0').checked : s.mem0Enhanced;
@@ -3534,7 +3534,7 @@ var UI = {
   _populateModelSelect: function(forceRefresh) {
     var select = document.getElementById('setting-model-select');
     if (!select) return;
-    var currentModel = getSettings().model || 'local/qwen3.6-35b';
+    var currentModel = getSettings().model || ApiClient.getDefaultModel();
 
     // Show loading
     select.innerHTML = '<option value="">Loading models...</option>';
@@ -3545,10 +3545,10 @@ var UI = {
         return '<option value="' + m.id + '"' + sel + '>' + m.name + ' (' + m.id + ')</option>';
       }).join('');
       if (models.length === 0) {
-        select.innerHTML = '<option value="local/qwen3.6-35b">Local (Llama) - default</option>';
+        select.innerHTML = '<option value="local-model">Local (Llama) - default</option>';
       }
     }).catch(function() {
-      select.innerHTML = '<option value="local/qwen3.6-35b">Local (Llama) - default</option>';
+      select.innerHTML = '<option value="local-model">Local (Llama) - default</option>';
     });
   },
 

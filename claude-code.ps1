@@ -98,7 +98,7 @@ Start-TaskBoard
 Write-Host ""
 $PROJECT_DIR = $PSScriptRoot
 Write-Host "📂 Project: $PROJECT_DIR" -ForegroundColor Cyan
-Write-Host "🧩 MCP tools: 14 total (8 Artemis + 6 Task Queue)" -ForegroundColor DarkGray
+Write-Host "🧩 MCP tools: 15 total (9 Artemis + 6 Task Queue)" -ForegroundColor DarkGray
 Write-Host "🔄 Task loop: getNextTask → ongoing → execute → reply → completed" -ForegroundColor DarkGray
 Write-Host ""
 
@@ -107,10 +107,10 @@ Push-Location $PROJECT_DIR
 try {
     if ($Prompt) {
         Write-Host "🚀 Launching Claude Code with prompt..." -ForegroundColor Magenta
-        claude --dangerously-load-development-channels server:artemis -p $Prompt
+        claude -p $Prompt
     } else {
         Write-Host "🚀 Launching Claude Code (task loop mode)..." -ForegroundColor Magenta
-        claude --dangerously-load-development-channels server:artemis
+        claude
     }
 } finally {
     Pop-Location

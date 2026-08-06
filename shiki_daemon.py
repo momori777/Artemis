@@ -32,9 +32,11 @@ LLAMA_EXE = CFG["llama_exe"]
 LLAMA_MODEL = CFG["llama_model"]
 LLAMA_PORT = int(CFG.get("llama_port", 8080))
 LLAMA_LOG = os.path.join(CFG.get("llama_log_dir", WORKSPACE), "llama-err.log")
-# 模型名从 config.yaml 的 llama_model 路径提取 basename
+# 模型名从 config.yaml 读取：优先 llama_model_name，否则取 llama_model 路径 basename
 import os as _os
-LLAMA_MODEL_NAME = _os.path.basename(CFG.get("llama_model", "local-model"))
+LLAMA_MODEL_NAME = CFG.get("llama_model_name", "") or _os.path.basename(CFG.get("llama_model", "local-model"))
+# OpenAI 兼容 API 的本地模型 id（默认 local/<模型名>，可通过 config.yaml 自定义）
+LOCAL_MODEL_ID = CFG.get("llama_model_id", "local/" + LLAMA_MODEL_NAME)
 LIVE2D_DIR = os.path.join(WORKSPACE, "live2d")
 EMBED_SCRIPT = os.path.join(WORKSPACE, "skills", "shared", "embedding_server.py")
 BRIDGE_SCRIPT = os.path.join(WORKSPACE, "artemis_bridge.py")
@@ -267,7 +269,8 @@ def find_python():
         try:
             r = subprocess.run([py, "--version"], capture_output=True, timeout=3)
             if r.returncode == 0: return py
-        except: pass
+        except Exception:
+            pass
     return "python"
 
 PYTHON = find_python()
@@ -277,7 +280,8 @@ def is_port_open(port):
         sock = socket.create_connection(("127.0.0.1", port), timeout=1)
         sock.close()
         return True
-    except: return False
+    except Exception:
+        return False
 
 def kill_process(name):
     try:
@@ -292,16 +296,46 @@ def start_llama():
     kill_process("llama-server.exe")
     time.sleep(1)
 
-    args = [
-        LLAMA_EXE, "-m", LLAMA_MODEL,
-        "-c", "150000", "--flash-attn", "on",
-        "-ctk", "q4_0", "-ctv", "q4_0",
-        "--no-mmap", "--cpu-moe",
-        "--batch-size", "2048", "--ubatch-size", "1024",
-        "-rea", "off", "--reasoning-format", "deepseek", "--jinja", "--cache-ram", "3000",
-        "--parallel", "1", "--kv-unified",
-        "--port", str(LLAMA_PORT), "--timeout", "600",
-    ]
+    # 统一参数解析：从 config.yaml + model_profiles 读取（按模型文件名匹配预设）
+    try:
+        from skills.shared.llama_config import resolve_llama_params, build_llama_args
+        _params = resolve_llama_params(CFG)
+        args = build_llama_args(_params)
+        if _params.get("_profile_name"):
+            print(f"[LLAMA] profile: {_params['_profile_name']}", flush=True)
+        if any(a == "--spec-type" for a in args):
+            print("[LLAMA] MTP model detected: --spec-type draft-mtp enabled", flush=True)
+    except Exception as _e:
+        # 降级：老逻辑（llama 区块 + MTP 自动检测）
+        print(f"[LLAMA] llama_config resolve failed ({_e}), using legacy args", flush=True)
+        llm_cfg = CFG.get("llama", {})
+        ctx = llm_cfg.get("context", 150000)
+        batch = llm_cfg.get("batch_size", 2048)
+        ubatch = llm_cfg.get("ubatch_size", 1024)
+        threads = llm_cfg.get("threads", 24)
+        ctk = llm_cfg.get("ctk", "q8_0")
+        ctv = llm_cfg.get("ctv", "q8_0")
+        ngl = llm_cfg.get("ngl", 41)
+        cache_ram = llm_cfg.get("cache_ram", 3000)
+        args = [
+            LLAMA_EXE, "-m", LLAMA_MODEL,
+            "-c", str(ctx), "--flash-attn", "on",
+            "-ctk", ctk, "-ctv", ctv,
+            "--no-mmap", "--cpu-moe",
+            "--batch-size", str(batch), "--ubatch-size", str(ubatch),
+            "--threads", str(threads),
+            "-rea", "off", "--reasoning-format", "deepseek", "--jinja",
+            "--cache-ram", str(cache_ram),
+            "-ngl", str(ngl),
+            "--parallel", "1", "--kv-unified",
+            "--port", str(LLAMA_PORT), "--timeout", "600",
+        ]
+        _model_name_lower = (CFG.get("llama_model_name", "") or os.path.basename(LLAMA_MODEL)).lower()
+        spec_draft_n_max = llm_cfg.get("spec_draft_n_max", 1)
+        if "mtp" in _model_name_lower:
+            print(f"[LLAMA] MTP model detected: adding --spec-type draft-mtp --spec-draft-n-max {spec_draft_n_max}", flush=True)
+            args += ["--spec-type", "draft-mtp", "--spec-draft-n-max", str(spec_draft_n_max)]
+
     os.makedirs(os.path.dirname(LLAMA_LOG), exist_ok=True)
     with open(LLAMA_LOG, "w") as log:
         subprocess.Popen(args, stdout=log, stderr=log, creationflags=subprocess.CREATE_NO_WINDOW)
@@ -1359,7 +1393,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         body = self.rfile.read(cl).decode("utf-8") if cl else "{}"
         try:
             data = json.loads(body)
-        except:
+        except Exception:
             data = {}
 
         if path == "/api/start":
@@ -1673,7 +1707,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         # can stream the response without blocking the whole server loop.
         from threading import Thread, Event
 
-        model_id = req_data.get("model", "local/qwen3.6-35b")
+        model_id = req_data.get("model", LOCAL_MODEL_ID)
 
         # Reasoning toggle — restart llama in background, return error for now.
         # NOTE: "auto" (default) is a flexible mode that already handles both
@@ -1831,7 +1865,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                             try:
                                 self.wfile.write(f"data: {{\"error\":\"{stream_err}\"}}\n\n".encode("utf-8"))
                                 self.wfile.flush()
-                            except:
+                            except Exception:
                                 pass
                         finally:
                             resp.close()
@@ -1851,7 +1885,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     try:
                         error_body = http_err.read().decode("utf-8")
                         error_detail += f": {error_body[:200]}"
-                    except:
+                    except Exception:
                         pass
                     if attempt < REQUEST_MAX_RETRIES and http_err.code >= 500:
                         print(f"[chat] attempt {attempt+1}/{REQUEST_MAX_RETRIES+1} failed: {error_detail}, retrying...", file=sys.stderr)
@@ -2139,7 +2173,7 @@ Conversation:
             self.send_json({"error": "Invalid JSON"}, 400)
             return
 
-        model_id = req_data.get("model", "local/qwen3.6-35b")
+        model_id = req_data.get("model", LOCAL_MODEL_ID)
         messages = req_data.get("messages", [])
         stream = req_data.get("stream", False)
 
