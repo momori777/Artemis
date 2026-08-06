@@ -272,6 +272,7 @@
     paint_forced_neg_ph:     { zh: '如: bad hands, extra fingers', ja: '例: bad hands, extra fingers', en: 'e.g. bad hands, extra fingers' },
     paint_forced_res:        { zh: '强制分辨率（留空用默认）', ja: '強制解像度（空欄はデフォルト）', en: 'Forced resolution (blank = default)' },
     paint_forced_res_hint:   { zh: '留空使用默认 768×1024×24', ja: '空欄はデフォルト 768×1024×24', en: 'Blank = default 768×1024×24' },
+    paint_default:           { zh: '默认', ja: 'デフォルト', en: 'Default' },
   };
 
   // ── State ──

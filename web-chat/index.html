@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Noto+Sans+SC:wght@300;400;500;700&display=swap">
 <link rel="stylesheet" href="styles/phosphor-icons.css">
-<link rel="stylesheet" href="styles/main.css?v=45">
+<link rel="stylesheet" href="styles/main.css?v=46">
 <link rel="stylesheet" href="styles/polish.css?v=28">
 <link rel="stylesheet" href="styles/refine.css?v=8">
 </head>
@@ -133,6 +133,9 @@
         <div class="chat-header-actions">
           <button class="theme-toggle" id="btn-theme-toggle" data-i18n-title="theme_switch" title="切换主题">
             <i class="ph ph-moon" id="theme-icon"></i>
+          </button>
+          <button class="header-action mem-header-btn" id="btn-mem-view" data-i18n-title="plugin_mem_view" title="Mem0 记忆 & 可视化">
+            <i class="ph ph-brain"></i> <span data-i18n="plugin_memory">记忆</span>
           </button>
           <button class="header-action" id="btn-search" data-i18n-title="search" title="搜索">
             <i class="ph ph-magnifying-glass"></i> <span data-i18n="search">搜索</span>
@@ -376,7 +379,7 @@
                   <label class="studio-label">Checkpoint</label>
                   <select id="comfy-ckpt" class="studio-select">
                     <option value="WAI-Nsfw-Illustrious-17.safetensors">WAI-Nsfw-Illustrious-17</option>
-                    <option value="miaomiaoHarem_v20.safetensors">miaomiaoHarem v20</option>
+                    <option value="miaomiaoHarem_v20.safetensors">miaomiaoHarem v20 (Anime)</option>
                   </select>
                 </div>
               </div>
@@ -596,6 +599,15 @@
     </div>
 
     <div class="settings-group">
+      <div class="settings-label">生图模型 (Checkpoint)</div>
+      <select class="settings-input settings-select" id="setting-paint-checkpoint">
+        <option value="">默认 (WAI-Nsfw-Illustrious-17)</option>
+        <option value="WAI-Nsfw-Illustrious-17.safetensors">WAI-Nsfw-Illustrious-17 (Realistic)</option>
+        <option value="miaomiaoHarem_v20.safetensors">miaomiaoHarem v20 (Anime)</option>
+      </select>
+    </div>
+
+    <div class="settings-group">
       <div class="settings-label" data-i18n="settings_tree">对话树模式 (Conversation Tree)</div>
       <select class="settings-input settings-select" id="setting-tree-mode">
         <option value="auto" data-i18n="settings_tree_auto">自动 (Auto)</option>
@@ -778,7 +790,7 @@
 
 <script src="CHARACTERS_JSON.js"></script>
 <script src="scripts/chars.js?v=27"></script>
-<script src="scripts/i18n.js?v=4"></script>
+<script src="scripts/i18n.js?v=5"></script>
 <script>
 // Theme toggle: dark is the default; light is opt-in.
 (function() {
@@ -816,8 +828,8 @@
 <script src="scripts/sampler_panel.js?v=1"></script>
 <script src="scripts/importer.js?v=25"></script>
 <script src="scripts/worldbook.js?v=1"></script>
-<script src="scripts/ui.js?v=50"></script>
-<script src="scripts/studio.js?v=26"></script>
+<script src="scripts/ui.js?v=54"></script>
+<script src="scripts/studio.js?v=27"></script>
 <script src="scripts/debug_sampler.js?v=1"></script>
 </body>
 </html>
