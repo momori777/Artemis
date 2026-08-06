@@ -1214,6 +1214,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._handle_mem0_viz()
             return
 
+        if path == "/api/mem0-search":
+            self._handle_mem0_search()
+            return
+
         if path == "/api/worldbook":
             # New entries-based format
             with _wb_entries_lock:
@@ -1351,10 +1355,6 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._handle_session_history()
             return
 
-        if path == "/api/mem0-search":
-            self._handle_mem0_search()
-            return
-
         cl = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(cl).decode("utf-8") if cl else "{}"
         try:
@@ -1490,9 +1490,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             return
 
     def _handle_mem0_search(self):
-        """Search mem0 memories and return raw results for frontend display."""
+        """Search mem0 memories and return raw results for frontend display.
+        Supports empty characterId (iterate all characters) and returns characterId per result."""
         qs = parse_qs(urlparse(self.path).query)
-        character_id = qs.get("characterId", [""])[0] or "natsume"
+        character_id = qs.get("characterId", [""])[0] or ""
         query = qs.get("query", [""])[0] or ""
         limit = int(qs.get("limit", ["20"])[0])
         
@@ -1500,18 +1501,35 @@ class DashboardHandler(BaseHTTPRequestHandler):
             if WORKSPACE not in sys.path:
                 sys.path.insert(0, WORKSPACE)
             try:
-                from skills.mem0_bridge.mem0_bridge import search_mem0_qdrant
+                from skills.mem0_bridge.mem0_bridge import search_mem0_qdrant, CHARACTERS
             except ImportError:
-                from skills.shared.mem0_bridge import search_mem0_qdrant
-            results = search_mem0_qdrant(character_id, query if query else "所有记忆", limit=limit)
-            formatted = []
-            for r in results:
-                formatted.append({
-                    "content": r.get("memory", ""),
-                    "score": r.get("score", 0),
-                    "timestamp": r.get("metadata", {}).get("created_at", "")
-                })
-            self.send_json({"ok": True, "results": formatted, "source": "mem0"})
+                from skills.shared.mem0_bridge import search_mem0_qdrant, CHARACTERS
+
+            if character_id:
+                char_ids = [character_id]
+            else:
+                # Empty characterId: iterate all known characters
+                char_ids = list(CHARACTERS.keys())
+            
+            all_results = []
+            for cid in char_ids:
+                try:
+                    results = search_mem0_qdrant(cid, query if query else "所有记忆", limit=limit)
+                    for r in results:
+                        all_results.append({
+                            "content": r.get("memory", ""),
+                            "score": r.get("score", 0),
+                            "timestamp": r.get("metadata", {}).get("created_at", ""),
+                            "characterId": cid,
+                        })
+                except Exception:
+                    pass  # skip characters with no results
+            
+            all_results.sort(key=lambda x: x["score"], reverse=True)
+            if not character_id:
+                all_results = all_results[:limit]
+            
+            self.send_json({"ok": True, "results": all_results, "source": "mem0"})
         except Exception as e:
             print(f"[mem0-search] error: {e}", file=sys.stderr)
             self.send_json({"error": str(e), "results": []})
@@ -2072,10 +2090,21 @@ Conversation:
         if not os.path.isfile(file_path):
             self.send_error(404)
             return
-        # Path whitelist: only WORKSPACE/media (and subdirs) may be served.
-        media_root = os.path.abspath(os.path.join(WORKSPACE, "media"))
-        if not (file_path == media_root or file_path.startswith(media_root + os.sep)):
-            print(f"[media proxy] blocked path outside media root: {file_path}", file=sys.stderr)
+        # Path whitelist: WORKSPACE/media (and subdirs) + config media dirs may be served.
+        media_roots = [os.path.abspath(os.path.join(WORKSPACE, "media"))]
+        cfg_media_audio = CFG.get("media_qqbot_audio", "")
+        cfg_media_images = CFG.get("media_qqbot_images", "")
+        if cfg_media_audio:
+            media_roots.append(os.path.abspath(cfg_media_audio))
+        if cfg_media_images:
+            media_roots.append(os.path.abspath(cfg_media_images))
+        allowed = False
+        for mr in media_roots:
+            if file_path == mr or file_path.startswith(mr + os.sep):
+                allowed = True
+                break
+        if not allowed:
+            print(f"[media proxy] blocked path outside media roots: {file_path}", file=sys.stderr)
             self.send_error(403)
             return
         try:

@@ -68,6 +68,12 @@ var UI = {
     });
     this.$input.addEventListener('input', function() { self.autoResize(); });
 
+    // Header memory viewer button
+    var memHeaderBtn = document.getElementById('btn-mem-view');
+    if (memHeaderBtn) {
+      memHeaderBtn.addEventListener('click', function() { self._openMemoryViewer(); });
+    }
+
     document.getElementById('btn-reset').addEventListener('click', function() { self.resetSession(); });
     document.getElementById('btn-clear').addEventListener('click', function() { self.clearMessages(); });
     document.getElementById('btn-search').addEventListener('click', function() { self.toggleSearch(); });
@@ -134,7 +140,8 @@ var UI = {
     var llamaToggleCheck = document.getElementById('chat-manage-llama');
     var llamaToggleSwitch = document.getElementById('toggle-chat-llama-switch');
     if (llamaToggleLabel && llamaToggleCheck && llamaToggleSwitch) {
-      llamaToggleLabel.addEventListener('click', function() {
+      llamaToggleLabel.addEventListener('click', function(e) {
+        e.preventDefault();
         llamaToggleCheck.checked = !llamaToggleCheck.checked;
         if (llamaToggleCheck.checked) {
           llamaToggleSwitch.classList.add('on');
@@ -171,9 +178,9 @@ var UI = {
         saveSettings({ reasoningEnabled: enabled });
         var rea = enabled ? 'on' : 'off';
         showToast(enabled ? 'Reasoning ON — 重启llama中，等~30s' : 'Reasoning OFF — 重启llama中，等~30s');
-        // Trigger restart immediately
+        // Trigger restart immediately via daemon API
         var xhr = new XMLHttpRequest();
-        xhr.open('POST', 'http://localhost:19260/api/exec-script?script=restart_llama_rea.ps1&args=' + rea);
+        xhr.open('POST', 'http://localhost:19260/api/set-rea?mode=' + rea);
         xhr.timeout = 3000;
         try { xhr.send(); } catch(_) {}
       });
@@ -204,7 +211,8 @@ var UI = {
       if (mem0Check.checked) mem0Switch.classList.add('on');
       self._updateMem0SubVisibility();
 
-      mem0Label.addEventListener('click', function() {
+      mem0Label.addEventListener('click', function(e) {
+        e.preventDefault();
         mem0Check.checked = !mem0Check.checked;
         var enabled = mem0Check.checked;
         if (enabled) {
@@ -227,7 +235,8 @@ var UI = {
       mem0WriteCheck.checked = s2.mem0WriteEnabled === true;
       if (mem0WriteCheck.checked) mem0WriteSwitch.classList.add('on');
 
-      mem0WriteLabel.addEventListener('click', function() {
+      mem0WriteLabel.addEventListener('click', function(e) {
+        e.preventDefault();
         mem0WriteCheck.checked = !mem0WriteCheck.checked;
         var enabled = mem0WriteCheck.checked;
         if (enabled) {
@@ -1156,6 +1165,52 @@ var UI = {
   },
 
   // ---- Message rendering ----
+
+  // Index helpers. The UI passes message indexes around everywhere, but there
+  // are TWO different index spaces and conflating them is what made the
+  // Regenerate-reply / Regenerate-image buttons silently fail in tree mode:
+  //   - getCurrentChain(tree)  -> chain index  (INCLUDES the root system node)
+  //   - state.messages         -> flat index    (EXCLUDES system nodes)
+  // ".msg-row[data-msg-index]" and regenerateMessage()/its sub-functions all
+  // assume the FLAT index (into state.messages). We therefore render tree
+  // chains with flat indexes and convert whenever we must talk to tree.js
+  // (branchRegenerate/getNodeByChainIndex) which expects the CHAIN index.
+  _chainToFlat: function(tree, chainIndex) {
+    var chain = getCurrentChain(tree);
+    var flat = -1;
+    for (var i = 0; i <= chainIndex && i < chain.length; i++) {
+      if (chain[i] && chain[i].role !== 'system') flat++;
+    }
+    return flat;
+  },
+
+  _flatToChain: function(tree, flatIndex) {
+    var chain = getCurrentChain(tree);
+    var seen = -1;
+    for (var i = 0; i < chain.length; i++) {
+      if (chain[i].role !== 'system') {
+        seen++;
+        if (seen === flatIndex) return i;
+      }
+    }
+    return -1;
+  },
+
+  // Render the current tree chain from the passed tree, assigning FLAT indexes
+  // (matching state.messages) so data-msg-index and regenerate handlers agree.
+  _renderTreeChain: function(tree) {
+    var self = this;
+    getCurrentChain(tree).forEach(function(n, i) {
+      // Skip only system/placeholders; regenerated nodes are still selectable.
+      if (n.role === 'system' || n._pending) return;
+      // Resolve local filesystem media paths to daemon proxy URLs
+      if (n.media && !/^https?:\/\//.test(n.media)) {
+        n.media = self._resolveMediaPath(n.media);
+      }
+      self.$messages.appendChild(self._renderTreeNode(n, self._chainToFlat(tree, i), tree));
+    });
+  },
+
   _renderTreeNode: function(node, index, tree) {
     var el = this.renderMessage(node, index);
     // Add branch indicator if parent has multiple children
@@ -1209,18 +1264,7 @@ var UI = {
               self.state.messages = getChainMessages(tree);
               self.$messages.innerHTML = '';
               self.appendSystemMsg('Jumped to branch #' + (branchIdx + 1) + ' - ' + self.formatTime(new Date()));
-              getCurrentChain(tree).forEach(function(cn, ci) {
-                // Only skip system/placeholder nodes. Filtering on `regenerated`
-                // here is what made the re-selected branch disappear: the flag
-                // stays true on a node forever, even once it is the active branch.
-                if (cn.role === 'system' || cn._pending) return;
-                // Resolve local filesystem media paths to daemon proxy URLs
-                if (cn.media && !/^https?:\/\//.test(cn.media)) {
-                  cn.media = self._resolveMediaPath(cn.media);
-                }
-                var cel = self._renderTreeNode(cn, ci, tree);
-                self.$messages.appendChild(cel);
-              });
+              self._renderTreeChain(tree);
               self.scrollToBottom(true);
             });
           })(sib.id, si);
@@ -1643,7 +1687,20 @@ var UI = {
   // ---- Regenerate ----
   regenerateMessage: function(assistantIndex) {
     var self = this;
-    if (this.state.streaming) return;
+    // If a previous stream errored without clearing the flag, the Regenerate
+    // buttons would silently do nothing (a "dead" button). Detect a stuck
+    // streaming flag -- true but no live stream bubble -- and recover so the
+    // buttons keep working.
+    if (this.state.streaming) {
+      var live = document.getElementById('stream-bubble');
+      if (!live) {
+        this.state.streaming = false;
+        if (this.$sendBtn) this.$sendBtn.disabled = false;
+      } else {
+        showToast('正在生成中，请等待当前回复完成');
+        return;
+      }
+    }
 
     // Image messages carry no text, so the LLM text-stream path cannot
     // regenerate them. Route by image type + model capability:
@@ -1671,20 +1728,15 @@ var UI = {
 
     // ── Tree mode: create a branch ────
     if (this._useTree && this.state.tree) {
-      var newId = branchRegenerate(this.state.tree, assistantIndex);
+      var chainIdx = this._flatToChain(this.state.tree, assistantIndex);
+      var newId = branchRegenerate(this.state.tree, chainIdx);
       if (!newId) return;
 
       // Re-render from tree
       this.state.messages = getChainMessages(this.state.tree);
       this.$messages.innerHTML = '';
       this.appendSystemMsg('Branch: regenerating - ' + this.formatDate(new Date()));
-      var chain = getCurrentChain(this.state.tree);
-      chain.forEach(function(n, i) {
-        // `_pending` is the empty placeholder for the branch being streamed.
-        if (n.role === 'system' || n._pending) return;
-        var el = self._renderTreeNode(n, i, self.state.tree);
-        self.$messages.appendChild(el);
-      });
+      self._renderTreeChain(this.state.tree);
       saveSessionTree(charId, sessionId, this.state.tree);
 
       this.state.streaming = true;
@@ -1754,15 +1806,7 @@ var UI = {
           // Re-render DOM to show the new response and update branch indicators
           self.$messages.innerHTML = '';
           self.appendSystemMsg('Branch: regenerated - ' + self.formatDate(new Date()));
-          getCurrentChain(tree).forEach(function(cn, ci) {
-            if (cn.role === 'system' || cn._pending) return;
-            // Resolve local filesystem media paths to daemon proxy URLs
-            if (cn.media && !/^https?:\/\//.test(cn.media)) {
-              cn.media = self._resolveMediaPath(cn.media);
-            }
-            var cel = self._renderTreeNode(cn, ci, tree);
-            self.$messages.appendChild(cel);
-          });
+          self._renderTreeChain(tree);
           self.state.streaming = false;
           self.$sendBtn.disabled = false;
           self.$input.focus();
@@ -2200,7 +2244,7 @@ var UI = {
     }
 
     if (this._useTree && this.state.tree) {
-      var node = getNodeByChainIndex(this.state.tree, assistantIndex);
+      var node = getNodeByChainIndex(this.state.tree, this._flatToChain(this.state.tree, assistantIndex));
       if (node) {
         node.media = newPath;
         node.paint = true;
@@ -2211,14 +2255,7 @@ var UI = {
       this.state.messages = getChainMessages(this.state.tree);
       this.$messages.innerHTML = '';
       this.appendSystemMsg('Image re-rolled - ' + this.formatTime(new Date()));
-      var tree = this.state.tree;
-      getCurrentChain(tree).forEach(function(cn, ci) {
-        if (cn.role === 'system' || cn._pending) return;
-        if (cn.media && !/^https?:\/\//.test(cn.media)) {
-          cn.media = self._resolveMediaPath(cn.media);
-        }
-        self.$messages.appendChild(self._renderTreeNode(cn, ci, tree));
-      });
+      self._renderTreeChain(self.state.tree);
     } else {
       saveChatHistory(this.state.currentCharId, this.state.currentSessionId, this.state.messages);
       this.$messages.innerHTML = '';
@@ -2596,6 +2633,10 @@ var UI = {
             '<div class="paint-param"><label>H</label><input type="number" id="paint-height" value="1024" min="256" max="2048" step="64"></div>' +
             '<div class="paint-param"><label>Steps</label><input type="number" id="paint-steps" value="24" min="5" max="100"></div>' +
             '<div class="paint-param"><label>CFG</label><input type="number" id="paint-cfg" value="6.0" min="1" max="20" step="0.5"></div>' +
+            '<div class="paint-param" style="flex:1.5"><label>Model</label><select id="paint-checkpoint" class="paint-checkpoint-select">' +
+              '<option value="WAI-Nsfw-Illustrious-17.safetensors">WAI-Nsfw-Illustrious-17 (Realistic)</option>' +
+              '<option value="miaomiaoHarem_v20.safetensors">miaomiaoHarem v20 (Anime)</option>' +
+            '</select></div>' +
           '</div>' +
           '<div class="paint-forced-block">' +
             '<div class="paint-forced-title">🔒 ' + tr('paint_forced_title') + '</div>' +
@@ -2611,6 +2652,12 @@ var UI = {
               '<div class="paint-param"><label>Steps</label><input type="number" id="paint-forced-steps" min="5" max="100"></div>' +
             '</div>' +
             '<div class="paint-forced-hint">' + tr('paint_forced_res_hint') + '</div>' +
+            '<label>Model</label>' +
+            '<select id="paint-forced-checkpoint" class="paint-checkpoint-select">' +
+              '<option value="">' + tr('paint_default') + ' (WAI-Nsfw-Illustrious-17)</option>' +
+              '<option value="WAI-Nsfw-Illustrious-17.safetensors">WAI-Nsfw-Illustrious-17 (Realistic)</option>' +
+              '<option value="miaomiaoHarem_v20.safetensors">miaomiaoHarem v20 (Anime)</option>' +
+            '</select>' +
           '</div>' +
         '</div>' +
         '<div class="paint-modal-footer">' +
@@ -2643,11 +2690,13 @@ var UI = {
     var fW = overlay.querySelector('#paint-forced-width');
     var fH = overlay.querySelector('#paint-forced-height');
     var fS = overlay.querySelector('#paint-forced-steps');
+    var fCkpt = overlay.querySelector('#paint-forced-checkpoint');
     if (fPos) fPos.value = s.paintPositive || '';
     if (fNeg) fNeg.value = s.paintNegative || '';
     if (fW && s.paintWidth) fW.value = s.paintWidth;
     if (fH && s.paintHeight) fH.value = s.paintHeight;
     if (fS && s.paintSteps) fS.value = s.paintSteps;
+    if (fCkpt && s.paintCheckpoint) fCkpt.value = s.paintCheckpoint;
     // Persist forced injection values back to settings on change
     var saveForced = function() {
       var st = getSettings();
@@ -2656,6 +2705,7 @@ var UI = {
       st.paintWidth = fW ? (parseInt(fW.value) || undefined) : st.paintWidth;
       st.paintHeight = fH ? (parseInt(fH.value) || undefined) : st.paintHeight;
       st.paintSteps = fS ? (parseInt(fS.value) || undefined) : st.paintSteps;
+      st.paintCheckpoint = fCkpt ? fCkpt.value || undefined : st.paintCheckpoint;
       saveSettings(st);
     };
     [fPos, fNeg, fW, fH, fS].forEach(function(el) { if (el) el.addEventListener('input', saveForced); });
@@ -2684,6 +2734,7 @@ var UI = {
       var height = parseInt(overlay.querySelector('#paint-height').value) || 1024;
       var steps = parseInt(overlay.querySelector('#paint-steps').value) || 24;
       var cfg = parseFloat(overlay.querySelector('#paint-cfg').value) || 6.0;
+      var checkpoint = overlay.querySelector('#paint-checkpoint') ? overlay.querySelector('#paint-checkpoint').value : undefined;
       // manage_llama follows the stop-llama toggle in the input area
       var manage_llama = self._shouldManageLlama();
       if (manage_llama) self.appendSystemMsg('🎨 Stopping llama for painting...');
@@ -2691,7 +2742,7 @@ var UI = {
 
       self.appendSystemMsg('🎨 Generating from manual prompt...');
       self.scrollToBottom();
-      self._submitPaintJob(pos, neg, width, height, steps, cfg, manage_llama);
+      self._submitPaintJob(pos, neg, width, height, steps, cfg, manage_llama, checkpoint);
     });
 
     // Focus the input
@@ -3048,7 +3099,7 @@ var UI = {
     return out;
   },
 
-  _submitPaintJob: function(prompt, negative, width, height, steps, cfg, manage_llama) {
+  _submitPaintJob: function(prompt, negative, width, height, steps, cfg, manage_llama, checkpoint) {
     var self = this;
     // manage_llama follows the stop-llama toggle in the input area when not
     // explicitly passed (bridge stops llama before drawing and restarts it
@@ -3062,6 +3113,9 @@ var UI = {
     var defaultNegative = 'worst quality, bad quality, low quality, blurry, lowres, bad anatomy, extra fingers, missing fingers, extra limbs, deformed, disfigured, watermark, text, signature, jpeg artifacts, censored';
     var finalNegative = negative || defaultNegative;
 
+    var s = getSettings() || {};
+    var finalCheckpoint = s.paintCheckpoint || checkpoint || 'WAI-Nsfw-Illustrious-17.safetensors';
+
     var params = {
       positive: finalPositive,
       negative: finalNegative,
@@ -3069,7 +3123,7 @@ var UI = {
       height: height || 1024,
       steps: steps || 24,
       cfg: cfg || 6.0,
-      checkpoint: 'WAI-Nsfw-Illustrious-17.safetensors',
+      checkpoint: finalCheckpoint,
       manage_llama: manage_llama,
     };
 
@@ -3210,22 +3264,7 @@ var UI = {
         // Also store flat message array for API calls
         this.state.messages = getChainMessages(tree);
         this.appendSystemMsg('Resumed (' + msgCount + ' messages) - ' + this.formatDate(new Date()));
-        chain.forEach(function(n, i) {
-          if (n.role === 'system') return;
-          // NOTE: do NOT filter on n.regenerated here. getCurrentChain() already
-          // walks up from currentNodeId, so every node it returns is on the
-          // ACTIVE path by definition. The `regenerated` flag only means "this
-          // node was superseded at some point" -- it stays true forever, so
-          // filtering on it made a re-selected branch render as an empty gap.
-          // Skip only the streaming placeholder.
-          if (n._pending) return;
-          // Resolve local filesystem media paths to daemon proxy URLs
-          if (n.media && !/^https?:\/\//.test(n.media)) {
-            n.media = self._resolveMediaPath(n.media);
-          }
-          var el = self._renderTreeNode(n, i, tree);
-          self.$messages.appendChild(el);
-        });
+        self._renderTreeChain(tree);
       }
       this._userScrolledUp = false;
       this.scrollToBottom(true);
@@ -3391,6 +3430,7 @@ var UI = {
       s.mem0WriteEnabled = document.getElementById('setting-mem0-write') ? document.getElementById('setting-mem0-write').checked : s.mem0WriteEnabled;
       s.mem0WriteInterval = document.getElementById('setting-mem0-interval') ? parseInt(document.getElementById('setting-mem0-interval').value) || 10 : s.mem0WriteInterval;
       s.treeMode = document.getElementById('setting-tree-mode') ? document.getElementById('setting-tree-mode').value : (s.treeMode || 'auto');
+      s.paintCheckpoint = document.getElementById('setting-paint-checkpoint') ? document.getElementById('setting-paint-checkpoint').value || undefined : s.paintCheckpoint;
       saveSettings(s);
       ApiClient.init(s.apiBase);
       Studio.bridgeUrl = s.bridgeUrl;
@@ -3408,6 +3448,12 @@ var UI = {
       var thinkingSelect = document.getElementById('thinking-mode-select');
       if (thinkingModeRow) thinkingModeRow.style.display = s.reasoningEnabled ? '' : 'none';
       if (thinkingSelect) thinkingSelect.value = s.thinkingMode || 'default';
+      // Trigger llama restart if reasoning changed
+      var rea = s.reasoningEnabled ? 'on' : 'off';
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', 'http://localhost:19260/api/set-rea?mode=' + rea);
+      xhr.timeout = 3000;
+      try { xhr.send(); } catch(_) {}
       // Sync mem0 chat toggle
       var chatMem0Check = document.getElementById('chat-mem0-enhanced');
       var chatMem0Switch = document.getElementById('toggle-mem0-switch');
@@ -3440,7 +3486,8 @@ var UI = {
     var settingReasoningToggle = document.getElementById('toggle-setting-reasoning-switch');
     var settingReasoningLabel = document.getElementById('toggle-setting-reasoning-label');
     if (settingReasoningLabel && settingReasoningCheck && settingReasoningToggle) {
-      settingReasoningLabel.addEventListener('click', function() {
+      settingReasoningLabel.addEventListener('click', function(e) {
+        e.preventDefault();
         settingReasoningCheck.checked = !settingReasoningCheck.checked;
         settingReasoningToggle.classList.toggle('on', settingReasoningCheck.checked);
       });
@@ -3451,7 +3498,8 @@ var UI = {
     var settingMem0Toggle = document.getElementById('toggle-setting-mem0-switch');
     var settingMem0Label = document.getElementById('toggle-setting-mem0-label');
     if (settingMem0Label && settingMem0Check && settingMem0Toggle) {
-      settingMem0Label.addEventListener('click', function() {
+      settingMem0Label.addEventListener('click', function(e) {
+        e.preventDefault();
         settingMem0Check.checked = !settingMem0Check.checked;
         settingMem0Toggle.classList.toggle('on', settingMem0Check.checked);
       });
@@ -3462,7 +3510,8 @@ var UI = {
     var settingMem0WriteToggle = document.getElementById('toggle-setting-mem0-write-switch');
     var settingMem0WriteLabel = document.getElementById('toggle-setting-mem0-write-label');
     if (settingMem0WriteLabel && settingMem0WriteCheck && settingMem0WriteToggle) {
-      settingMem0WriteLabel.addEventListener('click', function() {
+      settingMem0WriteLabel.addEventListener('click', function(e) {
+        e.preventDefault();
         settingMem0WriteCheck.checked = !settingMem0WriteCheck.checked;
         settingMem0WriteToggle.classList.toggle('on', settingMem0WriteCheck.checked);
       });
@@ -3534,6 +3583,9 @@ var UI = {
     // Tree mode
     var treeModeSelect = document.getElementById('setting-tree-mode');
     if (treeModeSelect) treeModeSelect.value = s.treeMode || 'auto';
+    // Paint checkpoint
+    var paintCkptSelect = document.getElementById('setting-paint-checkpoint');
+    if (paintCkptSelect) paintCkptSelect.value = s.paintCheckpoint || '';
     if (overlay) overlay.classList.add('open');
 
     // Populate model dropdown from Gateway
@@ -3593,14 +3645,23 @@ var UI = {
 
     // Fetch based on current memory source
     if (memSource === 'mem0') {
-      // Use existing mem0 search
-      var mem0Data = this._mem0SearchResult;
-      if (mem0Data && mem0Data.length > 0) {
-        self._renderMem0Viewer(mem0Data);
-      } else {
-        // Try to fetch from mem0 if cached result is empty
-        memViewerBody.innerHTML = '<div class="memory-viewer-empty">No memories found in Mem0</div>';
-      }
+      // Load all memories from daemon, auto-fetch if cache empty
+      memViewerBody.innerHTML = '<div class="memory-viewer-loading">Loading memories...</div>';
+      fetch('http://localhost:19260/api/mem0-search?characterId=&query=&limit=50')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.ok && data.results && data.results.length > 0) {
+            self._allMem0Results = data.results;
+            self._renderMem0Viewer(data.results);
+            var footer = document.getElementById('memory-viewer-footer');
+            if (footer) footer.textContent = 'Total: ' + data.results.length + ' memories';
+          } else {
+            memViewerBody.innerHTML = '<div class="memory-viewer-empty">No memories found in Mem0</div>';
+          }
+        })
+        .catch(function(err) {
+          memViewerBody.innerHTML = '<div class="memory-viewer-empty">Failed to load: ' + escapeHtml(err.message) + '</div>';
+        });
     } else {
       // Fetch session history from backend
       memViewerBody.innerHTML = '<div class="memory-viewer-loading">Loading session history...</div>';
@@ -3623,27 +3684,108 @@ var UI = {
     }
   },
 
-  _renderMem0Viewer: function(results) {
+  _renderMem0Viewer: function(results, filterChar) {
     var memViewerBody = document.getElementById('memory-viewer-body');
     if (!memViewerBody) return;
 
-    var html = '';
-    results.forEach(function(mem) {
-      var timeStr = mem.timestamp || '';
-      if (timeStr) {
-        try {
-          var d = new Date(mem.timestamp);
-          timeStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-        } catch(e) {}
-      }
-      html += '<div class="mem-entry">';
-      if (timeStr) html += '<div class="mem-time">' + escapeHtml(timeStr) + '</div>';
-      html += '<div class="mem-source">Mem0 · score: ' + (mem.score ? mem.score.toFixed(2) : 'N/A') + '</div>';
-      html += '<div class="mem-content">' + escapeHtml(mem.content) + '</div>';
-      html += '</div>';
+    // Build character filter bar
+    var charMap = {};
+    results.forEach(function(m) {
+      var c = m.characterId || '?';
+      if (!charMap[c]) charMap[c] = 0;
+      charMap[c]++;
     });
+    var chars = Object.keys(charMap).sort();
+    var self = this;
+
+    var html = '';
+    // Search bar
+    html += '<div class="mem-viewer-toolbar" style="display:flex;gap:6px;margin-bottom:10px;align-items:center">';
+    html += '<input id="mem-viewer-search" type="text" placeholder="Search memories..." style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--border-subtle);background:var(--bg-surface);color:var(--text-primary);font-size:12px">';
+    html += '<button id="mem-viewer-search-btn" class="btn-primary" style="padding:6px 12px;font-size:11px;border-radius:8px" data-i18n="mem_view_search">Search</button>';
+    html += '</div>';
+
+    // Character filter chips
+    html += '<div class="mem-char-filters" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">';
+    html += '<button class="mem-char-chip active" data-char="" style="padding:3px 10px;border-radius:12px;border:1px solid var(--border-subtle);background:var(--accent);color:var(--text-inverse);font-size:10px;cursor:pointer">All (' + results.length + ')</button>';
+    chars.forEach(function(c) {
+      var displayName = c === '?' ? 'Unknown' : c;
+      html += '<button class="mem-char-chip" data-char="' + escapeHtml(c) + '" style="padding:3px 10px;border-radius:12px;border:1px solid var(--border-subtle);background:var(--bg-surface);color:var(--text-muted);font-size:10px;cursor:pointer">' + escapeHtml(displayName) + ' (' + charMap[c] + ')</button>';
+    });
+    html += '</div>';
+
+    // Memory list
+    html += '<div class="mem-list">';
+    var filtered = filterChar ? results.filter(function(m) { return m.characterId === filterChar; }) : results;
+    if (filtered.length === 0) {
+      html += '<div class="memory-viewer-empty">No memories for this character</div>';
+    } else {
+      filtered.forEach(function(mem) {
+        var timeStr = mem.timestamp || '';
+        if (timeStr) {
+          try { var d = new Date(mem.timestamp); timeStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); } catch(e) {}
+        }
+        var charName = mem.characterId || '?';
+        html += '<div class="mem-entry">';
+        if (timeStr) html += '<div class="mem-time">' + escapeHtml(timeStr) + '</div>';
+        html += '<div class="mem-source">' + escapeHtml(charName) + ' · score: ' + (mem.score ? mem.score.toFixed(2) : 'N/A') + '</div>';
+        html += '<div class="mem-content">' + escapeHtml(mem.content) + '</div>';
+        html += '</div>';
+      });
+    }
+    html += '</div>';
 
     memViewerBody.innerHTML = html;
+
+    // Character filter click
+    memViewerBody.querySelectorAll('.mem-char-chip').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        memViewerBody.querySelectorAll('.mem-char-chip').forEach(function(b) {
+          b.style.background = 'var(--bg-surface)';
+          b.style.color = 'var(--text-muted)';
+        });
+        this.style.background = 'var(--accent)';
+        this.style.color = 'var(--text-inverse)';
+        var char = this.dataset.char;
+        self._renderMem0Viewer(results, char || null);
+      });
+    });
+
+    // Search
+    var searchInput = document.getElementById('mem-viewer-search');
+    var searchBtn = document.getElementById('mem-viewer-search-btn');
+    function doSearch() {
+      var q = (searchInput.value || '').trim();
+      if (!q) {
+        self._renderMem0Viewer(results, null);
+        return;
+      }
+      var lower = q.toLowerCase();
+      var found = results.filter(function(m) {
+        return (m.content || '').toLowerCase().indexOf(lower) !== -1 || (m.characterId || '').toLowerCase().indexOf(lower) !== -1;
+      });
+      var html2 = '<div class="mem-list">';
+      if (found.length === 0) {
+        html2 += '<div class="memory-viewer-empty">No results for "' + escapeHtml(q) + '"</div>';
+      } else {
+        found.forEach(function(mem) {
+          var timeStr = mem.timestamp || '';
+          if (timeStr) { try { var d = new Date(mem.timestamp); timeStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); } catch(e) {} }
+          var charName = mem.characterId || '?';
+          html2 += '<div class="mem-entry">';
+          if (timeStr) html2 += '<div class="mem-time">' + escapeHtml(timeStr) + '</div>';
+          html2 += '<div class="mem-source">' + escapeHtml(charName) + ' · score: ' + (mem.score ? mem.score.toFixed(2) : 'N/A') + '</div>';
+          html2 += '<div class="mem-content">' + escapeHtml(mem.content) + '</div>';
+          html2 += '</div>';
+        });
+      }
+      html2 += '</div>';
+      memViewerBody.querySelector('.mem-list').outerHTML = html2;
+    }
+    if (searchInput && searchBtn) {
+      searchInput.addEventListener('input', function() { setTimeout(doSearch, 300); });
+      searchBtn.addEventListener('click', doSearch);
+    }
   },
 
   // ── Live2D settings panel ──
