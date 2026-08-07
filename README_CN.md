@@ -27,8 +27,7 @@ q群: 580322386
 
 ### 亚托莉(ATRI)
 
-出自《ATRI -My Dear Moments-》。娇小,天真烂漫,好奇心旺盛--拥有一双红宝石般清澈大眼睛的少女。总是带着笑容奔向明天,顺手拽上你。**性格与夏目完全相反**:一个热情开朗一个冷傲内敛,一个喜怒哀乐全写在脸上一个深藏不露,一个活泼好动一个沉静矜持。若说夏目是冬夜的冷月,亚托莉便是夏日的暖阳。
-
+出自《ATRI -My Dear Moments-》。娇小,天真烂漫,好奇心旺盛--拥有一双红宝石般清澈大眼睛的少女。总是带着笑容奔向明天,顺手拽上你。
 ### 夜乃桜(Yono Sakura)
 
 出自《ディメンション凸ラバース!!》。前任生徒会长,「学园」最强级别的对怪兽战力。银白色长发发尾带淡粉色渐变,浅蓝色眼瞳--冷静、克己、责任感极强。她不擅长圆滑的安慰和漂亮话;她的关心直接而笨拙,像命令一样:休息、吃饭、别逞强。桌宠形态下,她正在学习不必一个人承担一切--在屏幕这一侧守护一个普通而重要的日常就足够了。**安静的守护者**:沉默但注视,固执但忠诚,是不请自来的学姐。
@@ -100,7 +99,6 @@ q群: 580322386
 
 ### 🎙️ TTS 语音
 
-![TTS Workshop](media/tts_workshop.gif)
 
 🔊 **听听效果**(点击播放,亚托莉日语):
 
@@ -204,7 +202,8 @@ Qwen3.6-35B (语言心智) ←→ Cosmos 3 Nano (物理心智)
 
 | 模型 | 用途 | 大小 |
 |-|-|-|
-| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V7 APEX Compact** (GGUF) | 聊天 LLM | 16.11 GB |
+| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V7 MTP APEX Compact** (GGUF) | 聊天 LLM (主模型 MoE) | 16.11 GB |
+| **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | 聊天 LLM (备选密集模型) | 13.5 GB |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI 画图(默认) | 6.46 GB |
 | **miaomiaoHarem_v20** | ComfyUI 画图(备用) | 6.46 GB |
 | **GPT-SoVITS 语音权重** | TTS 语音合成 | ~303 MB |
@@ -244,32 +243,35 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-d
 
 ## 本地 LLM 性能
 
-通过 llama.cpp 运行 LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V7 (MoE, 16.10 GiB, 34.66B 参数)。
+通过 llama.cpp 运行 Qwen3.6-35B-A3B-MTP (Genesis Hermes V7 MTP APEX Compact, MoE, 16.11 GiB, 34.66B 参数)，启用 MTP (Multi-Token Prediction) 投机解码。
 
 ### 启动命令
 
 ```powershell
 llama-server.exe `
-  -m "Hermes3.6-35B-A3B-Uncensored-Genesis-V7-APEX-Compact.gguf" `
+  -m "Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf" `
   -c 150000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
   --cpu-moe --cpu-mask 0xFFFFFFFF `
   --batch-size 4096 --ubatch-size 2048 `
-   -rea off --jinja `
-  --cache-ram 2048 --parallel 1 `
-  --kv-unified --no-mmap
+  -rea off --jinja `
+  --cache-ram 3000 --parallel 1 `
+  --kv-unified --no-mmap `
+  --spec-type draft-mtp --spec-draft-n-max 2
 ```
 
-> 💡 **关于 `--no-mmap` 与 `-ngl`:** `--no-mmap` 让 llama.cpp 自行管理内存分配,比手动指定 `-ngl` 层数效率更高。`-ngl` 强制锁定指定层数到 GPU,可能导致一半速度损失;而 `--no-mmap` 让引擎根据实际显存动态调度,实测在 RTX 5070 8GB 上可达 50~60 t/s。KV 缓存用 `q4_0` 量化可节省一半显存,16K 上下文下 q4 可稳定运行 50K+ token。
+> 💡 **关于 `--no-mmap` 与 `-ngl`:** `--no-mmap` 让 llama.cpp 自行管理内存分配,比手动指定 `-ngl` 层数效率更高。`-ngl` 强制锁定指定层数到 GPU,可能导致一半速度损失;而 `--no-mmap` 让引擎根据实际显存动态调度。KV 缓存用 `q4_0` 量化可节省一半显存,16K 上下文下 q4 可稳定运行 50K+ token。
 
-### 关键指标
+MTP (Multi-Token Prediction) 在 CPU 上预测 2 个未来 token，主模型在 GPU 上验证。接受率约 71%，实际输出约 48 tok/s。
+
+### 关键指标 (35B MoE)
 
 | 指标 | 数值 | 备注 |
 |-|-|-|
-| 显存占用 | ~4.6 GiB (模型) + ~1.2 GiB (KV 缓存) | 8 GB 显存剩余约 2 GB |
-| 预填充速度 | **960 ~ 1390 t/s** | 120K 上下文, batch-size 4096 |
-| Token 生成 | **31 ~ 39 t/s** | MoE 架构, 8/256 experts |
-| 上下文长度 | 120K (~12万 tokens) | ~59k token 全量重新处理约 55s |
+| 显存占用 | ~4.6 GiB (模型) + ~1.4 GiB (KV 缓存) | 8 GB 显存剩余约 2 GB |
+| 预填充速度 | **28 ~ 156 t/s** | 随提示长度变化 |
+| Token 生成 | **48 tok/s 平均** | MTP 接受率 ~71% (draft=2) |
+| 上下文长度 | 120K (~12万 tokens) | 全量重处理 ~55s 在 59k token |
 | 模型加载时间 | ~12s | --no-mmap, 需要充足内存 |
 
 ### 长上下文稳定性
@@ -283,17 +285,50 @@ Qwen3.6 MoE 使用 SSM (Gated Delta Net) 混合注意力,配合 `--kv-unified`�
 - 启动时从摘要恢复上下文,保持实际 token 数在 5K-20K 范围内
 - `config-patch.json` 将 OpenClaw contextWindow 设为 262144 以匹配模型容量
 
+---
+
+## Qwen3.6-27B-Fable-MTP (密集模型，备选)
+
+辅助密集模型，适用于需要全 27B 参数激活的任务。通过 llama.cpp 运行，启用 MTP 投机解码。
+
+### 启动命令
+
+```powershell
+llama-server.exe `
+  -m "Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf" `
+  -c 150000 `
+  --flash-attn on -ctk q4_0 -ctv q4_0 `
+  --batch-size 4096 --ubatch-size 2048 `
+  -rea off --jinja `
+  --parallel 1 --kv-unified --no-mmap `
+  --spec-type draft-mtp --spec-draft-n-max 1
+```
+
+> ⚠️ **8GB 显存跑密集模型**:27B Q4_K_S ≈ 14 GB，远超 8 GB 显存。大部分层跑在 CPU 上，仅 attention 等层在 GPU。这是**主要瓶颈**，生成速度远低于 MoE 版本。
+
+### 关键指标 (27B 密集)
+
+| 指标 | 数值 | 备注 |
+|-|-|-|
+| 显存占用 | ~5.8 GiB 模型 + KV | 无法完全 offload，被 8 GB 限制 |
+| 预填充速度 | **~156 t/s** | Prompt 在 GPU 处理 |
+| Token 生成 | **~3.8 tok/s** | 密集 27B，CPU 为主，MTP ~84% |
+| MTP 接受率 | 84.1% (draft=1) | 草稿头更简单，接受率更高 |
+| 上下文长度 | 150K | KV 在 GPU/CPU 混合 |
+
+> 💡 **MoE vs 密集**:35B MoE 每 token 只激活 ~3B 参数 (8/256 experts)，完美适配 GPU，可达 48 tok/s。27B 密集激活全部 27B，超显存后被 CPU 瓶颈卡在 3.8 tok/s。在该硬件上(RTX 5070 8GB)，**强烈推荐 35B MoE 做主模型**。
+
 ### VRAM 分档策略
 
 系统根据 GPU 显存大小自动选择运行模式,无需手动配置:
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│ VRAM 级别               │ TTS       │ ComfyUI   │ llama   │
+│ VRAM 级别               │ TTS       │ ComfyUI   │ llama   │  tts  │
 ├────────────────────────────────────────────────────────────┤
-│ Level 0: <8GB           │ 停 llama  │ 停 llama  │ 被杀    │
-│ Level 1: 8-12GB (当前)   │ 停 llama  │ 停 llama  │ 被杀    │
-│ Level 2: ≥12GB          │ 不停      │ 不停      │ 始终在线 │
+│ Level 0: <8GB           │ 停 llama  │ 停 llama  │ 被杀    │ 被杀  │
+│ Level 1: 8-12GB (当前)   │ 停 llama  │ 停 llama  │ 被杀    │  不杀  │
+│ Level 2: ≥12GB          │ 不停      │ 不停      │ 始终在线 │  不停 │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -618,7 +653,7 @@ powershell -File start.ps1
 
 启动顺序:
 ```
-[1/8] llama-server        (8080, Genesis Hermes V7, --no-mmap)
+[1/8] llama-server        (8080, Qwen3.6-35B-A3B-MTP, --no-mmap, --spec-type draft-mtp)
 [2/8] Embedding Server    (9999, all-MiniLM + BGE 双模型, CPU, ~100MB 内存)
 [3/8] VRAM 分档检测       (自动判断 TTS/ComfyUI 是否停 llama)
 [4/8] Headroom Proxy      (19251, mem0 记忆注入 + SmartCrusher 压缩 + 云端路由)
@@ -671,7 +706,7 @@ schtasks /create /tn "cleanup-orphans" `
 
 | 组件 | 说明 |
 |-|-|
-| `llama-server :8080` | Qwen3.6-35B-A3B MoE |
+| `llama-server :8080` | Qwen3.6-35B-A3B-MTP MoE |
 | `headroom proxy :19251` | mem0 记忆注入 + SmartCrusher 压缩 + 模型路由 |
 | Main session | AGENTS.md 驱动角色扮演 |
 | TTS | 按 VRAM 分档停/不停 llama |
