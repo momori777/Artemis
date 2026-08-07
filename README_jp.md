@@ -95,13 +95,13 @@ OpenClaw + QQ Bot + Telegram Bot + llama.cpp + GPT-SoVITS + ComfyUI + Sakura デ
 
 ![ウェブチャット デモ](media/webchat-demo.gif)
 
-> 👆 **ウェブチャット**: ブラウザベースのチャットインターフェース `http://127.0.0.1:19270` — QQ/Telegramボットの代替。ローカルデーモンプロキシに接続 → llama.cpp サーバー。8GB VRAMでも動作します！
+> 👆 **ウェブチャット**: ブラウザベースのチャットインターフェース `http://127.0.0.1:19270` — QQ/Telegramボットの代替。ローカルデーモンプロキシに接続 → llama.cpp サーバー。8GB VRAMで全量正常動作。
 
-### 🎙️ TTS 音声ワークショップ
+### 🎙️ TTS 音声
 
 <video src="media/tts_workshop_small.mp4" controls width="800"></video>
 
-> 👆 **Artemis Studio - TTSワークショップ**: GPT-SoVITS リアルタイム音声合成、3キャラクターの声（夏目/アトリ/桜）、5つの感情モード（日常/傲娇/深情/長文/ランダム）、日中英ミックス読み上げ。llamaが動いていなくても動作。
+> 👆 **Artemis Studio - TTS ワークショップ**: GPT-SoVITS リアルタイム音声合成、3キャラクターの声（夏目/アトリ/桜）、5つの感情モード（カジュアル/ツンデレ/ロマンティック/ロング/ランダム）、中日英ミックス対応。**llamaが動作中かどうかに関わらず動作**。
 
 ![TTS ワークショップ](media/tts_workshop.gif)
 
@@ -209,7 +209,8 @@ Qwen3.6-35B（言語の心）  ←→  Cosmos 3 Nano（物理の心）
 
 | モデル | 用途 | サイズ |
 |-|-|-|
-| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V7 APEX Compact** (GGUF) | チャット LLM | 16.11 GB |
+| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V7 MTP APEX Compact** (GGUF) | チャット LLM（主モデル MoE）| 16.11 GB |
+| **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | チャット LLM（代替密集モデル）| 13.5 GB |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI 生成（デフォルト） | 6.46 GB |
 | **miaomiaoHarem_v20** | ComfyUI 生成（バックアップ） | 6.46 GB |
 | **GPT-SoVITS 音声重み** | TTS 音声合成 | ~303 MB |
@@ -252,32 +253,35 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-d
 
 ## ローカル LLM パフォーマンス
 
-llama.cpp 経由で LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V7 (MoE, 16.10 GiB, 34.66B パラメータ) を実行。
+llama.cpp 経由で Qwen3.6-35B-A3B-MTP（Genesis Hermes V7 MTP APEX Compact、MoE、16.11 GiB、34.66B パラメータを）実行。MTP（Multi-Token Prediction 擬似デコード）有効。
 
 ### 起動コマンド
 
 ```powershell
 llama-server.exe `
-  -m "Hermes3.6-35B-A3B-Uncensored-Genesis-V7-APEX-Compact.gguf" `
+  -m "Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf" `
   -c 150000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
   --cpu-moe --cpu-mask 0xFFFFFFFF `
   --batch-size 4096 --ubatch-size 2048 `
    -rea off --jinja `
-  --cache-ram 2048 --parallel 1 `
-  --kv-unified --no-mmap
+  --cache-ram 3000 --parallel 1 `
+  --kv-unified --no-mmap `
+  --spec-type draft-mtp --spec-draft-n-max 2
 ```
 
-> 💡 **`--no-mmap` vs `-ngl` について：** `--no-mmap` は llama.cpp にメモリ管理を任せ、手動で `-ngl` 層数を指定するよりはるかに効率的です。`-ngl` で GPU 層を強制すると速度が半減する可能性がありますが、`--no-mmap` は実際の VRAM に応じて動的割り当てを行い、RTX 5070 8GB で 50~60 t/s を達成します。KV キャッシュに `q4_0` を使用すると VRAM 使用量が半減し、16K コンテキストで q4 は 50K+ トークンまで安定動作します。
+> 💡 **`--no-mmap` vs `-ngl` について：** `--no-mmap` は llama.cpp にメモリ管理を任せ、手動で `-ngl` 層数を指定するよりはるかに効率的です。`-ngl` で GPU 層を強制すると速度が半減する可能性がありますが、`--no-mmap` は実際の VRAM に応じて動的割り当てを行います。KV キャッシュに `q4_0` を使用すると VRAM 使用量が半減し、16K コンテキストで q4 は 50K+ トークンまで安定動作します。
 
-### 主要指標
+MTP（Multi-Token Prediction）は CPU で 2 語先のトークンを予測し、メインモデルが GPU で検証します。受け入れ率約 71%、実出力約 48 tok/s。
+
+### 主要指標 (35B MoE)
 
 | 指標 | 値 | 備考 |
 |-|-|-|
-| VRAM 使用量 | ~4.6 GiB（モデル）+ ~1.2 GiB（KV キャッシュ） | 8 GB VRAM で約 2 GB 空き |
-| プリフィル速度 | **960 ~ 1390 t/s** | 120K コンテキスト、バッチサイズ 4096 |
-| トークン生成 | **31 ~ 39 t/s** | MoE アーキテクチャ、8/256 エキスパート |
-| コンテキスト制限 | 120K（~120k トークン） | ~59k トークンのフル再処理に約 55秒 |
+| VRAM 使用量 | ~4.6 GiB（モデル）+ ~1.4 GiB（KV キャッシュ） | 8 GB VRAM で約 2 GB 空き |
+| プリフィル速度 | **28 ~ 156 t/s** | 提示長により変動 |
+| トークン生成 | **48 tok/s 平均** | MTP 受け入れ率 ~71% (draft=2) |
+| コンテキスト制限 | 120K（~120k トークン） | 59k トークンで約 55秒のフル再処理 |
 | モデル読み込み時間 | ~12秒 | --no-mmap、十分な RAM 必要 |
 
 ### 長期コンテキスト安定性
@@ -291,29 +295,60 @@ Qwen3.6 MoE は SSM（Gated Delta Net）ハイブリッド注意力と `--kv-uni
 - スタートアップ時にサマリーからコンテキストを復元し、実際のトークン数を 5K-0K 範囲に保持
 - `config-patch.json` で OpenClaw の contextWindow を 262144 に設定してモデル容量に一致
 
-### VRAMティアリング戦略
+---
+
+## Qwen3.6-27B-Fable-MTP（密集モデル、代替）
+
+全 27B パラメータ活性化が必要なタスク用の補助密集モデル。llama.cpp 経由で実行、MTP 擬似デコード有効。
+
+### 起動コマンド
+
+```powershell
+llama-server.exe `
+  -m "Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf" `
+  -c 150000 `
+  --flash-attn on -ctk q4_0 -ctv q4_0 `
+  --batch-size 4096 --ubatch-size 2048 `
+  -rea off --jinja `
+  --parallel 1 --kv-unified --no-mmap `
+  --spec-type draft-mtp --spec-draft-n-max 1
+```
+
+> ⚠️ **8GB VRAM で密集モデル**: 27B Q4_K_S ≈ 14 GB、8 GB VRAM を大幅に超える。大部分の層が CPU で動作し、attention などの層のみが GPU で動作。**主なボトルネック**で、MoE 版よりも生成速度が大幅に低下する。
+
+### 主要指標 (27B 密集)
+
+| 指標 | 値 | 備考 |
+|-|-|-|
+| VRAM 使用量 | ~5.8 GiB モデル + KV | 8 GB で制限され完全にオフロード不可 |
+| プリフィル速度 | **~156 t/s** | GPU でプロンプト処理 |
+| トークン生成 | **~3.8 tok/s** | 密集 27B、CPU 主体、MTP ~84% |
+| MTP 受け入れ率 | 84.1% (draft=1) | 単純な草稿ヘッダーのため受け入れ率が高い |
+| コンテキスト制限 | 150K | KV が GPU/CPU 混合 |
+
+> 💡 **MoE vs 密集**: 35B MoE は各トークンで約 3B パラメータのみ活性化 (8/256 エキスパート)、GPU に完璧に適合して 48 tok/s を達成。27B 密集は全 27B を活性化し、VRAM を超えて CPU ボトルネックで 3.8 tok/s に制限。このハードウェア（RTX 5070 8GB）では、**35B MoE を主モデルとして強く推奨**。
 
 システムはGPU VRAMを自動検出して最適な実行モードを選択 - 手動設定不要：
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ VRAMティア                  │ TTS          │ ComfyUI     │ llama   │
-├─────────────────────────────────────────────────────────────┤
-│ ティア 0: <8GB               │ llama停止    │ llama停止   │ 終了    │
-│ ティア 1: 8-12GB（現在）      │ llama停止    │ llama停止   │ 終了    │
-│ ティア 2: ≥12GB              │ 停止なし     │ 停止なし    │ 常時ON  │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│ VRAMティア                  │ TTS          │ ComfyUI     │ llama   │  tts   │
+├─────────────────────────────────────────────────────────────────────┤
+│ ティア 0: <8GB               │ llama停止    │ llama停止   │ 終了    │ 終了     │
+│ ティア 1: 8-12GB（現在）      │ llama停止    │ llama停止   │ 終了    │ 停止なし   │
+│ ティア 2: ≥12GB              │ 停止なし     │ 停止なし    │ 常時ON  │ 停止なし   │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 **現在のセットアップ（8GB VRAM）**:
 ```
 8 GB 合計 VRAM
-├── llama-server常驻: ~5.8 GB（モデル 4.6G + KVキャッシュ 1.2G）
+├── llama-server 常驻: ~5.8 GB（モデル 4.6G + KVキャッシュ 1.2G）
 ├── 空き: ~2.2 GB
 │
 ├── TTS推論: llama停止 → ~8 GB 空き → llama再開（~70秒）
 ├── ComfyUI生成: llama停止 → ~8 GB 空き → llama再開（~120秒）
-├── Artemis Studio（TTS/ComfyUIワークショップ）: 単独 - llama状態に関係ず
+├── Artemis Studio（TTS/ComfyUIワークショップ）: 単独 - llama状態に関わらず
 └── ASR / Live2D / 埋め込み: 常にオンライン - VRAMティアリングの影響なし
 ```
 
@@ -321,7 +356,9 @@ Qwen3.6 MoE は SSM（Gated Delta Net）ハイブリッド注意力と `--kv-uni
 
 ```
 <PROJECT_DIR>/                        # OpenClaw ワークスペースルート
-├── start.ps1                         # 🚀 ワンクリック起動：llama + Live2D + Gateway
+├── start.ps1                         # 🚀 ワンクリック起動：llama + headroom + Live2D + Gateway
+├── artemis_headroom_proxy.py          # Headroom proxy (19251): mem0注入 + SmartCrusher + ルーティング
+├── shiki_daemon.py                    # デーモン (19260/19270): WebChatバックエンド + 自動注入プロバイダ
 ├── quick_setup.ps1                     # 🛠 インタラクティブパス設定ウィザード
 ├── config.yaml                       # 生成された設定ファイル
 ├── download-models.ps1               # ワンクリックモデルダウンロード（Windows）
@@ -500,15 +537,15 @@ Claude Code は起動時に自動的にタスクループを実行：
 
 | スキル | タイプ | llama 停止？ | 仕組み |
 |-|-|-|-|
-| **埋め込み** | バックグラウンドプロセス | ❌いいえ | all-MiniLM-L6-v2 + BGE-small-zh-v1.5 二重モデル（CPU、ポート9999）- OpenClaw メモリ検索 + mem0 ブリッジ |
-| **Live2D** | HTTP exec | ❌いいえ | `localhost:19200` ブリッジへの直接 HTTP コール |
-| **ウェブチャット** | ブラウザ | ❌いいえ | ローカルデーモンプロキシから llama :8080、フロントエンドポート19270、フルキャラクター/マルチセッション対応リアルタイムチャット |
-| **Claude Code** | ターミナル（MCP） | ❌いいえ | 並列エージェントランタイム via `.claude/artemis_mcp_server.py`、llama :8080 に直接アクセス |
-| **TTS** | sessions_spawn | ✅ VRAMティア | ≥12GB：停止なし；8GB：llama停止 → GPT-SoVITS → llama再起動 |
-| **ComfyUI** | sessions_spawn | ✅ VRAMティア | ≥12GB：停止なし；8GB：llama停止 → 画像生成 → llama再起動 |
-| **ASR** | sessions_spawn | ❌いいえ | Faster-Whisper small（~1.5GB VRAM、llama と共存可能） |
-| **Sakura** | 共有 llama-client | ❌いいえ | llama 停止を検知 → 待機 → 自動再開 |
-| **Artemis Studio** | デスクトップコンソール | ❌いいえ | TTS/ComfyUI ビジュアルワークショップ、単独動作 - llama 状態に関係ず |
+| **埋め込み** | バックグラウンドプロセス | ❌ いいえ | all-MiniLM-L6-v2 + BGE-small-zh-v1.5 二重モデル（CPU、ポート9999 - OpenClaw メモリ検索 + mem0 ブリッジ |
+| **Live2D | HTTP exec | ❌ いいえ | `localhost:19200` ブリッジへの直接 HTTP コール |
+| **ウェブチャット | ブラウザ | ❌ いいえ | ローカルデーモンプロキシから llama :8080、ポート19270、リアルタイムチャット |
+| **Claude Code** | ターミナル（MCP） | ❌ いいえ | 並列エージェントランタイム、.claude/artemis_mcp_server.py 経由で動作 |
+| **TTS** | sessions_spawn | 🔶 VRAMティア | ≥12GB：停止なし；8GB：llama停止 → GPT-SoVITS → llama再起動 |
+| **ComfyUI** | sessions_spawn | 🔶 VRAMティア | ≥12GB：停止なし；8GB：llama停止 → 画像生成 → llama再起動 |
+| **ASR** | sessions_spawn | ❌ いいえ | Faster-Whisper small（~1.5GB VRAM、llama と共存可能） |
+| **Sakura** | 共有 llama-client | ❌ いいえ | llama 停止を検知 → 待機 → 自動再開 |
+| **Artemis Studio** | デスクトップコンソール | ❌ いいえ | TTS/ComfyUI ビジュアルワークショップ、単独動作、llama状態に関わらず |
 
 ## 前提条件
 
@@ -529,7 +566,7 @@ Claude Code は起動時に自動的にタスクループを実行：
 >
 > 🧠 **headroom トークン節約** - `skills/headroom/`（SmartCrusher + ContentRouter + CCR）。開発シナリオでのツール出力をコンテキストウィンドウに入る前に圧縮。API 使用法は AGENTS.md を参照。
 | headroom | バンドル済み（`skills/headroom/`） | SmartCrusher コンテキスト圧縮 + ContentRouter + CCR |
-| Python | 3.12+ | ランタイム（Sakura + TTS + ComfyUI） |
+| Python | 3.12+ | ランタイム（Sakura + TTS + ComfyUI + Headroom） |
 
 ## クイックスタート
 
@@ -622,13 +659,14 @@ powershell -File start.ps1
 
 起動シーケンス:
 ```
-[1/7] llama-server        （8080、Genesis Hermes V7、--no-mmap）
-[2/7] 埋め込みサーバー    （9999、all-MiniLM + BGE 二重モデル、CPU、~100MB RAM）
-[3/7] VRAM テア検出      （TTS/ComfyUI が llama を停止するかどうかを自動選択）
-[4/7] Live2D ブリッジ    （19200、pixi-live2d-display）
-[5/7] OpenClaw Gateway   （18789）
-[6/7] llama-watchdog     （クラッシュ時自動再起動）
-[7/7] ウェブチャットデーモン （19260 API + 19270 ウェブチャット、--no-llama）
+[1/8] llama-server        （8080、Qwen3.6-35B-A3B-MTP、--no-mmap、--spec-type draft-mtp）
+[2/8] 埋め込みサーバー    （9999、all-MiniLM + BGE 二重モデル、CPU、~100MB RAM）
+[3/8] VRAM ティア検出      （TTS/ComfyUI が llama を停止するかどうかを自動選択）
+[4/8] Headroom Proxy      （19251、mem0 メモリ注入 + SmartCrusher 圧縮 + クラウドルーティング）
+[5/8] Live2D ブリッジ    （19200、pixi-live2d-display）
+[6/8] OpenClaw Gateway   （18789、local-llama プロバイダを自動注入）
+[7/8] llama-watchdog     （クラッシュ時自動再起動）
+[8/8] ウェブチャットデーモン （19260 API + 19270 ウェブチャット、--no-llama）
 ```
 
 **シャットダウン: `shiki.cmd -Stop`** - 全サービスを正常停止（llama → live2d → sakura → embedding → comfyui → gateway → cleanup）。
@@ -670,11 +708,12 @@ schtasks /create /tn "cleanup-orphans" `
 <tr>
 <td width="50%" valign="top">
 
-**🧠 LLM 推論**
+**🧠 LLM 推論 + Headroom**
 
 | コンポーネント | 説明 |
 |-|-|
-| `llama-server :8080` | Qwen3.6-35B-A3B MoE |
+| `llama-server :8080` | Qwen3.6-35B-A3B-MTP MoE |
+| `headroom proxy :19251` | mem0 メモリ注入 + SmartCrusher 圧縮 + ルーティング |
 | メインセッション | AGENTS.md 駆動のロールプレイ |
 | TTS | VRAM ティア対応停止/再起動 |
 | ComfyUI | VRAM ティア対応停止/再起動 |
@@ -697,10 +736,30 @@ schtasks /create /tn "cleanup-orphans" `
 | CCR | 8ターンごとにファクト抽出 → Qdrant |
 | SmartCrusher | 24メッセージ/40K文字ハードキャップ |
 | mem0_sync_cron | 30分ごと：Qdrant → _mem0_auto.md |
+| headroom_routes.json | sidecar: model_id → 実バックエンド baseUrl マッピング |
 
 </td>
 </tr>
 </table>
+
+### Headroom + Mem0 パイプライン (port 19251)
+
+```
+OpenClaw Gateway (18789)
+  ├─ <provider>/<model-id>           → 元のバックエンドに直接（headroomをスキップ）
+  ├─ local-llama/llama-local          → 19251 → llama-server:8080
+  └─ local-llama/<model-id>           → 19251 → 元のバックエンド（headroom+mem0経由）
+         │
+         ▼
+  headroom proxy (19251)
+    ├─ [1] mem0 キャラクターメモリ注入（Qdrant ベクター検索）
+    ├─ [2] SmartCrusher 5次元圧縮会話履歴
+    └─ [3] 実バックエンドへルーティング
+         ├─ llama-local → llama-server:8080
+         └─ クラウドモデル    → sidecarが実baseUrlを検索
+```
+
+**追加のみ変更なし原則：** `start.ps1` 起動時に `~/.openclaw/openclaw.json` を自動スキャンし、`local-llama` プロバイダを追加（既存のクラウドモデルをコピー）、元のプロバイダはそのまま。元の baseUrl は `~/.openclaw/headroom_routes.json`) sidecar ファイルに保存。クローン後ゼロコンフィグ。
 
 ### エージェントハブ
 
@@ -767,10 +826,11 @@ schtasks /create /tn "cleanup-orphans" `
 8. メインセッションがメディアファイルを読み込み → `<qqmedia>` / `MEDIA:` で送信
 9. バックグラウンド：CCR は約8ターンごとで長期メモリを Qdrant に抽出
 10. クローンジョブが30分ごとに Qdrant → `_mem0_auto.md` を同期し、原生 `memory_search` を有効化
+11. Headroom proxy (19251) が `local-llama/*` リクエストを透過的にインターセプト → mem0 注入 → コンテキスト圧縮 → 実バックエンドへルーティング
 
 ## ⚠️ 重要注意事項
 
-- **RTX 50xx（Blackwell）+ CUDA 13.x = `munmap_chunk(): invalid pointer` クラッシュ** - CUDA 13.x は Blackwell GPU 上の llama.cpp で既知のメモリ管理非互換性があります。**解決策：CUDA 12.x でコンパイルされたビルド済み llama.cpp バイナリを使用**（CUDA 13.x で自己コンパイルではなく）。[llama.cpp Releases](https://github.com/ggml-org/llama.cpp/releases) からダウンロードし、`cudart-llama-bin-win-cuda-12.4-x64.zip` を選択。RTX 5070 Ti は CUDA 12.x ドライバーと完全に互換。
+- **RTX 50xx（Blackwell）+ CUDA 13.x = `munmap_chunk(): invalid pointer` クラッシュ** - CUDA 13.x は Blackwell GPU 上の llama.cpp で既知のメモリ管理非互換性があります。**解決策：CUDA 12.x でコンパイルされたビルド済み llama.cpp バイナリを使用**（CUDA 13.x で自己コンパイルではなく）。[llama.cpp Releases](https://github.com/ggml-org/llama.cpp/releases) から `cudart-llama-bin-win-cuda-12.4-x64.zip` をダウンロード。RTX 5070 Ti は CUDA 12.x ドライバーと完全に互換。
 - 8GB VRAM（ティア1）での TTS/ComfyUI 推論中に llama-server が約60-120秒オフライン — 会話が一時停止しますが、Live2D + Artemis Studio は稼働継続。12GB+（ティア2）では全くの中断なし
 - サブセッションは **ローカルモデル**（メインと同じ）を使用、DeepSeek は任意のフォールバック
 - **ローカル llama モデルでは `cron` ツールを拒否する必要がある** — llama.cpp の GBNF 文法コンバーターは `^...$` で完全にアンカーされていない JSON Schema の `pattern` をすべて拒否します。OpenClaw の cron ツールはネストされたプロパティ（`job.declarationKey`、`job.displayName`）に `pattern: "\\S"` を宣言しているため、完全なツールセットを含む**すべての**リクエストが `400 JSON schema conversion failed: Pattern must start with '^' and end with '$'` で失敗し、リモートモデルへ静かにフォールバックします。トリガーされるのはネスト／配列レベルの pattern のみで、トップレベルは正常に変換されます。`~/.openclaw/openclaw.json` での修正:
@@ -783,7 +843,7 @@ schtasks /create /tn "cleanup-orphans" `
   ```
   `tools.*` はホットリロードされないため、変更後は gateway を再起動してください。スケジュール機能はリモートモデルのセッション経由で引き続き利用できます。
 - llama-server はクロスターンプロンプトキャッシュの再利用をサポートしない（SSM の制限）— 定期的な `/reset` を使用
-- **Live2D には Cubism Core 4 が必要**（5 や 6 ではない）- pixi-live2d-display v0.5.0 は Cubism 4 Framework にビルド済み；Core 5+ はクリッピング/レイヤー障害の原因。 **Core 4 はバンドル済み** `live2d/live2dcubismcore.min.js` — CDN は不要。
+- **Live2D には Cubism Core 4 が必要**（5 や 6 ではない）- pixi-live2d-display v0.5.0 は Cubism 4 Framework にビルド済み；Core 5+ はクリッピング/レイヤー障害の原因。**Core 4 はバンドル済み** `live2d/live2dcubismcore.min.js` — CDN は不要。
 - すべてのモデルファイルは `.gitignore` で保護
 - GPT-SoVITS 重みは独自学習済みであり配布されていない - 自身の音声データで学習
 

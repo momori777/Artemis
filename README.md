@@ -95,9 +95,9 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 
 ![Web Chat Demo](media/webchat-demo.gif)
 
-> 👆 **Web Chat**: browser-based chat interface at `http://127.0.0.1:19270` - an alternative to QQ/Telegram bots. Connects directly to local daemon proxy → llama.cpp server.no thing stop and running well even in 8GB VRAM!!!!!
+> 👆 **Web Chat**: browser-based chat interface at `http://127.0.0.1:19270` - an alternative to QQ/Telegram bots. Connects directly to local daemon proxy → llama.cpp server. 8 GB VRAM can run fully without stopping.
 
-### 🎙️ TTS Voice Workshop
+### 🎙️ TTS Voice
 
 <video src="media/tts_workshop_small.mp4" controls width="800"></video>
 
@@ -207,7 +207,8 @@ See [`models.yaml`](models.yaml) for full details.
 
 | Model | Purpose | Size |
 |-|-|-|
-| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V7 APEX Compact** (GGUF) | Chat LLM | 16.11 GB |
+| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V7 MTP APEX Compact** (GGUF) | Chat LLM (primary MoE) | 16.11 GB |
+| **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | Chat LLM (secondary dense) | 13.5 GB |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI generation (default) | 6.46 GB |
 | **miaomiaoHarem_v20** | ComfyUI generation (backup) | 6.46 GB |
 | **GPT-SoVITS voice weights** | TTS voice synthesis | ~303 MB |
@@ -250,32 +251,35 @@ All Python/PS scripts read paths from `config.yaml` -no hardcoded paths to edit.
 
 ## Local LLM Performance
 
-Running LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V7 (MoE, 16.10 GiB, 34.66B params) via llama.cpp.
+Running Qwen3.6-35B-A3B-MTP (Genesis Hermes V7 MTP APEX Compact, MoE, 16.11 GiB, 34.66B params) via llama.cpp with speculative MTP (Multi-Token Prediction) decoding.
 
 ### Launch Command
 
 ```powershell
 llama-server.exe `
-  -m "Hermes3.6-35B-A3B-Uncensored-Genesis-V7-APEX-Compact.gguf" `
+  -m "Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf" `
   -c 150000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
   --cpu-moe --cpu-mask 0xFFFFFFFF `
   --batch-size 4096 --ubatch-size 2048 `
-   -rea off --jinja `
-  --cache-ram 2048 --parallel 1 `
-  --kv-unified --no-mmap
+  -rea off --jinja `
+  --cache-ram 3000 --parallel 1 `
+  --kv-unified --no-mmap `
+  --spec-type draft-mtp --spec-draft-n-max 2
 ```
 
-> 💡 **About `--no-mmap` vs `-ngl`:** `--no-mmap` lets llama.cpp manage memory on its own, which is far more efficient than manually specifying layers with `-ngl`. Forcing GPU layers via `-ngl` can cut speed in half; `--no-mmap` allows the engine to dynamically allocate based on actual VRAM, yielding 50~60 t/s on RTX 5070 8GB. Using `q4_0` for KV cache halves VRAM usage - at 16K context, q4 runs stably for 50K+ tokens.
+> 💡 **About `--no-mmap` vs `-ngl`:** `--no-mmap` lets llama.cpp manage memory on its own, which is far more efficient than manually specifying layers with `-ngl`. Forcing GPU layers via `-ngl` can cut speed in half; `--no-mmap` allows the engine to dynamically allocate based on actual VRAM. Using `q4_0` for KV cache halves VRAM usage - at 16K context, q4 runs stably for 50K+ tokens.
 
-### Key Metrics
+MTP (Multi-Token Prediction) uses a draft head that predicts 2 future tokens at each step on CPU, then the main model verifies them on GPU. Acceptance rate ~71%, yielding ~48 tok/s effective output.
+
+### Key Metrics (35B MoE)
 
 | Metric | Value | Notes |
 |-|-|-|
-| VRAM Usage | ~4.6 GiB (model) + ~1.2 GiB (KV cache) | ~2 GB free on 8 GB VRAM |
-| Prefill Speed | **960 ~ 1390 t/s** | 120K context, batch-size 4096 |
-| Token Generation | **31 ~ 39 t/s** | MoE architecture, 8/256 experts |
-| Context Limit | 120K (~120k tokens) | ~59k token full reprocess in ~55s |
+| VRAM Usage | ~4.6 GiB (model) + ~1.4 GiB (KV cache) | ~2 GB free on 8 GB VRAM |
+| Prefill Speed | **28 ~ 156 t/s** | Varies with prompt length |
+| Token Generation | **48 tok/s avg** | MTP accepted ~71% (draft=2) |
+| Context Limit | 120K (~120k tokens) | Full reprocess ~55s at 59k |
 | Model Load Time | ~12s | --no-mmap, requires sufficient RAM |
 
 ### Long Context Stability
@@ -289,18 +293,51 @@ Qwen3.6 MoE uses SSM (Gated Delta Net) hybrid attention with `--kv-unified`.
 - Restore context from summaries on startup, keeping actual token count in 5K-0K range
 - `config-patch.json` sets OpenClaw contextWindow to 262144 to match model capacity
 
+---
+
+## Qwen3.6-27B-Fable-MTP (Dense, Alt Model)
+
+Secondary dense model for tasks where full 27B parameter activation is preferred. Runs via llama.cpp with MTP speculative decoding.
+
+### Launch Command
+
+```powershell
+llama-server.exe `
+  -m "Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf" `
+  -c 150000 `
+  --flash-attn on -ctk q4_0 -ctv q4_0 `
+  --batch-size 4096 --ubatch-size 2048 `
+  -rea off --jinja `
+  --parallel 1 --kv-unified --no-mmap `
+  --spec-type draft-mtp --spec-draft-n-max 1
+```
+
+> ⚠️ **Dense model on 8GB VRAM**: 27B Q4_K_S ≈ 14 GB, far exceeding 8 GB VRAM. Most layers run on CPU while attention etc. runs on GPU. This is the **main bottleneck**; expect much lower generation speed than the MoE variant.
+
+### Key Metrics (27B Dense)
+
+| Metric | Value | Notes |
+|-|-|-|
+| VRAM Usage | ~5.8 GiB model + KV | Cannot fully offload; constrained by 8 GB |
+| Prefill Speed | **~156 t/s** | Prompt processing on GPU |
+| Token Generation | **~3.8 tok/s** | Dense 27B, CPU-heavy, MTP ~84% accept |
+| MTP Acceptance | 84.1% (draft=1) | Higher rate due to simpler draft head |
+| Context Limit | 150K | Full KV on GPU/CPU hybrid |
+
+> 💡 **MoE vs Dense**: The 35B MoE activates only ~3B parameters per token (8/256 experts) and fits GPU well, hitting 48 tok/s. The 27B dense activates all 27B and exceeds VRAM, bottlenecked to 3.8 tok/s. For this hardware (RTX 5070 8GB), **the 35B MoE is strongly recommended** as primary.
+
 ### VRAM Tiering Strategy
 
 The system auto-detects GPU VRAM and selects the optimal run mode - no manual config:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ VRAM Tier               │ TTS        │ ComfyUI   │ llama   │
-├─────────────────────────────────────────────────────────────┤
-│ Tier 0: <8GB            │ Stop llama │ Stop llama│ Killed  │
-│ Tier 1: 8-12GB (current) │ Stop llama │ Stop llama│ Killed  │
-│ Tier 2: ≥12GB           │ No kill    │ No kill   │ Always on│
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│ VRAM Tier               │ TTS        │ ComfyUI   │ llama   │  tts   │
+├─────────────────────────────────────────────────────────────────────┤
+│ Tier 0: <8GB            │ Stop llama │ Stop llama│ Killed  │ Killed  │
+│ Tier 1: 8-12GB (current) │ Stop llama │ Stop llama│ Killed  │ No kill │
+│ Tier 2: ≥12GB           │ No kill    │ No kill   │ Always on│ No kill │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 **Current setup (8GB VRAM)**:
@@ -309,8 +346,8 @@ The system auto-detects GPU VRAM and selects the optimal run mode - no manual co
 ├── llama-server resident: ~5.8 GB (model 4.6G + KV cache 1.2G)
 ├── Free: ~2.2 GB
 │
-├── TTS inference: stop llama →~8 GB free →resume llama (~70s)
-├── ComfyUI generation: stop llama →~8 GB free →resume llama (~120s)
+├── TTS inference: stop llama → ~8 GB free → resume llama (~70s)
+├── ComfyUI generation: stop llama → ~8 GB free → resume llama (~120s)
 ├── Artemis Studio (TTS/ComfyUI workshop): standalone - works regardless of llama
 └── ASR / Live2D / Embedding: always online - unaffected by VRAM tiering
 ```
@@ -319,7 +356,9 @@ The system auto-detects GPU VRAM and selects the optimal run mode - no manual co
 
 ```
 <PROJECT_DIR>/                                               # OpenClaw workspace root
-├── start.ps1                         # 🚀 One-click launch: llama + Live2D + Gateway
+├── start.ps1                         # 🚀 One-click launch: llama + headroom + Live2D + Gateway
+├── artemis_headroom_proxy.py          # Headroom proxy (19251): mem0 injection + SmartCrusher + routing
+├── shiki_daemon.py                    # Daemon (19260/19270): WebChat backend + auto-inject provider
 ├── quick_setup.ps1                     # 🛠 Interactive path config wizard
 ├── config.yaml                       # Generated config
 ├── download-models.ps1               # One-click model download (Windows)
@@ -500,7 +539,7 @@ Then open **http://127.0.0.1:19280** - create tasks, watch Claude Code pick them
 |-|-|-|-|
 | **Embedding** | Background process | ❌No | all-MiniLM-L6-v2 + BGE-small-zh-v1.5 dual models (CPU, port 9999) -OpenClaw memory search + mem0 bridge |
 | **Live2D** | HTTP exec | ❌No | Direct HTTP calls to `localhost:19200` bridge |
-| **Web Chat** | Browser | ❌ No | Local daemon proxy to llama :8080, port 19270 frontend, real-time chat with full character/multi-session support |
+| **Web Chat** | Browser | ❌ No | Local daemon proxy to llama :8080, port 19270, real-time chat |
 | **Claude Code** | Terminal (MCP) | ❌ No | Parallel agent runtime via .claude/artemis_mcp_server.py, uses llama :8080 directly |
 | **TTS** | sessions_spawn | 🔶 VRAM-tiered | ≥12GB: no kill; 8GB: stop llama →GPT-SoVITS →restart llama |
 | **ComfyUI** | sessions_spawn | 🔶 VRAM-tiered | ≥12GB: no kill; 8GB: stop llama →image gen →restart llama |
@@ -527,7 +566,7 @@ Then open **http://127.0.0.1:19280** - create tasks, watch Claude Code pick them
 >
 > 🧠 **Headroom token-saving** -`skills/headroom/` (SmartCrusher + ContentRouter + CCR). Compress large tool outputs in dev scenarios before they hit the context window. See AGENTS.md for API usage.
 | headroom | Bundled (`skills/headroom/`) | SmartCrusher context compression + ContentRouter + CCR |
-| Python | 3.12+ | Runtime (Sakura + TTS + ComfyUI) |
+| Python | 3.12+ | Runtime (Sakura + TTS + ComfyUI + Headroom) |
 
 ## Quick Start
 
@@ -620,13 +659,14 @@ powershell -File start.ps1
 
 Startup sequence:
 ```
-[1/7] llama-server        (8080, Genesis Hermes V7, --no-mmap)
-[2/7] Embedding Server    (9999, all-MiniLM + BGE dual models, CPU, ~100MB RAM)
-[3/7] VRAM Tier Detection (auto-selects whether TTS/ComfyUI stops llama)
-[4/7] Live2D Bridge       (19200, pixi-live2d-display)
-[5/7] OpenClaw Gateway    (18789)
-[6/7] llama-watchdog      (crash auto-restart)
-[7/7] Web Chat Daemon    (19260 API + 19270 webchat, --no-llama)
+[1/8] llama-server        (8080, Qwen3.6-35B-A3B-MTP, --no-mmap, --spec-type draft-mtp)
+[2/8] Embedding Server    (9999, all-MiniLM + BGE dual models, CPU, ~100MB RAM)
+[3/8] VRAM Tier Detection (auto-selects whether TTS/ComfyUI stops llama)
+[4/8] Headroom Proxy      (19251, mem0 memory injection + SmartCrusher compression + cloud routing)
+[5/8] Live2D Bridge       (19200, pixi-live2d-display)
+[6/8] OpenClaw Gateway    (18789, auto-injects local-llama provider)
+[7/8] llama-watchdog      (crash auto-restart)
+[8/8] Web Chat Daemon     (19260 API + 19270 webchat, --no-llama)
 ```
 
 **Shutdown: `shiki.cmd -Stop`** -gracefully stops all services (llama →live2d →sakura →embedding →comfyui →gateway →cleanup).
@@ -668,11 +708,12 @@ schtasks /create /tn "cleanup-orphans" `
 <tr>
 <td width="50%" valign="top">
 
-**🧠 LLM Inference**
+**🧠 LLM Inference + Headroom**
 
 | Component | Description |
 |-|-|
-| `llama-server :8080` | Qwen3.6-35B-A3B MoE |
+| `llama-server :8080` | Qwen3.6-35B-A3B-MTP MoE |
+| `headroom proxy :19251` | mem0 memory injection + SmartCrusher compression + model routing |
 | Main session | AGENTS.md-driven roleplay |
 | TTS | VRAM-tiered stop/run |
 | ComfyUI | VRAM-tiered stop/run |
@@ -695,10 +736,30 @@ schtasks /create /tn "cleanup-orphans" `
 | CCR | Extracts facts every 8 turns → Qdrant |
 | SmartCrusher | 24 msg/40K char hard cap |
 | mem0_sync_cron | Every 30min: Qdrant → _mem0_auto.md |
+| headroom_routes.json | sidecar: model_id → real backend baseUrl mapping |
 
 </td>
 </tr>
 </table>
+
+### Headroom + Mem0 Pipeline (port 19251)
+
+```
+OpenClaw Gateway (18789)
+  ├─ <provider>/<model-id>           → Direct to original backend (skips headroom)
+  ├─ local-llama/llama-local          → 19251 → llama-server:8080
+  └─ local-llama/<model-id>           → 19251 → original backend (via headroom+mem0)
+         │
+         ▼
+  headroom proxy (19251)
+    ├─ [1] mem0 character memory injection (Qdrant vector search)
+    ├─ [2] SmartCrusher 5-dim compressed conversation history
+    └─ [3] Route to real backend
+         ├─ llama-local → llama-server:8080
+         └─ Cloud models    → sidecar finds real baseUrl
+```
+
+**Add-only, no-change principle:** `start.ps1` auto-scans `~/.openclaw/openclaw.json` on startup, adds `local-llama` provider (copies existing cloud model), original providers left as-is. Original baseUrl stored in `~/.openclaw/headroom_routes.json` sidecar file. Zero-config after clone.
 
 ### Agent Hub
 
@@ -765,10 +826,11 @@ A complete web-based AI girlfriend chat interface, served locally at `http://127
 8. Main session reads media files →sends via `<qqmedia>` / `MEDIA:`
 9. Background: CCR runs every ~8 turns, extracting long-term memories to Qdrant
 10. Cron job syncs Qdrant →`_mem0_auto.md` every 30 min for native `memory_search`
+11. Headroom proxy (19251) transparently intercepts `local-llama/*` requests → injects mem0 → compresses context → routes to real backend
 
 ## ⚠️ Important Notes
 
-- **RTX 50xx (Blackwell) + CUDA 13.x = `munmap_chunk(): invalid pointer` crash** -CUDA 13.x has known memory management incompatibility with llama.cpp on Blackwell GPUs. **Solution: use pre-built llama.cpp binaries compiled with CUDA 12.x** (not self-compiled with CUDA 13.x). Download from [llama.cpp Releases](https://github.com/ggml-org/llama.cpp/releases), choose `cudart-llama-bin-win-cuda-12.4-x64.zip`. RTX 5070 Ti is fully compatible with CUDA 12.x drivers.
+- **RTX 50xx (Blackwell) + CUDA 13.x = `munmap_chunk(): invalid pointer` crash** - CUDA 13.x has known memory management incompatibility with llama.cpp on Blackwell GPUs. **Solution: use pre-built llama.cpp binaries compiled with CUDA 12.x** (not self-compiled with CUDA 13.x). Download from [llama.cpp Releases](https://github.com/ggml-org/llama.cpp/releases), choose `cudart-llama-bin-win-cuda-12.4-x64.zip`. RTX 5070 Ti is fully compatible with CUDA 12.x drivers.
 - Llama-server is offline for ~60-120s during TTS/ComfyUI inference on 8GB VRAM (Tier 1) - conversation pauses, but Live2D + Artemis Studio keep running. On 12GB+ (Tier 2), no interruption at all
 - Sub-sessions use **local model** (same as main), DeepSeek as optional fallback
 - **The `cron` tool must be denied for the local llama model** -llama.cpp's GBNF grammar converter rejects any JSON Schema `pattern` that is not fully anchored with `^...$`. OpenClaw's cron tool declares `pattern: "\\S"` on nested properties (`job.declarationKey`, `job.displayName`), so **every** request carrying the full toolset fails with `400 JSON schema conversion failed: Pattern must start with '^' and end with '$'`, then silently falls back to the remote model. Only nested/array-level patterns trigger it; top-level ones convert fine. Fix in `~/.openclaw/openclaw.json`:
@@ -781,7 +843,7 @@ A complete web-based AI girlfriend chat interface, served locally at `http://127
   ```
   `tools.*` does not hot-reload, so restart the gateway afterwards. Scheduling still works through remote-model sessions.
 - Llama-server does not support cross-turn prompt cache reuse (SSM limitation) -use periodic `/reset`
-- **Live2D requires Cubism Core 4** (not 5 or 6) -pixi-live2d-display v0.5.0 is built for Cubism 4 Framework; Core 5+ causes clipping/layer failures. **Core 4 is bundled** in live2d/live2dcubismcore.min.js - no CDN needed.
+- **Live2D requires Cubism Core 4** (not 5 or 6) - pixi-live2d-display v0.5.0 is built for Cubism 4 Framework; Core 5+ causes clipping/layer failures. **Core 4 is bundled** in live2d/live2dcubismcore.min.js - no CDN needed.
 - All model files protected by `.gitignore`
 - GPT-SoVITS weights are self-trained and not distributed -train with your own voice data
 

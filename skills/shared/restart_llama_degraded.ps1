@@ -100,6 +100,7 @@ if ($SwitchTo) {
   # 更新 config.yaml（无 BOM，保持 utf-8）
   $configRaw = Set-ConfigValue $configRaw 'llama_model' $targetPath
   $configRaw = Set-ConfigValue $configRaw 'llama_model_name' $targetKey
+  $configRaw = Set-ConfigValue $configRaw 'llama_model_id' ("llama/" + $targetKey)
   [System.IO.File]::WriteAllText($configPath, $configRaw, (New-Object System.Text.UTF8Encoding($false)))
   $model = $targetPath
   Write-Host "  config.yaml updated: llama_model + llama_model_name=$targetKey" -ForegroundColor DarkGray
