@@ -179,7 +179,6 @@ def build_llama_args(params):
         "--ubatch-size", str(params["ubatch_size"]),
         "--threads", str(params["threads"]),
         "-rea", params["rea_mode"],
-        "--reasoning-format", "deepseek",
         "--jinja",
     ]
 
@@ -187,7 +186,6 @@ def build_llama_args(params):
         args += ["--cache-ram", str(params["cache_ram"])]
 
     args += [
-        "-ngl", str(params["ngl"]),
         "--parallel", "1",
         "--kv-unified",
     ]

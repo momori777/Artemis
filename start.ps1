@@ -195,13 +195,10 @@ if (Test-Online $llamaPort "llama-server") {
             '--ubatch-size', $llamaUbatch,
             '--threads', $llamaThreads,
             '-rea', 'off',
-            '--reasoning-format', 'deepseek',
             '--jinja',
             '--cache-ram', $llamaCacheRam,
             '--parallel', '1',
             '--kv-unified',
-            '--no-mmap',
-            '-ngl', $llamaNgl,
             '--port', $llamaPort,
             '--timeout', '600'
         )

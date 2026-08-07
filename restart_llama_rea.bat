@@ -94,7 +94,7 @@ if not errorlevel 1 goto wait_stop
 echo Port %PORT% released.
 
 REM ========== 启动 llama ==========
-set "LLM_ARGS=-m "%MODEL_PATH%" -c %CTX% --flash-attn on -ctk %CTK% -ctv %CTV% --no-mmap --cpu-moe --batch-size %BATCH% --ubatch-size %UBATCH% --threads %THREADS% -ngl %NGL% -rea %REA_MODE% --reasoning-format deepseek --jinja --cache-ram %CACHE_RAM% --parallel 1 --kv-unified --no-mmap --port %PORT% --timeout 600"
+set "LLM_ARGS=-m "%MODEL_PATH%" -c %CTX% --flash-attn on -ctk %CTK% -ctv %CTV% --no-mmap --cpu-moe --batch-size %BATCH% --ubatch-size %UBATCH% --threads %THREADS% -ngl %NGL% -rea %REA_MODE% --jinja --cache-ram %CACHE_RAM% --parallel 1 --kv-unified --no-mmap --port %PORT% --timeout 600"
 if defined MTP_EXTRA set "LLM_ARGS=!LLM_ARGS! !MTP_EXTRA!"
 start "" /B %PROJECT_DIR%\llama-server\llama-server.exe !LLM_ARGS! > "%PROJECT_DIR%!LOG_DIR!\llama-rea-out.log" 2>&1
 

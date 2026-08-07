@@ -3529,6 +3529,43 @@ var UI = {
       UI._populateModelSelect(true);
       showToast('Refreshing models...');
     });
+
+    // Switch model button: stop current llama + start selected model
+    var switchBtn = document.getElementById('btn-switch-model');
+    if (switchBtn) switchBtn.addEventListener('click', function() {
+      var select = document.getElementById('setting-model-select');
+      if (!select) return;
+      var modelId = select.value;
+      if (!modelId) { showToast('Please select a model first'); return; }
+      if (!modelId.startsWith('llama/') && !modelId.startsWith('local-llama/')) {
+        showToast('Only local llama models can be switched');
+        return;
+      }
+      showToast('Switching model to ' + modelId + '...');
+      switchBtn.disabled = true;
+      switchBtn.innerHTML = '<i class="ph ph-spinner"></i>';
+      fetch('http://localhost:19260/api/switch-model', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model_id: modelId }),
+        signal: AbortSignal.timeout(300000),
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.ok) {
+            showToast('Model switched to ' + data.model);
+          } else {
+            showToast('Switch failed: ' + (data.error || 'unknown'));
+          }
+        })
+        .catch(function(err) {
+          showToast('Switch error: ' + err.message);
+        })
+        .finally(function() {
+          switchBtn.disabled = false;
+          switchBtn.innerHTML = '<i class="ph ph-arrow-swap"></i>';
+        });
+    });
   },
 
   _populateModelSelect: function(forceRefresh) {

@@ -97,11 +97,8 @@ q群: 580322386
 
 > 👆 **Web Chat**:浏览器端聊天界面,访问 `http://127.0.0.1:19270` - QQ/Telegram Bot 的替代方案。直接连接本地守护进程代理 → llama.cpp 服务器。什么服务都不停!!!!8g显存也能正常全量跑!!!
 
-### 🎙️ TTS 语音工坊
 
-<video src="media/tts_workshop_small.mp4" controls width="800"></video>
-
-> 👆 **Artemis Studio - TTS 工坊**:GPT-SoVITS 实时语音合成,支持夏目/亚托莉/夜乃桜三套声线、5 种情绪模式(日常/傲娇/深情/长句/随机),中英日三语混合朗读。**无论 llama 是否运行都能用**。
+### 🎙️ TTS 语音
 
 ![TTS Workshop](media/tts_workshop.gif)
 

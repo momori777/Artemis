@@ -65,7 +65,27 @@ _wb_entries = []  # list of entry dicts
 _wb_entries_lock = threading.Lock()
 
 # ── Llama reasoning state tracking ─────────────────────────
-_llama_rea_state = "off"  # current llama -rea setting (default off: thinking eats the output budget, breaks tool calls)
+# 每次 set-rea 时从实际进程读取 rea 状态，避免与脚本重启不同步
+_llama_rea_state = "off"  # fallback only; actual state is checked on demand
+
+def _get_actual_rea_state():
+    """检查当前运行 llama-server 的 -rea 实际值"""
+    try:
+        _proc = __import__("subprocess").run(
+            ["powershell", "-NoProfile", "-Command",
+             "Get-CimInstance Win32_Process -Filter \"Name='llama-server.exe'\" | Select-Object -ExpandProperty CommandLine"],
+            capture_output=True, text=True, timeout=5
+        )
+        if _proc.returncode == 0 and _proc.stdout.strip():
+            _cmdline = _proc.stdout.strip()
+            if "-rea on" in _cmdline or "-rea 1" in _cmdline:
+                return "on"
+            elif "-rea off" in _cmdline or "-rea 0" in _cmdline:
+                return "off"
+    except Exception:
+        pass
+    # 如果进程不在运行或无法检测，返回当前缓存值
+    return _llama_rea_state
 
 # ── DeepSeek V4 thinking-mode markers ───────────────────────
 # Thinking-mode markers injected at end of first user message.
@@ -156,7 +176,10 @@ def _mem0_search_context(character_id, query, limit=5):
 def _set_llama_rea(rea_mode):
     """Restart llama-server with a different -rea setting."""
     global _llama_rea_state
-    if _llama_rea_state == rea_mode:
+    # 先检查实际运行状态，避免缓存不同步
+    actual = _get_actual_rea_state()
+    if actual == rea_mode:
+        _llama_rea_state = actual  # sync cache
         return
     import subprocess, time
     print(f"[DAEMON] Switching llama -rea {_llama_rea_state} -> {rea_mode}...", flush=True)
@@ -324,7 +347,7 @@ def start_llama():
             "--no-mmap", "--cpu-moe",
             "--batch-size", str(batch), "--ubatch-size", str(ubatch),
             "--threads", str(threads),
-            "-rea", "off", "--reasoning-format", "deepseek", "--jinja",
+            "-rea", "off", "--jinja",
             "--cache-ram", str(cache_ram),
             "-ngl", str(ngl),
             "--parallel", "1", "--kv-unified",
@@ -1178,6 +1201,98 @@ def _resolve_provider_for_model(model_id):
         return None
 
 
+def _switch_llama_model(short_id, rea_mode="off"):
+    """
+    切换 llama 模型。
+    short_id: 'qwen3.6-27b' 或 'qwen3.6-35b'
+    rea_mode: 切换后使用 'on' 或 'off' reasoning（默认 off，保留当前状态需调用方传入）
+    从 config.yaml 的 llama_model_map 查找 GGUF 路径。
+    """
+    global LLAMA_MODEL, LLAMA_MODEL_NAME, LOCAL_MODEL_ID
+    global CFG
+
+    # 从 config.yaml 读取模型映射
+    model_map = CFG.get("llama_model_map", {})
+    gguf_path = model_map.get(short_id)
+    if not gguf_path:
+        return {"ok": False, "error": f"Model '{short_id}' not found in config.yaml llama_model_map"}
+
+    if not os.path.isfile(gguf_path):
+        return {"ok": False, "error": f"GGUF not found: {gguf_path}"}
+
+    if LLAMA_MODEL == gguf_path:
+        return {"ok": True, "message": f"Already using {short_id}", "model": short_id}
+
+    print(f"[DAEMON] Switching model to {short_id}: {gguf_path}", flush=True)
+
+    # 1. 停止当前 llama
+    if is_port_open(LLAMA_PORT):
+        try:
+            from skills.shared.llama_lifecycle import stop_llama
+            stop_llama(port=LLAMA_PORT)
+        except Exception as e:
+            print(f"[DAEMON] stop_llama failed: {e}, using taskkill", flush=True)
+            subprocess.run(["taskkill", "/f", "/im", "llama-server.exe"], capture_output=True)
+        time.sleep(2)
+
+    # 2. 更新全局变量（暂存旧值，失败时恢复）
+    _old_model = LLAMA_MODEL
+    _old_name = LLAMA_MODEL_NAME
+    _old_local = LOCAL_MODEL_ID
+    LLAMA_MODEL = gguf_path
+    LLAMA_MODEL_NAME = short_id
+    LOCAL_MODEL_ID = "local/" + short_id
+
+    # 3. 更新 config.yaml
+    try:
+        import yaml as _yaml
+        cfg_path = os.path.join(WORKSPACE, "config.yaml")
+        with open(cfg_path, "r", encoding="utf-8-sig") as f:
+            raw_cfg = _yaml.safe_load(f) or {}
+        raw_cfg["llama_model"] = gguf_path
+        raw_cfg["llama_model_name"] = short_id
+        with open(cfg_path, "w", encoding="utf-8") as f:
+            _yaml.dump(raw_cfg, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        # 更新内存中的 CFG
+        CFG["llama_model"] = gguf_path
+        CFG["llama_model_name"] = short_id
+        print(f"[DAEMON] config.yaml updated", flush=True)
+    except Exception as e:
+        print(f"[DAEMON] config.yaml update failed: {e}", flush=True)
+
+    # 4. 启动新模型
+    from skills.shared.llama_lifecycle import start_llama as _start_llama
+    log_dir = CFG.get("llama_log_dir", os.path.join(WORKSPACE, "llama-server"))
+    ok = _start_llama(
+        port=LLAMA_PORT,
+        exe_path=LLAMA_EXE,
+        model_path=LLAMA_MODEL,
+        log_dir=log_dir,
+        rea_mode=rea_mode,
+    )
+    if ok:
+        print(f"[DAEMON] Model switched to {short_id} successfully", flush=True)
+        return {"ok": True, "message": f"Switched to {short_id}", "model": short_id}
+    else:
+        # 恢复全局变量 + config.yaml
+        import yaml as _yaml2
+        _cfg_path2 = os.path.join(WORKSPACE, "config.yaml")
+        try:
+            with open(_cfg_path2, "r", encoding="utf-8-sig") as _f:
+                _rc = _yaml2.safe_load(_f) or {}
+            _rc["llama_model"] = _old_model
+            _rc["llama_model_name"] = _old_name
+            with open(_cfg_path2, "w", encoding="utf-8") as _f:
+                _yaml2.dump(_rc, _f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        except Exception as _e2:
+            print(f"[DAEMON] config rollback failed: {_e2}", flush=True)
+        LLAMA_MODEL = _old_model
+        LLAMA_MODEL_NAME = _old_name
+        LOCAL_MODEL_ID = _old_local
+        print(f"[DAEMON] Failed to start {short_id}, restored old settings", flush=True)
+        return {"ok": False, "error": f"Failed to start {short_id}"}
+
+
 class DashboardHandler(BaseHTTPRequestHandler):
     def log_message(self, *args): pass
 
@@ -1304,12 +1419,17 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         path = urlparse(self.path).path
 
+        # 统一解析请求体（所有分支共用；worldbook 分支不再重复读取）
+        cl = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(cl).decode("utf-8") if cl else "{}"
+        try:
+            self._post_data = json.loads(body)
+        except Exception:
+            self._post_data = {}
+        data = self._post_data
+
         if path == "/api/worldbook":
             try:
-                length = int(self.headers.get("Content-Length", 0))
-                body = self.rfile.read(length if length > 0 else 0)
-                data = json.loads(body) if body else {}
-
                 # New format: { entries: [...] }
                 entries = data.get("entries")
                 if isinstance(entries, list):
@@ -1369,6 +1489,18 @@ class DashboardHandler(BaseHTTPRequestHandler):
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return
 
+        if path == "/api/switch-model":
+            model_id = data.get("model_id", "")
+            if not model_id:
+                self.send_json({"ok": False, "error": "Missing model_id"})
+                return
+            short_id = model_id.split("/")[-1] if "/" in model_id else model_id
+            # 保留当前 reasoning 状态
+            current_rea = _get_actual_rea_state()
+            result = _switch_llama_model(short_id, rea_mode=current_rea)
+            self.send_json(result)
+            return
+
         if path == "/api/headroom-test":
             self._handle_headroom_test()
             return
@@ -1388,13 +1520,6 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/session-history":
             self._handle_session_history()
             return
-
-        cl = int(self.headers.get("Content-Length", 0))
-        body = self.rfile.read(cl).decode("utf-8") if cl else "{}"
-        try:
-            data = json.loads(body)
-        except Exception:
-            data = {}
 
         if path == "/api/start":
             results = daemon_instance.start_all_services()
@@ -1649,9 +1774,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def _handle_headroom_test(self):
         """POST /api/headroom-test — 测试压缩效果，返回压缩前后对比"""
         try:
-            cl = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(cl).decode("utf-8") if cl else "{}"
-            req_data = json.loads(body)
+            req_data = getattr(self, "_post_data", None)
+            if not isinstance(req_data, dict):
+                cl = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(cl).decode("utf-8") if cl else "{}"
+                req_data = json.loads(body)
 
             messages = req_data.get("messages", [])
             query = req_data.get("query", "")
@@ -1695,13 +1822,16 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_json({"error": f"Headroom test failed: {e}"}, 500)
 
     def _handle_chat_proxy(self):
-        body_len = int(self.headers.get('Content-Length', 0))
-        body = self.rfile.read(body_len)
-        try:
-            req_data = json.loads(body)
-        except Exception:
-            self.send_json({"error": "Invalid JSON"}, 400)
-            return
+        # body 已在 do_POST 开头解析，直接复用 self._post_data
+        req_data = getattr(self, "_post_data", None)
+        if not isinstance(req_data, dict):
+            try:
+                body_len = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(body_len) if body_len else b"{}"
+                req_data = json.loads(body)
+            except Exception:
+                self.send_json({"error": "Invalid JSON"}, 400)
+                return
 
         # Run the upstream request in a background thread so this handler
         # can stream the response without blocking the whole server loop.
@@ -1913,13 +2043,15 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _handle_gen_prompt(self):
         """Use LLM to generate a ComfyUI image prompt from conversation context."""
-        body_len = int(self.headers.get('Content-Length', 0))
-        body = self.rfile.read(body_len)
-        try:
-            req_data = json.loads(body)
-        except Exception:
-            self.send_json({"error": "Invalid JSON"}, 400)
-            return
+        req_data = getattr(self, "_post_data", None)
+        if not isinstance(req_data, dict):
+            try:
+                body_len = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(body_len) if body_len else b"{}"
+                req_data = json.loads(body)
+            except Exception:
+                self.send_json({"error": "Invalid JSON"}, 400)
+                return
 
         character_id = req_data.get("characterId", "natsume")
         messages = req_data.get("messages", [])
@@ -2165,13 +2297,15 @@ Conversation:
 
     def _handle_debug_llama(self):
         """Debug chat endpoint — passes all params through, returns raw response."""
-        body_len = int(self.headers.get('Content-Length', 0))
-        body = self.rfile.read(body_len)
-        try:
-            req_data = json.loads(body)
-        except Exception:
-            self.send_json({"error": "Invalid JSON"}, 400)
-            return
+        req_data = getattr(self, "_post_data", None)
+        if not isinstance(req_data, dict):
+            try:
+                body_len = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(body_len) if body_len else b"{}"
+                req_data = json.loads(body)
+            except Exception:
+                self.send_json({"error": "Invalid JSON"}, 400)
+                return
 
         model_id = req_data.get("model", LOCAL_MODEL_ID)
         messages = req_data.get("messages", [])
