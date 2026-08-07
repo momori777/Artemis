@@ -99,12 +99,6 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 
 ### 🎙️ TTS Voice
 
-<video src="media/tts_workshop_small.mp4" controls width="800"></video>
-
-> 👆 **Artemis Studio - TTS Workshop**: GPT-SoVITS real-time voice synthesis with 3 character voices (Natsume/ATRI/Sakura), 5 emotion modes (casual/tsundere/romantic/long/random), and CN/JP/EN mixed-language reading. **Works whether llama is running or not.**
-
-![TTS Workshop](media/tts_workshop.gif)
-
 🔊 **Listen** (click to play, ATRI Japanese):
 
 🎧 [tts_atori.mp3](media/tts_atori.mp3) *(46KB, plays in browser)*

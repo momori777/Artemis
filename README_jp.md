@@ -99,12 +99,6 @@ OpenClaw + QQ Bot + Telegram Bot + llama.cpp + GPT-SoVITS + ComfyUI + Sakura デ
 
 ### 🎙️ TTS 音声
 
-<video src="media/tts_workshop_small.mp4" controls width="800"></video>
-
-> 👆 **Artemis Studio - TTS ワークショップ**: GPT-SoVITS リアルタイム音声合成、3キャラクターの声（夏目/アトリ/桜）、5つの感情モード（カジュアル/ツンデレ/ロマンティック/ロング/ランダム）、中日英ミックス対応。**llamaが動作中かどうかに関わらず動作**。
-
-![TTS ワークショップ](media/tts_workshop.gif)
-
 🔊 **聴く**（クリックして再生、アトリ 日本語）:
 
 🎧 [tts_atori.mp3](media/tts_atori.mp3) *(46KB、ブラウザで再生)*
