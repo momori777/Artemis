@@ -1,31 +1,31 @@
-ï»¿# start.ps1 â€” ä¸€é”®å¯åœå…¨éƒ¨ Shiki æœåŠ¡
+# start.ps1 ¡ª Ò»¼üÆôÍ£È«²¿ Shiki ·þÎñ
 # Usage:
-#   .\start.ps1       å¯åŠ¨å…¨éƒ¨æœåŠ¡
-#   .\start.ps1 -Stop  åœæ­¢å…¨éƒ¨æœåŠ¡ï¼ˆç­‰ä»·äºŽ shutdown_all.pyï¼‰
+#   .\start.ps1       Æô¶¯È«²¿·þÎñ
+#   .\start.ps1 -Stop  Í£Ö¹È«²¿·þÎñ£¨µÈ¼ÛÓÚ shutdown_all.py£©
 #
-# å¯åŠ¨é¡ºåº:
+# Æô¶¯Ë³Ðò:
 #   1. llama-server (ngl=41, batch=4096/2048)
 #   2. Embedding Server (localhost:9999, all-MiniLM-L6-v2)
-#   3. Artemis Headroom Proxy (localhost:19251 â†’ llama:8080)
+#   3. Artemis Headroom Proxy (localhost:19251 ¡ú llama:8080)
 #   4. Live2D Bridge (localhost:19200)
 #   5. OpenClaw Gateway (localhost:18789)
 #   6. Cron Jobs (mem0-auto-sync + cleanup-orphans)
 #   7. llama-watchdog (Task Scheduler)
 #
-# Stop æ¨¡å¼:
-#   1. ç¦ç”¨ llama-watchdogï¼ˆé˜²æ­¢è‡ªåŠ¨é‡å¯ï¼‰
-#   2. è°ƒç”¨ shutdown_all.py åœæ­¢æ‰€æœ‰è¿›ç¨‹
+# Stop Ä£Ê½:
+#   1. ½ûÓÃ llama-watchdog£¨·ÀÖ¹×Ô¶¯ÖØÆô£©
+#   2. µ÷ÓÃ shutdown_all.py Í£Ö¹ËùÓÐ½ø³Ì
 
 param([switch]$Stop)
 
 $ErrorActionPreference = "Stop"
-# Gateway start å¯èƒ½è¿”å›žéžé›¶ exitï¼ˆå·²è¿è¡Œæ—¶ï¼‰ï¼Œä¸è¦å› æ­¤ä¸­æ–­
+# Gateway start ¿ÉÄÜ·µ»Ø·ÇÁã exit£¨ÒÑÔËÐÐÊ±£©£¬²»ÒªÒò´ËÖÐ¶Ï
 $global:ProgressPreference = 'SilentlyContinue'
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 
 $scriptRoot = $PSScriptRoot
 
-# ========== Watchdog è®¡åˆ’ä»»åŠ¡ç®¡ç† ==========
+# ========== Watchdog ¼Æ»®ÈÎÎñ¹ÜÀí ==========
 $watchdogTaskName = "AI_Girlfriend_llama_watchdog"
 
 function Enable-Watchdog {
@@ -56,14 +56,14 @@ function Disable-Watchdog {
             Write-Host "  llama-watchdog task disabled (won't auto-restart)" -ForegroundColor Cyan
         }
     } catch {
-        # silently ignore â€” task might not exist
+        # silently ignore ¡ª task might not exist
     }
 }
 
 # ========== Stop mode ==========
 if ($Stop) {
     Write-Host "============================================" -ForegroundColor Cyan
-    Write-Host "  å››å­£å¤ç›® â€” Shutdown" -ForegroundColor Cyan
+    Write-Host "  ËÄ¼¾ÏÄÄ¿ ¡ª Shutdown" -ForegroundColor Cyan
     Write-Host "============================================" -ForegroundColor Cyan
     Write-Host ""
     
@@ -86,11 +86,11 @@ if ($Stop) {
     exit $LASTEXITCODE
 }
 
-# ========== è¯»å– config.yaml ==========
+# ========== ¶ÁÈ¡ config.yaml ==========
 $configPath = Join-Path $scriptRoot "config.yaml"
 if (-not (Test-Path $configPath)) {
     Write-Host "ERROR: config.yaml not found at $configPath" -ForegroundColor Red
-    Write-Host "Run quick_setup.ps1 first, or copy config.example.yaml â†’ config.yaml" -ForegroundColor Yellow
+    Write-Host "Run quick_setup.ps1 first, or copy config.example.yaml ¡ú config.yaml" -ForegroundColor Yellow
     exit 1
 }
 $configRaw = Get-Content $configPath -Raw -Encoding UTF8
@@ -112,7 +112,7 @@ $mem0Bridge  = Get-YamlValue $configRaw 'mem0_bridge'
 $embedScript = Get-YamlValue $configRaw 'embedding_server'
 
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "  å››å­£å¤ç›® â€” Shiki Natsume Startup" -ForegroundColor Cyan
+Write-Host "  ËÄ¼¾ÏÄÄ¿ ¡ª Shiki Natsume Startup" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -130,16 +130,16 @@ function Test-Online($port, $label) {
 Write-Host "[1/6] llama-server" -ForegroundColor Yellow
 
 if (Test-Online $llamaPort "llama-server") {
-    # already up â€” skip
+    # already up ¡ª skip
 } else {
     if (-not (Test-Path $llamaExe)) {
         Write-Host "  ERROR: llama-server.exe not found: $llamaExe" -ForegroundColor Red
-        Write-Host "  Check config.yaml â†’ llama_exe" -ForegroundColor Yellow
+        Write-Host "  Check config.yaml ¡ú llama_exe" -ForegroundColor Yellow
         exit 1
     }
     if (-not (Test-Path $llamaModel)) {
         Write-Host "  ERROR: Model not found: $llamaModel" -ForegroundColor Red
-        Write-Host "  Check config.yaml â†’ llama_model" -ForegroundColor Yellow
+        Write-Host "  Check config.yaml ¡ú llama_model" -ForegroundColor Yellow
         exit 1
     }
 
@@ -148,8 +148,8 @@ if (Test-Online $llamaPort "llama-server") {
     Get-Process llama-server -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 1
 
-    # ===== ç»Ÿä¸€å‚æ•°è§£æžï¼šè°ƒç”¨ llama_config.py (config.yaml + model_profiles) =====
-    # æ‰¾ä¸åˆ° python æ—¶é™çº§åˆ°æ­£åˆ™è¯»å– llama åŒºå—
+    # ===== Í³Ò»²ÎÊý½âÎö£ºµ÷ÓÃ llama_config.py (config.yaml + model_profiles) =====
+    # ÕÒ²»µ½ python Ê±½µ¼¶µ½ÕýÔò¶ÁÈ¡ llama Çø¿é
     $pythonExe = $null
     foreach ($cand in @((Get-Command python -ErrorAction SilentlyContinue).Source, (Get-Command python3 -ErrorAction SilentlyContinue).Source)) {
         if ($cand) { $pythonExe = $cand; break }
@@ -161,7 +161,7 @@ if (Test-Online $llamaPort "llama-server") {
             $jsonOut = & $pythonExe $llamaCfgScript --args-only 2>$null | Out-String
             $parsed = $jsonOut | ConvertFrom-Json
             if ($parsed -is [array] -and $parsed.Count -gt 0) {
-                # args[0] æ˜¯ exe è·¯å¾„ï¼Œåˆ†ç¦»å‡ºæ¥ï¼ˆStart-Process -FilePath å•ç‹¬ä¼ ï¼‰
+                # args[0] ÊÇ exe Â·¾¶£¬·ÖÀë³öÀ´£¨Start-Process -FilePath µ¥¶À´«£©
                 $llamaArgs = @($parsed | Select-Object -Skip 1 | ForEach-Object { [string]$_ })
                 Write-Host "  [llama-config] profile-matched args ($($llamaArgs.Count) items)" -ForegroundColor DarkGray
             }
@@ -171,7 +171,7 @@ if (Test-Online $llamaPort "llama-server") {
     }
 
     if (-not $llamaArgs) {
-        # é™çº§ï¼šä»Ž config.yaml llama: åŒºå—è¯»å–å‚æ•°ï¼ˆå†…è”åŒ¹é…ï¼Œé¿å… function å®šä¹‰å¼•å‘çš„è§£æžå™¨è­¦å‘Šï¼‰
+        # ½µ¼¶£º´Ó config.yaml llama: Çø¿é¶ÁÈ¡²ÎÊý£¨ÄÚÁªÆ¥Åä£¬±ÜÃâ function ¶¨ÒåÒý·¢µÄ½âÎöÆ÷¾¯¸æ£©
         $llamaSection = & { $m = [regex]::Match($configRaw, "(?m)^llama:\s*$"); if ($m.Success) { $s = $configRaw.Substring($m.Index + $m.Length); $e = [regex]::Match($s, "(?m)^[a-z][a-z_]+:"); if ($e.Success) { $s.Substring(0, $e.Index) } else { $s } } else { '' } }
         function _GetCfg($k, $d) { $vm = [regex]::Match($llamaSection, "(?m)^\s*$k\s*:\s*`"?(.+?)`"?\s*$"); if ($vm.Success) { $vm.Groups[1].Value.Trim('"').Trim() } else { $d } }
 
@@ -195,7 +195,7 @@ if (Test-Online $llamaPort "llama-server") {
             '--ubatch-size', $llamaUbatch,
             '--threads', $llamaThreads,
             '-rea', 'off',
-            '--jinja',
+            '--jinja --reasoning-preserve',
             '--cache-ram', $llamaCacheRam,
             '--parallel', '1',
             '--kv-unified',
@@ -203,15 +203,15 @@ if (Test-Online $llamaPort "llama-server") {
             '--timeout', '600'
         )
 
-        # ===== æ¨¡åž‹ç±»åž‹æ£€æµ‹ï¼šMoE (å« cpu_moe) vs Dense =====
+        # ===== Ä£ÐÍÀàÐÍ¼ì²â£ºMoE (º¬ cpu_moe) vs Dense =====
         $modelBasename = [System.IO.Path]::GetFileNameWithoutExtension($llamaModel)
         $isDenseModel = $modelBasename -match '27b|dense'
         if (-not $isDenseModel) {
-            # MoE æ¨¡åž‹éœ€è¦ --cpu-moeï¼ˆ8GB VRAM ä¸å¤Ÿ GPU MoEï¼‰
+            # MoE Ä£ÐÍÐèÒª --cpu-moe£¨8GB VRAM ²»¹» GPU MoE£©
             $llamaArgs += '--cpu-moe'
         }
 
-        # ===== æ¨¡åž‹åˆ«å (--alias) =====
+        # ===== Ä£ÐÍ±ðÃû (--alias) =====
         $llamaModelName = _GetCfg 'llama_model_name' ''
         if ($llamaModelName) {
             $llamaArgs += '--alias', $llamaModelName
@@ -220,7 +220,7 @@ if (Test-Online $llamaPort "llama-server") {
             $llamaArgs += '--alias', $modelBasename
         }
 
-        # ===== MTP è‡ªåŠ¨æ£€æµ‹ï¼šæ¨¡åž‹åå« "mtp" æ—¶å¯ç”¨æŠ•æœºè§£ç  =====
+        # ===== MTP ×Ô¶¯¼ì²â£ºÄ£ÐÍÃûº¬ "mtp" Ê±ÆôÓÃÍ¶»ú½âÂë =====
         $specDraftNMax = _GetCfg 'spec_draft_n_max' 1
         $modelBasename = [System.IO.Path]::GetFileNameWithoutExtension($llamaModel)
         if ($modelBasename -match 'mtp') {
@@ -251,7 +251,7 @@ if (Test-Online $llamaPort "llama-server") {
         Start-Sleep -Seconds 2
     }
     if (-not $ready) {
-        Write-Host "  WARNING: llama-server not responding after ${maxWait}s â€” continuing anyway" -ForegroundColor Yellow
+        Write-Host "  WARNING: llama-server not responding after ${maxWait}s ¡ª continuing anyway" -ForegroundColor Yellow
     }
 }
 
@@ -275,7 +275,7 @@ if (Test-Online $embedPort "Embedding Server") {
         $pyExe = (Get-Command python -ErrorAction SilentlyContinue).Source
         if (-not $pyExe) { $pyExe = (Get-Command py -ErrorAction SilentlyContinue).Source }
         if (-not $pyExe) {
-            Write-Host "  WARNING: python not found â€” skip embedding server" -ForegroundColor Yellow
+            Write-Host "  WARNING: python not found ¡ª skip embedding server" -ForegroundColor Yellow
         } else {
             $null = Start-Process -FilePath $pyExe -ArgumentList $embedScript -WindowStyle Hidden
             Start-Sleep -Seconds 3
@@ -299,7 +299,7 @@ if (Test-Online $embedPort "Embedding Server") {
 }
 
 # ========== 3. Headroom Proxy ==========
-Write-Host "[3/7] Headroom Proxy (19251 â†’ llama:8080)" -ForegroundColor Yellow
+Write-Host "[3/7] Headroom Proxy (19251 ¡ú llama:8080)" -ForegroundColor Yellow
 
 $headroomPort = 19251
 $headroomScript = Join-Path $scriptRoot "artemis_headroom_proxy.py"
@@ -334,9 +334,9 @@ if (Test-Online $headroomPort "Headroom Proxy") {
     }
 }
 
-# â”€â”€ Headroom å°±ç»ªåŽåœ¨ openclaw.json æ–°å¢ž local-llama providerï¼ˆåªåŠ ä¸æ”¹ï¼‰ â”€â”€
-# çŽ°æœ‰ provider åŽŸå°ä¸åŠ¨ï¼Œlocal-llama ä¸‹æŒ‚è½½æœ¬åœ°æ¨¡åž‹ + äº‘ç«¯æ¨¡åž‹å‰¯æœ¬
-# åŽŸå§‹ baseUrl å­˜å…¥ sidecar æ–‡ä»¶ ~/.openclaw/headroom_routes.json
+# ©¤©¤ Headroom ¾ÍÐ÷ºóÔÚ openclaw.json ÐÂÔö local-llama provider£¨Ö»¼Ó²»¸Ä£© ©¤©¤
+# ÏÖÓÐ provider Ô­·â²»¶¯£¬local-llama ÏÂ¹ÒÔØ±¾µØÄ£ÐÍ + ÔÆ¶ËÄ£ÐÍ¸±±¾
+# Ô­Ê¼ baseUrl ´æÈë sidecar ÎÄ¼þ ~/.openclaw/headroom_routes.json
 if (Test-Online 19251 "Headroom Proxy") {
     Write-Host "  Adding local-llama provider to openclaw.json (add-only)..." -ForegroundColor DarkGray
     $ocJson = Join-Path $env:USERPROFILE ".openclaw\openclaw.json"
@@ -348,13 +348,13 @@ if (Test-Online 19251 "Headroom Proxy") {
             $llamaCtx = if ($config.llama.context) { [int]$config.llama.context } else { 150000 }
             $llamaPort = if ($config.llama_port) { $config.llama_port } else { 8080 }
 
-            # æ”¶é›† sidecar è·¯ç”±
+            # ÊÕ¼¯ sidecar Â·ÓÉ
             $routes = [PSCustomObject]@{}
             if (Test-Path $routesJson) {
                 $routes = Get-Content $routesJson -Raw -Encoding UTF8 | ConvertFrom-Json
             }
 
-            # éåŽ†éž local-llama providerï¼Œå¤åˆ¶æ¨¡åž‹ + è®°å½• baseUrl
+            # ±éÀú·Ç local-llama provider£¬¸´ÖÆÄ£ÐÍ + ¼ÇÂ¼ baseUrl
             $cloudModels = @()
             foreach ($provId in @($ocCfg.models.providers.PSObject.Properties.Name)) {
                 if ($provId -in @('local-llama', 'local')) { continue }
@@ -362,12 +362,12 @@ if (Test-Online 19251 "Headroom Proxy") {
                 $origUrl = $prov.baseUrl
                 if (-not $origUrl -or $origUrl.Contains('19251')) { continue }
 
-                # ä¿å­˜ provider baseUrl åˆ° sidecar
+                # ±£´æ provider baseUrl µ½ sidecar
                 if (-not $routes.PSObject.Properties[$provId]) {
                     $routes | Add-Member -NotePropertyName $provId -NotePropertyValue $origUrl -Force
                 }
 
-                # å¤åˆ¶è¯¥ provider çš„æ¨¡åž‹
+                # ¸´ÖÆ¸Ã provider µÄÄ£ÐÍ
                 foreach ($m in $prov.models) {
                     $exists = $false
                     foreach ($cm in $cloudModels) { if ($cm.id -eq $m.id) { $exists = $true; break } }
@@ -378,7 +378,7 @@ if (Test-Online 19251 "Headroom Proxy") {
                 }
             }
 
-            # æœ¬åœ°æ¨¡åž‹
+            # ±¾µØÄ£ÐÍ
             $localModel = [PSCustomObject]@{
                 id = "llama-local"
                 name = "Local Llama (Headroom+Mem0)"
@@ -398,7 +398,7 @@ if (Test-Online 19251 "Headroom Proxy") {
 
             $allModels = @($localModel) + $cloudModels
 
-            # æ£€æŸ¥ local-llama æ˜¯å¦å·²å­˜åœ¨ä¸”é…ç½®ä¸€è‡´
+            # ¼ì²é local-llama ÊÇ·ñÒÑ´æÔÚÇÒÅäÖÃÒ»ÖÂ
             $needPatch = $true
             if ($ocCfg.models.providers.PSObject.Properties['local-llama']) {
                 $existing = $ocCfg.models.providers.'local-llama'
@@ -420,12 +420,12 @@ if (Test-Online 19251 "Headroom Proxy") {
                 }
                 $ocCfg.models.providers | Add-Member -NotePropertyName 'local-llama' -NotePropertyValue $localProvider -Force
 
-                # å†™ sidecar + openclaw.json
+                # Ð´ sidecar + openclaw.json
                 $routes | ConvertTo-Json -Depth 5 | Out-File -FilePath $routesJson -Encoding utf8NoBOM
                 $ocCfg | ConvertTo-Json -Depth 10 | Out-File -FilePath $ocJson -Encoding utf8NoBOM
                 Write-Host "  local-llama provider added ($($allModels.Count) models). Existing providers untouched." -ForegroundColor Green
             } else {
-                # ä»ç„¶æ›´æ–° sidecar
+                # ÈÔÈ»¸üÐÂ sidecar
                 $routes | ConvertTo-Json -Depth 5 | Out-File -FilePath $routesJson -Encoding utf8NoBOM
                 Write-Host "  local-llama provider already configured" -ForegroundColor DarkGray
             }
@@ -439,7 +439,7 @@ if (Test-Online 19251 "Headroom Proxy") {
 Write-Host "[4/7] Live2D Bridge" -ForegroundColor Yellow
 
 if (Test-Online 19200 "Live2D Bridge") {
-    # already up â€” skip
+    # already up ¡ª skip
 } else {
     $live2dDir = Join-Path $scriptRoot "live2d"
     if (-not (Test-Path (Join-Path $live2dDir "live2d-bridge.mjs"))) {
@@ -492,7 +492,7 @@ try {
 Start-Sleep -Seconds 2
 
 # ========== 6. Mem0 Auto-Sync Cron Job ==========
-Write-Host "[6/7] Memory System (mem0 â†’ OpenClaw cron)" -ForegroundColor Yellow
+Write-Host "[6/7] Memory System (mem0 ¡ú OpenClaw cron)" -ForegroundColor Yellow
 
 if (-not $mem0Bridge) {
     $mem0Bridge = Join-Path $scriptRoot "skills\shared\mem0_bridge.py"
@@ -501,7 +501,7 @@ if (-not $mem0Bridge) {
 if (Test-Path $mem0Bridge) {
     Write-Host "  mem0_bridge.py found" -ForegroundColor Green
 
-    # æ¸…ç†æ—§çš„å†—ä½™ cron jobï¼ˆå•è§’è‰² syncï¼‰
+    # ÇåÀí¾ÉµÄÈßÓà cron job£¨µ¥½ÇÉ« sync£©
     $oldJobNames = @("mem0-to-markdown-sync", "mem0-sync-natsume", "mem0-sync-enola", "mem0-sync-atori")
     foreach ($name in $oldJobNames) {
         try {
@@ -512,7 +512,7 @@ if (Test-Path $mem0Bridge) {
         } catch {}
     }
 
-    # æ£€æŸ¥ mem0-auto-sync æ˜¯å¦å­˜åœ¨ï¼ˆç»Ÿä¸€å››è§’è‰²åŒæ­¥ï¼‰
+    # ¼ì²é mem0-auto-sync ÊÇ·ñ´æÔÚ£¨Í³Ò»ËÄ½ÇÉ«Í¬²½£©
     try {
         $check = & openclaw cron list 2>$null | Select-String "mem0-auto-sync" -SimpleMatch
         if ($check) {
@@ -546,6 +546,6 @@ Write-Host "  Embedding      : http://127.0.0.1:${embedPort} (hybrid memory sear
 Write-Host "  Headroom Proxy : http://127.0.0.1:19251 (mem0 + context compression)" -ForegroundColor Green
 Write-Host "  Live2D Bridge  : http://localhost:19200" -ForegroundColor Green
 Write-Host "  Gateway        : http://127.0.0.1:18789" -ForegroundColor Green
-Write-Host "  Mem0 Sync Cron : every 30 min (Qdrant â†’ _mem0_auto.md)" -ForegroundColor Green
+Write-Host "  Mem0 Sync Cron : every 30 min (Qdrant ¡ú _mem0_auto.md)" -ForegroundColor Green
 Write-Host "  Watchdog       : enabled (auto-restart if crash)" -ForegroundColor Green
 Write-Host "============================================" -ForegroundColor Green

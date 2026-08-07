@@ -474,7 +474,7 @@ def start_llama(port=8080, exe_path=None, model_path=None,
             "--ubatch-size", str(_ubatch),
             "--threads", str(_threads),
             "-rea", rea_mode,
-            "--jinja",
+            "--jinja", "--reasoning-preserve",
             "--parallel", "1",
             "--kv-unified",
         ]
