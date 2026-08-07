@@ -347,7 +347,7 @@ def start_llama():
             "--no-mmap", "--cpu-moe",
             "--batch-size", str(batch), "--ubatch-size", str(ubatch),
             "--threads", str(threads),
-            "-rea", "off", "--jinja",
+            "-rea", "off", "--jinja", "--reasoning-preserve",
             "--cache-ram", str(cache_ram),
             "-ngl", str(ngl),
             "--parallel", "1", "--kv-unified",

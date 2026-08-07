@@ -180,10 +180,14 @@ def build_llama_args(params):
         "--threads", str(params["threads"]),
         "-rea", params["rea_mode"],
         "--jinja",
+        "--reasoning-preserve",
     ]
 
     if params["cache_ram"] > 0:
         args += ["--cache-ram", str(params["cache_ram"])]
+
+    # CPU-only mode: hide CUDA devices so MTP draft context stays on CPU
+    # (using --main-gpu -1 causes GGML assert failure, use env var instead)
 
     args += [
         "--parallel", "1",
