@@ -207,7 +207,7 @@
         <div class="plugins-popup-inner">
           <div class="plugin-group">
             <div class="plugin-group-title" data-i18n="plugin_model">💬 模型</div>
-            <label class="plugin-toggle" id="toggle-reasoning-label">
+            <label class="plugin-toggle" id="toggle-reasoning-label" for="chat-reasoning">
               <span class="toggle-switch on" id="toggle-reasoning-switch"></span>
               <input type="checkbox" id="chat-reasoning" checked style="display:none">
               <span class="plugin-toggle-text" data-i18n="plugin_reasoning">Reasoning · 深度思考</span>
@@ -237,12 +237,12 @@
             <button class="memory-view-btn" id="btn-view-memory" data-i18n-title="plugin_mem_view" title="查看记忆内容">
               <i class="ph ph-eye"></i> <span data-i18n="plugin_mem_view">查看记忆</span>
             </button>
-            <label class="plugin-toggle" id="toggle-mem0-label">
+            <label class="plugin-toggle" id="toggle-mem0-label" for="toggle-mem0-label">
               <span class="toggle-switch" id="toggle-mem0-switch"></span>
               <input type="checkbox" id="chat-mem0-enhanced" style="display:none">
               <span class="plugin-toggle-text" data-i18n="plugin_mem_search">每轮搜索记忆</span>
             </label>
-            <label class="plugin-toggle" id="toggle-mem0-write-label" style="padding-left:16px">
+            <label class="plugin-toggle" id="toggle-mem0-write-label" style="padding-left:16px" for="toggle-mem0-write">
               <span class="toggle-switch" id="toggle-mem0-write-switch"></span>
               <input type="checkbox" id="chat-mem0-write" style="display:none">
               <span class="plugin-toggle-text" data-i18n="plugin_mem_write">自动写入记忆</span>
@@ -285,13 +285,13 @@
           <div class="studio-grid">
             <div class="studio-left">
               <div class="studio-field">
-                <label class="studio-label">Text</label>
+                <label class="studio-label" for="tts-text">Text</label>
                 <textarea id="tts-text" class="studio-textarea" rows="4" placeholder="Enter text to synthesize..."></textarea>
               </div>
 
               <div class="studio-row">
                 <div class="studio-field studio-field-fill">
-                  <label class="studio-label">Language</label>
+                  <label class="studio-label" for="tts-lang">Language</label>
                   <select id="tts-lang" class="studio-select">
                     <option value="ja">Japanese</option>
                     <option value="zh">Chinese</option>
@@ -299,7 +299,7 @@
                   </select>
                 </div>
                 <div class="studio-field studio-field-fill">
-                  <label class="studio-label">Mood</label>
+                  <label class="studio-label" for="tts-mood">Mood</label>
                   <select id="tts-mood" class="studio-select">
                     <option value="casual">Casual</option>
                     <option value="tsundere">Tsundere</option>
@@ -308,7 +308,7 @@
                   </select>
                 </div>
                 <div class="studio-field studio-field-fill">
-                  <label class="studio-label">Character</label>
+                  <label class="studio-label" for="tts-character">Character</label>
                   <select id="tts-character" class="studio-select">
                     <option value="natsume">Natsume</option>
                     <option value="sakura">Sakura</option>
@@ -346,37 +346,37 @@
           <div class="studio-grid">
             <div class="studio-left">
               <div class="studio-field">
-                <label class="studio-label">Positive Prompt</label>
+                <label class="studio-label" for="comfy-pos">Positive Prompt</label>
                 <textarea id="comfy-pos" class="studio-textarea mono" rows="4" placeholder="masterpiece, best quality, 1girl..."></textarea>
               </div>
 
               <div class="studio-field">
-                <label class="studio-label">Negative Prompt</label>
+                <label class="studio-label" for="comfy-neg">Negative Prompt</label>
                 <textarea id="comfy-neg" class="studio-textarea mono" rows="2">worst quality, bad quality, low quality, blurry, lowres, bad anatomy, extra fingers, missing fingers, extra limbs, deformed, disfigured, watermark, text, signature, jpeg artifacts, censored</textarea>
               </div>
 
               <div class="studio-row">
                 <div class="studio-field studio-field-fill">
-                  <label class="studio-label">Width</label>
+                  <label class="studio-label" for="comfy-width">Width</label>
                   <input type="number" id="comfy-width" class="studio-input" value="1200" min="256" max="2048" step="64">
                 </div>
                 <div class="studio-field studio-field-fill">
-                  <label class="studio-label">Height</label>
+                  <label class="studio-label" for="comfy-height">Height</label>
                   <input type="number" id="comfy-height" class="studio-input" value="1500" min="256" max="2048" step="64">
                 </div>
                 <div class="studio-field studio-field-fill">
-                  <label class="studio-label">Steps</label>
+                  <label class="studio-label" for="comfy-steps">Steps</label>
                   <input type="number" id="comfy-steps" class="studio-input" value="30" min="5" max="100">
                 </div>
                 <div class="studio-field studio-field-fill">
-                  <label class="studio-label">CFG</label>
+                  <label class="studio-label" for="comfy-cfg">CFG</label>
                   <input type="number" id="comfy-cfg" class="studio-input" value="6.0" min="1" max="20" step="0.5">
                 </div>
               </div>
 
               <div class="studio-row">
                 <div class="studio-field studio-field-fill">
-                  <label class="studio-label">Checkpoint</label>
+                  <label class="studio-label" for="comfy-ckpt">Checkpoint</label>
                   <select id="comfy-ckpt" class="studio-select">
                     <option value="WAI-Nsfw-Illustrious-17.safetensors">WAI-Nsfw-Illustrious-17</option>
                     <option value="miaomiaoHarem_v20.safetensors">miaomiaoHarem v20 (Anime)</option>
@@ -385,12 +385,12 @@
               </div>
 
               <div class="studio-field">
-                <label class="studio-label">Quick Presets</label>
+                <label class="studio-label" for="comfy-presets">Quick Presets</label>
                 <div class="preset-row" id="comfy-presets"></div>
               </div>
 
               <div class="studio-field" style="margin-top:2px">
-                <label class="settings-toggle" id="toggle-llama-manage-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text-muted)">
+                <label class="settings-toggle" id="toggle-llama-manage-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text-muted)" for="toggle-llama-manage">
                   <span class="toggle-switch on" id="toggle-llama-manage-switch"></span>
                   <input type="checkbox" id="comfy-manage-llama" checked style="display:none">
                   Stop llama-server before generating (frees VRAM, prevents OOM)
@@ -447,65 +447,65 @@
           <div class="studio-grid">
             <div class="studio-left">
               <div class="studio-field">
-                <label class="studio-label">System Prompt</label>
+                <label class="studio-label" for="debug-system">System Prompt</label>
                 <textarea id="debug-system" class="studio-textarea mono" rows="6" placeholder="System prompt for the model..."></textarea>
               </div>
               <div class="studio-field">
-                <label class="studio-label">User Message</label>
+                <label class="studio-label" for="debug-user">User Message</label>
                 <textarea id="debug-user" class="studio-textarea mono" rows="4" placeholder="Enter a test message..."></textarea>
               </div>
               <div class="studio-row">
                 <div class="studio-field studio-field-fill">
-                  <label class="studio-label">Model</label>
+                  <label class="studio-label" for="debug-model">Model</label>
                   <select id="debug-model" class="studio-select">
                     <option value="local-model">Local (Llama) - default</option>
                   </select>
                 </div>
                 <div class="studio-field studio-field-fill">
-                  <label class="studio-label">Temperature</label>
+                  <label class="studio-label" for="debug-temp">Temperature</label>
                   <input type="number" id="debug-temp" class="studio-input" value="0.7" min="0" max="2" step="0.05">
                 </div>
                 <div class="studio-field studio-field-fill">
-                  <label class="studio-label">Top P</label>
+                  <label class="studio-label" for="debug-top-p">Top P</label>
                   <input type="number" id="debug-top-p" class="studio-input" value="0.9" min="0" max="1" step="0.05">
                 </div>
               </div>
               <div class="studio-row">
                 <div class="studio-field studio-field-fill">
-                  <label class="studio-label">Top K</label>
+                  <label class="studio-label" for="debug-top-k">Top K</label>
                   <input type="number" id="debug-top-k" class="studio-input" value="40" min="1" max="200">
                 </div>
                 <div class="studio-field studio-field-fill">
-                  <label class="studio-label">Max Tokens</label>
+                  <label class="studio-label" for="debug-max-tokens">Max Tokens</label>
                   <input type="number" id="debug-max-tokens" class="studio-input" value="2048" min="16" max="32768">
                 </div>
                 <div class="studio-field studio-field-fill">
-                  <label class="studio-label">Min P</label>
+                  <label class="studio-label" for="debug-min-p">Min P</label>
                   <input type="number" id="debug-min-p" class="studio-input" value="0.05" min="0" max="1" step="0.01">
                 </div>
               </div>
               <div class="studio-row">
                 <div class="studio-field studio-field-fill">
-                  <label class="studio-label">Freq Penalty</label>
+                  <label class="studio-label" for="debug-freq-pen">Freq Penalty</label>
                   <input type="number" id="debug-freq-pen" class="studio-input" value="0.0" min="-2" max="2" step="0.05">
                 </div>
                 <div class="studio-field studio-field-fill">
-                  <label class="studio-label">Pres Penalty</label>
+                  <label class="studio-label" for="debug-pres-pen">Pres Penalty</label>
                   <input type="number" id="debug-pres-pen" class="studio-input" value="0.0" min="-2" max="2" step="0.05">
                 </div>
                 <div class="studio-field studio-field-fill">
-                  <label class="studio-label">Repeat Penalty</label>
+                  <label class="studio-label" for="debug-repeat-pen">Repeat Penalty</label>
                   <input type="number" id="debug-repeat-pen" class="studio-input" value="1.1" min="1" max="2" step="0.01">
                 </div>
               </div>
               <div class="studio-field" style="display:flex;align-items:center;gap:12px;margin:8px 0">
-                <label class="settings-toggle" style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+                <label class="settings-toggle" style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px" for="setting-mem0">
                   <span class="toggle-switch" id="toggle-debug-logprobs"></span>
                   <input type="checkbox" id="debug-logprobs" style="display:none">
                   Logprobs
                 </label>
                 <div class="studio-field studio-field-tiny" id="debug-top-logprobs-field" style="display:none">
-                  <label class="studio-label">Top N</label>
+                  <label class="studio-label" for="debug-top-logprobs">Top N</label>
                   <input type="number" id="debug-top-logprobs" class="studio-input" value="3" min="1" max="10">
                 </div>
               </div>
@@ -522,7 +522,7 @@
               <div class="debug-output">
                 <div class="debug-output-header">
                   <span>Response</span>
-                  <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer">
+                  <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer" for="face-llm-toggle">
                     <input type="checkbox" id="debug-toggle-raw"> Raw JSON
                   </label>
                 </div>
@@ -560,7 +560,7 @@
     </div>
 
     <div class="settings-group">
-      <label class="settings-toggle" id="toggle-stream-label">
+      <label class="settings-toggle" id="toggle-stream-label" for="toggle-stream-label">
         <span class="toggle-switch on" id="toggle-stream-switch"></span>
         <input type="checkbox" id="setting-stream" checked style="display:none">
         <span data-i18n="settings_stream">流式响应</span>
@@ -568,7 +568,7 @@
     </div>
 
     <div class="settings-group">
-      <label class="settings-toggle" id="toggle-setting-reasoning-label">
+      <label class="settings-toggle" id="toggle-setting-reasoning-label" for="toggle-setting-reasoning-label">
         <span class="toggle-switch on" id="toggle-setting-reasoning-switch"></span>
         <input type="checkbox" id="setting-reasoning" checked style="display:none">
         <span data-i18n="plugin_reasoning">Reasoning (深度思考)</span>
@@ -576,7 +576,7 @@
     </div>
 
     <div class="settings-group">
-      <label class="settings-toggle" id="toggle-setting-mem0-label">
+      <label class="settings-toggle" id="toggle-setting-mem0-label" for="toggle-setting-mem0-label">
         <span class="toggle-switch" id="toggle-setting-mem0-switch"></span>
         <input type="checkbox" id="setting-mem0" style="display:none">
         <span data-i18n="settings_mem0">Mem0 记忆增强 (每轮搜索长期记忆)</span>
@@ -584,7 +584,7 @@
     </div>
 
     <div class="settings-group">
-      <label class="settings-toggle" id="toggle-setting-mem0-write-label">
+      <label class="settings-toggle" id="toggle-setting-mem0-write-label" for="toggle-setting-mem0-write-label">
         <span class="toggle-switch" id="toggle-setting-mem0-write-switch"></span>
         <input type="checkbox" id="setting-mem0-write" style="display:none">
         <span data-i18n="settings_mem0_write">Mem0 自动写入</span>
@@ -772,7 +772,7 @@
       </div>
       <div class="live2d-section">
         <div class="live2d-section-title">LLM 联动</div>
-        <label class="plugin-toggle">
+        <label class="plugin-toggle" for="toggle-live2d-llm-switch">
           <span class="toggle-switch" id="toggle-live2d-llm-switch"></span>
           <input type="checkbox" id="live2d-llm-link" style="display:none">
           <span class="plugin-toggle-text">流式 TTS + Live2D 口型同步（AI 回复时自动说话）</span>
