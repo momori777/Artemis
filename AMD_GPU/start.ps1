@@ -1,18 +1,18 @@
-ï»¿# start.ps1 â€” ä¸€é”®å¯åœå…¨éƒ¨ Shiki æœåŠ¡ (AMD GPU / Vulkan ç‰ˆæœ¬)
+# start.ps1 ¡ª Ò»¼üÆôÍ£È«²¿ Shiki ·şÎñ (AMD GPU / Vulkan °æ±¾)
 # Usage:
-#   .\start.ps1       å¯åŠ¨å…¨éƒ¨æœåŠ¡
-#   .\start.ps1 -Stop  åœæ­¢å…¨éƒ¨æœåŠ¡ï¼ˆç­‰ä»·äº shutdown_all.pyï¼‰
+#   .\start.ps1       Æô¶¯È«²¿·şÎñ
+#   .\start.ps1 -Stop  Í£Ö¹È«²¿·şÎñ£¨µÈ¼ÛÓÚ shutdown_all.py£©
 #
-# å¯åŠ¨é¡ºåº:
-#   1. llama-server (Vulkan åç«¯, ä» config.yaml è¯»å–è·¯å¾„)
+# Æô¶¯Ë³Ğò:
+#   1. llama-server (Vulkan ºó¶Ë, ´Ó config.yaml ¶ÁÈ¡Â·¾¶)
 #   2. Live2D Bridge (localhost:19200)
 #   3. OpenClaw Gateway
 #
-# âš ï¸ ä¸ NVIDIA ç‰ˆçš„åŒºåˆ«:
-#   - å»æ‰ --flash-attn on (Vulkan ä¸æ”¯æŒ)
-#   - å»æ‰ -ctk q8_0 / -ctv q8_0 (CUDA ä¸“å± KV cache é‡åŒ–)
-#   - ngl æ”¹ä¸º 99 (Vulkan å¯ä»¥æŠŠå…¨éƒ¨å±‚ offload åˆ° GPU)
-#   - --no-mmap ä¿ç•™ï¼ˆé¿å…å¤§æ¨¡å‹åƒæ»¡å†…å­˜ï¼‰
+# ?? Óë NVIDIA °æµÄÇø±ğ:
+#   - È¥µô --flash-attn on (Vulkan ²»Ö§³Ö)
+#   - È¥µô -ctk q8_0 / -ctv q8_0 (CUDA ×¨Êô KV cache Á¿»¯)
+#   - ngl ¸ÄÎª 99 (Vulkan ¿ÉÒÔ°ÑÈ«²¿²ã offload µ½ GPU)
+#   - --no-mmap ±£Áô£¨±ÜÃâ´óÄ£ĞÍ³ÔÂúÄÚ´æ£©
 
 param([switch]$Stop)
 
@@ -33,11 +33,11 @@ if ($Stop) {
     exit $LASTEXITCODE
 }
 
-# ========== è¯»å– config.yaml ==========
+# ========== ¶ÁÈ¡ config.yaml ==========
 $configPath = Join-Path $scriptRoot "config.yaml"
 if (-not (Test-Path $configPath)) {
     Write-Host "ERROR: config.yaml not found at $configPath" -ForegroundColor Red
-    Write-Host "Run quick_setup.ps1 first, or copy config.example.yaml â†’ config.yaml" -ForegroundColor Yellow
+    Write-Host "Run quick_setup.ps1 first, or copy config.example.yaml ¡ú config.yaml" -ForegroundColor Yellow
     exit 1
 }
 $configRaw = Get-Content $configPath -Raw -Encoding UTF8
@@ -57,7 +57,7 @@ $llamaLogDir = Get-YamlValue $configRaw 'llama_log_dir'
 $workspace  = Get-YamlValue $configRaw 'workspace'
 
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "  å››å­£å¤ç›® â€” Shiki Natsume Startup (Vulkan)" -ForegroundColor Cyan
+Write-Host "  ËÄ¼¾ÏÄÄ¿ ¡ª Shiki Natsume Startup (Vulkan)" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -75,19 +75,19 @@ function Test-Online($port, $label) {
 }
 
 if (Test-Online $llamaPort "llama-server") {
-    # already up â€” skip
+    # already up ¡ª skip
 } else {
     # Validate paths
     if (-not (Test-Path $llamaExe)) {
         Write-Host "  ERROR: llama-server.exe not found: $llamaExe" -ForegroundColor Red
-        Write-Host "  Check config.yaml â†’ llama_exe" -ForegroundColor Yellow
-        Write-Host "  AMD ç”¨æˆ·éœ€è¦ä¸‹è½½ Vulkan ç‰ˆ: https://github.com/ggml-org/llama.cpp/releases" -ForegroundColor Yellow
-        Write-Host "  æ‰¾ llama-bXXXX-bin-win-vulkan-x64.zip" -ForegroundColor Yellow
+        Write-Host "  Check config.yaml ¡ú llama_exe" -ForegroundColor Yellow
+        Write-Host "  AMD ÓÃ»§ĞèÒªÏÂÔØ Vulkan °æ: https://github.com/ggml-org/llama.cpp/releases" -ForegroundColor Yellow
+        Write-Host "  ÕÒ llama-bXXXX-bin-win-vulkan-x64.zip" -ForegroundColor Yellow
         exit 1
     }
     if (-not (Test-Path $llamaModel)) {
         Write-Host "  ERROR: Model not found: $llamaModel" -ForegroundColor Red
-        Write-Host "  Check config.yaml â†’ llama_model" -ForegroundColor Yellow
+        Write-Host "  Check config.yaml ¡ú llama_model" -ForegroundColor Yellow
         exit 1
     }
 
@@ -97,11 +97,11 @@ if (Test-Online $llamaPort "llama-server") {
     Get-Process llama-server -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 1
 
-    # Vulkan å‚æ•°ï¼š
-    # - ngl 99: å…¨éƒ¨å±‚ offload åˆ° GPUï¼ˆVulkan ç»Ÿä¸€å†…å­˜ï¼Œæ¯” CUDA å®½æ¾ï¼‰
-    # - æ²¡æœ‰ --flash-attn: Vulkan åç«¯ä¸æ”¯æŒ
-    # - æ²¡æœ‰ -ctk/-ctv: CUDA ä¸“å± KV cache é‡åŒ–
-    # - --no-mmap: ä¿ç•™ï¼Œé¿å… 16GB æ¨¡å‹åƒæ»¡ç³»ç»Ÿ RAM
+    # Vulkan ²ÎÊı£º
+    # - ngl 99: È«²¿²ã offload µ½ GPU£¨Vulkan Í³Ò»ÄÚ´æ£¬±È CUDA ¿íËÉ£©
+    # - Ã»ÓĞ --flash-attn: Vulkan ºó¶Ë²»Ö§³Ö
+    # - Ã»ÓĞ -ctk/-ctv: CUDA ×¨Êô KV cache Á¿»¯
+    # - --no-mmap: ±£Áô£¬±ÜÃâ 16GB Ä£ĞÍ³ÔÂúÏµÍ³ RAM
     $llamaArgs = @(
         '-m', $llamaModel,
         '-c', '150000',
@@ -111,7 +111,7 @@ if (Test-Online $llamaPort "llama-server") {
         '--ubatch-size', '1024',
         '--threads', '24',
         '-rea', 'off',
-        '--reasoning-format', 'deepseek',
+        
         '--jinja',
         '--cache-ram', '5000',
         '--parallel', '1',
@@ -140,7 +140,7 @@ if (Test-Online $llamaPort "llama-server") {
         Start-Sleep -Seconds 2
     }
     if (-not $ready) {
-        Write-Host "  WARNING: llama-server not responding after ${maxWait}s â€” continuing anyway" -ForegroundColor Yellow
+        Write-Host "  WARNING: llama-server not responding after ${maxWait}s ¡ª continuing anyway" -ForegroundColor Yellow
     }
 }
 
@@ -148,7 +148,7 @@ if (Test-Online $llamaPort "llama-server") {
 Write-Host "[2/3] Live2D Bridge" -ForegroundColor Yellow
 
 if (Test-Online 19200 "Live2D Bridge") {
-    # already up â€” skip
+    # already up ¡ª skip
 } else {
     $live2dDir = Join-Path $scriptRoot "live2d"
     if (-not (Test-Path (Join-Path $live2dDir "live2d-bridge.mjs"))) {

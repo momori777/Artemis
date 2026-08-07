@@ -8,7 +8,9 @@
   .\restart_llama_degraded.ps1 -ForceBatch 1024
 #>
 param(
-  [int]$ForceBatch = -1
+  [int]$ForceBatch = -1,
+  [Alias('Model')]
+  [string]$SwitchTo = ""
 )
 
 $ErrorActionPreference = 'Stop'
@@ -46,6 +48,61 @@ if (-not (Test-Path $exe)) {
 if (-not (Test-Path $model)) {
   Write-Host "Model not found: $model" -ForegroundColor Red
   exit 1
+}
+
+# ========== 模型切换模式 (-Model) ==========
+# 从 config.yaml 的 llama_model_map 查 GGUF 路径，更新配置后重启
+function Get-YamlMap($raw, $key) {
+  $m = [regex]::Match($raw, "(?m)^${key}\s*:\s*$")
+  if (-not $m.Success) { return @{} }
+  $rest = $raw.Substring($m.Index + $m.Length)
+  $end = [regex]::Match($rest, "(?m)^[a-zA-Z_][a-zA-Z0-9_]*\s*:")
+  $sec = if ($end.Success) { $rest.Substring(0, $end.Index) } else { $rest }
+  $map = @{}
+  foreach ($mm in [regex]::Matches($sec, "(?m)^\s*([^\s:#][^\s:]*)\s*:\s*`"?(.+?)`"?\s*$")) {
+    $k = $mm.Groups[1].Value.Trim()
+    $v = $mm.Groups[2].Value.Trim('"').Trim()
+    if ($k -and $v) { $map[$k] = $v }
+  }
+  return $map
+}
+
+function Set-ConfigValue($raw, $key, $value) {
+  # 转义值，确保在 YAML 双引号中 \ 被正确转义
+  $escaped = $value.Replace('\', '\\').Replace('$', '$$')
+  $replacement = "`${1}`"$escaped`""
+  return [regex]::Replace($raw, "(?m)^(\s*${key}\s*:\s*).*$", $replacement)
+}
+
+if ($SwitchTo) {
+  $map = Get-YamlMap $configRaw 'llama_model_map'
+  $targetKey = $null
+  if ($map.ContainsKey($SwitchTo)) {
+    $targetKey = $SwitchTo
+  } else {
+    # 子串匹配: "27b" → qwen3.6-27b
+    foreach ($k in $map.Keys) {
+      if ($k -match [regex]::Escape($SwitchTo)) { $targetKey = $k; break }
+    }
+  }
+  if (-not $targetKey -or -not $map[$targetKey]) {
+    Write-Host "Model '$SwitchTo' not found in llama_model_map. Available: $($map.Keys -join ', ')" -ForegroundColor Red
+    exit 1
+  }
+  $targetPath = $map[$targetKey]
+  if (-not (Test-Path $targetPath)) {
+    Write-Host "GGUF not found: $targetPath" -ForegroundColor Red
+    exit 1
+  }
+  Write-Host "=== Switching model to $targetKey ===" -ForegroundColor Cyan
+  Write-Host "  $targetPath"
+
+  # 更新 config.yaml（无 BOM，保持 utf-8）
+  $configRaw = Set-ConfigValue $configRaw 'llama_model' $targetPath
+  $configRaw = Set-ConfigValue $configRaw 'llama_model_name' $targetKey
+  [System.IO.File]::WriteAllText($configPath, $configRaw, (New-Object System.Text.UTF8Encoding($false)))
+  $model = $targetPath
+  Write-Host "  config.yaml updated: llama_model + llama_model_name=$targetKey" -ForegroundColor DarkGray
 }
 
 # ========== 辅助函数 ==========
@@ -95,7 +152,7 @@ if (-not $pythonExe -and (Get-Command python3 -ErrorAction SilentlyContinue)) { 
 $baseArgs = $null
 if ($pythonExe) {
   try {
-    $llamaCfgScript = Join-Path $scriptRoot "skills\shared\llama_config.py"
+    $llamaCfgScript = Join-Path $scriptRoot "llama_config.py"
     $jsonOut = & $pythonExe $llamaCfgScript --args-only 2>$null | Out-String
     $parsed = $jsonOut | ConvertFrom-Json
     if ($parsed -is [array] -and $parsed.Count -gt 0) {
@@ -116,18 +173,17 @@ if (-not $baseArgs) {
   $specDraftNMax = & { $m = [regex]::Match($configRaw, "(?m)^llama:\s*$"); if ($m.Success) { $s = $configRaw.Substring($m.Index + $m.Length); $e = [regex]::Match($s, "(?m)^[a-z][a-z_]+:"); $sec = if ($e.Success) { $s.Substring(0, $e.Index) } else { $s }; $vm = [regex]::Match($sec, "(?m)^\s*spec_draft_n_max\s*:\s*(\d+)"); if ($vm.Success) { $vm.Groups[1].Value } else { '1' } } else { '1' } }
 
   $baseArgs = @(
+    $exe,
     '-m', $model,
     '-c', $llamaCtx,
     '--flash-attn', 'on',
     '-ctk', $llamaCtk,
     '-ctv', $llamaCtv,
-    '-ngl', '41',
     '--batch-size', '0',  # placeholder, will be overwritten
     '--ubatch-size', '0', # placeholder
     '--threads', '24',
     '-rea', 'off',
     '--jinja',
-    '--cache-ram', $llamaCacheRam,
     '--parallel', '1',
     '--kv-unified',
     '--no-mmap',

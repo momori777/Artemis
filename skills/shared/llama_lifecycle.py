@@ -470,18 +470,13 @@ def start_llama(port=8080, exe_path=None, model_path=None,
         if not use_mmap:
             args.append("--no-mmap")
         args += [
-            "--cpu-moe",
-            "--cpu-mask", "0xFFFFFFFF",
             "--batch-size", str(_batch),
             "--ubatch-size", str(_ubatch),
             "--threads", str(_threads),
-            "-ngl", str(_ngl),
-            "-rea", rea_mode, "--reasoning-format", "deepseek",
+            "-rea", rea_mode,
             "--jinja",
-            "--cache-ram", str(_cache_ram),
             "--parallel", "1",
             "--kv-unified",
-            "--no-warmup",
         ]
         _model_name_lower = _model_name.lower()
         if "mtp" in _model_name_lower:
