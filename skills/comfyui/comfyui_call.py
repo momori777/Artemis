@@ -46,11 +46,23 @@ from skills.shared.llama_lifecycle import (
 )
 
 # ========== 路径配置（从 config.yaml 读取） ==========
-# ComfyUI 推理引擎 (内置 skills/comfyui_core/，或外部 comfyui_root)
-COMFYUI_ROOT = _cfg.get('comfyui_root') or os.path.join(_def, 'skills', 'comfyui_core')
+# ComfyUI 推理引擎：优先 config.yaml 中的 comfyui_root，
+# 其次从 comfyui_python 路径推导（取父目录的父目录），最后 fallback 内置目录
+_COMFYUI_ROOT = _cfg.get('comfyui_root')
+if not _COMFYUI_ROOT:
+    _py_path = _cfg.get('comfyui_python', '')
+    if _py_path:
+        _py_dir = os.path.dirname(_py_path)
+        _comfy_parent = os.path.dirname(_py_dir)
+        if os.path.isdir(_comfy_parent) and os.path.exists(os.path.join(_comfy_parent, 'main.py')):
+            _COMFYUI_ROOT = _comfy_parent
+if not _COMFYUI_ROOT:
+    _COMFYUI_ROOT = os.path.join(_def, 'skills', 'comfyui_core')
+COMFYUI_ROOT = _COMFYUI_ROOT
 if not os.path.isdir(COMFYUI_ROOT):
     print(f"[ERROR] ComfyUI 推理引擎未找到: {COMFYUI_ROOT}", file=sys.stderr)
-    print("请从 GitHub 克隆完整项目或设置 config.yaml 中的 comfyui_root", file=sys.stderr)
+    print("请从 GitHub 克隆完整项目或设置 config.yaml 中的 comfyui_root",
+          "或确保 comfyui_python 指向包含 ComfyUI 主目录的 Python", file=sys.stderr)
     sys.exit(1)
 PYTHON_PATH = _cfg['comfyui_python']
 CHECKPOINTS_DIR = _cfg['comfyui_checkpoints_dir']

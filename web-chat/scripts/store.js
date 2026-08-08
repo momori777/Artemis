@@ -8,13 +8,66 @@
 var STORE_KEY = 'ai-girlfriend-store-v2';
 var STORE_VERSION = 2;
 
+function isStoreValid(data) {
+  // Return true if the stored data has all required top-level keys
+  // that the rest of the app expects.
+  if (!data || typeof data !== 'object') return false;
+  if (data._version === undefined || data._version === null) return false;
+  if (data.settings === undefined || data.settings === null) return false;
+  if (data.chats === undefined || data.chats === null) return false;
+  return true;
+}
+
+function migrateStore(data) {
+  // Ensure backward compatibility: merge old data with default structure,
+  // preserving all user values and filling in any missing keys.
+  var def = createDefaultStore();
+  var result = {};
+  // Copy all own properties from data first
+  for (var key in data) {
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      result[key] = data[key];
+    }
+  }
+  // Fill in missing keys from defaults
+  for (var dk in def) {
+    if (!Object.prototype.hasOwnProperty.call(result, dk)) {
+      if (dk === 'settings') {
+        // Deep merge: keep user settings, fill missing ones
+        var merged = {};
+        for (var sk in def.settings) {
+          if (Object.prototype.hasOwnProperty.call(def.settings, sk)) {
+            merged[sk] = (result.settings && result.settings[sk] !== undefined && result.settings[sk] !== null) ? result.settings[sk] : def.settings[sk];
+          }
+        }
+        result.settings = merged;
+      } else if (dk === 'chats') {
+        result.chats = (result.chats && typeof result.chats === 'object') ? result.chats : {};
+      } else if (dk === 'avatars') {
+        result.avatars = (result.avatars && typeof result.avatars === 'object') ? result.avatars : {};
+      } else {
+        result[dk] = def[dk];
+      }
+    }
+  }
+  result._version = STORE_VERSION;
+  return result;
+}
+
 function loadStore() {
   try {
     var raw = localStorage.getItem(STORE_KEY);
     if (!raw) return createDefaultStore();
     var data = JSON.parse(raw);
-    if (data._version !== STORE_VERSION) {
-      // future migration
+    // Validate and migrate old store formats
+    if (!isStoreValid(data)) {
+      // Data has no _version or missing keys — likely an old format.
+      // Try to salvage it by merging with defaults.
+      if (data && typeof data === 'object') {
+        data = migrateStore(data);
+      } else {
+        data = createDefaultStore();
+      }
     }
     return data;
   } catch (e) {

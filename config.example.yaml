@@ -71,9 +71,15 @@ llama_exe: "填写 llama-server.exe 路径，例如 D:\\AI_Girlfriend\\llama-ser
 llama_model: "填写 GGUF 模型文件路径，例如 E:\\Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf"
 
 # API 响应中显示的模型名称（留空则自动取 llama_model 的文件名）
-llama_model_name: ""
-# OpenAI 兼容 API 的 model id（默认 local/<模型名>）
-llama_model_id: ""
+llama_model_name: "qwen3.6-27b"
+# OpenAI 兼容 API 的 model id（默认 local/<模型名>，例如 llama/qwen3.6-35b）
+llama_model_id: "llama/qwen3.6-35b"
+# 模型路径映射表：按模型名称映射到 GGUF 文件路径
+# 当切换模型时，shiki_daemon.py 会根据此表更新 llama_model 路径
+# 留空或每行一个 "模型名: 路径" 映射
+llama_model_map:
+  qwen3.6-35b: "E:\\Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf"
+  qwen3.6-27b: "E:\\Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf"
 llama_port: 8080
 llama_log_dir: "llama-server/restart-logs"
 restart_script: "skills/shared/restart_llama_degraded.ps1"
@@ -88,7 +94,7 @@ llama:
   threads: 24
   ngl: 41
   # MTP(多 token 预测)投机解码，模型名含 mtp 时自动启用
-  spec_draft_n_max: 1
+  spec_draft_n_max: 2
 
 # ---- 模型预设表 (model_profiles) ----
 # 所有启动入口 (shiki_daemon.py / start.ps1 / llama_lifecycle.py /
@@ -108,10 +114,10 @@ model_profiles:
       threads: 24
       cpu_moe: false
       cpu_mask: ""
-      cache_ram: 0          # 0 = 不传 --cache-ram
+      cache_ram: 8192
       no_warmup: false
       spec_draft_n_max: 1
-      rea: off
+      rea: false
   # ── Hermes3.6-35B Genesis V7 (MTP, APEX Compact, MoE) ──
   - name: "hermes3.6-35b-genesis-v7-mtp"
     match: ["hermes3.6-35b-genesis", "hermes3.6-35b"]
@@ -126,7 +132,21 @@ model_profiles:
       cache_ram: 3000
       no_warmup: true
       spec_draft_n_max: 2
-      rea: off
+      rea: false
+  # ── Qwen3.6-35B (MTP, 通用预设) ──
+  - name: "qwen3.6-35b-fable-mtp"
+    match: ["qwen3.6-35b"]
+    params:
+      ctk: q4_0
+      ctv: q4_0
+      batch_size: 4096
+      ubatch_size: 2048
+      threads: 24
+      cpu_moe: false
+      cache_ram: 8192
+      no_warmup: false
+      spec_draft_n_max: 1
+      rea: false
 
 # ============================================================
 # Memory & Embedding（长期记忆 + 向量库）
