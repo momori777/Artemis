@@ -78,6 +78,37 @@ Bridge がオフラインなら起動: `node live2d-bridge.mjs`（作業ディ�
 手動検索 / 書き込み / 埋め込みモデル切替: `skills/mem0-bridge/SKILL.md`（embedding server ポート 9999 が必要）。
 プロキシルーティング、SmartCrusher と mem0 パラメータ: `skills/headroom/PROXY.md`。
 
+## 行動エンジン（Behavior Engine）
+
+各キャラは独立した好感度・コンフリクト・段階・ホルモン状態を持ち、`memory/role_play/<キャラ>/relationship.json` に保存されます。
+
+### 毎ターンの流れ
+
+1. **状態読み取り**: `read` で `memory/role_play/<キャラ>/relationship.json` を読む
+2. **状態で返信を調整**: `conflict.level>=1` → 冷たい返信 · `hormones.energy<-0.3` → 短く/眠い · `hormones.irritability>0.5` → 不機嫌 · `hormones.affection>0.7` → 甘える · `cycle_phase=="ovulation"` → より積極的
+3. **各メッセージ後に更新**: moodDelta（interest/trust/attraction/annoyance/cringe）を `relationship.json` に反映
+4. **段階遷移**: 5メッセージ毎に自動で昇格/降格
+5. **コンフリクト拡大**: annoyance/cringe/interest が大きく動くとき自動拡大
+
+### 主要ファイル
+- `skills/behavior-engine/engine.py` — 状態の読込/更新/保存
+- `skills/behavior-engine/hormones.py` — ホルモン/周期
+- `skills/behavior-engine/conflict.py` — 4段階コンフリクト
+- `skills/behavior-engine/stages.py` — 9段階関係
+- `skills/behavior-engine/behavior_tick.py` — 意思決定層
+- `skills/behavior-engine/online_tick.py` — オンライン/睡眠シミュレーション
+- `skills/behavior-engine/daily_life.py` — 毎日のスケジュール
+
+### クイックコマンド
+```powershell
+# 状態リセット
+python skills/behavior-engine/engine.py reset <キャラ>
+# 状態表示
+Get-Content memory/role_play/<キャラ>/relationship.json | ConvertFrom-Json | Format-List
+```
+
+詳細設計: `skills/behavior-engine/README.md`。
+
 ## VRAM レベル
 
 現在 **Level 1（TTS_STOP）**: 8-12 GB。ComfyUI / TTS は llama 停止、ASR と Live2D は停止しない。

@@ -324,6 +324,147 @@ py -c "import json;from skills.shared.mem0_bridge import search_mem0_qdrant,comp
 
 ---
 
+## Capability 6.5: Behavior Engine + Relationship System
+
+> Layered decision engine ported from girl-agent. Drives character behavior, relationship scores, conflicts, and stages per turn.
+> State file: `memory/role_play/<char>/relationship.json` (independent per character)
+
+### Data Flow
+
+```
+moodDelta (per turn) → score → conflict escalate/soften → stage transition → behavior decision
+          ↑                                                          ↓
+          └──────── hormones influence mood ────────────── LLM generates reply
+```
+
+### Core State Fields
+
+| Field | Range | Meaning | Effect |
+|-------|-------|---------|--------|
+| `score.interest` | -100~100 | Interest | Reply warmth, initiative |
+| `score.trust` | -100~100 | Trust | Sharing, dependence |
+| `score.attraction` | -100~100 | Attraction | Heart-racing, body language |
+| `score.annoyance` | -100~100 | Annoyance | Cold tone, conflict chance |
+| `score.cringe` | -100~100 | Cringe tolerance | Acceptance of cheesy lines |
+| `hormones.energy` | -1~1 | Energy | Reply length, warmth |
+| `hormones.irritability` | 0~1 | Irritability | Sharp tone |
+| `hormones.affection` | 0~1 | Affection | Cuddling, intimacy |
+| `hormones.cycle_phase` | - | Cycle phase | Mood swings |
+| `stage` | 9 stages | Relationship stage | Reply style baseline |
+| `conflict.level` | 0-4 | Conflict level | Cold shoulder, ignore |
+
+### 9 Stages
+
+| Stage | Description | Default interest/trust/attraction | ignore% |
+|-------|-------------|----------------------------------|---------|
+| met-irl-got-tg | First meet | 38/14/30 | 12% |
+| tg-given-cold | Cold period | 5/0/5 | 65% |
+| tg-given-warming | Warming up | 30/15/25 | 18% |
+| convinced | Convinced | 50/35/45 | 7% |
+| first-date-done | First date | 60/45/55 | 5% |
+| dating-early | Early dating | 75/60/70 | 2% |
+| dating-stable | Stable dating | 80/80/75 | 3% |
+| long-term | Long-term | 70/90/65 | 5% |
+| dumped | Dumped (final) | -50/-30/-40 | 100% |
+
+### 4-Level Conflict
+
+| level | Description | Behavior |
+|-------|-------------|----------|
+| 0 | None | Normal |
+| 1 | Slight sulk | Short, cold replies |
+| 2 | In a huff | Fewer replies, thorny |
+| 3 | Severe cold war | Cold replies "." "嗯" "tired" |
+| 4 | Blocked/deleted | No reply at all |
+
+### Per-Turn Flow
+
+```python
+# 1. Read state
+state = load_state('natsume')
+
+# 2. Inject context (mem0 memory, state-driven search)
+from skills.mem0_bridge import mem0_behavior_integration as mbi
+ctx = mbi.run_integration('natsume', user_msg)
+# prepend ctx to system prompt
+
+# 3. Behavior decision (optional: reply/ignore/delay/splits/emote)
+from skills.behavior_engine.behavior_tick import behavior_tick
+decision = behavior_tick(state, user_msg)
+
+# 4. Update state after each message (via moodDelta)
+from skills.behavior_engine.engine import update_state
+new_state = update_state('natsume', {
+    'interest': 3, 'trust': 2, 'attraction': 2,  # positive
+    'annoyance': 0, 'cringe': 0,
+})
+```
+
+### moodDelta Reference
+
+```
+Sweet words   → interest+3~5, trust+2~3, attraction+2~4
+Teasing her   → attraction+1~3
+Cheesy/oily   → cringe+2~5
+Caring        → trust+3~5, affection+1~2
+She said harsh → annoyance+3~5
+She sulks     → affection+2~3
+Long silence  → annoyance+1~2
+```
+
+### Conflict Escalate/Cool-Down Thresholds
+
+```python
+from skills.behavior_engine.conflict import escalate_from_mood, soften_from_mood
+# escalate: trigger>=25 → level3(cold 24-48h) · >=15 → level2 · >=8 → level1
+# soften: positive>=12 → drop 1 level
+```
+
+### Stage Transition Check
+
+```python
+from skills.behavior_engine.stages import decide_stage_transition, should_run_check
+# every 5 messages call should_run_check → decide_stage_transition
+# upgrade needs: interest/trust/attraction thresholds + >=6 msgs in stage
+```
+
+### Daily Life (daily_life)
+
+```python
+from skills.behavior_engine.daily_life import generate_daily_life
+dl = generate_daily_life(state, date='2026-08-09')
+# returns vibe/weather/blocks/events/wants, can inject into reply
+```
+
+### Online/Sleep (online_tick)
+
+```python
+from skills.behavior_engine.online_tick import decide_online, is_asleep
+d = decide_online(state)  # decide whether to show online
+```
+
+### Reset State
+
+```powershell
+python skills/behavior-engine/engine.py reset <char>
+```
+
+### Module List
+
+| File | Responsibility |
+|------|----------------|
+| `engine.py` | State interface load/save/update/reset |
+| `hormones.py` | Gaussian cycle model → energy/mood/affection/irritability/libido |
+| `conflict.py` | 4-level conflict escalate/soften/prompt |
+| `stages.py` | 9-stage transitions |
+| `behavior_tick.py` | Behavior decision (reply/ignore/delay/splits/emote) |
+| `online_tick.py` | Online/sleep simulation |
+| `daily_life.py` | Daily schedule/mood/events/wants |
+
+For full design see `skills/behavior-engine/README.md` and `SKILL.md`.
+
+---
+
 ## VRAM Levels
 
 > 📖 Full docs: `skills/shared/VRAM_LEVELS.md` | Config: `skills/shared/vram.py`

@@ -15,6 +15,12 @@ Mem0 Qdrant 向量记忆的读/写桥接器，WebChat、QQBot、TelegramBot 共�
 - **写**: 关键词提取 + 向量化 → 写入 Qdrant
 - **同步**: 可选，导出 Qdrant → markdown 供 OpenClaw memory_search 索引
 
+## 深度联动（每轮自动）
+
+`mem0_behavior_integration.py` 每轮对话自动执行：行为引擎状态 → 状态驱动的 mem0 搜索 → 分级注入 LLM context。
+
+详见 `mem0-bridge/INTEGRATION_SKILL.md`。
+
 ## 使用
 
 ### 搜索记忆（每轮对话注入）

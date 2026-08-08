@@ -72,10 +72,40 @@ Bridge 不在线时先起：`node live2d-bridge.mjs`（工作目录 `live2d/`，
 
 ## 记忆
 
-走 `local-llama/*` 的请求会**自动注入** mem0 记忆并压缩上下文，无需手动搜索。
-按 score 使用：`>0.7` 必须在回复中体现，`>0.5` 自然融入，`>0.3` 可选参考，更低忽略。
+## 记忆（Mem0 × Behavior Engine 深度联动）
 
-手动查询、写入、嵌入模型切换见 `skills/mem0-bridge/SKILL.md`（依赖 embedding server，端口 9999）。
+每轮对话时，系统自动执行以下流程：
+
+1. **读取行为引擎状态**：从 `memory/role_play/<角色>/relationship.json` 加载当前状态
+2. **状态驱动的 mem0 搜索**：根据当前阶段/评分/荷尔蒙调整查询词和搜索深度
+   - cold 期 → 搜索「喜欢/讨厌/记住的」，limit=3
+   - dating 期 → 搜索「约定/承诺/回忆」，limit=5
+   - 亲密度高 → 搜索「爱好/习惯/回忆」，limit=5
+   - 亲密度低 → 搜索「印象/感觉/记忆」，limit=3
+3. **分级注入 LLM context**：
+   - `>0.7` → **必须体现**（强相关长期记忆）
+   - `>0.5` → **自然融入**（中等相关长期记忆）
+   - `>0.3` → **可选参考**（弱相关长期记忆）
+   - `<0.3` → **忽略**
+4. **对话结束后写回**：自动提取事实写入 mem0 Qdrant + 更新行为引擎状态
+
+### 前提条件
+
+- **embedding server** (port 9999) 必须运行，否则所有记忆 score=0.0（零向量 fallback）
+- Qdrant 数据库在 `skills/sakura/data/memory/qdrant/`
+
+### 手动操作
+
+手动查询、写入、同步见 `skills/mem0-bridge/SKILL.md`。
+
+### 新文件
+
+- `skills/mem0-bridge/mem0_behavior_integration.py` — **新的深度联动模块**，每轮调用
+  - `run_integration(character, query, messages)` → 返回注入上下文字符串
+  - `get_relevant_mem0_context()` → 根据状态驱动搜索
+  - `extract_mem0_facts_from_messages()` → 从对话提取事实
+  - `sync_to_behavior_state()` → 更新行为引擎
+
 代理路由、SmartCrusher 与 mem0 参数见 `skills/headroom/PROXY.md`。
 
 ## VRAM 级别
@@ -138,3 +168,77 @@ python skills/character_importer/card_importer.py switch-tool             # 工�
 3. 上下文紧张时跳过非必要读取，优先保证对话质量
 
 角色名取根目录 `SOUL.md` 第一行。
+
+## 行为引擎（Behavior Engine）
+
+每个角色有独立的关系评分、冲突状态、阶段状态、荷尔蒙状态，存放在 `memory/role_play/<角色名>/relationship.json`。
+
+### 每轮对话流程
+
+1. **读取状态**：`exec python skills/behavior-engine/engine.py load <角色名>` 或直接用 `read` 读 `relationship.json`
+2. **根据状态调整回复**：
+   - `conflict.level >= 1` 且 cold 期 → 偏冷回复
+   - `hormones.energy < -0.3` → 回复变短/困
+   - `hormones.irritability > 0.5` → 易怒/不耐烦
+   - `hormones.affection > 0.7` → 亲昵/撒娇
+   - `hormones.cycle_phase == "ovulation"` → 更热情/主动
+3. **每条消息后更新状态**：根据对话内容产生 moodDelta，累加到 `relationship.json` 的 score 字段
+4. **阶段转换**：每5条消息自动检查一次，根据 score 和消息数自动升/降阶段
+5. **冲突升级**：annoyance/cringe/interest 大幅波动时自动升级冲突
+
+### 状态字段说明
+
+| 字段 | 范围 | 说明 |
+|------|------|------|
+| `score.interest` | -100~100 | 兴趣度：对用户的兴趣 |
+| `score.trust` | -100~100 | 信任度：对用户的信任 |
+| `score.attraction` | -100~100 | 吸引力：对用户的吸引感受 |
+| `score.annoyance` | -100~100 | 烦躁度：对用户的烦躁 |
+| `score.cringe` | -100~100 | 尴尬容忍度 |
+| `hormones.energy` | -1~1 | 能量，影响回复长度和热情 |
+| `hormones.irritability` | 0~1 | 易怒度，影响语气 |
+| `hormones.affection` | 0~1 | 亲密度，影响亲昵程度 |
+| `hormones.cycle_phase` | - | 月经周期阶段：menstrual/early-follicular/late-follicular/ovulation/early-luteal/late-luteal |
+| `stage` | - | 当前关系阶段（9阶段系统） |
+| `conflict.level` | 0-4 | 冲突等级，0=无 |
+
+### moodDelta 注入
+
+每条消息的 LLM 回复中，根据对话内容产生 moodDelta：
+
+```
+用户说甜的话 → interest +3~5, trust +2~3, attraction +2~4
+用户逗她 → attraction +1~3
+用户说土味/尴尬的话 → cringe +2~5
+用户关心她 → trust +3~5, affection +1~2
+她说了重话 → annoyance +3~5
+她撒娇 → affection +2~3
+用户长时间没回 → annoyance +1~2
+她做了好事 → trust +2~3
+```
+
+### 快速查看状态
+
+```powershell
+# 查看某个角色的状态
+Get-Content memory/role_play/atori/relationship.json | ConvertFrom-Json | Format-List
+```
+
+### 重置状态（:reset）
+
+```powershell
+python skills/behavior-engine/engine.py reset <角色名>
+```
+
+### 核心文件
+
+- `skills/behavior-engine/engine.py` — 状态读取/更新/保存
+- `skills/behavior-engine/hormones.py` — 荷尔蒙/生理周期计算
+- `skills/behavior-engine/conflict.py` — 四级冲突系统
+- `skills/behavior-engine/stages.py` — 9阶段关系系统
+- `skills/behavior-engine/behavior-tick.py` — 行为决策层
+- `skills/behavior-engine/online-tick.py` — 在线/睡眠模拟
+- `skills/behavior-engine/daily-life.py` — 每日作息生成
+- `skills/behavior-engine/SKILL.md` — 使用说明
+
+详细设计见 `skills/behavior-engine/README.md`。

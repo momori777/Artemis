@@ -1,0 +1,43 @@
+{
+  "score": {
+    "interest": 50,
+    "trust": 40,
+    "attraction": 55,
+    "annoyance": 0,
+    "cringe": 10
+  },
+  "stage": "convinced",
+  "conflict": {
+    "level": 0,
+    "cold_until": null,
+    "reason": null,
+    "since": null,
+    "history": []
+  },
+  "hormones": {
+    "energy": 0.1,
+    "mood": 0.2,
+    "affection": 0.6,
+    "irritability": 0.15,
+    "libido": 0.5,
+    "cycle_day": 1,
+    "cycle_phase": "early-follicular",
+    "pmdd": false
+  },
+  "last_updated": null,
+  "birth_seed": 73,
+  "age": 20,
+  "sleep_from": 1,
+  "sleep_to": 8,
+  "night_wake_chance": 0.2,
+  "ignore_tendency": 30,
+  "vibe": "warm",
+  "initiative": "medium",
+  "message_style": "balanced",
+  "life_sharing": "medium",
+  "notifications": "normal",
+  "her_messages_in_stage": 0,
+  "his_messages_in_stage": 0,
+  "ignores_in_stage": 0,
+  "messages_since_last_check": 0
+}

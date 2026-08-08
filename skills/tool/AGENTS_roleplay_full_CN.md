@@ -324,6 +324,147 @@ py -c "import json;from skills.shared.mem0_bridge import search_mem0_qdrant,comp
 
 ---
 
+## 能力 6.5: 行为引擎 + 好感度系统
+
+> 从 girl-agent 移植的分层决策引擎。每轮对话驱动角色行为、关系评分、冲突与段位。
+> 状态文件: `memory/role_play/<角色>/relationship.json`（每角色独立）
+
+### 数据流
+
+```
+moodDelta (每轮) → 评分(score) → 冲突 escalation/soften → 段位 transition → 行为决策
+          ↑                                                            ↓
+          └──────── 荷尔蒙(hormones) 影响 mood ────────── LLM 生成回复
+```
+
+### 核心状态字段
+
+| 字段 | 范围 | 含义 | 影响 |
+|------|------|------|------|
+| `score.interest` | -100~100 | 兴趣度 | 回复热情、主动程度 |
+| `score.trust` | -100~100 | 信任度 | 分享欲、依赖 |
+| `score.attraction` | -100~100 | 吸引力 | 心动、肢体语言 |
+| `score.annoyance` | -100~100 | 烦躁度 | 冰冷语气、冲突概率 |
+| `score.cringe` | -100~100 | 尴尬容忍度 | 对土味/油腻的接受 |
+| `hormones.energy` | -1~1 | 能量 | 回复长度、热情 |
+| `hormones.irritability` | 0~1 | 易怒度 | 语气尖锐 |
+| `hormones.affection` | 0~1 | 亲密度 | 撒娇、亲昵 |
+| `hormones.cycle_phase` | - | 周期阶段 | 情绪波动 |
+| `stage` | 9段位 | 关系阶段 | 回复风格基准 |
+| `conflict.level` | 0-4 | 冲突等级 | 冷处理、无视 |
+
+### 9 段位 (stages)
+
+| 段位 | 描述 | 默认兴趣/信任/吸引 | ignore概率 |
+|------|------|------------------|-----------|
+| met-irl-got-tg | 初次认识 | 38/14/30 | 12% |
+| tg-given-cold | 冷淡期 | 5/0/5 | 65% |
+| tg-given-warming | 回暖期 | 30/15/25 | 18% |
+| convinced | 被说服 | 50/35/45 | 7% |
+| first-date-done | 首次约会 | 60/45/55 | 5% |
+| dating-early | 热恋初期 | 75/60/70 | 2% |
+| dating-stable | 稳定交往 | 80/80/75 | 3% |
+| long-term | 长期关系 | 70/90/65 | 5% |
+| dumped | 被甩(终态) | -50/-30/-40 | 100% |
+
+### 4 级冲突 (conflict)
+
+| level | 描述 | 行为 |
+|-------|------|------|
+| 0 | 无 | 正常 |
+| 1 | 小别扭 | 回复短、冷淡 |
+| 2 | 闹脾气 | 回得少、带刺 |
+| 3 | 严重冷战 | 冷回复 "." "嗯" "累了" |
+| 4 | 拉黑/删好友 | 完全不回 |
+
+### 每轮对话流程
+
+```python
+# 1. 读取状态
+state = load_state('natsume')
+
+# 2. 注入上下文（含 mem0 记忆，状态驱动搜索）
+from skills.mem0_bridge import mem0_behavior_integration as mbi
+ctx = mbi.run_integration('natsume', user_msg)
+# ctx 附加到 system prompt 前
+
+# 3. 行为决策（可选：决定是否回复/延迟/分片/表情）
+from skills.behavior_engine.behavior_tick import behavior_tick
+decision = behavior_tick(state, user_msg)
+
+# 4. 每条消息后更新状态（按 moodDelta）
+from skills.behavior_engine.engine import update_state
+new_state = update_state('natsume', {
+    'interest': 3, 'trust': 2, 'attraction': 2,  # 正向
+    'annoyance': 0, 'cringe': 0,
+})
+```
+
+### moodDelta 参考
+
+```
+用户说甜的话 → interest+3~5, trust+2~3, attraction+2~4
+用户逗她   → attraction+1~3
+土味/油腻  → cringe+2~5
+用户关心   → trust+3~5, affection+1~2
+她说了重话 → annoyance+3~5
+她撒娇     → affection+2~3
+长时间没回 → annoyance+1~2
+```
+
+### 冲突触发/降温阈值
+
+```python
+from skills.behavior_engine.conflict import escalate_from_mood, soften_from_mood
+# 升级: trigger>=25 → level3(冷24-48h) · >=15 → level2 · >=8 → level1
+# 降温: positive>=12 → 降1级
+```
+
+### 段位转换检查
+
+```python
+from skills.behavior_engine.stages import decide_stage_transition, should_run_check
+# 每5条消息调用 should_run_check → decide_stage_transition
+# 升级需满足: 兴趣/信任/吸引达阈值 + 本阶段消息>=6
+```
+
+### 每日作息 (daily_life)
+
+```python
+from skills.behavior_engine.daily_life import generate_daily_life
+dl = generate_daily_life(state, date='2026-08-09')
+# 返回 vibe/weather/blocks/events/wants，可注入回复
+```
+
+### 在线/睡眠 (online_tick)
+
+```python
+from skills.behavior_engine.online_tick import decide_online, is_asleep
+d = decide_online(state)  # 决定是否显示在线
+```
+
+### 重置状态
+
+```powershell
+python skills/behavior-engine/engine.py reset <角色>
+```
+
+### 模块清单
+
+| 文件 | 职责 |
+|------|------|
+| `engine.py` | 状态接口 load/save/update/reset |
+| `hormones.py` | 高斯周期模型 → energy/mood/affection/irritability/libido |
+| `conflict.py` | 4级冲突 escalate/soften/prompt |
+| `stages.py` | 9段位转换 |
+| `behavior_tick.py` | 行为决策（回复/忽略/延迟/分片/表情） |
+| `online_tick.py` | 在线/睡眠模拟 |
+| `daily_life.py` | 每日行程/心情/事件/愿望 |
+
+详细设计见 `skills/behavior-engine/README.md` 与 `SKILL.md`。
+
+---
+
 ## VRAM 级别
 
 > 📖 完整文档: `skills/shared/VRAM_LEVELS.md` | 配置: `skills/shared/vram.py`
