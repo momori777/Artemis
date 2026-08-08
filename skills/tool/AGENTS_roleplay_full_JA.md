@@ -324,6 +324,147 @@ py -c "import json;from skills.shared.mem0_bridge import search_mem0_qdrant,comp
 
 ---
 
+## 能力 6.5: 行動エンジン + 好感度システム
+
+> girl-agent から移植した階層型意思決定エンジン。毎ターンのキャラクター行動・好感度・コンフリクト・段位を駆動。
+> 状態ファイル: `memory/role_play/<キャラ>/relationship.json`（キャラ毎に独立）
+
+### データフロー
+
+```
+moodDelta (毎ターン) → score → コンフリクト escalate/soften → 段位遷移 → 行動決定
+          ↑                                                                ↓
+          └──────── ホルモン(hormones) が気分に影響 ────── LLM が返信生成
+```
+
+### 主要な状態フィールド
+
+| フィールド | 範囲 | 意味 | 影響 |
+|------------|------|------|------|
+| `score.interest` | -100~100 | 興味度 | 返信の熱意・積極性 |
+| `score.trust` | -100~100 | 信頼度 | 共有欲・依存 |
+| `score.attraction` | -100~100 | 魅力 | ときめき・ボディランゲージ |
+| `score.annoyance` | -100~100 | いら立ち | 冷たい口調・コンフリクト確率 |
+| `score.cringe` | -100~100 | 気まずさ許容度 | キザ/ベタな台詞の受容 |
+| `hormones.energy` | -1~1 | エネルギー | 返信の長さ・熱意 |
+| `hormones.irritability` | 0~1 | 不機嫌度 | 尖った口調 |
+| `hormones.affection` | 0~1 | 親密度 | 甘え・親しみ |
+| `hormones.cycle_phase` | - | 周期段階 | 感情の揺れ |
+| `stage` | 9段位 | 関係段階 | 返信スタイル基準 |
+| `conflict.level` | 0-4 | コンフリクト等級 | 冷対応・無視 |
+
+### 9 段位 (stages)
+
+| 段位 | 説明 | デフォルト 興味/信頼/魅力 | ignore率 |
+|------|------|--------------------------|---------|
+| met-irl-got-tg | 初対面・TG入手 | 38/14/30 | 12% |
+| tg-given-cold | 冷たい時期 | 5/0/5 | 65% |
+| tg-given-warming | 回復期 | 30/15/25 | 18% |
+| convinced | 説得済み | 50/35/45 | 7% |
+| first-date-done | 初デート完了 | 60/45/55 | 5% |
+| dating-early | 熱愛初期 | 75/60/70 | 2% |
+| dating-stable | 安定交際 | 80/80/75 | 3% |
+| long-term | 長期関係 | 70/90/65 | 5% |
+| dumped | 振られた(終端) | -50/-30/-40 | 100% |
+
+### 4 段階コンフリクト
+
+| level | 説明 | 行動 |
+|-------|------|------|
+| 0 | なし | 正常 |
+| 1 | 小さい拗ね | 短く冷たい返信 |
+| 2 | 不機嫌 | 返信が少なく刺がある |
+| 3 | 深刻な冷戦 | "." "嗯" "疲れた" 等の冷たい返信 |
+| 4 | ブロック/削除 | 完全に無視 |
+
+### 毎ターンのフロー
+
+```python
+# 1. 状態読取
+state = load_state('natsume')
+
+# 2. コンテキスト注入（mem0 記憶、状態駆動検索）
+from skills.mem0_bridge import mem0_behavior_integration as mbi
+ctx = mbi.run_integration('natsume', user_msg)
+# ctx を system prompt の前に追加
+
+# 3. 行動決定（任意: 返信/無視/遅延/分割/表情）
+from skills.behavior_engine.behavior_tick import behavior_tick
+decision = behavior_tick(state, user_msg)
+
+# 4. 各メッセージ後に状態更新（moodDelta で）
+from skills.behavior_engine.engine import update_state
+new_state = update_state('natsume', {
+    'interest': 3, 'trust': 2, 'attraction': 2,  # ポジティブ
+    'annoyance': 0, 'cringe': 0,
+})
+```
+
+### moodDelta 参考
+
+```
+甘い言葉 → interest+3~5, trust+2~3, attraction+2~4
+からかう → attraction+1~3
+キザ/ベタ → cringe+2~5
+気遣い   → trust+3~5, affection+1~2
+彼女が強く言う → annoyance+3~5
+彼女が甘える → affection+2~3
+長い沈黙 → annoyance+1~2
+```
+
+### コンフリクト拡大/冷却の閾値
+
+```python
+from skills.behavior_engine.conflict import escalate_from_mood, soften_from_mood
+# 拡大: trigger>=25 → level3(冷24-48h) · >=15 → level2 · >=8 → level1
+# 冷却: positive>=12 → 1段階下げる
+```
+
+### 段位遷移チェック
+
+```python
+from skills.behavior_engine.stages import decide_stage_transition, should_run_check
+# 5メッセージ毎に should_run_check → decide_stage_transition
+# 昇格条件: 興味/信頼/魅力の閾値 + 現在段位で>=6メッセージ
+```
+
+### 毎日のスケジュール (daily_life)
+
+```python
+from skills.behavior_engine.daily_life import generate_daily_life
+dl = generate_daily_life(state, date='2026-08-09')
+# vibe/weather/blocks/events/wants を返し、返信に注入可能
+```
+
+### オンライン/睡眠 (online_tick)
+
+```python
+from skills.behavior_engine.online_tick import decide_online, is_asleep
+d = decide_online(state)  # オンライン表示するか決定
+```
+
+### 状態リセット
+
+```powershell
+python skills/behavior-engine/engine.py reset <キャラ>
+```
+
+### モジュール一覧
+
+| ファイル | 責務 |
+|----------|------|
+| `engine.py` | 状態インターフェース load/save/update/reset |
+| `hormones.py` | ガウス周期モデル → energy/mood/affection/irritability/libido |
+| `conflict.py` | 4段階コンフリクト escalate/soften/prompt |
+| `stages.py` | 9段位遷移 |
+| `behavior_tick.py` | 行動決定（返信/無視/遅延/分割/表情） |
+| `online_tick.py` | オンライン/睡眠シミュレーション |
+| `daily_life.py` | 毎日のスケジュール/気分/イベント/願い |
+
+詳細設計は `skills/behavior-engine/README.md` と `SKILL.md` を参照。
+
+---
+
 ## VRAM レベル
 
 > 📖 完全ドキュメント: `skills/shared/VRAM_LEVELS.md` | 設定: `skills/shared/vram.py`

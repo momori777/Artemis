@@ -78,6 +78,37 @@ Use by score: `>0.7` must be reflected in the reply, `>0.5` weave in naturally, 
 Manual search / write / embedding model switch: `skills/mem0-bridge/SKILL.md` (requires embedding server on port 9999).
 Proxy routing, SmartCrusher and mem0 parameters: `skills/headroom/PROXY.md`.
 
+## Behavior Engine (简写)
+
+Each character has an independent relationship score, conflict state, stage, and hormone state stored in `memory/role_play/<char>/relationship.json`.
+
+### Per-turn flow
+
+1. **Read state**: `read` `memory/role_play/<char>/relationship.json`
+2. **Adjust reply by state**: `conflict.level>=1` → cold reply · `hormones.energy<-0.3` → short/tired · `hormones.irritability>0.5` → snappy · `hormones.affection>0.7` → cuddly · `cycle_phase=="ovulation"` → more eager
+3. **Update after each message**: apply moodDelta (interest/trust/attraction/annoyance/cringe) to `relationship.json`
+4. **Stage transitions**: every 5 messages, auto upgrade/downgrade by score
+5. **Conflict escalation**: auto escalate when annoyance/cringe/interest swing sharply
+
+### Key files
+- `skills/behavior-engine/engine.py` — state load/update/save
+- `skills/behavior-engine/hormones.py` — hormones / cycle
+- `skills/behavior-engine/conflict.py` — 4-level conflict
+- `skills/behavior-engine/stages.py` — 9-stage relationship
+- `skills/behavior-engine/behavior_tick.py` — decision layer
+- `skills/behavior-engine/online_tick.py` — online/sleep sim
+- `skills/behavior-engine/daily_life.py` — daily schedule
+
+### Quick commands
+```powershell
+# reset a character (uses :reset)
+python skills/behavior-engine/engine.py reset <char>
+# view state
+Get-Content memory/role_play/<char>/relationship.json | ConvertFrom-Json | Format-List
+```
+
+Full design: `skills/behavior-engine/README.md`.
+
 ## VRAM Levels
 
 Currently **Level 1 (TTS_STOP)**: 8-12 GB; ComfyUI / TTS must stop llama; ASR and Live2D keep running.
