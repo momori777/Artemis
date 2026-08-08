@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Uiverse Components Preview</title>
+<link rel="stylesheet" href="styles/main.css?v=46">
+<link rel="stylesheet" href="styles/refine.css?v=8">
+<link rel="stylesheet" href="styles/uiverse.css?v=1">
+<style>
+  body {
+    padding: 40px;
+    overflow: auto;
+    min-height: 100vh;
+  }
+  .preview-grid {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  .preview-section {
+    margin-bottom: 40px;
+  }
+  .preview-section h2 {
+    font-size: 18px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .preview-row {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .preview-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+  }
+  .preview-item label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .demo-card {
+    padding: 24px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+  }
+  .demo-inline {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  a.close-link {
+    display: inline-block;
+    margin-top: 30px;
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 14px;
+  }
+  a.close-link:hover {
+    text-decoration: underline;
+  }
+</style>
+</head>
+<body>
+
+<div class="preview-grid">
+
+  <h1 style="font-size:24px;color:var(--text-primary);margin-bottom:32px;">
+    🎨 Uiverse Components Preview
+  </h1>
+
+  <!-- 1. TOGGLES -->
+  <div class="preview-section">
+    <h2>Toggle Switches</h2>
+    <div class="preview-row">
+      <div class="demo-card">
+        <div class="preview-item">
+          <label>Neon Glow</label>
+          <label class="uiverse-toggle-neon">
+            <input type="checkbox" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+      <div class="demo-card">
+        <div class="preview-item">
+          <label>Gradient Border</label>
+          <label class="uiverse-toggle-gradient">
+            <input type="checkbox">
+            <span class="slider-g"></span>
+          </label>
+        </div>
+      </div>
+      <div class="demo-card">
+        <div class="preview-item">
+          <label>Slide Arrow</label>
+          <label class="uiverse-toggle-arrow">
+            <input type="checkbox" checked>
+            <span class="slider-a"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. BUTTONS -->
+  <div class="preview-section">
+    <h2>Buttons</h2>
+    <div class="preview-row">
+      <button class="uiverse-btn-glow">Glow Button</button>
+      <button class="uiverse-btn-ripple">Ripple Button</button>
+      <button class="uiverse-btn-neon">Neon Outline</button>
+    </div>
+  </div>
+
+  <!-- 3. INPUT -->
+  <div class="preview-section">
+    <h2>Floating Label Input</h2>
+    <div class="demo-card" style="max-width:420px;">
+      <div class="uiverse-float-group">
+        <input type="text" class="uiverse-float-input" placeholder=" " id="demo-input">
+        <label class="uiverse-float-label" for="demo-input">Your text here</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. LOADERS -->
+  <div class="preview-section">
+    <h2>Loaders</h2>
+    <div class="preview-row">
+      <div class="demo-card">
+        <div class="preview-item">
+          <label>Orbit</label>
+          <div class="uiverse-loader-orbit">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+      </div>
+      <div class="demo-card">
+        <div class="preview-item">
+          <label>Pulse Dots</label>
+          <div class="uiverse-loader-pulse">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+      </div>
+      <div class="demo-card">
+        <div class="preview-item">
+          <label>Gradient Spinner</label>
+          <div class="uiverse-loader-gradient"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. CARDS -->
+  <div class="preview-section">
+    <h2>Cards</h2>
+    <div class="preview-row">
+      <div style="width:240px;">
+        <div class="uiverse-card-glow">
+          <h3 style="font-size:15px;color:var(--text-primary);margin-bottom:8px;">Glow Border Card</h3>
+          <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">Hover to see the animated glow border effect.</p>
+        </div>
+      </div>
+      <div style="width:240px;">
+        <div class="uiverse-card-frosted">
+          <h3 style="font-size:15px;color:var(--text-primary);margin-bottom:8px;">Frosted Glass Card</h3>
+          <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">Glassmorphism with backdrop blur and depth.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. CHECKBOX / RADIO -->
+  <div class="preview-section">
+    <h2>Checkbox & Radio</h2>
+    <div class="demo-inline">
+      <label class="uiverse-checkbox">
+        <input type="checkbox" checked>
+        <span class="checkmark"></span>
+        Custom checkbox
+      </label>
+      <label class="uiverse-checkbox">
+        <input type="checkbox">
+        <span class="checkmark"></span>
+        Option A
+      </label>
+      <label class="uiverse-radio">
+        <input type="radio" name="demo-radio" checked>
+        <span class="radiomark"></span>
+        Radio A
+      </label>
+      <label class="uiverse-radio">
+        <input type="radio" name="demo-radio">
+        <span class="radiomark"></span>
+        Radio B
+      </label>
+    </div>
+  </div>
+
+  <!-- 7. TABS -->
+  <div class="preview-section">
+    <h2>Tabs</h2>
+    <div class="demo-card" style="max-width:420px;">
+      <div class="uiverse-tab-group">
+        <button class="uiverse-tab-item active">Tab 1</button>
+        <button class="uiverse-tab-item">Tab 2</button>
+        <button class="uiverse-tab-item">Tab 3</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. TOOLTIP -->
+  <div class="preview-section">
+    <h2>Tooltip</h2>
+    <div class="demo-card" style="max-width:300px;">
+      <div class="uiverse-tooltip-wrap">
+        <button class="uiverse-btn-glow">Hover me</button>
+        <span class="tooltip-text">This is an animated tooltip!</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. PROGRESS -->
+  <div class="preview-section">
+    <h2>Progress Bar</h2>
+    <div class="demo-card" style="max-width:420px;">
+      <div class="uiverse-progress-track">
+        <div class="uiverse-progress-fill" style="width: 65%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. BADGES -->
+  <div class="preview-section">
+    <h2>Badges / Status</h2>
+    <div class="demo-inline">
+      <span class="uiverse-badge">Active</span>
+      <span class="uiverse-badge green">Online</span>
+      <span class="uiverse-badge">Processing</span>
+    </div>
+  </div>
+
+  <!-- 11. MISC -->
+  <div class="preview-section">
+    <h2>Scrollbar / Divider / Skeleton</h2>
+    <hr class="uiverse-divider">
+    <div class="demo-inline">
+      <div class="uiverse-skeleton" style="width:120px;height:14px;"></div>
+      <div class="uiverse-skeleton" style="width:80px;height:14px;"></div>
+    </div>
+  </div>
+
+  <!-- 12. HAMBURGER -->
+  <div class="preview-section">
+    <h2>Hamburger Menu</h2>
+    <div class="demo-inline">
+      <button class="uiverse-hamburger" id="demo-hamburger">
+        <span></span><span></span><span></span>
+      </button>
+      <button class="uiverse-hamburger active">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+
+  <a class="close-link" href="index.html">← Back to Chat</a>
+</div>
+
+<script>
+  // Simple tab switching demo
+  document.querySelectorAll('.uiverse-tab-item').forEach(tab => {
+    tab.addEventListener('click', () => {
+      tab.parentElement.querySelectorAll('.uiverse-tab-item').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+    });
+  });
+
+  // Hamburger toggle
+  const hamburger = document.getElementById('demo-hamburger');
+  if (hamburger) {
+    hamburger.addEventListener('click', () => {
+      hamburger.classList.toggle('active');
+    });
+  }
+</script>
+</body>
+</html>
