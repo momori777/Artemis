@@ -191,6 +191,31 @@ Qwen3.6-35B（言語の心）  ←→  Cosmos 3 Nano（物理の心）
   - **自動同期ブリッジ** - クローンジョブが 30 分ごとに Qdrant → `_mem0_auto.md` を同期し、OpenClaw 原生の `memory_search` でベクターメモリを検索可能に
   - **キャラクター別分離** - Qdrant 内の `user_id` スコーピング；4 つの独立メモリ空間（sakura / natsume / enola / atori）
   - **検索優先順位** - ベクター長期記憶 > 手書き日付ノート > SOUL 基本ペルソナ
+
+> 詳細は [`skills/behavior-engine/README.md`](skills/behavior-engine/README.md) と [`AGENTS_roleplay_JA.md`](AGENTS_roleplay_JA.md) を参照。
+
+### 💖 好感度システム（Behavior Engine）
+
+姉妹プロジェクト **girl-agent** から移植した**階層型意思決定エンジン**。各キャラクターに独立した関係性スコア・コンフリクト状態・関係段階・生理周期を持たせ、キャラクターの行動と返信スタイルを駆動します。
+
+**コアループ：** 毎ターンの moodDelta（興味/信頼/魅了/いら立ち/気まずさ）→ スコアに累積 → コンフリクトの拡大/冷却をトリガー → 関係段階の遷移を自動チェック → LLM の返信スタイルを形成。
+
+| フィールド | 範囲 | 意味 | 影響 |
+|------------|------|------|------|
+| `score.interest` | -100~100 | 興味度 | 返信の熱意、積極性 |
+| `score.trust` | -100~100 | 信頼度 | 共有欲、依存 |
+| `score.attraction` | -100~100 | 魅了 | ときめき、ボディランゲージ |
+| `score.annoyance` | -100~100 | いら立ち | 冷たい口調、コンフリクト確率 |
+| `score.cringe` | -100~100 | 気まずさ許容度 | キザ/ベタな台詞への受容度 |
+
+**9 段階の関係段階：** 初対面 → 冷たい時期 → 回復期 → 説得済み → 初デート → 熱愛初期 → 安定交際 → 長期関係 → 振られた
+
+**4 段階コンフリクトシステム：** level 0 正常 → level 1 小さな拗ね → level 2 不機嫌 → level 3 深刻な冷戦 → level 4 ブロック/削除
+
+**生理周期システム：** ガウス周期モデルでエネルギー・いら立ち・親密度・性欲の周期的変動をシミュレートし、返信の長さと口調に影響。
+
+**状態ファイル：** `memory/role_play/<キャラ>/relationship.json`（キャラごとに独立、ホットロード）
+**モジュール位置：** `skills/behavior-engine/`
 - 🔄 **マルチキャラクターホットスワップ** - ワンドコマンドで AI ガールフレンド切替（夏目 ↔ アトリ ↔ 桜）；SOUL/IDENTITY/TTS 重み/Live2D モデルが自動切替、メモリ分離済み
 - 🃏 **キャラクターカード取り込み** - `skills/character_importer/` 経由で SillyTavern キャラクターカードを自動検出、取り込み → エージェント自動で役割切替
 - 💬 **チャット取り込み** - SillyTavern JSONL チャットログを `memory/role_play/<character>/` に取り込み、ロール切替時に会話コンテキストを復元
@@ -439,6 +464,16 @@ llama-server.exe `
     ├── llama-management.md           # VRAM 管理アーキテクチャドキュメント
     ├── llama-watchdog.ps1            # Llama 健康チェック
     ├── cleanup_orphans.ps1           # 孤児プロセスクリーンアップ
+    ├── behavior-engine/              # 💖 好感度システム（行為エンジン）
+    │   ├── engine.py                 # 状態 load/save/update/reset
+    │   ├── hormones.py               # 生理周期（ガウスモデル）
+    │   ├── conflict.py               # 4段階コンフリクト
+    │   ├── stages.py                 # 9段階関係
+    │   ├── behavior_tick.py          # 行為決定層
+    │   ├── online_tick.py            # オンライン/睡眠シミュレーション
+    │   ├── daily_life.py             # 毎日のスケジュール
+    │   ├── README.md                 # 設計ドキュメント
+    │   └── SKILL.md                  # 使用ガイド
     └── character_importer/           # SillyTavern キャラクターカード自動取り込み
 ```
 
