@@ -442,9 +442,22 @@ var UI = {
     if (source) source.textContent = c.source;
 
     var tagsEl = document.getElementById('char-tags');
-    if (tagsEl) tagsEl.innerHTML = (c.tags || []).map(function(t) { return '<span class="tag">' + t + '</span>'; }).join('');
+    if (tagsEl) {
+      var tagHTML = (c.tags || []).map(function(t) {
+        var isNSFW = /NSFW/i.test(t);
+        return '<span class="tag"' + (isNSFW ? ' data-tag-type="nsfw"' : '') + '>' + t + '</span>';
+      }).join('');
+      tagsEl.innerHTML = tagHTML;
+    }
     var sidebarName = document.getElementById('sidebar-char-name');
     if (sidebarName) sidebarName.textContent = c.name;
+
+    // Toggle cyberpunk card styling for the "女战斗员" character
+    var isCyberpunk = (c.id === '女战斗员' || (c.rawCard && c.rawCard.name === '女战斗员（编号由军团与指挥官决定）'));
+    var sidebarBody = document.querySelector('.sidebar-body');
+    if (sidebarBody) {
+      sidebarBody.classList.toggle('cyberpunk-card', isCyberpunk);
+    }
 
     // Active in dropdown
     var self = this;

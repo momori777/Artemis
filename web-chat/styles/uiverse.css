@@ -1,0 +1,967 @@
+/* ============================================================
+   uiverse.css — Pure CSS components inspired by uiverse.io
+   Loaded last (after refine.css) for highest specificity.
+   All components use your existing CSS variables.
+   ============================================================ */
+
+/* ==========================================================
+   1. TOGGLE SWITCHES — Premium animated toggles
+   ========================================================== */
+
+/* ---- Neon glow toggle ---- */
+.uiverse-toggle-neon {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+}
+.uiverse-toggle-neon input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.uiverse-toggle-neon .slider {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 99px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.uiverse-toggle-neon .slider::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.uiverse-toggle-neon input:checked + .slider {
+  background: rgba(224,139,139,0.25);
+  border-color: rgba(224,139,139,0.45);
+}
+.uiverse-toggle-neon input:checked + .slider::before {
+  background: var(--accent);
+  transform: translateX(22px);
+  box-shadow: 0 0 10px var(--accent-glow), 0 0 20px rgba(224,139,139,0.15);
+}
+
+/* ---- Gradient border toggle ---- */
+.uiverse-toggle-gradient {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+}
+.uiverse-toggle-gradient input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.uiverse-toggle-gradient .slider-g {
+  position: absolute;
+  inset: 0;
+  border-radius: 99px;
+  background: var(--bg-deepest);
+  border: 2px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.uiverse-toggle-gradient .slider-g::before {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+}
+.uiverse-toggle-gradient input:checked + .slider-g {
+  border-color: var(--accent);
+  background: rgba(224,139,139,0.12);
+}
+.uiverse-toggle-gradient input:checked + .slider-g::before {
+  background: var(--accent);
+  transform: translateX(24px);
+  box-shadow: 0 0 12px var(--accent-glow), 0 0 24px rgba(224,139,139,0.12);
+}
+
+/* ---- Slide-right arrow toggle ---- */
+.uiverse-toggle-arrow {
+  position: relative;
+  display: inline-block;
+  width: 56px;
+  height: 28px;
+}
+.uiverse-toggle-arrow input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.uiverse-toggle-arrow .slider-a {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 99px;
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+.uiverse-toggle-arrow .slider-a::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transform: translateY(-50%);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.uiverse-toggle-arrow .slider-a::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translateY(-50%) scale(0);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.uiverse-toggle-arrow input:checked + .slider-a::after {
+  left: calc(100% - 23px);
+  background: var(--text-primary);
+}
+.uiverse-toggle-arrow input:checked + .slider-a::before {
+  transform: translateY(-50%) scale(1);
+  right: 6px;
+}
+
+/* ==========================================================
+   2. BUTTONS — Glow, ripple, magnetic
+   ========================================================== */
+
+/* ---- Glow pulse button ---- */
+.uiverse-btn-glow {
+  position: relative;
+  padding: 10px 24px;
+  background: var(--accent);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: 12px;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.15),
+    0 2px 8px rgba(224,139,139,0.2),
+    0 4px 20px rgba(224,139,139,0.1);
+}
+.uiverse-btn-glow:hover {
+  background: var(--accent-hover);
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.2),
+    0 4px 12px rgba(224,139,139,0.25),
+    0 8px 36px rgba(224,139,139,0.18);
+}
+.uiverse-btn-glow:active {
+  background: var(--accent-press);
+  transform: translateY(0) scale(0.97);
+}
+
+/* ---- Ripple button ---- */
+.uiverse-btn-ripple {
+  position: relative;
+  padding: 10px 24px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.uiverse-btn-ripple::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(224,139,139,0.15);
+  transform: translate(-50%, -50%);
+  transition: width 0.5s, height 0.5s;
+  pointer-events: none;
+}
+.uiverse-btn-ripple:hover {
+  background: rgba(224,139,139,0.08);
+  border-color: var(--accent-hover);
+  color: var(--accent-hover);
+  transform: translateY(-1px);
+}
+.uiverse-btn-ripple:active::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* ---- Neon outline button ---- */
+.uiverse-btn-neon {
+  padding: 10px 28px;
+  background: transparent;
+  color: var(--accent);
+  border: none;
+  border-radius: 10px;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 0 15px rgba(224,139,139,0.06);
+}
+.uiverse-btn-neon::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(90deg, var(--accent), transparent, var(--accent));
+  opacity: 0;
+  transition: opacity 0.35s;
+  z-index: -1;
+}
+.uiverse-btn-neon:hover {
+  color: var(--text-inverse);
+  background: var(--accent);
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 0 20px rgba(224,139,139,0.2),
+    0 0 40px rgba(224,139,139,0.08);
+}
+.uiverse-btn-neon:active {
+  transform: scale(0.96);
+}
+
+/* ==========================================================
+   3. INPUT FIELDS — Floating label + animated border
+   ========================================================== */
+
+/* ---- Floating label input ---- */
+.uiverse-float-group {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+}
+.uiverse-float-input {
+  width: 100%;
+  padding: 14px 12px 8px;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-subtle);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: var(--t-base);
+  outline: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+}
+.uiverse-float-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.uiverse-float-label {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--t-base);
+  color: var(--text-muted);
+  pointer-events: none;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0.7;
+}
+.uiverse-float-input:focus ~ .uiverse-float-label,
+.uiverse-float-input:not(:placeholder-shown) ~ .uiverse-float-label {
+  top: 6px;
+  transform: translateY(0);
+  font-size: var(--t-xs);
+  color: var(--accent);
+  opacity: 1;
+}
+.uiverse-float-input::placeholder {
+  color: transparent;
+}
+
+/* ==========================================================
+   4. LOading — Spinner / loader animations
+   ========================================================== */
+
+/* ---- Orbiting dots loader ---- */
+.uiverse-loader-orbit {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  display: inline-block;
+  vertical-align: middle;
+}
+.uiverse-loader-orbit span {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 2px solid transparent;
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: orbitSpin 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.uiverse-loader-orbit span:nth-child(2) {
+  border-top-color: var(--accent-hover);
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  animation-delay: 0.15s;
+}
+.uiverse-loader-orbit span:nth-child(3) {
+  border-top-color: var(--accent-soft);
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  animation-delay: 0.3s;
+}
+@keyframes orbitSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ---- Pulse dots loader ---- */
+.uiverse-loader-pulse {
+  display: inline-flex;
+  gap: 6px;
+  vertical-align: middle;
+}
+.uiverse-loader-pulse span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulseBounce 1.2s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+.uiverse-loader-pulse span:nth-child(1) { animation-delay: 0s; }
+.uiverse-loader-pulse span:nth-child(2 { animation-delay: 0.15s; }
+.uiverse-loader-pulse span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes pulseBounce {
+  0%, 80%, 100% { transform: scale(0.5); opacity: 0.3; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* ---- Gradient spinner ---- */
+.uiverse-loader-gradient {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--accent) 0deg,
+    var(--accent-hover) 90deg,
+    transparent 180deg,
+    var(--accent-soft) 270deg,
+    var(--accent) 360deg
+  );
+  animation: gradientSpin 1s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+}
+.uiverse-loader-gradient::after {
+  content: '';
+  position: absolute;
+  top: 6px; left: 6px; right: 6px; bottom: 6px;
+  border-radius: 50%;
+  background: var(--bg-root);
+}
+.uiverse-loader-gradient { position: relative; }
+@keyframes gradientSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ==========================================================
+   5. CARDS / PANELS — Glowing border cards
+   ========================================================== */
+
+/* ---- Glow-border card ---- */
+.uiverse-card-glow {
+  position: relative;
+  padding: 20px;
+  background: var(--bg-surface);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--bezel), var(--shadow-sm);
+}
+.uiverse-card-glow::before {
+  content: '';
+  position: absolute;
+  top: -2px; left: -2px; right: -2px; bottom: -2px;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    var(--accent) 50%,
+    transparent 70%
+  );
+  border-radius: 17px;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.4s;
+  animation: glowSweep 3s linear infinite;
+}
+.uiverse-card-glow:hover::before {
+  opacity: 0.3;
+}
+@keyframes glowSweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ---- Frosted glass card ---- */
+.uiverse-card-frosted {
+  padding: 20px;
+  background: color-mix(in srgb, var(--bg-overlay) 60%, transparent);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.uiverse-card-frosted:hover {
+  border-color: var(--border-moderate);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+/* ==========================================================
+   6. CHECKBOX / RADIO — Custom styled
+   ========================================================== */
+
+/* ---- Rounded checkbox ---- */
+.uiverse-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: var(--t-sm);
+  color: var(--text-secondary);
+  user-select: none;
+}
+.uiverse-checkbox input {
+  display: none;
+}
+.uiverse-checkbox .checkmark {
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  flex-shrink: 0;
+}
+.uiverse-checkbox input:checked + .checkmark {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.uiverse-checkbox input:checked + .checkmark::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 6px;
+  width: 5px;
+  height: 10px;
+  border: solid var(--text-inverse);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(1);
+}
+.uiverse-checkbox:hover .checkmark {
+  border-color: var(--accent);
+}
+
+/* ---- Circle radio ---- */
+.uiverse-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: var(--t-sm);
+  color: var(--text-secondary);
+  user-select: none;
+}
+.uiverse-radio input {
+  display: none;
+}
+.uiverse-radio .radiomark {
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--border-subtle);
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  flex-shrink: 0;
+}
+.uiverse-radio input:checked + .radiomark {
+  border-color: var(--accent);
+  border-width: 5px;
+  background: var(--accent);
+}
+.uiverse-radio:hover .radiomark {
+  border-color: var(--accent);
+}
+
+/* ==========================================================
+   7. TABS — Animated underline
+   ========================================================== */
+
+.uiverse-tab-group {
+  display: inline-flex;
+  gap: 0;
+  background: var(--bg-elevated);
+  border-radius: 10px;
+  padding: 3px;
+  border: 1px solid var(--border-subtle);
+}
+.uiverse-tab-item {
+  padding: 7px 18px;
+  font-size: var(--t-sm);
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+.uiverse-tab-item:hover {
+  color: var(--text-secondary);
+  background: var(--bg-overlay);
+}
+.uiverse-tab-item.active {
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  box-shadow: var(--bezel), var(--shadow-sm);
+}
+
+/* ==========================================================
+   8. TOOLTIP — Animated tooltip
+   ========================================================== */
+
+.uiverse-tooltip-wrap {
+  position: relative;
+  display: inline-block;
+}
+.uiverse-tooltip-wrap .tooltip-text {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  padding: 6px 10px;
+  background: var(--bg-overlay);
+  color: var(--text-primary);
+  font-size: var(--t-xs);
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+  z-index: 10;
+}
+.uiverse-tooltip-wrap:hover .tooltip-text {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.uiverse-tooltip-wrap .tooltip-text::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--bg-overlay);
+}
+
+/* ==========================================================
+   9. PROGRESS BAR — Animated
+   ========================================================== */
+
+.uiverse-progress-track {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-elevated);
+  border-radius: 99px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid var(--border-subtle);
+}
+.uiverse-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+  border-radius: 99px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+.uiverse-progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.15) 50%,
+    transparent 100%
+  );
+  animation: progressShine 1.5s linear infinite;
+}
+@keyframes progressShine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ==========================================================
+   10. BADGES / TAGS — Animated
+   ========================================================== */
+
+.uiverse-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 99px;
+  background: rgba(224,139,139,0.1);
+  border: 1px solid rgba(224,139,139,0.25);
+  color: var(--accent);
+  letter-spacing: 0.03em;
+}
+.uiverse-badge.green {
+  background: rgba(126,184,160,0.1);
+  border-color: rgba(126,184,160,0.25);
+  color: var(--success);
+}
+.uiverse-badge::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 4px var(--accent-glow);
+}
+.uiverse-badge.green::before {
+  background: var(--success);
+  box-shadow: 0 0 4px rgba(126,184,160,0.25);
+}
+
+/* ==========================================================
+   11. MISC — Scrollbar, selection, divider
+   ========================================================== */
+
+/* ---- Elegant divider ---- */
+.uiverse-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--border-subtle) 20%,
+    var(--border-moderate) 50%,
+    var(--border-subtle) 80%,
+    transparent 100%
+  );
+  margin: 16px 0;
+  border: none;
+}
+
+/* ---- Scrollbar track styling ---- */
+.uiverse-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.uiverse-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.uiverse-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 99px;
+}
+.uiverse-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--border-moderate);
+}
+
+/* ==========================================================
+   12. ANIMATED HAMBURger MENU (for mobile sidebar)
+   ========================================================== */
+
+.uiverse-hamburger {
+  width: 28px;
+  height: 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+.uiverse-hamburger span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: var(--text-muted);
+  border-radius: 99px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.uiverse-hamburger.active span:nth-child(1) {
+  transform: rotate(45deg) translate(4px, 4px);
+  background: var(--accent);
+}
+.uiverse-hamburger.active span:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+.uiverse-hamburger.active span:nth-child(3) {
+  transform: rotate(-45deg) translate(5px, -5px);
+  background: var(--accent);
+}
+
+/* ==========================================================
+   13. SKELETON LOADING — Shimmer
+   ========================================================== */
+
+.uiverse-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-elevated) 25%,
+    var(--bg-overlay) 50%,
+    var(--bg-elevated) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 6px;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ==========================================================
+   14. RESPONSIVE — Reduced motion
+   ========================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .uiverse-card-glow::before,
+  .uiverse-progress-fill::after,
+  .uiverse-loader-orbit span,
+  .uiverse-loader-pulse span,
+  .uiverse-loader-gradient,
+  .uiverse-skeleton {
+    animation: none !important;
+  }
+  .uiverse-card-glow:hover::before {
+    opacity: 0.15;
+  }
+  .uiverse-btn-glow:hover {
+    transform: none;
+  }
+  .uiverse-card-frosted:hover {
+    transform: none;
+  }
+}
+
+/* ============================================================
+   Cyberpunk Alien Force Character Card
+   For the "女战斗员" (Female Combatant) character card.
+   Apply class "cyberpunk-card" to .sidebar-body to activate.
+   ============================================================ */
+
+/* --- Ambient scan-line overlay --- */
+.sidebar-body.cyberpunk-card {
+  position: relative;
+  padding: 18px 16px;
+}
+
+.sidebar-body.cyberpunk-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,240,255,0.015) 2px,
+    rgba(0,240,255,0.015) 4px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Corner accent — top-left */
+.sidebar-body.cyberpunk-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 36px; height: 36px;
+  border-top: 2px solid var(--accent);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius-sm) 0 0 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* --- Info groups with glass panel --- */
+.sidebar-body.cyberpunk-card .info-group {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(
+    135deg,
+    rgba(0,240,255,0.03),
+    rgba(255,0,128,0.02)
+  );
+  border: 1px solid rgba(0,240,255,0.08);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  backdrop-filter: blur(4px);
+}
+
+.sidebar-body.cyberpunk-card .info-label {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: rgba(0,240,255,0.7);
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(0,240,255,0.1);
+  text-shadow: 0 0 6px rgba(0,240,255,0.3);
+}
+
+.sidebar-body.cyberpunk-card .info-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  font-family: var(--font-mono);
+}
+
+/* --- Tags — neon pill style --- */
+.sidebar-body.cyberpunk-card .tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar-body.cyberpunk-card .tag {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: rgba(0,240,255,0.06);
+  color: rgba(0,240,255,0.85);
+  border: 1px solid rgba(0,240,255,0.15);
+  transition: all 0.2s ease;
+}
+
+.sidebar-body.cyberpunk-card .tag:hover {
+  background: rgba(0,240,255,0.12);
+  border-color: rgba(0,240,255,0.3);
+  text-shadow: 0 0 4px rgba(0,240,255,0.4);
+}
+
+/* Special tag — NSFW — red accent */
+.sidebar-body.cyberpunk-card .tag[data-tag-type="nsfw"] {
+  background: rgba(255,0,128,0.08);
+  color: rgba(255,0,128,0.9);
+  border-color: rgba(255,0,128,0.25);
+  text-shadow: 0 0 4px rgba(255,0,128,0.3);
+}
+
+/* --- Persona note — glowing left border --- */
+.sidebar-body.cyberpunk-card .info-text[id="char-persona-note"] {
+  font-style: italic;
+  color: rgba(255,0,128,0.65) !important;
+  border-left: 2px solid rgba(255,0,128,0.2);
+  padding-left: 8px;
+}
+
+/* --- Bottom accent line under each info group --- */
+.sidebar-body.cyberpunk-card .info-group::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 40px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  pointer-events: none;
+}
+
+/* --- Light theme overrides --- */
+[data-theme="light"] .sidebar-body.cyberpunk-card .info-group {
+  background: linear-gradient(
+    135deg,
+    rgba(0,240,255,0.05),
+    rgba(255,0,128,0.03)
+  );
+  border-color: rgba(0,180,200,0.15);
+}
+
+[data-theme="light"] .sidebar-body.cyberpunk-card .info-label {
+  color: rgba(0,180,200,0.7);
+  border-bottom-color: rgba(0,180,200,0.12);
+  text-shadow: 0 0 4px rgba(0,180,200,0.15);
+}
+
+[data-theme="light"] .sidebar-body.cyberpunk-card .tag {
+  background: rgba(0,180,200,0.08);
+  color: rgba(0,140,160,0.85);
+  border-color: rgba(0,180,200,0.2);
+}
+
+[data-theme="light"] .sidebar-body.cyberpunk-card .tag:hover {
+  background: rgba(0,180,200,0.14);
+  border-color: rgba(0,180,200,0.35);
+}
+
+[data-theme="light"] .sidebar-body.cyberpunk-card .info-text[id="char-persona-note"] {
+  color: rgba(200,0,100,0.55) !important;
+  border-left-color: rgba(200,0,100,0.2);
+}
+
+/* --- Reduced motion --- */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-body.cyberpunk-card .tag {
+    transition: none;
+  }
+  .sidebar-body.cyberpunk-card .tag:hover {
+    text-shadow: none;
+  }
+}

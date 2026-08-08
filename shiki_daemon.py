@@ -84,8 +84,8 @@ def _get_actual_rea_state():
                 return "off"
     except Exception:
         pass
-    # 如果进程不在运行或无法检测，返回当前缓存值
-    return _llama_rea_state
+    # 如果进程不在运行或无法检测，返回 None 让调用方知道状态未知
+    return None
 
 # ── DeepSeek V4 thinking-mode markers ───────────────────────
 # Thinking-mode markers injected at end of first user message.
@@ -541,12 +541,13 @@ def start_headroom():
     if not os.path.isfile(HEADROOM_SCRIPT):
         return "script not found"
 
+    headroom_log = os.path.join(WORKSPACE, "headroom.log")
     proc = subprocess.Popen(
         [PYTHON, HEADROOM_SCRIPT, "--port", "19251"],
         cwd=WORKSPACE,
         creationflags=subprocess.CREATE_NO_WINDOW,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdout=open(headroom_log, "a", encoding="utf-8"),
+        stderr=open(headroom_log, "a", encoding="utf-8"),
     )
     for _ in range(15):
         if is_port_open(19251):
@@ -563,12 +564,13 @@ def start_bridge():
     if not os.path.isfile(BRIDGE_SCRIPT):
         return "script not found"
 
+    bridge_log = os.path.join(WORKSPACE, "bridge.log")
     proc = subprocess.Popen(
         [PYTHON, BRIDGE_SCRIPT, "--port", "19250"],
         cwd=WORKSPACE,
         creationflags=subprocess.CREATE_NO_WINDOW,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdout=open(bridge_log, "a", encoding="utf-8"),
+        stderr=open(bridge_log, "a", encoding="utf-8"),
     )
     # Flask takes a few seconds to bind
     for _ in range(15):
@@ -1307,9 +1309,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/gateway-config":
             # Expose Gateway URL and token for webchat (localhost only)
             import json as _json
-            cfg_path = os.path.join(os.path.dirname(os.path.expanduser("~")), ".openclaw", "openclaw.json")
-            if not os.path.isfile(cfg_path):
-                cfg_path = os.path.join(os.path.expanduser("~"), ".openclaw", "openclaw.json")
+            cfg_path = os.path.join(os.path.expanduser("~"), ".openclaw", "openclaw.json")
             gw_config = {"baseUrl": "http://localhost:18789", "token": "", "models": []}
             if os.path.isfile(cfg_path):
                 try:
@@ -1582,9 +1582,6 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_header("Location", f"http://127.0.0.1:{WEBCHAT_PORT}")
         self.end_headers()
 
-# ================================================================
-# Tray App (Windows)
-# ================================================================
 # ================================================================
 # Tray App (Windows)
 # ================================================================
@@ -1993,7 +1990,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
                         except Exception as stream_err:
                             print(f"[chat] stream error: {stream_err}", file=sys.stderr)
                             try:
-                                self.wfile.write(f"data: {{\"error\":\"{stream_err}\"}}\n\n".encode("utf-8"))
+                                import html as _html
+                                safe_err = _html.escape(str(stream_err)).replace('data:', 'data: ')
+                                self.wfile.write(f"data: {{\"error\":\"{safe_err}\"}}\n\n".encode("utf-8"))
                                 self.wfile.flush()
                             except Exception:
                                 pass

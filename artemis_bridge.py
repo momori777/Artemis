@@ -53,14 +53,37 @@ for entry in os.listdir(TTs_DIR):
     if entry.startswith("ref_wavs") and os.path.isdir(os.path.join(TTs_DIR, entry)):
         wavs = [f for f in os.listdir(os.path.join(TTs_DIR, entry)) if f.endswith('.wav')]
         if wavs:
-            name = entry.replace("ref_wavs_", "").replace("ref_wavs", "natsume")
-            # Also register under all matching charIds
+            # Extract the actual name by stripping the ref_wavs_ prefix
+            if entry.startswith("ref_wavs_"):
+                name = entry[len("ref_wavs_"):]
+            elif entry.startswith("ref_wavs"):
+                name = entry[len("ref_wavs"):].lstrip("_")
+            else:
+                name = entry
+            if not name:
+                name = "natsume"  # fallback
+            # Register under the directory-derived name
             AVAILABLE_CHARACTERS[name] = os.path.join(TTs_DIR, entry)
+            # Also register under all CHAR_ID_TO_REF aliases that map to this name
             for cid, cref in CHAR_ID_TO_REF.items():
                 if cref == name and cid != name:
                     AVAILABLE_CHARACTERS[cid] = os.path.join(TTs_DIR, entry)
+                # Also register when the directory name itself is an alias target
+                if cid in CHAR_ID_TO_REF.values() and cref == name and cid != name:
+                    pass  # already registered above
+            # Register the directory-derived name as a character ID too if it exists
+            # This handles cases like "atri" directory → character "atori" can use "atri" too
+            if name not in CHAR_ID_TO_REF.values():
+                # It's a direct name match, no extra alias needed
+                pass
 if not AVAILABLE_CHARACTERS:
-    AVAILABLE_CHARACTERS["natsume"] = os.path.join(TTs_DIR, "ref_wavs")
+    # Fallback: use ref_wavs directly or natsume
+    fb_dir = os.path.join(TTs_DIR, "ref_wavs")
+    if os.path.isdir(fb_dir):
+        AVAILABLE_CHARACTERS["natsume"] = fb_dir
+    else:
+        # Create a placeholder so the app doesn't crash
+        AVAILABLE_CHARACTERS["natsume"] = TTs_DIR
 
 # Flask app
 from flask import Flask, request, jsonify, send_file, send_from_directory
