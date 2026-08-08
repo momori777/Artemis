@@ -194,6 +194,31 @@ Qwen3.6-35B (语言心智) ←→ Cosmos 3 Nano (物理心智)
   - **角色隔离** - Qdrant 内通过 `user_id` 划分 4 个独立记忆空间(sakura / natsume / enola / atori)
   - **召回优先级** - 向量长期记忆 > 手写日记 > SOUL 基础人设
 
+> 详见 [`skills/behavior-engine/README.md`](skills/behavior-engine/README.md) 与 [`AGENTS_roleplay_CN.md#行为引擎`](AGENTS_roleplay_CN.md#行为引擎behavior-engine)。
+
+### 💖 好感度系统（Behavior Engine）
+
+从 sister-project **girl-agent** 移植的**分层决策引擎**，为每个角色赋予独立的关系评分、冲突状态、关系阶段和生理周期，驱动角色行为与回复风格。
+
+**核心机制：** 每轮对话产生 moodDelta（兴趣/信任/吸引/烦躁/尴尬）→ 累加到评分 → 触发冲突升级/降温 → 自动检查关系阶段转换 → 影响 LLM 回复风格。
+
+| 字段 | 范围 | 含义 | 影响 |
+|------|------|------|------|
+| `score.interest` | -100~100 | 兴趣度 | 回复热情、主动程度 |
+| `score.trust` | -100~100 | 信任度 | 分享欲、依赖 |
+| `score.attraction` | -100~100 | 吸引力 | 心动、肢体语言 |
+| `score.annoyance` | -100~100 | 烦躁度 | 冰冷语气、冲突概率 |
+| `score.cringe` | -100~100 | 尴尬容忍度 | 对土味/油腻的接受度 |
+
+**9 段关系阶段：** 初次认识 → 冷淡期 → 回暖期 → 被说服 → 首次约会 → 热恋初期 → 稳定交往 → 长期关系 → 被甩
+
+**4 级冲突系统：** level 0 正常 → level 1 小别扭 → level 2 闹脾气 → level 3 严重冷战 → level 4 拉黑/删好友
+
+**生理周期系统：** 高斯周期模型模拟能量、易怒、亲密度、性欲的周期性波动，影响回复长度与语气。
+
+**状态文件：** `memory/role_play/<角色>/relationship.json`（每角色独立，热加载）
+**模块位置：** `skills/behavior-engine/`
+
 ## 模型
 
 所有模型托管在 HuggingFace:**[TAOTAO777/ai-girlfriend-natsume](https://huggingface.co/TAOTAO777/ai-girlfriend-natsume)**
@@ -438,6 +463,16 @@ llama-server.exe `
     ├── llama-management.md           # 显存管理架构文档
     ├── llama-watchdog.ps1            # Llama 健康检查
     ├── cleanup_orphans.ps1           # 孤儿进程清理
+    ├── behavior-engine/              # 💖 好感度系统 (行为引擎)
+    │   ├── engine.py                 # 状态 load/save/update/reset
+    │   ├── hormones.py               # 生理周期 (高斯模型)
+    │   ├── conflict.py               # 4级冲突系统
+    │   ├── stages.py                 # 9段关系阶段
+    │   ├── behavior_tick.py          # 行为决策层
+    │   ├── online_tick.py            # 在线/睡眠模拟
+    │   ├── daily_life.py             # 每日作息
+    │   ├── README.md                 # 设计文档
+    │   └── SKILL.md                  # 使用指南
     └── character_importer/           # SillyTavern 角色卡 + 对话记忆导入
 ```
 

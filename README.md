@@ -193,6 +193,31 @@ Qwen3.6-35B (Language Mind) ←→ Cosmos 3 Nano (Physical Mind)
   - **Per-Character Isolation** -`user_id` scoping in Qdrant; 4 independent memory spaces (sakura / natsume / enola / atori)
   - **Recall Priority** -Vector long-term memories > handwritten daily notes > SOUL base persona
 
+> See [`skills/behavior-engine/README.md`](skills/behavior-engine/README.md) and [`AGENTS_roleplay_EN.md#behavior-engine`](AGENTS_roleplay_EN.md#behavior-engine).
+
+### 💖 Relationship System (Behavior Engine)
+
+A **layered decision engine** ported from the sister-project **girl-agent**, giving each character an independent relationship score, conflict state, relationship stage, and hormonal cycle that drive their behavior and reply style.
+
+**Core loop:** each turn produces a moodDelta (interest/trust/attraction/annoyance/cringe) → accumulated into the score → triggers conflict escalation/cool-down → auto-checks relationship stage transitions → shapes the LLM's reply style.
+
+| Field | Range | Meaning | Effect |
+|-------|-------|---------|--------|
+| `score.interest` | -100~100 | Interest | Reply warmth, initiative |
+| `score.trust` | -100~100 | Trust | Sharing, dependence |
+| `score.attraction` | -100~100 | Attraction | Heart-racing, body language |
+| `score.annoyance` | -100~100 | Annoyance | Cold tone, conflict chance |
+| `score.cringe` | -100~100 | Cringe tolerance | Acceptance of cheesy lines |
+
+**9 relationship stages:** first meet → cold period → warming up → convinced → first date → early dating → stable dating → long-term → dumped
+
+**4-level conflict system:** level 0 normal → level 1 slight sulk → level 2 in a huff → level 3 severe cold war → level 4 blocked/deleted
+
+**Hormonal cycle:** a Gaussian cycle model simulates periodic swings in energy, irritability, affection, and libido, influencing reply length and tone.
+
+**State file:** `memory/role_play/<char>/relationship.json` (independent per character, hot-loaded)
+**Module location:** `skills/behavior-engine/`
+
 ## Models
 
 All models hosted on HuggingFace: **[TAOTAO777/ai-girlfriend-natsume](https://huggingface.co/TAOTAO777/ai-girlfriend-natsume)**
@@ -439,6 +464,16 @@ The system auto-detects GPU VRAM and selects the optimal run mode - no manual co
     ├── llama-management.md           # VRAM management architecture doc
     ├── llama-watchdog.ps1            # Llama health check
     ├── cleanup_orphans.ps1           # Orphan process cleanup
+    ├── behavior-engine/              # 💖 Relationship system (behavior engine)
+    │   ├── engine.py                 # State load/save/update/reset
+    │   ├── hormones.py               # Hormonal cycle (Gaussian model)
+    │   ├── conflict.py               # 4-level conflict system
+    │   ├── stages.py                 # 9 relationship stages
+    │   ├── behavior_tick.py          # Behavior decision layer
+    │   ├── online_tick.py            # Online/sleep simulation
+    │   ├── daily_life.py             # Daily schedule
+    │   ├── README.md                 # Design doc
+    │   └── SKILL.md                  # Usage guide
     └── character_importer/           # SillyTavern character card auto-import
 ```
 
