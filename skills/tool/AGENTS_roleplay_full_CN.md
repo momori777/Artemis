@@ -322,6 +322,27 @@ py -c "import json;from skills.shared.mem0_bridge import search_mem0_qdrant,comp
 
 ### 手动命令（备用，见能力 5）
 
+### 记忆深度联动（Mem0 × Behavior Engine）
+
+> 每轮对话时，系统自动执行以下流程（走 `local-llama/*` 时自动触发）：
+
+1. **读取行为引擎状态**：从 `memory/role_play/<角色>/relationship.json` 加载当前状态
+2. **状态驱动的 mem0 搜索**：根据当前阶段/评分/荷尔蒙调整查询词和搜索深度
+   - cold 期 → 搜索「喜欢/讨厌/记住的」，limit=3
+   - dating 期 → 搜索「约定/承诺/回忆」，limit=5
+   - 亲密度高 → 搜索「爱好/习惯/回忆」，limit=5
+   - 亲密度低 → 搜索「印象/感觉/记忆」，limit=3
+3. **分级注入 LLM context**：`>0.7` 必体现 · `>0.5` 自然融入 · `>0.3` 可选参考 · `<0.3` 忽略
+4. **对话结束后写回**：自动提取事实写入 mem0 Qdrant + 更新行为引擎状态
+
+**新文件**: `skills/mem0-bridge/mem0_behavior_integration.py`（每轮调用）
+- `run_integration(character, query, messages)` → 返回注入上下文字符串
+- `get_relevant_mem0_context()` → 根据状态驱动搜索
+- `extract_mem0_facts_from_messages()` → 从对话提取事实
+- `sync_to_behavior_state()` → 更新行为引擎
+
+前置条件：embedding server (port 9999) 必须运行，否则所有记忆 score=0.0（零向量 fallback）。Qdrant 数据库在 `skills/sakura/data/memory/qdrant/`。
+
 ---
 
 ## 能力 6.5: 行为引擎 + 好感度系统
