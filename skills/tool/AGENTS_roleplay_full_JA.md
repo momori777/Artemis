@@ -322,6 +322,27 @@ py -c "import json;from skills.shared.mem0_bridge import search_mem0_qdrant,comp
 
 ### 手動コマンド（予備、能力 5 を参照）
 
+### 記憶の深度連動（Mem0 × Behavior Engine）
+
+> 毎ターン、システムは自動的に以下のフローを実行します（`local-llama/*` 経由時に自動発動）：
+
+1. **行動エンジン状態の読取**：`memory/role_play/<キャラ>/relationship.json` から現在の状態を読み込む
+2. **状態駆動の mem0 検索**：現在の段階/スコア/ホルモンに応じて検索語と検索深度を調整
+   - cold 期 → 「好き/嫌い/覚えている」を検索、limit=3
+   - dating 期 → 「約束/約定/思い出」を検索、limit=5
+   - 親密度高い → 「趣味/習慣/思い出」を検索、limit=5
+   - 親密度低い → 「印象/感覚/記憶」を検索、limit=3
+3. **LLM コンテキストへの段階的注入**：`>0.7` 必ず反映 · `>0.5` 自然に織り込む · `>0.3` 任意の参考 · `<0.3` 無視
+4. **対話終了後に書き戻す**：自動で事実を mem0 Qdrant へ抽出 + 行動エンジン状態を更新
+
+**新ファイル**: `skills/mem0-bridge/mem0_behavior_integration.py`（毎ターン呼び出し）
+- `run_integration(character, query, messages)` → 注入コンテキスト文字列を返す
+- `get_relevant_mem0_context()` → 状態駆動検索
+- `extract_mem0_facts_from_messages()` → 対話から事実を抽出
+- `sync_to_behavior_state()` → 行動エンジンを更新
+
+前提条件：embedding server (port 9999) が動作必須。そうでなければ全記憶 score=0.0（ゼロベクトルフォールバック）。Qdrant データベース: `skills/sakura/data/memory/qdrant/`。
+
 ---
 
 ## 能力 6.5: 行動エンジン + 好感度システム

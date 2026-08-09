@@ -322,6 +322,27 @@ py -c "import json;from skills.shared.mem0_bridge import search_mem0_qdrant,comp
 
 ### Manual Command (backup, see Capability 5)
 
+### Memory Deep Integration (Mem0 × Behavior Engine)
+
+> Every turn, the system automatically runs the following flow (auto-triggered when going through `local-llama/*`):
+
+1. **Read behavior engine state**: load the current state from `memory/role_play/<char>/relationship.json`
+2. **State-driven mem0 search**: adjust the query and search depth based on the current stage/score/hormones
+   - cold period → search for "like/dislike/remembered", limit=3
+   - dating period → search for "promise/commitment/memory", limit=5
+   - high affection → search for "hobby/habit/memory", limit=5
+   - low affection → search for "impression/feeling/memory", limit=3
+3. **Tiered injection into LLM context**: `>0.7` must reflect · `>0.5` weave in naturally · `>0.3` optional reference · `<0.3` ignore
+4. **Write back after conversation**: automatically extract facts into mem0 Qdrant + update behavior engine state
+
+**New file**: `skills/mem0-bridge/mem0_behavior_integration.py` (called every turn)
+- `run_integration(character, query, messages)` → returns the injected context string
+- `get_relevant_mem0_context()` → state-driven search
+- `extract_mem0_facts_from_messages()` → extract facts from conversation
+- `sync_to_behavior_state()` → update behavior engine
+
+Prerequisites: embedding server (port 9999) must be running, otherwise all memory score=0.0 (zero-vector fallback). Qdrant database at `skills/sakura/data/memory/qdrant/`.
+
 ---
 
 ## Capability 6.5: Behavior Engine + Relationship System

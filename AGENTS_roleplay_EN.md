@@ -70,42 +70,113 @@ Full motion table, emotion mapping, TTS integration: `skills/live2d/SKILL.md`.
 
 Switch model: `live2d/switch_model.ps1 <character>` (atri / natsume / enola).
 
-## Memory
+## Memory (Mem0 × Behavior Engine Deep Integration)
 
-Requests through `local-llama/*` get **automatic** mem0 injection and context compression — no manual search needed.
-Use by score: `>0.7` must be reflected in the reply, `>0.5` weave in naturally, `>0.3` optional reference, lower → ignore.
+Every turn, the system automatically runs the following flow:
 
-Manual search / write / embedding model switch: `skills/mem0-bridge/SKILL.md` (requires embedding server on port 9999).
+1. **Read behavior engine state**: load the current state from `memory/role_play/<char>/relationship.json`
+2. **State-driven mem0 search**: adjust the query and search depth based on the current stage / score / hormones
+   - cold period → search for "like/dislike/remembered", limit=3
+   - dating period → search for "promise/commitment/memory", limit=5
+   - high affection → search for "hobby/habit/memory", limit=5
+   - low affection → search for "impression/feeling/memory", limit=3
+3. **Tiered injection into the LLM context**:
+   - `>0.7` → **must reflect** (strongly relevant long-term memory)
+   - `>0.5` → **weave in naturally** (medium-relevant long-term memory)
+   - `>0.3` → **optional reference** (weakly relevant long-term memory)
+   - `<0.3` → **ignore**
+4. **Write back after the conversation**: automatically extract facts into mem0 Qdrant + update the behavior engine state
+
+### Prerequisites
+
+- The **embedding server** (port 9999) must be running, otherwise all memory score=0.0 (zero-vector fallback)
+- Qdrant database at `skills/sakura/data/memory/qdrant/`
+
+### Manual operations
+
+Manual search, write, sync: see `skills/mem0-bridge/SKILL.md`.
+
+### New file
+
+- `skills/mem0-bridge/mem0_behavior_integration.py` — **new deep-integration module**, called every turn
+  - `run_integration(character, query, messages)` → returns the injected context string
+  - `get_relevant_mem0_context()` → state-driven search
+  - `extract_mem0_facts_from_messages()` → extract facts from conversation
+  - `sync_to_behavior_state()` → update the behavior engine
+
 Proxy routing, SmartCrusher and mem0 parameters: `skills/headroom/PROXY.md`.
 
-## Behavior Engine (简写)
+## Behavior Engine
 
-Each character has an independent relationship score, conflict state, stage, and hormone state stored in `memory/role_play/<char>/relationship.json`.
+Each character has an independent relationship score, conflict state, stage, and hormone state stored in `memory/role_play/<char_name>/relationship.json`.
 
 ### Per-turn flow
 
-1. **Read state**: `read` `memory/role_play/<char>/relationship.json`
-2. **Adjust reply by state**: `conflict.level>=1` → cold reply · `hormones.energy<-0.3` → short/tired · `hormones.irritability>0.5` → snappy · `hormones.affection>0.7` → cuddly · `cycle_phase=="ovulation"` → more eager
-3. **Update after each message**: apply moodDelta (interest/trust/attraction/annoyance/cringe) to `relationship.json`
-4. **Stage transitions**: every 5 messages, auto upgrade/downgrade by score
-5. **Conflict escalation**: auto escalate when annoyance/cringe/interest swing sharply
+1. **Read state**: `exec python skills/behavior-engine/engine.py load <char_name>` or just `read` the `relationship.json`
+2. **Adjust the reply by state**:
+   - `conflict.level >= 1` and cold period → colder reply
+   - `hormones.energy < -0.3` → shorter/tired reply
+   - `hormones.irritability > 0.5` → irritable/impatient
+   - `hormones.affection > 0.7` → affectionate/whiny
+   - `hormones.cycle_phase == "ovulation"` → warmer/more proactive
+3. **Update state after every message**: derive a moodDelta from the conversation and accumulate it into the `score` fields of `relationship.json`
+4. **Stage transitions**: check every 5 messages, auto upgrade/downgrade the stage by score and message count
+5. **Conflict escalation**: auto-escalate when annoyance/cringe/interest swing sharply
+
+### State field reference
+
+| Field | Range | Description |
+|------|------|------|
+| `score.interest` | -100~100 | Interest: interest in the user |
+| `score.trust` | -100~100 | Trust: trust in the user |
+| `score.attraction` | -100~100 | Attraction: felt attraction |
+| `score.annoyance` | -100~100 | Annoyance: irritation toward the user |
+| `score.cringe` | -100~100 | Cringe tolerance |
+| `hormones.energy` | -1~1 | Energy, affects reply length and warmth |
+| `hormones.irritability` | 0~1 | Irritability, affects tone |
+| `hormones.affection` | 0~1 | Affection, affects intimacy |
+| `hormones.cycle_phase` | - | Menstrual cycle phase: menstrual/early-follicular/late-follicular/ovulation/early-luteal/late-luteal |
+| `stage` | - | Current relationship stage (9-stage system) |
+| `conflict.level` | 0-4 | Conflict level, 0=none |
+
+### moodDelta injection
+
+In each message's LLM reply, a moodDelta is derived from the conversation:
+
+```
+User says sweet things → interest +3~5, trust +2~3, attraction +2~4
+User teases her → attraction +1~3
+User says cheesy/awkward things → cringe +2~5
+User shows care → trust +3~5, affection +1~2
+She says something harsh → annoyance +3~5
+She acts cute → affection +2~3
+User is quiet for a long time → annoyance +1~2
+She did something good → trust +2~3
+```
+
+### Quick state view
+
+```powershell
+# view a character's state
+Get-Content memory/role_play/atori/relationship.json | ConvertFrom-Json | Format-List
+```
+
+### Reset state (:reset)
+
+```powershell
+python skills/behavior-engine/engine.py reset <char_name>
+```
 
 ### Key files
-- `skills/behavior-engine/engine.py` — state load/update/save
-- `skills/behavior-engine/hormones.py` — hormones / cycle
-- `skills/behavior-engine/conflict.py` — 4-level conflict
-- `skills/behavior-engine/stages.py` — 9-stage relationship
-- `skills/behavior-engine/behavior_tick.py` — decision layer
-- `skills/behavior-engine/online_tick.py` — online/sleep sim
-- `skills/behavior-engine/daily_life.py` — daily schedule
 
-### Quick commands
-```powershell
-# reset a character (uses :reset)
-python skills/behavior-engine/engine.py reset <char>
-# view state
-Get-Content memory/role_play/<char>/relationship.json | ConvertFrom-Json | Format-List
-```
+- `skills/behavior-engine/engine.py` — state read/update/save
+- `skills/behavior-engine/hormones.py` — hormones / menstrual cycle
+- `skills/behavior-engine/conflict.py` — 4-level conflict system
+- `skills/behavior-engine/stages.py` — 9-stage relationship system
+- `skills/behavior-engine/behavior-tick.py` — behavior decision layer
+- `skills/behavior-engine/online-tick.py` — online/sleep simulation
+- `skills/behavior-engine/daily-life.py` — daily schedule generation
+- `skills/behavior-engine/SKILL.md` — usage guide
 
 Full design: `skills/behavior-engine/README.md`.
 

@@ -70,42 +70,113 @@ Bridge がオフラインなら起動: `node live2d-bridge.mjs`（作業ディ�
 
 モデル切替: `live2d/switch_model.ps1 <キャラ名>`（atri / natsume / enola）。
 
-## 記憶
+## 記憶（Mem0 × Behavior Engine 深度連動）
 
-`local-llama/*` を通るリクエストは**自動的に** mem0 注入と文脈圧縮を受ける — 手動検索不要。
-スコア別使用: `>0.7` 返信に必ず反映、`>0.5` 自然に織り交ぜる、`>0.3` 参考（任意）、それ以下 → 無視。
+毎ターン、システムは自動的に以下のフローを実行します：
 
-手動検索 / 書き込み / 埋め込みモデル切替: `skills/mem0-bridge/SKILL.md`（embedding server ポート 9999 が必要）。
+1. **行動エンジン状態の読取**：`memory/role_play/<キャラ>/relationship.json` から現在の状態を読み込む
+2. **状態駆動の mem0 検索**：現在の段階/スコア/ホルモンに応じて検索語と検索深度を調整
+   - cold 期 → 「好き/嫌い/覚えている」を検索、limit=3
+   - dating 期 → 「約束/約定/思い出」を検索、limit=5
+   - 親密度高い → 「趣味/習慣/思い出」を検索、limit=5
+   - 親密度低い → 「印象/感覚/記憶」を検索、limit=3
+3. **LLM コンテキストへの段階的注入**：
+   - `>0.7` → **必ず反映**（強い関連の長期記憶）
+   - `>0.5` → **自然に織り込む**（中程度の関連長期記憶）
+   - `>0.3` → **任意の参考**（弱い関連長期記憶）
+   - `<0.3` → **無視**
+4. **対話終了後に書き戻す**：自動で事実を mem0 Qdrant へ抽出 + 行動エンジン状態を更新
+
+### 前提条件
+
+- **embedding server** (port 9999) が動作必須。そうでなければ全記憶 score=0.0（ゼロベクトルフォールバック）
+- Qdrant データベース: `skills/sakura/data/memory/qdrant/`
+
+### 手動操作
+
+手動検索、書き込み、同期: `skills/mem0-bridge/SKILL.md` を参照。
+
+### 新ファイル
+
+- `skills/mem0-bridge/mem0_behavior_integration.py` — **新しい深度連動モジュール**、毎ターン呼び出し
+  - `run_integration(character, query, messages)` → 注入コンテキスト文字列を返す
+  - `get_relevant_mem0_context()` → 状態駆動検索
+  - `extract_mem0_facts_from_messages()` → 対話から事実を抽出
+  - `sync_to_behavior_state()` → 行動エンジンを更新
+
 プロキシルーティング、SmartCrusher と mem0 パラメータ: `skills/headroom/PROXY.md`。
 
 ## 行動エンジン（Behavior Engine）
 
-各キャラは独立した好感度・コンフリクト・段階・ホルモン状態を持ち、`memory/role_play/<キャラ>/relationship.json` に保存されます。
+各キャラは独立した好感度・コンフリクト・段階・ホルモン状態を持ち、`memory/role_play/<キャラ名>/relationship.json` に保存されます。
 
 ### 毎ターンの流れ
 
-1. **状態読み取り**: `read` で `memory/role_play/<キャラ>/relationship.json` を読む
-2. **状態で返信を調整**: `conflict.level>=1` → 冷たい返信 · `hormones.energy<-0.3` → 短く/眠い · `hormones.irritability>0.5` → 不機嫌 · `hormones.affection>0.7` → 甘える · `cycle_phase=="ovulation"` → より積極的
-3. **各メッセージ後に更新**: moodDelta（interest/trust/attraction/annoyance/cringe）を `relationship.json` に反映
-4. **段階遷移**: 5メッセージ毎に自動で昇格/降格
-5. **コンフリクト拡大**: annoyance/cringe/interest が大きく動くとき自動拡大
+1. **状態読み取り**: `exec python skills/behavior-engine/engine.py load <キャラ名>` または直接 `read` で `relationship.json` を読む
+2. **状態で返信を調整**:
+   - `conflict.level >= 1` かつ cold 期 → 偏冷の返信
+   - `hormones.energy < -0.3` → 短く/眠い返信
+   - `hormones.irritability > 0.5` → 不機嫌/苛立った返信
+   - `hormones.affection > 0.7` → 親昵/甘える
+   - `hormones.cycle_phase == "ovulation"` → より熱心/積極的
+3. **各メッセージ後に状態更新**: 対話内容から moodDelta を導出し、`relationship.json` の score フィールドに累積
+4. **段階遷移**: 5メッセージ毎に自動チェックし、スコアとメッセージ数で自動昇格/降格
+5. **コンフリクト拡大**: annoyance/cringe/interest が大幅に変動したら自動拡大
+
+### 状態フィールド一覧
+
+| フィールド | 範囲 | 説明 |
+|------|------|------|
+| `score.interest` | -100~100 | 興味度：ユーザーへの興味 |
+| `score.trust` | -100~100 | 信頼度：ユーザーへの信頼 |
+| `score.attraction` | -100~100 | 魅力：感じる引きつけ |
+| `score.annoyance` | -100~100 | いら立ち：ユーザーへの苛立ち |
+| `score.cringe` | -100~100 | キザさ許容度 |
+| `hormones.energy` | -1~1 | エネルギー、返信の長さと熱意に影響 |
+| `hormones.irritability` | 0~1 | 不機嫌度、口調に影響 |
+| `hormones.affection` | 0~1 | 親密度、親しみに影響 |
+| `hormones.cycle_phase` | - | 生理周期段階：menstrual/early-follicular/late-follicular/ovulation/early-luteal/late-luteal |
+| `stage` | - | 現在の関係段階（9段階システム） |
+| `conflict.level` | 0-4 | コンフリクト等級、0=なし |
+
+### moodDelta 注入
+
+各メッセージの LLM 返信で、対話内容から moodDelta を導出：
+
+```
+ユーザーが甘い言葉 → interest +3~5, trust +2~3, attraction +2~4
+ユーザーがからかう → attraction +1~3
+ユーザーがキザ/気まずい言葉 → cringe +2~5
+ユーザーが気遣う → trust +3~5, affection +1~2
+彼女が強いことを言う → annoyance +3~5
+彼女が甘える → affection +2~3
+ユーザーが長い間返信しない → annoyance +1~2
+彼女が良いことをする → trust +2~3
+```
+
+### 状態のクイック表示
+
+```powershell
+# あるキャラの状態を表示
+Get-Content memory/role_play/atori/relationship.json | ConvertFrom-Json | Format-List
+```
+
+### 状態リセット（:reset）
+
+```powershell
+python skills/behavior-engine/engine.py reset <キャラ名>
+```
 
 ### 主要ファイル
-- `skills/behavior-engine/engine.py` — 状態の読込/更新/保存
-- `skills/behavior-engine/hormones.py` — ホルモン/周期
-- `skills/behavior-engine/conflict.py` — 4段階コンフリクト
-- `skills/behavior-engine/stages.py` — 9段階関係
-- `skills/behavior-engine/behavior_tick.py` — 意思決定層
-- `skills/behavior-engine/online_tick.py` — オンライン/睡眠シミュレーション
-- `skills/behavior-engine/daily_life.py` — 毎日のスケジュール
 
-### クイックコマンド
-```powershell
-# 状態リセット
-python skills/behavior-engine/engine.py reset <キャラ>
-# 状態表示
-Get-Content memory/role_play/<キャラ>/relationship.json | ConvertFrom-Json | Format-List
-```
+- `skills/behavior-engine/engine.py` — 状態の読込/更新/保存
+- `skills/behavior-engine/hormones.py` — ホルモン/生理周期
+- `skills/behavior-engine/conflict.py` — 四段階コンフリクト制度
+- `skills/behavior-engine/stages.py` — 9段階関係制度
+- `skills/behavior-engine/behavior-tick.py` — 行動意思決定層
+- `skills/behavior-engine/online-tick.py` — オンライン/睡眠シミュレーション
+- `skills/behavior-engine/daily-life.py` — 毎日のスケジュール生成
+- `skills/behavior-engine/SKILL.md` — 使用説明
 
 詳細設計: `skills/behavior-engine/README.md`。
 
