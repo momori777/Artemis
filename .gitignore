@@ -57,6 +57,7 @@ llama-server.bak.*/
 # llama 运行日志（仅根目录）
 /*llama*.txt
 *.log
+!docs/silicon-rider-bench-622539/*.log
 # llama watchdog 脚本（含本地路径，不提交 ?
 llama-watchdog.ps1
 # 其他临时文本
