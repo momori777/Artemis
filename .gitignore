@@ -1,38 +1,38 @@
-# 记忆文件 - 选择性提 ?
+﻿# 璁板繂鏂囦欢 - 閫夋嫨鎬ф彁 ?
 
-# memory/ 不用通配 ?ignore，改为精 ?ignore 运行时生成的临时文件
-# (导入新角色后如需提交，手动加 !memory/role_play/<角色 ?/ 到此文件)
+# memory/ 涓嶇敤閫氶厤 ?ignore锛屾敼涓虹簿 ?ignore 杩愯鏃剁敓鎴愮殑涓存椂鏂囦欢
+# (瀵煎叆鏂拌鑹插悗濡傞渶鎻愪氦锛屾墜鍔ㄥ姞 !memory/role_play/<瑙掕壊 ?/ 鍒版鏂囦欢)
 
 fixlogs
 
 # memory/role_play/
-# 生成的媒体文 ?
+# 鐢熸垚鐨勫獟浣撴枃 ?
 media/qqbot/audio/*.wav
 media/qqbot/images/*.png
 media/qqbot/images/*.jpg
-# 项目演示视频（允许）
+# 椤圭洰婕旂ず瑙嗛锛堝厑璁革級
 !media/demo_qqbot.mp4
-# 保留 .gitkeep 占位文件
+# 淇濈暀 .gitkeep 鍗犱綅鏂囦欢
 !media/qqbot/audio/.gitkeep
 !media/qqbot/images/.gitkeep
 !.gitkeep
-# 敏感配置（含 token/路径）不提交
+# 鏁忔劅閰嶇疆锛堝惈 token/璺緞锛変笉鎻愪氦
 config-telegram.json
 config-qqbot.json
 config-patch.json
 config.yaml
 # OpenClaw  ??
 .openclaw/
-# qqbot agent workspace (公开 AGENTS.md 配置模板)
-# 新产生的私有数据文件会由 .gitignore 的敏感配 ?媒体规则覆盖
-# ASR 运行时输 ?
+# qqbot agent workspace (鍏紑 AGENTS.md 閰嶇疆妯℃澘)
+# 鏂颁骇鐢熺殑绉佹湁鏁版嵁鏂囦欢浼氱敱 .gitignore 鐨勬晱鎰熼厤 ?濯掍綋瑙勫垯瑕嗙洊
+# ASR 杩愯鏃惰緭 ?
 skills/asr/output/
 !benchmark_projects/competitors/SillyTavern2/
 # Python
 __pycache__/
 *.pyc
 *.pyo
-# 模型文件（不提交任何模型权重 ?
+# 妯″瀷鏂囦欢锛堜笉鎻愪氦浠讳綍妯″瀷鏉冮噸 ?
 *.safetensors
 *.gguf
 *.bin
@@ -41,61 +41,60 @@ __pycache__/
 *.ckpt
 *.onnx
 *.engine
-# 临时音频（但保留参考音频）
+# 涓存椂闊抽锛堜絾淇濈暀鍙傝€冮煶棰戯級
 *.wav
 !skills/tts/ref_wavs/*.wav
 !skills/tts/ref_wavs_atri/*.wav
 !skills/tts/ref_wavs_sakura/*.wav
-# 压缩 ?
+# 鍘嬬缉 ?
 *.rar
 *.zip
 *.7z
-# llama 环境（由 download-llama.ps1 自动下载）
-llama-server/
+# llama 鐜锛堢敱 download-llama.ps1 鑷姩涓嬭浇锛?llama-server/
 llama-server.bak.*/
 
-# llama 运行日志（仅根目录）
+# llama 杩愯鏃ュ織锛堜粎鏍圭洰褰曪級
 /*llama*.txt
 *.log
 !docs/silicon-rider-bench-622539/*.log
-# llama watchdog 脚本（含本地路径，不提交 ?
+# llama watchdog 鑴氭湰锛堝惈鏈湴璺緞锛屼笉鎻愪氦 ?
 llama-watchdog.ps1
-# 其他临时文本
+# 鍏朵粬涓存椂鏂囨湰
 benchmark_projects/
 !benchmark_projects/*.md
 *.benchmark.txt
-# HuggingFace 临时上传目录
+# HuggingFace 涓存椂涓婁紶鐩綍
 hf-natsume/upload-to-huggingface.ps1
 !hf-natsume/README.md
 !hf-natsume/DISCLAIMER.txt
-# 系统文件
+# 绯荤粺鏂囦欢
 Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
-# Live2D 运行 ?node_modules（大且可重建 ?
+# Live2D 杩愯 ?node_modules锛堝ぇ涓斿彲閲嶅缓 ?
 live2d/node_modules/
 ren_pro_jp/node_modules/
-# Live2D Live2D (版权文件、大模型、运行时产物)
+# Live2D Live2D (鐗堟潈鏂囦欢銆佸ぇ妯″瀷銆佽繍琛屾椂浜х墿)
 # Cubism Core
 live2d/live2dcubismcore.min.js
-# 模型文件（大文件，托管HF/网盘 ?
+# 妯″瀷鏂囦欢锛堝ぇ鏂囦欢锛屾墭绠F/缃戠洏 ?
 live2d/model/
-# 第三 ?JS 包（ ?npm 安装 ?CDN 加载 ?
+# 绗笁 ?JS 鍖咃紙 ?npm 瀹夎 ?CDN 鍔犺浇 ?
 live2d/plid-v5-bundle.js
 live2d/pixi.min.js
 live2d/pixi-proxy.js
 live2d/pixi-shim.js
-# 临时/调试/存档
+# 涓存椂/璋冭瘯/瀛樻。
 live2d/_archive/
 live2d/_scratch/
 live2d/hack/
-# 运行时生 ?
+# 杩愯鏃剁敓 ?
 live2d/media/
-# 版权说明文件（不提交 ?
+# 鐗堟潈璇存槑鏂囦欢锛堜笉鎻愪氦 ?
 live2d/NOTICE.md
 live2d/LICENSE.md
 live2d/RedistributableFiles.txt
-# Live2D 测试文件（项目根目录下的临时测试 ?
+# Live2D 娴嬭瘯鏂囦欢锛堥」鐩牴鐩綍涓嬬殑涓存椂娴嬭瘯 ?
 /katou_*
 /test_katou*
 /index_test.png
@@ -108,27 +107,27 @@ package-lock.json
 *.swp
 *.swo
 
-# Sakura 桌宠 - 运行时缓 ?
+# Sakura 妗屽疇 - 杩愯鏃剁紦 ?
 skills/sakura/runtime/
 skills/sakura/__pycache__/
 skills/sakura/app/**/__pycache__/
 skills/sakura/third_party/mem0_broken/
-# Sakura 运行时生 ?
+# Sakura 杩愯鏃剁敓 ?
 skills/sakura/data/memory_curation_state.json
 skills/sakura/data/memory/qdrant/
 skills/sakura/data/memory/mem0_history.db
 skills/sakura/playwright_browser/
-# 任务标志文件（子进程完成信号 ?
+# 浠诲姟鏍囧織鏂囦欢锛堝瓙杩涚▼瀹屾垚淇″彿 ?
 .task_flags/
-# ComfyUI 运行时输 ?
+# ComfyUI 杩愯鏃惰緭 ?
 comfyui/
 # ============================================================
-# 内置推理引擎 (Python代码入库，权重不入库)
-# SoVITS 推理核心
+# 鍐呯疆鎺ㄧ悊寮曟搸 (Python浠ｇ爜鍏ュ簱锛屾潈閲嶄笉鍏ュ簱)
+# SoVITS 鎺ㄧ悊鏍稿績
 !skills/sovits/
-# ComfyUI 推理核心
+# ComfyUI 鎺ㄧ悊鏍稿績
 !skills/comfyui_core/
-# 但排除权重文 ?
+# 浣嗘帓闄ゆ潈閲嶆枃 ?
 skills/sovits/**/*.safetensors
 skills/sovits/**/*.onnx
 skills/sovits/**/*.pth
@@ -148,13 +147,13 @@ media/sakura.mp4
 media/demo_qqbot.mp4
 # TTS debug log (contains absolute paths)
 _tts_debug.txt
-# Claude Code — 本地配置/运行时数据不提交，源码提交
-.claude/settings.local.json
+# Claude Code 鈥?鏈湴閰嶇疆/杩愯鏃舵暟鎹笉鎻愪氦锛屾簮鐮佹彁浜?.claude/settings.local.json
 .claude/task_queue.db
 .claude/__pycache__/
 
 # tool-mode roleplay backups
 skills/tool/*.roleplay.bak
 
-# 编码损坏的 harem 备份(本地留档, 不入库)
+# 缂栫爜鎹熷潖鐨?harem 澶囦唤(鏈湴鐣欐。, 涓嶅叆搴?
 skills/harem_corrupt_bak_*/
+
