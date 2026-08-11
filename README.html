@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Girlfriend — Readme / 文档</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --card: #12121a;
+      --border: #2a2a3a;
+      --accent: #7c5bf5;
+      --accent-glow: rgba(124, 91, 245, .25);
+      --text: #e0dff0;
+      --text-dim: #8888a0;
+      --danger: #f55b6e;
+      --success: #5bf5a1;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem 1.5rem;
+      max-width: 520px;
+      width: 100%;
+    }
+    .logo {
+      font-size: 2.4rem;
+      margin-bottom: .3rem;
+      letter-spacing: -.03em;
+    }
+    .logo span {
+      background: linear-gradient(135deg, var(--accent), var(--danger));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      color: var(--text-dim);
+      font-size: .95rem;
+      margin-bottom: 2.5rem;
+      line-height: 1.5;
+    }
+    .cards {
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+    }
+    .card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      text-decoration: none;
+      color: var(--text);
+      transition: all .2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--accent-glow), transparent 60%);
+      opacity: 0;
+      transition: opacity .2s;
+    }
+    .card:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 24px var(--accent-glow);
+    }
+    .card:hover::before { opacity: 1; }
+    .card-icon {
+      font-size: 1.6rem;
+      flex-shrink: 0;
+      width: 2.4rem;
+      text-align: center;
+    }
+    .card-text {
+      text-align: left;
+    }
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .card-desc {
+      font-size: .82rem;
+      color: var(--text-dim);
+      margin-top: .15rem;
+    }
+    .card-arrow {
+      margin-left: auto;
+      color: var(--text-dim);
+      font-size: .85rem;
+      transition: transform .2s, color .2s;
+      flex-shrink: 0;
+    }
+    .card:hover .card-arrow {
+      transform: translateX(4px);
+      color: var(--accent);
+    }
+    .footer {
+      margin-top: 2rem;
+      font-size: .78rem;
+      color: var(--text-dim);
+    }
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo"><span>AI Girlfriend</span></div>
+    <p class="subtitle">选择语言 / Select Language / 言語を選択</p>
+
+    <div class="cards">
+      <a class="card" href="README_CN.md">
+        <div class="card-icon">🇨🇳</div>
+        <div class="card-text">
+          <div class="card-title">中文</div>
+          <div class="card-desc">简体中文 · 完整文档</div>
+        </div>
+        <div class="card-arrow">→</div>
+      </a>
+
+      <a class="card" href="README.md">
+        <div class="card-icon">🇬🇧</div>
+        <div class="card-text">
+          <div class="card-title">English</div>
+          <div class="card-desc">English · Full documentation</div>
+        </div>
+        <div class="card-arrow">→</div>
+      </a>
+
+      <a class="card" href="README_jp.md">
+        <div class="card-icon">🇯🇵</div>
+        <div class="card-text">
+          <div class="card-title">日本語</div>
+          <div class="card-desc">日本語 · 完全なドキュメント</div>
+        </div>
+        <div class="card-arrow">→</div>
+      </a>
+    </div>
+
+    <div class="footer">
+      100% 本地 · 完全隐私 · 零 API 依赖<br>
+      <a href="https://github.com/TAOTAO777/ai-girlfriend-natsume" target="_blank">GitHub Repository →</a>
+    </div>
+  </div>
+</body>
+</html>
