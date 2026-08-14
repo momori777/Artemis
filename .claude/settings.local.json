@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__artemis__tts_generate",
+      "mcp__artemis__comfyui_generate",
+      "mcp__artemis__live2d_emotion",
+      "mcp__artemis__switch_character",
+      "mcp__artemis__list_characters",
+      "mcp__artemis__memory_search",
+      "mcp__artemis__memory_add",
+      "mcp__artemis__get_status",
+      "mcp__artemis__asr_transcribe",
+      "mcp__artemis__getWorkspace",
+      "mcp__artemis__getNextTask",
+      "mcp__artemis__createTask",
+      "mcp__artemis__updateTaskStatus",
+      "mcp__artemis__reply",
+      "mcp__artemis__getTaskMessages"
+    ]
+  }
+}
