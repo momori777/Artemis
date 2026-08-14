@@ -1,4 +1,4 @@
-﻿# 璁板繂鏂囦欢 - 閫夋嫨鎬ф彁 ?
+# 璁板繂鏂囦欢 - 閫夋嫨鎬ф彁 ?
 
 # memory/ 涓嶇敤閫氶厤 ?ignore锛屾敼涓虹簿 ?ignore 杩愯鏃剁敓鎴愮殑涓存椂鏂囦欢
 # (瀵煎叆鏂拌鑹插悗濡傞渶鎻愪氦锛屾墜鍔ㄥ姞 !memory/role_play/<瑙掕壊 ?/ 鍒版鏂囦欢)
@@ -51,6 +51,7 @@ __pycache__/
 *.zip
 *.7z
 # llama 鐜锛堢敱 download-llama.ps1 鑷姩涓嬭浇锛?llama-server/
+llama-server/
 llama-server.bak.*/
 
 # llama 杩愯鏃ュ織锛堜粎鏍圭洰褰曪級
