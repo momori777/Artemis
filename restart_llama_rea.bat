@@ -76,6 +76,10 @@ for /f "usebackq tokens=*" %%a in (`powershell -NoProfile -Command "$y = Get-Con
 
 for /f "usebackq tokens=*" %%a in (`powershell -NoProfile -Command "$y = Get-Content '%PROJECT_DIR%\config.yaml' -Raw -Encoding UTF8; $m = [regex]::Match($y, '(?m)^\s*llama_log_dir\s*:\s*"?(.+?)"?\s*$'); if ($m.Success) { $m.Groups[1].Value.Trim('"').Trim() } else { 'llama-server\restart-logs' }"`) do set "LOG_DIR=%%a"
 
+REM API key (security + extensibility)
+set "API_KEY="
+for /f "usebackq tokens=*" %%a in (`powershell -NoProfile -Command "$y = Get-Content '%PROJECT_DIR%\config.yaml' -Raw -Encoding UTF8; $m = [regex]::Match($y, '(?m)^\s*llama_api_key\s*:\s*`"?(.+?)`"?\s*$'); if ($m.Success) { $m.Groups[1].Value.Trim('\"').Trim() } else { '' }"`) do set "API_KEY=%%a"
+
 REM ========== MTP 自动检测 ==========
 set "MTP_EXTRA="
 for /f "usebackq tokens=1,2" %%a in (`powershell -NoProfile -Command "$y = Get-Content '%PROJECT_DIR%\config.yaml' -Raw -Encoding UTF8; $mn = [regex]::Match($y, '(?m)^\s*llama_model_name\s*:\s*"?(.+?)"?\s*$'); if ($mn.Success) { $n = $mn.Groups[1].Value.Trim('"').Trim() } else { $mp = [regex]::Match($y, '(?m)^\s*llama_model\s*:\s*"?(.+?)"?\s*$'); if ($mp.Success) { $n = [System.IO.Path]::GetFileNameWithoutExtension($mp.Groups[1].Value.Trim('"').Trim()) } else { $n = '' } }; $s = $n -match 'mtp'; $mtpN = 1; $m = [regex]::Match($y, '(?m)^\s*llama\s*:\s*$'); if ($m.Success) { $s2 = $y.Substring($m.Index); $m2 = [regex]::Match($s2, '(?m)^\s*spec_draft_n_max\s*:\s*(\d+)'); if ($m2.Success) { $mtpN = $m2.Groups[1].Value } }; if ($s) { Write-Output (\"1 $mtpN\") } else { Write-Output '0 0' }"`) do set "MTP_ENABLED=%%a" & set "MTP_N=%%b"
@@ -96,6 +100,7 @@ echo Port %PORT% released.
 REM ========== 启动 llama ==========
 set "LLM_ARGS=-m "%MODEL_PATH%" -c %CTX% --flash-attn on -ctk %CTK% -ctv %CTV% --no-mmap --cpu-moe --batch-size %BATCH% --ubatch-size %UBATCH% --threads %THREADS% -ngl %NGL% -rea %REA_MODE% --jinja --cache-ram %CACHE_RAM% --parallel 1 --kv-unified --no-mmap --port %PORT% --timeout 600"
 if defined MTP_EXTRA set "LLM_ARGS=!LLM_ARGS! !MTP_EXTRA!"
+if defined API_KEY set "LLM_ARGS=!LLM_ARGS! --api-key !API_KEY!"
 start "" /B %PROJECT_DIR%\llama-server\llama-server.exe !LLM_ARGS! > "%PROJECT_DIR%!LOG_DIR!\llama-rea-out.log" 2>&1
 
 echo Started llama with -rea %REA_MODE%, port=%PORT%, waiting for ready...

@@ -34,7 +34,7 @@
    Windows: 双击 shiki-stop.cmd
    Linux:   bash stop.sh
 
-二点五、换模型（改 config.yaml 就行）
+二点五、换模型 + API 密钥（改 config.yaml 就行）
 
    所有启动入口都读 config.yaml + skills/shared/llama_config.py，无硬编码模型路径。
    换模型只需改三行：
@@ -42,6 +42,12 @@
      llama_model:      "E:\\新模型.gguf"     # GGUF 路径（唯一真源）
      llama_model_name:  "新模型名"            # API alias，留空自动取文件名
      llama_model_id:    "llama/新模型名"      # model id，留空自动=local/<名>
+
+   API 密钥（安全和可扩展）：
+     llama_api_key:     "123456"             # 改自己的；留空则不加 --api-key
+     - 设置后推理接口要求带 Authorization: Bearer <key>（/health 仍免认证探活）
+     - headroom/sakura/shiki_daemon 自动带 key，不用额外配
+     - 接入 CCR 时，CCR 的 provider 也要填相同 api_key
 
    自动机制（不用手动调）：
      - model_profiles 按文件名关键字自动匹配启动参数（q4_0/batch/cpu_moe/MTP/rea）

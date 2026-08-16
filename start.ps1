@@ -203,6 +203,12 @@ if (Test-Online $llamaPort "llama-server") {
             '--timeout', '600'
         )
 
+        # ===== API 密钥（安全和可扩展性）=====
+        $llamaApiKey = Get-YamlValue $configRaw 'llama_api_key'
+        if ($llamaApiKey) {
+            $llamaArgs += '--api-key', $llamaApiKey
+        }
+
         # ===== ģ�����ͼ�⣺MoE (�� cpu_moe) vs Dense =====
         $modelBasename = [System.IO.Path]::GetFileNameWithoutExtension($llamaModel)
         $isDenseModel = $modelBasename -match '27b|dense'

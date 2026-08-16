@@ -72,8 +72,11 @@ llama_model: "填写 GGUF 模型文件路径，例如 E:\\Qwen3.6-27B-Fable-MTP-
 
 # API 响应中显示的模型名称（留空则自动取 llama_model 的文件名）
 llama_model_name: "qwen3.6-27b"
-# OpenAI 兼容 API 的 model id（默认 local/<模型名>，例如 llama/qwen3.6-35b）
-llama_model_id: "llama/qwen3.6-35b"
+# OpenAI 兼容 API 的 model id（默认 local/<模型名>，例如 llama/qwen3.6-27b）
+llama_model_id: "llama/qwen3.6-27b"
+# llama-server API 密钥（安全和可扩展性）：设置后客户端请求必须带 Authorization: Bearer <key> 或 api_key
+# 留空则不加 --api-key（本地无需认证）
+llama_api_key: "123456"
 # 模型路径映射表：按模型名称映射到 GGUF 文件路径
 # 当切换模型时，shiki_daemon.py 会根据此表更新 llama_model 路径
 # 留空或每行一个 "模型名: 路径" 映射

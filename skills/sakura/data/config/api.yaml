@@ -4,7 +4,7 @@
 llm:
   base_url: "http://localhost:8080/v1"
   api_key: "123456"
-  model: "qwen3.6-35b"
+  model: "qwen3.6-27b"
   timeout_seconds: 120
 
 # TTS 语音合成
