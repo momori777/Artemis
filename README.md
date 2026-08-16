@@ -9,6 +9,9 @@ qq: 580322386
 
 # AI Girlfriend
 
+> **Language / 语言 / 言語**：
+> [🇨🇳 中文](README_CN.md) · [🇬🇧 English](README.md) · [🇯🇵 日本語](README_jp.md)
+
 **100% Local · Fully Private · Zero API Dependencies**
 
 > All conversations, voice, images, and character animations are generated on your own machine. No cloud servers, no third-party APIs, no risk of data leakage. Your AI girlfriend belongs to you, and only you.
