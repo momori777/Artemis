@@ -84,6 +84,18 @@ llama_port: 8080
 llama_log_dir: "llama-server/restart-logs"
 restart_script: "skills/shared/restart_llama_degraded.ps1"
 
+# ── CCR (Claude Code Router) 端口 ──────────────────────────
+# Claude Code 通过 CCR 网关转发到本地 llama。端口集中在此，脚本不硬编码。
+# ccr_port:         CCR 模型网关端口（Claude Code 的 ANTHROPIC_BASE_URL）
+# ccr_web_port:     CCR 管理界面端口（http://127.0.0.1:<ccr_web_port>）
+# ccr_upstream_port: CCR 转发的上游 llama-server 端口（通常 == llama_port）
+ccr_port: 3456
+ccr_web_port: 3458
+ccr_upstream_port: 8080
+
+# 任务面板（AgentRQ 可视化网页）端口，由 claude-code-ccr.ps1 拉起
+task_board_port: 19280
+
 llama:
   context: 150000
   batch_size: 2048

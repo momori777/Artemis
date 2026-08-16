@@ -11,6 +11,9 @@ q群: 580322386
 
 # AI 女友
 
+> **语言 / Language / 言語**：
+> [🇨🇳 中文](README_CN.md) · [🇬🇧 English](README.md) · [🇯🇵 日本語](README_jp.md)
+
 **100% 本地 · 完全隐私 · 零 API 依赖**
 
 > 所有对话、语音、图像和角色动画均在你自己电脑上生成。无云端服务器、无第三方 API、无数据泄露风险。你的 AI 女友只属于你。
@@ -532,21 +535,43 @@ llama-server.exe `
 
 ### 启动方式
 
+> Claude Code 通过 **CCR (Claude Code Router)** 网关连接到本地 llama-server，实现
+> `Claude Code → CCR(:3456) → llama-server(:8080)` 完整链路。端口统一从 `config.yaml` 读取，无硬编码。
+
 ```powershell
-# 先装 Claude Code
+# 先装 Claude Code + CCR
 npm install -g @anthropic-ai/claude-code
+npm install -g @musistudio/claude-code-router
 
-# 启动 Shiki Daemon(自动拉起 Task Board :19280)
-.\shiki.cmd
+# 1. 启动 llama-server（端口 8080，自行启动）
+# 2. 启动 CCR 网关（后台 + 管理界面）
+.\skills\ccr\start-ccr.ps1
 
-# 启动 Claude Code
-.\claude-code.ps1
+# 3. 启动 Claude Code（走 CCR + 自动加载 Artemis MCP + 拉起任务看板）
+.\claude-code-ccr.ps1
 
-# 或只开任务看板(浏览器操作)
-.\claude-code.ps1 -BoardOnly
+# 或带初始提示词
+.\claude-code-ccr.ps1 "画一张夏目穿浴衣的图"
+
+# 不起任务看板网页
+.\claude-code-ccr.ps1 -NoTaskBoard
+
+# 4. 关闭配套服务（任务看板 + 可选停 CCR）
+.\stop-claude-code-ccr.ps1          # 只停任务看板
+.\stop-claude-code-ccr.ps1 -All     # 同时停 CCR
+```
+
+```bash
+# Linux / macOS 对等脚本（功能一致）
+./skills/ccr/start-ccr.sh
+./claude-code-ccr.sh
+./stop-claude-code-ccr.sh            # 或 ./stop-claude-code-ccr.sh --all
 ```
 
 然后浏览器打开 **http://127.0.0.1:19280** - 建任务,Claude Code 自动领取执行。
+
+> **首次启动**:Claude Code 会提示 approve 一次 `artemis` MCP server（工具权限已在
+> `.claude/settings.local.json` 预置），点允许即可。
 
 ### MCP 工具列表(15 个)
 
@@ -591,7 +616,10 @@ npm install -g @anthropic-ai/claude-code
 | `.claude/task_board.html` | 任务看板浏览器界面 |
 | `.claude/task_queue.db` | SQLite 任务数据库 (自动创建) |
 | `.claude/settings.local.json` | 预批准的 MCP 工具权限 |
-| `claude-code.ps1` / `.sh` | 启动脚本 |
+| `claude-code-ccr.ps1` / `.sh` | Claude Code 启动脚本（走 CCR + 拉起任务看板） |
+| `stop-claude-code-ccr.ps1` / `.sh` | 关闭脚本（任务看板 + 可选 CCR） |
+| `skills/ccr/start-ccr.ps1` / `.sh` | 启动 CCR 网关脚本 |
+| `skills/ccr/stop-ccr.ps1` / `.sh` | 停止 CCR 网关脚本 |
 
 ## 技能总览
 
