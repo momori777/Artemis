@@ -94,20 +94,34 @@ def decide_online(
 
 
 def is_asleep(state: dict) -> bool:
-    """检查是否在睡眠时间段。"""
+    """检查是否在睡眠时间段。
+
+    支持跨午夜 (sleep_from > sleep_to) 和不跨午夜 (sleep_from < sleep_to) 两种配置。
+    与 behavior_tick.is_asleep 逻辑保持一致。
+    """
     now = datetime.datetime.now()
     sleep_from = state.get("sleep_from", 23)
     sleep_to = state.get("sleep_to", 7)
     hour = now.hour
 
-    if sleep_from < sleep_to:
+    if sleep_from > sleep_to:
+        # 跨午夜：23→7 -> 23:00-24:00 或 0:00-7:00
         return hour >= sleep_from or hour < sleep_to
+    elif sleep_from < sleep_to:
+        # 不跨午夜：2→10 -> 2:00-10:00
+        return sleep_from <= hour < sleep_to
     else:
-        return hour >= sleep_from or hour < sleep_to
+        # sleep_from == sleep_to：视为无睡眠时段
+        return False
 
 
 def is_night_awake(state: dict) -> bool:
-    """检查是否夜间清醒。"""
-    if random.random() < state.get("night_wake_chance", 0.15):
-        return True
-    return False
+    """检查是否夜间清醒。
+
+    与 behavior_tick.is_night_awake 保持一致：
+    只有处于睡眠时段内才可能夜醒（按 night_wake_chance 随机）。
+    """
+    asleep = is_asleep(state)
+    if not asleep:
+        return False
+    return random.random() < state.get("night_wake_chance", 0.15)

@@ -163,7 +163,7 @@ def _wants_downgrade(
     """检查是否应该降级。"""
     # 严重负面情绪 → 回退一级
     if score.get("annoyance", 0) >= 60 and score.get("interest", 0) <= -10 and score.get("trust", 0) <= 10 and her_msgs >= 8:
-        return f"annoyance={score.get('annoyance', 0)}, interest={score.get('ignore', 0)}, trust={score.get('trust', 0)} 连续忽略"
+        return f"annoyance={score.get('annoyance', 0)}, interest={score.get('interest', 0)}, trust={score.get('trust', 0)} 连续忽略"
 
     # 忽略过多
     if stage in ("convinced", "first-date-done", "dating-early", "dating-stable", "long-term"):

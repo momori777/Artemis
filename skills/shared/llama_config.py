@@ -121,6 +121,18 @@ def resolve_llama_params(cfg, model_path=None):
     )
     model_id = cfg.get("llama_model_id", "") or ("local/" + model_name)
 
+    # ── 自动校准: 单一真源 = llama_model ──
+    # 问题：llama_model_name / llama_model_id 是独立字段，用户改 llama_model 后
+    # 常常忘记同步，导致 model id 指向旧模型（例如 27B 模型却配 llama/qwen3.6-35b）。
+    # 校准：若 model_id 的后缀（/ 之后）与 model_name 不一致，说明是残留值，
+    #       用 model_name 重构 id，前缀（local/或 llama/）保留。
+    _id_suffix = model_id.rsplit("/", 1)[-1] if "/" in model_id else ""
+    if _id_suffix and _id_suffix != model_name:
+        _prefix = model_id.rsplit("/", 1)[0] if "/" in model_id else "local"
+        model_id = _prefix + "/" + model_name
+        # 静默校准：多数情况下前缀 local/ 与 llama/ 是等价的本地别名，
+        # 这里不打印噪声日志，避免脚本输出被污染。
+
     params = {
         "model_path": model_path,
         "model_name": model_name,

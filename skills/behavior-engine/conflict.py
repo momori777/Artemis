@@ -137,7 +137,8 @@ def soften_from_mood(
         return current
 
     next_conflict = dict(current)
-    next_conflict["level"] = max(0, current.get("cold", 0) - 1) if False else max(0, current.get("level", 0) - 1)
+    # 降温：等级减 1（不低于 0）
+    next_conflict["level"] = max(0, current.get("level", 0) - 1)
 
     if next_conflict["level"] == 0:
         next_conflict["cold_until"] = None

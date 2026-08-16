@@ -405,21 +405,29 @@ moodDelta (per turn) → score → conflict escalate/soften → stage transition
 state = load_state('natsume')
 
 # 2. Inject context (mem0 memory, state-driven search)
+#    ⚠️ run_integration now auto-calls sync_to_behavior_state to write back state + trigger stage transitions.
+#    No need to manually call update_state / decide_stage_transition.
 from skills.mem0_bridge import mem0_behavior_integration as mbi
-ctx = mbi.run_integration('natsume', user_msg)
+ctx = mbi.run_integration('natsume', user_msg, messages)
 # prepend ctx to system prompt
+# ↑ internally: increments message counters → checks stage transition → save_state writes back relationship.json
 
 # 3. Behavior decision (optional: reply/ignore/delay/splits/emote)
 from skills.behavior_engine.behavior_tick import behavior_tick
 decision = behavior_tick(state, user_msg)
 
-# 4. Update state after each message (via moodDelta)
+# 4. To manually adjust score via moodDelta (optional; run_integration does not handle emotion deltas)
 from skills.behavior_engine.engine import update_state
 new_state = update_state('natsume', {
     'interest': 3, 'trust': 2, 'attraction': 2,  # positive
     'annoyance': 0, 'cringe': 0,
 })
 ```
+
+> ℹ️ **Closed-loop note (fixed 2026-08)**:
+> - `run_integration` changed from read-only to read+write-back; it now auto-advances message counters and checks stage transitions each turn.
+> - **Path bug fixed**: `get_state_path()` previously traversed one `..` too many, writing state to drive root `D:\memory\` instead of the project `memory/role_play/` — character state never actually saved. Now corrected to the in-project path.
+> - Emotion deltas (moodDelta) still need you to manually call `update_state` with non-zero increments after the reply.
 
 ### moodDelta Reference
 
@@ -448,6 +456,11 @@ from skills.behavior_engine.stages import decide_stage_transition, should_run_ch
 # every 5 messages call should_run_check → decide_stage_transition
 # upgrade needs: interest/trust/attraction thresholds + >=6 msgs in stage
 ```
+
+> ⚠️ **Fix note (2026-08)**:
+> 1. `run_integration` now auto-calls `sync_to_behavior_state`, so stage transitions are truly written back to relationship.json (the old version was dead code — stages never advanced).
+> 2. Sleep detection fixed: `is_asleep`/`is_night_awake` correctly handle both crossing-midnight (23→7) and non-crossing (2→10) configs; daytime sleep no longer misjudges as all-day asleep.
+> 3. `update_state` counter semantics fixed: `her_messages_in_stage` = character's messages, `his_messages_in_stage` = user's messages, no more double-increment.
 
 ### Daily Life (daily_life)
 

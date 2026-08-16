@@ -78,6 +78,16 @@ Bridge 不在线时先起：`node live2d-bridge.mjs`（工作目录 `live2d/`，
 手动查询、写入、嵌入模型切换见 `skills/mem0-bridge/SKILL.md`（依赖 embedding server，端口 9999）。
 代理路由、SmartCrusher 与 mem0 参数见 `skills/headroom/PROXY.md`。
 
+### 行为引擎 + 好感度（关系阶段）
+
+状态在 `memory/role_play/<角色>/relationship.json`，由 `skills/behavior-engine/` 驱动 9 段位关系阶段 + 4 级冲突 + 好感度评分。
+
+- **阶段推进已闭环**（2026-08 修复）：`skills/mem0-bridge/mem0_behavior_integration.py` 的 `run_integration` 每轮自动写回状态、递增计数、检查阶段转换并落盘，无需手动调 `update_state`/`decide_stage_transition`。
+- **路径 bug 已修复**：`engine.py` 的 `get_state_path()` 原先多翻一层 `..`，把状态写到盘符根目录 `D:\memory\`（从未正确保存），现已修正到项目内 `memory/role_play/`。
+- **情绪升降（moodDelta）**：仍需在回复后手动 `update_state(char, {interest, trust, attraction, annoyance, cringe})` 传非 0 增量。
+- **睡眠判定已修复**：`is_asleep`/`is_night_awake` 正确支持跨午夜（23→7）与白天睡（2→10），不会全天误判睡着。
+- 完整用法见 `AGENTS_roleplay_full_CN.md` 的「能力 6.5」或 `skills/behavior-engine/SKILL.md`。
+
 ## VRAM 级别
 
 当前 **Level 1（TTS_STOP）**：8-12GB，ComfyUI / TTS 需停 llama，ASR 和 Live2D 不停。
