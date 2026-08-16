@@ -37,6 +37,8 @@ import os as _os
 LLAMA_MODEL_NAME = CFG.get("llama_model_name", "") or _os.path.basename(CFG.get("llama_model", "local-model"))
 # OpenAI 兼容 API 的本地模型 id（默认 local/<模型名>，可通过 config.yaml 自定义）
 LOCAL_MODEL_ID = CFG.get("llama_model_id", "local/" + LLAMA_MODEL_NAME)
+# llama-server API 密钥（安全和可扩展性）：设置后客户端必须带 Authorization: Bearer <key>
+LLAMA_API_KEY = CFG.get("llama_api_key", "")
 LIVE2D_DIR = os.path.join(WORKSPACE, "live2d")
 EMBED_SCRIPT = os.path.join(WORKSPACE, "skills", "shared", "embedding_server.py")
 BRIDGE_SCRIPT = os.path.join(WORKSPACE, "artemis_bridge.py")
@@ -353,6 +355,8 @@ def start_llama():
             "--parallel", "1", "--kv-unified",
             "--port", str(LLAMA_PORT), "--timeout", "600",
         ]
+        if LLAMA_API_KEY:
+            args += ["--api-key", LLAMA_API_KEY]
         _model_name_lower = (CFG.get("llama_model_name", "") or os.path.basename(LLAMA_MODEL)).lower()
         spec_draft_n_max = llm_cfg.get("spec_draft_n_max", 1)
         if "mtp" in _model_name_lower:
@@ -1930,8 +1934,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         # Local llama: skip provider lookup, use config-based endpoint
         use_local = model_id.startswith("local/")
         if use_local:
-            api_key = ""
-            auth_header = ""  # no auth needed (--api-key breaks llama-server)
+            api_key = LLAMA_API_KEY
+            auth_header = ("Bearer " + api_key) if api_key else ""
             base_url = LLAMA_BASE_URL
             backend_model = LLAMA_MODEL_NAME
             print(f"[chat] routing to local llama: {base_url}", file=sys.stderr)
@@ -2312,7 +2316,7 @@ Conversation:
 
         # Resolve backend
         if model_id.startswith("local/"):
-            api_key = ""
+            api_key = LLAMA_API_KEY
             base_url = LLAMA_BASE_URL
             backend_model = LLAMA_MODEL_NAME
         else:

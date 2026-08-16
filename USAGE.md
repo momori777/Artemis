@@ -68,6 +68,7 @@ CCR 链路：Claude Code ─→ CCR 网关(:3456) ─→ llama-server(:8080)
 llama_model: "E:\\Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf"   # GGUF 文件路径（唯一真源）
 llama_model_name: "qwen3.6-27b"                        # API alias（留空自动取文件名）
 llama_model_id: "llama/qwen3.6-27b"                    # model id（留空自动 = local/<name>）
+llama_api_key: "123456"                                # API 密钥（留空则不加 --api-key）
 ```
 
 关键机制：
@@ -77,6 +78,7 @@ llama_model_id: "llama/qwen3.6-27b"                    # model id（留空自动
 | **model_profiles 预设匹配** | 按 `llama_model` 文件名关键字自动匹配启动参数（`ctk/ctv/batch/cpu_moe/spec_draft_n_max/rea`），无需手动调参数表 |
 | **MTP 自动检测** | 模型名含 `mtp` 时自动加 `--spec-type draft-mtp`，非 MTP 模型不会误加 |
 | **model_id 自动校准** | 若 `llama_model_id` 后缀与 `llama_model_name` 不一致（例如残留旧值 `…/qwen3.6-35b`），会自动修正为 `…/<name>` |
+| **API 密钥认证** | `llama_api_key` 非空时加 `--api-key <key>`，推理端点要求 `Authorization: Bearer <key>`；headroom proxy / sakura / shiki_daemon 自动带 key，`/health` 仍免认证 |
 | **llama_model_map** | 运行时切换模型用（`shiki_daemon` 的 `/switch_model` 接口） |
 
 > ⚠️ **停启调试**（2026-08 已验证）：改 `llama_model` 后，`python skills/shared/llama_lifecycle.py stop 8080` 停旧模型，再 `start 8080` 拉新模型，`/v1/models` 即返回新 alias，推理链路（含 MTP draft）正常。

@@ -478,6 +478,9 @@ def start_llama(port=8080, exe_path=None, model_path=None,
             "--parallel", "1",
             "--kv-unified",
         ]
+        _api_key = _cfg.get("llama_api_key", "")
+        if _api_key:
+            args += ["--api-key", _api_key]
         _model_name_lower = _model_name.lower()
         if "mtp" in _model_name_lower:
             _mtp_n = _llm_cfg.get("spec_draft_n_max", 1)

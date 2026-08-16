@@ -214,6 +214,12 @@ if (-not $baseArgs) {
     Write-Host "  MTP model detected: adding --spec-type draft-mtp --spec-draft-n-max $specDraftNMax" -ForegroundColor Cyan
     $baseArgs += '--spec-type', 'draft-mtp', '--spec-draft-n-max', $specDraftNMax
   }
+
+  # API 密钥（安全和可扩展性）
+  $llamaApiKey = & { $m = [regex]::Match($configRaw, "(?m)^\s*llama_api_key\s*:\s*`"?(.+?)`"?\s*$"); if ($m.Success) { $m.Groups[1].Value.Trim('"').Trim() } else { '' } }
+  if ($llamaApiKey) {
+    $baseArgs += '--api-key', $llamaApiKey
+  }
 }
 
 # 降级表：三个并行数组

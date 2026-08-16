@@ -141,6 +141,8 @@ def resolve_llama_params(cfg, model_path=None):
         "port": int(cfg.get("llama_port", 8080)),
         "log_dir": cfg.get("llama_log_dir", ""),
         "restart_script": cfg.get("restart_script", ""),
+        # API 密钥（可扩展：生产环境从环境变量或密钥管理器注入）
+        "api_key": cfg.get("llama_api_key", ""),
         # llama 区块参数 + profile 覆盖
         "context": int(_v("context", 150000)),
         "batch_size": int(_v("batch_size", 2048)),
@@ -224,6 +226,12 @@ def build_llama_args(params):
     _alias = params.get("model_name", "")
     if _alias:
         args += ["--alias", _alias]
+
+    # ── API 密钥（安全和可扩展性）──
+    # 设置后客户端请求必须带 Authorization: Bearer <key> 或 api_key
+    _api_key = params.get("api_key", "")
+    if _api_key:
+        args += ["--api-key", _api_key]
 
     args += [
         "--port", str(params["port"]),

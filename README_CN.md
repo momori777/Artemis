@@ -732,6 +732,19 @@ powershell -File setup-llama.ps1
 bash setup-llama.sh
 ```
 
+**API 密钥（可选，推荐）:**
+
+从本版本起，llama-server 默认启用 API 密钥认证（安全和可扩展性）。在 `config.yaml` 中配置：
+
+```yaml
+llama_api_key: "123456"   # 改为你自己的密钥；留空则不加 --api-key
+```
+
+- 设置后，llama-server 的推理端点（`/v1/chat/completions` 等）要求请求带 `Authorization: Bearer <key>` 或 `api_key:<key>`。
+- `/health` 仍免认证（探活不受影响）。
+- 所有客户端（headroom proxy / sakura / shiki_daemon 转发）会自动读取 `llama_api_key` 并带上密钥，无需额外配置。
+- 接入 CCR 时，CCR 的 provider 配置里也需把上游 API 密钥填为相同值。
+
 ### 3. 配置路径
 
 ```powershell
