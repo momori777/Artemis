@@ -78,6 +78,16 @@ Use by score: `>0.7` must be reflected in the reply, `>0.5` weave in naturally, 
 Manual search / write / embedding model switch: `skills/mem0-bridge/SKILL.md` (requires embedding server on port 9999).
 Proxy routing, SmartCrusher and mem0 parameters: `skills/headroom/PROXY.md`.
 
+### Behavior Engine + Relationship (Stages)
+
+State lives in `memory/role_play/<char>/relationship.json`, driven by `skills/behavior-engine/` — 9 relationship stages, 4 conflict levels, and an affection score.
+
+- **Stage progression is closed-loop** (fixed 2026-08): `run_integration` in `skills/mem0-bridge/mem0_behavior_integration.py` now auto-writes state back each turn, increments counters, checks stage transitions and persists them — no manual `update_state`/`decide_stage_transition` needed.
+- **Path bug fixed**: `engine.py`'s `get_state_path()` traversed one `..` too many, writing state to drive root `D:\memory\` (never actually saved); now corrected to the in-project `memory/role_play/`.
+- **Emotion deltas (moodDelta)**: still require a manual `update_state(char, {interest, trust, attraction, annoyance, cringe})` with non-zero increments after the reply.
+- **Sleep detection fixed**: `is_asleep`/`is_night_awake` correctly handle crossing-midnight (23→7) and daytime sleep (2→10), no more all-day asleep misjudgment.
+- Full usage: see "Capability 6.5" in `AGENTS_roleplay_full_EN.md` or `skills/behavior-engine/SKILL.md`.
+
 ## VRAM Levels
 
 Currently **Level 1 (TTS_STOP)**: 8-12 GB; ComfyUI / TTS must stop llama; ASR and Live2D keep running.

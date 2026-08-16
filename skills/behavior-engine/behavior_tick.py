@@ -22,34 +22,39 @@ def clamp(v: float, lo: float, hi: float) -> float:
 
 
 def is_asleep(state: dict) -> bool:
-    """检查是否在睡眠中。"""
+    """检查是否在睡眠中。
+
+    支持两种睡眠配置：
+    - 跨午夜 (sleep_from > sleep_to)，如 23→7：夜间 23:00-24:00 和凌晨 0:00-7:00
+    - 白天/不跨午夜 (sleep_from < sleep_to)，如 2→10：2:00-10:00
+    """
     now = datetime.datetime.now()
     sleep_from = state.get("sleep_from", 23)
     sleep_to = state.get("sleep_to", 7)
 
     hour = now.hour
 
-    if sleep_from < sleep_to:
-        # 例如 23→7: 23-24或0-7
+    if sleep_from > sleep_to:
+        # 跨午夜：23→7  -> 23:00-24:00 或 0:00-7:00
         return hour >= sleep_from or hour < sleep_to
+    elif sleep_from < sleep_to:
+        # 不跨午夜：2→10 -> 2:00-10:00
+        return sleep_from <= hour < sleep_to
     else:
-        # 例如 22→6: 22-6
-        return hour >= sleep_from or hour < sleep_to
+        # sleep_from == sleep_to：视为无睡眠时段，永不睡着
+        return False
 
 
 def is_night_awake(state: dict) -> bool:
-    """检查是否夜间清醒。"""
-    now = datetime.datetime.now()
-    sleep_from = state.get("sleep_from", 23)
-    sleep_to = state.get("sleep_to", 7)
-    hour = now.hour
+    """检查是否夜间清醒。
 
-    # 深夜时段（23:00-06:00）
-    if sleep_from < sleep_to:
-        night = hour >= sleep_from or hour < sleep_to
-    else:
-        night = True  # 默认都在深夜
-    return night and random.random() < state.get("night_wake_chance", 0.15)
+    夜间清醒 = 处于睡眠时段但随机醒来（night_wake_chance）。
+    只有处于睡眠时段内才可能夜醒，白天不判定为夜醒。
+    """
+    asleep = is_asleep(state)
+    if not asleep:
+        return False
+    return random.random() < state.get("night_wake_chance", 0.15)
 
 
 def get_current_hour(state: dict) -> int:

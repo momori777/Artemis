@@ -405,21 +405,29 @@ moodDelta (毎ターン) → score → コンフリクト escalate/soften → �
 state = load_state('natsume')
 
 # 2. コンテキスト注入（mem0 記憶、状態駆動検索）
+#    ⚠️ run_integration は現在、sync_to_behavior_state を自動で呼び、状態書き戻し＋段位遷移を実行する。
+#    手動で update_state / decide_stage_transition を呼ぶ必要はない。
 from skills.mem0_bridge import mem0_behavior_integration as mbi
-ctx = mbi.run_integration('natsume', user_msg)
+ctx = mbi.run_integration('natsume', user_msg, messages)
 # ctx を system prompt の前に追加
+# ↑ 内部で自動: メッセージカウンタ増加 → 段位遷移チェック → save_state で relationship.json へ書き戻し
 
 # 3. 行動決定（任意: 返信/無視/遅延/分割/表情）
 from skills.behavior_engine.behavior_tick import behavior_tick
 decision = behavior_tick(state, user_msg)
 
-# 4. 各メッセージ後に状態更新（moodDelta で）
+# 4. moodDelta でスコアを手動調整する場合（任意、run_integration は感情差分を処理しない）
 from skills.behavior_engine.engine import update_state
 new_state = update_state('natsume', {
     'interest': 3, 'trust': 2, 'attraction': 2,  # ポジティブ
     'annoyance': 0, 'cringe': 0,
 })
 ```
+
+> ℹ️ **クローズドループ解説（2026-08 修正）**:
+> - `run_integration` は「読み取りのみ」から「読み取り＋書き戻し」に変更。毎ターンメッセージカウンタを自動で進め、段位遷移を検査する。
+> - **パス bug を修正**: `get_state_path()` は従来 `..` を 1 階層余分に遡り、プロジェクト内 `memory/role_play/` ではなくドライブルート `D:\memory\` に状態を書き込んでいた。キャラ状態が正しく保存されていなかった。プロジェクト内パスに修正済み。
+> - 感情差分（moodDelta）は返信後に非 0 の増分で `update_state` を手動呼び出しする必要がある。
 
 ### moodDelta 参考
 
@@ -448,6 +456,11 @@ from skills.behavior_engine.stages import decide_stage_transition, should_run_ch
 # 5メッセージ毎に should_run_check → decide_stage_transition
 # 昇格条件: 興味/信頼/魅力の閾値 + 現在段位で>=6メッセージ
 ```
+
+> ⚠️ **修正説明（2026-08）**:
+> 1. `run_integration` は現在、`sync_to_behavior_state` を自動で呼び、段位遷移が**実際に** relationship.json へ書き戻される（旧版は死コードで段位が永遠に進まなかった）。
+> 2. 睡眠判定を修正: `is_asleep`/`is_night_awake` は跨暁（23→7）と非跨暁（2→10）の両設定を正しく処理。昼寝が終日寝ていると誤判定されなくなった。
+> 3. `update_state` のカウンタ意味を修正: `her_messages_in_stage` = キャラ（彼女）の発言数、`his_messages_in_stage` = ユーザー（彼）の発言数。重複加算を廃止。
 
 ### 毎日のスケジュール (daily_life)
 

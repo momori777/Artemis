@@ -265,6 +265,9 @@ def daily_life_prompt(state: dict) -> str:
 
     if state.get("hormones", {}).get("cycle_phase"):
         h = state["hormones"]
-        lines.append(f"周期: {h['cycle_phase']} 第{h['cycle_day']}/{h['cycle_length']}天")
+        # cycle_length 只在 compute_hormones 的完整返回里存在；
+        # HormoneState.to_dict() 只有 cycle_day/cycle_phase，这里做安全回退。
+        cyc_len = h.get("cycle_length", 28)
+        lines.append(f"周期: {h['cycle_phase']} 第{h.get('cycle_day', 1)}/{cyc_len}天")
 
     return "\n".join(lines)

@@ -4,15 +4,17 @@
 一、启动 — 两条通道，选一个
 
   【通道 A：OpenClaw — 主通道（QQ/TG/WebChat 聊天用这个）】
-    Windows: 双击 shiki.cmd
+    Windows: 双击 shiki-start.cmd
     Linux:    bash start.sh
     启动后用：WebChat → http://127.0.0.1:19270
 
   【通道 B：Claude Code — 终端通道（任务看板/开发调试用这个）】
-    Windows: .\claude-code.ps1
-    Linux:   bash claude-code.sh
+    Windows: .\claude-code-ccr.ps1   （CCR网关版，走本地llama）
+             .\claude-code.ps1     （无CCR，直连OpenClaw）
+    Linux:   bash claude-code-ccr.sh
     前提：   npm install -g @anthropic-ai/claude-code
     任务看板 → http://127.0.0.1:19280
+    停CCR：  .\stop-claude-code-ccr.ps1
 
   【对比速查】
     功能               OpenClaw    Claude Code
@@ -30,7 +32,26 @@
 二、关闭
 
    Windows: 双击 shiki-stop.cmd
-   Linux:   参考 start.sh 停止脚本
+   Linux:   bash stop.sh
+
+二点五、换模型（改 config.yaml 就行）
+
+   所有启动入口都读 config.yaml + skills/shared/llama_config.py，无硬编码模型路径。
+   换模型只需改三行：
+
+     llama_model:      "E:\\新模型.gguf"     # GGUF 路径（唯一真源）
+     llama_model_name:  "新模型名"            # API alias，留空自动取文件名
+     llama_model_id:    "llama/新模型名"      # model id，留空自动=local/<名>
+
+   自动机制（不用手动调）：
+     - model_profiles 按文件名关键字自动匹配启动参数（q4_0/batch/cpu_moe/MTP/rea）
+     - 模型名含 mtp → 自动加 --spec-type draft-mtp（非mtp不会误加）
+     - llama_model_id 后缀跟 name 不一致时 → 自动校准（防残留旧值）
+
+   停启验证：
+     python skills\shared\llama_lifecycle.py stop 8080
+     python skills\shared\llama_lifecycle.py start 8080
+     curl http://127.0.0.1:8080/v1/models   # 看 alias 对不对
 
 三、调试（九层，从下往上查）
 

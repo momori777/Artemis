@@ -78,6 +78,16 @@ Bridge がオフラインなら起動: `node live2d-bridge.mjs`（作業ディ�
 手動検索 / 書き込み / 埋め込みモデル切替: `skills/mem0-bridge/SKILL.md`（embedding server ポート 9999 が必要）。
 プロキシルーティング、SmartCrusher と mem0 パラメータ: `skills/headroom/PROXY.md`。
 
+### 行動エンジン + 好感度（関係段位）
+
+状態は `memory/role_play/<キャラ>/relationship.json` にあり、`skills/behavior-engine/` が 9 段位の関係段階 + 4 段階コンフリクト + 好感度スコアを駆動する。
+
+- **段位推進はクローズドループ化**（2026-08 修正）: `skills/mem0-bridge/mem0_behavior_integration.py` の `run_integration` が毎ターン状態を自動で書き戻し、カウンタを増加し、段位遷移を検査して保存する。手動で `update_state`/`decide_stage_transition` を呼ぶ必要はない。
+- **パス bug を修正**: `engine.py` の `get_state_path()` は従来 `..` を 1 階層余分に遡り、状態をドライブルート `D:\memory\` に書き込んでいた（正しく保存されていなかった）。プロジェクト内 `memory/role_play/` に修正済み。
+- **感情差分（moodDelta）**: 返信後に `update_state(char, {interest, trust, attraction, annoyance, cringe})` に非 0 の増分を手動で渡す必要がある。
+- **睡眠判定を修正**: `is_asleep`/`is_night_awake` は跨暁（23→7）と昼寝（2→10）を正しく処理。終日寝ていると誤判定されなくなった。
+- 完全な用法: `AGENTS_roleplay_full_JA.md` の「能力 6.5」または `skills/behavior-engine/SKILL.md` を参照。
+
 ## VRAM レベル
 
 現在 **Level 1（TTS_STOP）**: 8-12 GB。ComfyUI / TTS は llama 停止、ASR と Live2D は停止しない。

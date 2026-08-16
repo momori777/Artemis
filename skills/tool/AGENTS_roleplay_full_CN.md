@@ -405,21 +405,29 @@ moodDelta (每轮) → 评分(score) → 冲突 escalation/soften → 段位 tra
 state = load_state('natsume')
 
 # 2. 注入上下文（含 mem0 记忆，状态驱动搜索）
+#    ⚠️ run_integration 现在会自动调用 sync_to_behavior_state 写回状态 + 触发阶段转换
+#    无需再手动调用 update_state / decide_stage_transition。
 from skills.mem0_bridge import mem0_behavior_integration as mbi
-ctx = mbi.run_integration('natsume', user_msg)
+ctx = mbi.run_integration('natsume', user_msg, messages)
 # ctx 附加到 system prompt 前
+# ↑ 内部已自动：递增消息计数 → 检查阶段转换 → save_state 写回 relationship.json
 
 # 3. 行为决策（可选：决定是否回复/延迟/分片/表情）
 from skills.behavior_engine.behavior_tick import behavior_tick
 decision = behavior_tick(state, user_msg)
 
-# 4. 每条消息后更新状态（按 moodDelta）
+# 4. 如需根据 moodDelta 手动调整评分（可选，run_integration 不处理情绪分）
 from skills.behavior_engine.engine import update_state
 new_state = update_state('natsume', {
     'interest': 3, 'trust': 2, 'attraction': 2,  # 正向
     'annoyance': 0, 'cringe': 0,
 })
 ```
+
+> ℹ️ **闭环说明（2026-08 修复）**：
+> - `run_integration` 已从“只读”改为“读+写回”，每轮自动推进消息计数并检查阶段转换。
+> - **路径 bug 已修复**：`get_state_path()` 原先多翻了 `..` 一层，导致状态被写到盘符根目录 `D:\memory\` 而非项目内 `memory/role_play/`，角色状态从未正确保存。现已修正为项目内路径。
+> - 情绪升降（moodDelta）仍需你手动在回复后调用 `update_state` 传非 0 增量。
 
 ### moodDelta 参考
 
@@ -448,6 +456,11 @@ from skills.behavior_engine.stages import decide_stage_transition, should_run_ch
 # 每5条消息调用 should_run_check → decide_stage_transition
 # 升级需满足: 兴趣/信任/吸引达阈值 + 本阶段消息>=6
 ```
+
+> ⚠️ **修复说明（2026-08）**：
+> 1. `run_integration` 现在会自动调用 `sync_to_behavior_state`，阶段转换会**真正写回** relationship.json（旧版是死代码，阶段永远卡住不动）。
+> 2. 睡眠判断已修复：`is_asleep`/`is_night_awake` 正确支持跨午夜（23→7）和不跨午夜（2→10）两种配置，白天睡不会再全天误判。
+> 3. `update_state` 的计数语义已修正：`her_messages_in_stage` = 角色（她）发言数，`his_messages_in_stage` = 用户（他）发言数，不再重复叠加。
 
 ### 每日作息 (daily_life)
 

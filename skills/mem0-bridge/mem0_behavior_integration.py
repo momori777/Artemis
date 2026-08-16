@@ -112,7 +112,6 @@ def get_relevant_mem0_context(character: str, query: str, behavior_state: dict) 
         search_mem0_qdrant = mb.search_mem0_qdrant
     else:
         return ""
-        return ""
 
     results = search_mem0_qdrant(character, base_query, limit=limit)
     if not results:
@@ -191,36 +190,39 @@ def extract_mem0_facts_from_messages(messages: list[dict], character: str) -> li
     return facts[:20]
 
 
-def sync_to_behavior_state(character: str, messages: list[dict], behavior_state: dict) -> dict:
+def sync_to_behavior_state(character: str, messages: list[dict] | None, behavior_state: dict) -> dict:
     """
-    根据对话内容更新行为引擎状态。
+    根据对话内容更新行为引擎状态，并在满足条件时触发阶段转换。
 
     策略：
-    - 每10条消息触发一次完整分析
-    - 每轮至少更新消息计数
+    - 每轮递增消息计数
+    - 每5条消息检查一次阶段转换（should_run_check）
+    - 转换结果写回 relationship.json（save_state）
     """
     # 导入行为引擎
     sys.path.insert(0, str(BEHAVIOR_ENGINE))
-    from engine import update_state
-    from conflict import escalate_from_mood, soften_from_mood
+    from engine import update_state, save_state
     from stages import decide_stage_transition, should_run_check
 
-    # 更新消息计数
-    her_msgs = behavior_state.get("her_messages_in_stage", 0)
-    his_msgs = behavior_state.get("his_messages_in_stage", 0)
-    ignores = behavior_state.get("ignores_in_stage", 0)
-    since_check = behavior_state.get("messages_since_last_check", 0) + 1
+    # 本轮消息（messages 可能为 None，做防御）
+    if not messages:
+        messages = []
+    user_msgs = sum(1 for m in messages if isinstance(m, dict) and m.get("role") == "user" and len(str(m.get("content", ""))) > 3)
+    assistant_msgs = sum(1 for m in messages if isinstance(m, dict) and m.get("role") == "assistant" and len(str(m.get("content", ""))) > 3)
 
-    # 统计本轮消息
-    user_msgs = sum(1 for m in messages if m.get("role") == "user" and len(m.get("content", "")) > 3)
-    assistant_msgs = sum(1 for m in messages if m.get("role") == "assistant" and len(m.get("content", "")) > 3)
+    # 用户在本轮至少发了一条：递增他（用户）的发言计数，并触发一次状态更新
+    his_delta = 1 if user_msgs > 0 else 0
 
     new_state = update_state(character, {
         "interest": 0, "trust": 0, "attraction": 0, "annoyance": 0, "cringe": 0,
-    })
+    }, intent=("reply" if assistant_msgs > 0 else "ignore"))
+
+    # 记录用户发言计数（本轮用户消息对应「他」的发言）
+    if his_delta:
+        new_state.his_messages_in_stage += 1
 
     # 每5条消息检查阶段转换
-    if should_run_check(since_check):
+    if should_run_check(new_state.messages_since_last_check):
         conflict_active = new_state.conflict.get("level", 0) > 0
         trans = decide_stage_transition(
             new_state.stage,
@@ -231,9 +233,14 @@ def sync_to_behavior_state(character: str, messages: list[dict], behavior_state:
             conflict_active,
         )
         if trans:
-            print(f"[behavior-engine] Stage transition: {new_state.stage} -> {trans['next']} ({trans['reason']})")
+            # 写回新阶段
+            new_state.stage = trans["next"]
+            print(f"[behavior-engine] Stage transition: -> {trans['next']} ({trans['reason']})")
+    
+    # 落盘
+    save_state(character, new_state)
 
-    return new_state
+    return new_state.to_dict()
 
 
 def build_full_context(character: str, query: str, behavior_state: dict, recent_messages: list[dict] = None) -> str:
@@ -329,6 +336,9 @@ def run_integration(character: str, query: str, messages: list[dict] = None) -> 
 
     Returns:
         注入上下文字符串，应附加到 system prompt 或 user message 前面
+
+    副作用：
+        - 调用 sync_to_behavior_state，递增消息计数并检查阶段转换（写回 relationship.json）
     """
     # 1. 加载行为状态
     behavior_state = load_behavior_state(character)
@@ -337,6 +347,12 @@ def run_integration(character: str, query: str, messages: list[dict] = None) -> 
 
     # 2. 构建完整上下文
     context = build_full_context(character, query, behavior_state, messages)
+
+    # 3. 写回状态 + 触发阶段转换（确保阶段系统真正推进，而非只读）
+    try:
+        sync_to_behavior_state(character, messages, behavior_state)
+    except Exception as e:
+        print(f"[behavior-engine] sync_to_behavior_state failed: {e}")
 
     return context
 

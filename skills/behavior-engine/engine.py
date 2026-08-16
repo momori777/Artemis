@@ -224,10 +224,15 @@ class CharacterState:
 # ============================================================
 
 def get_state_path(char: str) -> str:
-    """获取角色状态文件路径。"""
+    """获取角色状态文件路径。
+
+    状态文件位于项目根的 memory/role_play/<char>/relationship.json。
+    engine.py 位于 skills/behavior-engine/engine.py，因此：
+      dirname(dirname(__file__)) = skills/，再上翻一层 ".." = 项目根。
+    """
     base = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "..", "..", "memory", "role_play", char, "relationship.json"
+        "..", "memory", "role_play", char, "relationship.json"
     )
     return os.path.normpath(base)
 
@@ -283,13 +288,15 @@ def update_state(char: str, mood_delta: dict | None = None,
             delta = max(-20, min(20, delta))
             setattr(state.score, field, round(old + delta, 2))
 
-    # 更新计数器
+    # 更新计数器。语义：
+    # - her_messages_in_stage = 角色（她）在本阶段的发言数
+    # - his_messages_in_stage = 用户（他）在本阶段的发言数
+    # update_state 默认在每次产生一条角色回复后调用，因此这里递增「她」的发言数。
     state.messages_since_last_check += 1
     if not should_reply and intent in ("ignore", "left-on-read"):
         state.ignores_in_stage += 1
     if should_reply and intent in ("reply", "short"):
-        state.his_messages_in_stage += 1
-        state.her_messages_in_stage += 1  # 假设用户每条都算her的消息
+        state.her_messages_in_stage += 1  # 角色（她）回复了一条
 
     # 每5条检查一次阶段转换
     if state.messages_since_last_check >= 5:

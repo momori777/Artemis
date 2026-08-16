@@ -10,7 +10,7 @@ Artemis 提供两种 Agent 运行时，按需选用：
 用途：QQ Bot、Telegram Bot、WebChat 浏览器聊天
 涵盖：角色扮演、TTS、ComfyUI、ASR、Live2D、记忆系统、定时任务
 
-Windows: 双击 shiki.cmd
+Windows: 双击 shiki-start.cmd（或待机托盘）
 Linux:   bash start.sh
 
 启动后可用界面：
@@ -28,12 +28,17 @@ Linux:   bash start.sh
 
 前提：npm install -g @anthropic-ai/claude-code
 
-Windows: .\claude-code.ps1
-Linux:   bash claude-code.sh
+Windows: .\claude-code-ccr.ps1      (CCR 网关版，前端走本地 llama)
+         .\claude-code.ps1          (无 CCR，直连 OpenClaw)
+Linux:   bash claude-code-ccr.sh
+         bash claude-code.sh
 
 快捷操作：
-  .\claude-code.ps1 -BoardOnly    ← 只开任务看板（浏览器）
-  .\claude-code.ps1 -KillBoard    ← 关闭任务看板
+  .\claude-code-ccr.ps1 -BoardOnly    ← 只开任务看板（浏览器）
+  .\claude-code-ccr.ps1 -KillBoard    ← 关闭任务看板
+  停止CCR: .\stop-claude-code-ccr.ps1
+
+CCR 链路：Claude Code ─→ CCR 网关(:3456) ─→ llama-server(:8080)
 ```
 
 ### 功能覆盖对比
@@ -53,11 +58,34 @@ Linux:   bash claude-code.sh
 | 定时任务        | ✅       | ❌          |
 | 任务看板        | ❌       | ✅          |
 
+## 模型配置（改 config.yaml 就能换模型）
+
+所有启动入口（`shiki_daemon.py` / `start.ps1` / `restart_llama_rea.bat` /
+`restart_llama_degraded.ps1` / `llama_lifecycle.py`）统一走 `skills/shared/llama_config.py`
+解析启动参数，**无硬编码模型路径**。换模型只需改 `config.yaml`：
+
+```yaml
+llama_model: "E:\\Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf"   # GGUF 文件路径（唯一真源）
+llama_model_name: "qwen3.6-27b"                        # API alias（留空自动取文件名）
+llama_model_id: "llama/qwen3.6-27b"                    # model id（留空自动 = local/<name>）
+```
+
+关键机制：
+
+| 机制 | 说明 |
+|------|------|
+| **model_profiles 预设匹配** | 按 `llama_model` 文件名关键字自动匹配启动参数（`ctk/ctv/batch/cpu_moe/spec_draft_n_max/rea`），无需手动调参数表 |
+| **MTP 自动检测** | 模型名含 `mtp` 时自动加 `--spec-type draft-mtp`，非 MTP 模型不会误加 |
+| **model_id 自动校准** | 若 `llama_model_id` 后缀与 `llama_model_name` 不一致（例如残留旧值 `…/qwen3.6-35b`），会自动修正为 `…/<name>` |
+| **llama_model_map** | 运行时切换模型用（`shiki_daemon` 的 `/switch_model` 接口） |
+
+> ⚠️ **停启调试**（2026-08 已验证）：改 `llama_model` 后，`python skills/shared/llama_lifecycle.py stop 8080` 停旧模型，再 `start 8080` 拉新模型，`/v1/models` 即返回新 alias，推理链路（含 MTP draft）正常。
+
 ## 2. Stop
 
-Windows: 双击 shiki-stop.cmd（或 shiki.cmd 托盘右键 Stop All）
+Windows: 双击 shiki-stop.cmd
 
-Linux:   参考 start.ps1 / start.sh
+Linux:   bash stop.sh
 
 ## 3. Debugging
 
