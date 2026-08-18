@@ -1,11 +1,7 @@
 {
   "_comment": "Copy this file to openclaw.json and fill in your API keys. Then restart OpenClaw Gateway. Note: tools.byProvider denies the cron tool for the local llama model because llama.cpp's GBNF converter rejects non-anchored JSON Schema patterns; without it every local request fails with HTTP 400.",
   "gateway": {
-    "mode": "local",
-    "auth": {
-      "mode": "token",
-      "token": ""
-    }
+    "mode": "local"
   },
   "channels": {
     "qqbot": {
@@ -45,6 +41,13 @@
             "contextWindow": 150000,
             "maxTokens": 12000,
             "reasoning": false
+          },
+          {
+            "id": "qwen3.8-27b",
+            "name": "qwen3.8 27B",
+            "contextWindow": 80000,
+            "maxTokens": 12000,
+            "reasoning": true
           }
         ]
       },
@@ -132,7 +135,7 @@
             "reasoning": true
           },
           {
-            "id": "glm-4-flash",
+            "id": "glbsp-4-flash",
             "name": "GLM-4-Flash via Headroom",
             "contextWindow": 128000,
             "maxTokens": 8192,
@@ -157,6 +160,11 @@
         ]
       },
       "llama/qwen3.6-27b": {
+        "deny": [
+          "cron"
+        ]
+      },
+      "llama/qwen3.8-27b": {
         "deny": [
           "cron"
         ]
