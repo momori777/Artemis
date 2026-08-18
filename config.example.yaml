@@ -1,126 +1,200 @@
-﻿# AI Girlfriend - 路径配置文件 (模板)
-# 每个人环境和盘符不同，clone后复制此文件为 config.yaml 并修改路径。
-# 自动配置方式: 运行 quick_setup.ps1 交互式填写
-# 手动配置方式: 复制此文件为 config.yaml，修改下面各路径
+# ============================================================
+# AI Girlfriend - config.example.yaml  (Template / 模板)
+# ============================================================
 #
-# 重要: ComfyUI 和 GPT-SoVITS 推理引擎已内置在 skills/ 中
-# 所以你只需要配置 llama.cpp 路径 + 模型权重目录
+# English:
+#   Copy this file to `config.yaml` and edit the paths below.
+#   config.yaml is the ONLY file that actually takes effect at
+#   runtime (it is ignored by .gitignore, so it never gets committed).
+#   All startup scripts read config.yaml; nothing is hardcoded.
+#
+# 中文：
+#   复制本文件为 config.yaml 并修改其中的路径即可使用。
+#   实际生效文件只有 config.yaml（本文件被 .gitignore 忽略，不进 git）。
+#   所有启动脚本都只读取 config.yaml，不会硬编码任何模型。
+#
+# Comments are given in both English and Chinese so that newcomers
+# can understand and customize this template easily.
+# 注释均为中英双语，方便新人快速上手和自定义。
+#
+# All <你的...> / <your...> placeholders are kept as-is. Do NOT change
+# the structure or the key names.
+# 所有 <你的...> 占位符均原样保留，请勿改动结构与键名。
 
 # ============================================================
-# Headroom SmartCrusher + CCR 上下文压缩
+# Headroom SmartCrusher + CCR context compression / 上下文压缩
 # ============================================================
 headroom:
   smart_crusher:
+    # Minimum tokens before a crush is triggered / 触发压缩的最小 token 数
     min_tokens_to_crush: 150
+    # Max items kept after crushing / 压缩后最多保留的条目数
     max_items_after_crush: 10
     first_fraction: 0.3
     last_fraction: 0.1
     variance_threshold: 2.0
     preserve_change_points: true
   ccr:
+    # Max entries in the CCR cache / CCR 缓存最大条目数
     max_entries: 500
+    # Cache TTL in seconds / 缓存存活时间（秒）
     ttl_seconds: 300
 
 # ============================================================
-# OpenClaw workspace (agent 工作区)
+# Workspace / 工作区 (each agent's read/write root)
 # ============================================================
 workspace: "C:\\Users\\<你的用户名>\\.openclaw\\workspace"
 
 # ============================================================
-# OpenClaw Gateway 启动脚本
-# 运行 openclaw gateway --port 18789
+# OpenClaw Gateway launch script / 网关启动脚本
+#   Run / 运行: openclaw gateway --port 18789
 # ============================================================
 gateway_cmd: "C:\\Users\\<你的用户名>\\.openclaw\\gateway.cmd"
-# Node.js 可执行文件 (gateway.cmd 不可用时降级使用)
+# Node executable (fallback when gateway.cmd is unavailable)
+# Node 可执行文件（gateway.cmd 不可用时降级使用）
 # node_exe: "C:\\Program Files\\nodejs\\node.exe"
 
 # ============================================================
-# 媒体输出目录 (qqbot channel 的发文件目录)
+# Media output dirs (qqbot channel file delivery) / 媒体输出目录
 # ============================================================
 media_qqbot_audio: "C:\\Users\\<你的用户名>\\.openclaw\\media\\qqbot\\audio"
 media_qqbot_images: "C:\\Users\\<你的用户名>\\.openclaw\\media\\qqbot\\images"
 
 # ============================================================
-# ComfyUI 文生图
+# ComfyUI image generation / 文生图
 # ============================================================
-# ComfyUI Python 环境 (系统Python或虚拟环境，需有 torch + safetensors)
+# ComfyUI Python env (system or venv; needs torch + safetensors)
+# ComfyUI Python 环境（系统 Python 或虚拟环境，需有 torch + safetensors）
 comfyui_python: "填写 Python 路径，例如 C:\\Users\\<你的用户名>\\AppData\\Local\\Programs\\Python\\Python310\\python.exe"
-# Checkpoint 模型文件目录 (从HF下载的 .safetensors)
+# Checkpoint model dir / Checkpoint 模型文件目录（从 HF 下载的 .safetensors）
 comfyui_checkpoints_dir: "填写 checkpoints 目录，例如 D:\\models\\checkpoints"
-# 临时输出目录 (PS脚本会将成品copy到media_qqbot_images)
+# Temp output dir (the PS script copies the result to media_qqbot_images)
+# 临时输出目录（PS 脚本会把成品 copy 到 media_qqbot_images）
 comfyui_temp_output_dir: "填写临时输出目录"
 
 # ============================================================
-# GPT-SoVITS v2 Pro TTS (推理引擎已内置 skills/sovits/)
+# GPT-SoVITS v2 TTS (engine is bundled in skills/sovits/) / TTS 语音
 # ============================================================
-# Python 环境 (需有 torch>=2.0 + CUDA)
+# Python env (needs torch>=2.0 + CUDA) / Python 环境（需 torch>=2.0 + CUDA）
 sovits_python: "填写 Python 路径"
-# 声优权重文件目录
-#   GPT_weights_v2Pro/xxx-e30.ckpt  (从HF下载)
-#   SoVITS_weights_v2Pro/xxx_e20_s6240.pth  (从HF下载)
+# Voice weights dir / 声优权重文件目录
+#   GPT_weights_v2Pro/xxx-e30.ckpt     （从 HF 下载）
+#   SoVITS_weights_v2Pro/xxx_e20_s6240.pth （从 HF 下载）
 sovits_weights_dir: "填写权重目录，例如 D:\\models\\gpt-sovits-weights"
-# GPT-SoVITS 源码根目录 (已内置 skills/sovits/，保留此字段用于兼容)
-sovits_root: ""  # 留空 = 使用内置 skills/sovits/
-# TTS 输出目录
+# GPT-SoVITS source root (bundled in skills/sovits/; kept for compatibility)
+# GPT-SoVITS 源码根目录（已内置 skills/sovits/，保留此字段用于兼容）
+sovits_root: ""  # empty = use bundled skills/sovits/ / 留空 = 使用内置
+# TTS output dir / TTS 输出目录
 tts_temp_output_dir: "填写 TTS 临时输出目录"
 
 # ============================================================
-# llama.cpp (本地 LLM)
+# llama.cpp (local LLM) / 本地 LLM
 # ============================================================
+# Path to llama-server.exe / llama-server.exe 路径
 llama_exe: "填写 llama-server.exe 路径，例如 D:\\AI_Girlfriend\\llama-server\\llama-server.exe"
+# Path to the GGUF model file / GGUF 模型文件路径
 llama_model: "填写 GGUF 模型文件路径，例如 E:\\Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf"
 
+# Model name shown in API responses (empty = auto from filename)
 # API 响应中显示的模型名称（留空则自动取 llama_model 的文件名）
 llama_model_name: "qwen3.6-27b"
+# OpenAI-compatible API model id (default local/<model name>, e.g. llama/qwen3.6-27b)
 # OpenAI 兼容 API 的 model id（默认 local/<模型名>，例如 llama/qwen3.6-27b）
 llama_model_id: "llama/qwen3.6-27b"
-# llama-server API 密钥（安全和可扩展性）：设置后客户端请求必须带 Authorization: Bearer <key> 或 api_key
-# 留空则不加 --api-key（本地无需认证）
+# llama-server API key (security): if set, clients must send
+#   Authorization: Bearer <key>  or  api_key
+# llama-server API 密钥（安全和可扩展性）：设置后客户端请求必须带
+#   Authorization: Bearer <key> 或 api_key
+# Empty means no --api-key (no auth needed locally)
+# 留空则不加 --api-key（本地无需鉴权）
 llama_api_key: "123456"
-# 模型路径映射表：按模型名称映射到 GGUF 文件路径
-# 当切换模型时，shiki_daemon.py 会根据此表更新 llama_model 路径
-# 留空或每行一个 "模型名: 路径" 映射
-llama_model_map:
-  qwen3.6-35b: "E:\\Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf"
-  qwen3.6-27b: "E:\\Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf"
+
+# llama-server port / llama-server 端口
 llama_port: 8080
+# Log dir for llama-server restarts / llama-server 重启日志目录
 llama_log_dir: "llama-server/restart-logs"
+# Script used to restart llama in degraded mode / 降级重启脚本
 restart_script: "skills/shared/restart_llama_degraded.ps1"
 
-# ── CCR (Claude Code Router) 端口 ──────────────────────────
-# Claude Code 通过 CCR 网关转发到本地 llama。端口集中在此，脚本不硬编码。
-# ccr_port:         CCR 模型网关端口（Claude Code 的 ANTHROPIC_BASE_URL）
-# ccr_web_port:     CCR 管理界面端口（http://127.0.0.1:<ccr_web_port>）
-# ccr_upstream_port: CCR 转发的上游 llama-server 端口（通常 == llama_port）
+# ---- CCR (Claude Code Router) ports / 端口 ----
+# Claude Code routes to the local llama through CCR. Ports live here so
+# scripts do not hardcode them. / Claude Code 通过 CCR 网关转发到本地 llama。
+# 端口统一在此配置，脚本不硬编码。
+# ccr_port:          CCR model gateway port (Claude Code's ANTHROPIC_BASE_URL)
+#                    CCR 模型网关端口（Claude Code 的 ANTHROPIC_BASE_URL）
+# ccr_web_port:      CCR admin web UI port (http://127.0.0.1:<ccr_web_port>)
+#                    CCR 管理界面端口（http://127.0.0.1:<ccr_web_port>）
+# ccr_upstream_port: Upstream llama-server port CCR forwards to (usually == llama_port)
+#                    CCR 转发的上游 llama-server 端口（通常 == llama_port）
 ccr_port: 3456
 ccr_web_port: 3458
 ccr_upstream_port: 8080
-
+# Task board (AgentRQ web UI) port, launched by claude-code-ccr.ps1
 # 任务面板（AgentRQ 可视化网页）端口，由 claude-code-ccr.ps1 拉起
 task_board_port: 19280
 
+# ============================================================
+# Default llama-server parameters / llama 默认启动参数
+# ============================================================
+# These are the DEFAULTS. A matching entry in model_profiles (below)
+# overrides them. / 这些是默认值，model_profiles 中命中预设可覆盖。
 llama:
-  context: 150000
-  batch_size: 2048
-  ubatch_size: 1024
-  cache_ram: 5000
-  ctk: q8_0
-  ctv: q8_0
-  threads: 24
-  ngl: 41
-  # MTP(多 token 预测)投机解码，模型名含 mtp 时自动启用
+  context: 150000        # Context window / 上下文窗口（token）
+  batch_size: 2048       # Prompt batch size / 提示批次大小
+  ubatch_size: 1024      # Micro batch size / 微批次大小
+  cache_ram: 5000        # RAM cache budget in MB / 显存/内存缓存预算（MB）
+  ctk: q8_0              # Cache type for tokens / token 缓存量化
+  ctv: q8_0              # Cache type for values / value 缓存量化
+  threads: 24            # CPU threads / CPU 线程数
+  ngl: 41                # Layers offloaded to GPU / 卸载到 GPU 的层数
+  # MTP (multi-token prediction) speculative decoding; auto-enables when
+  # the model name contains "mtp" / MTP 多 token 预测投机解码，模型名含 mtp 自动启用
   spec_draft_n_max: 2
 
-# ---- 模型预设表 (model_profiles) ----
-# 所有启动入口 (shiki_daemon.py / start.ps1 / llama_lifecycle.py /
-# restart_llama_degraded.ps1 / restart_llama_rea.bat) 都会读取这里：
+# ============================================================
+# Model profiles (model_profiles) / 模型预设表
+# ============================================================
+# All launch entry points (shiki_daemon.py / start.ps1 /
+# llama_lifecycle.py / restart_llama_degraded.ps1 / restart_llama_rea.bat)
+# read this table: they match the llama_model FILENAME against any keyword
+# in `match`. On a hit, that profile's `params` override the `llama`
+# section defaults above. No match -> `llama` defaults are used.
+#
+# 所有启动入口（shiki_daemon.py / start.ps1 / llama_lifecycle.py /
+# restart_llama_degraded.ps1 / restart_llama_rea.bat）都会读取这里：
 # 按 llama_model 文件名包含 match 中任意关键字来匹配预设，
 # 命中后该预设的 params 覆盖上方 llama 区块的默认值。
 # 未命中任何预设时使用 llama 区块默认值。
 model_profiles:
+  # ---- Qwen3.8-27B (internal MTP, aggressive, IQ4_XS) ----
+  - name: "qwen3.8-27b-mtp"
+    # Match keywords against the model filename / 按模型文件名匹配的关键字
+    match:
+      - qwen3.8-27b
+    params:
+      context: 80000        # Effective context for this model / 该模型生效上下文
+      ctk: q4_0
+      ctv: q4_0
+      batch_size: 2048
+      ubatch_size: 1024
+      threads: 24
+      # No ngl: let llama.cpp auto-assign GPU layers (keep no-mmap + mixed CPU/GPU)
+      # 不带 ngl：由 llama.cpp 自动分配 GPU 层（保持 no-mmap + CPU/GPU 混合）
+      ngl: 0
+      cpu_moe: false
+      cpu_mask: ''
+      cache_ram: 2000
+      no_warmup: true
+      # Qwen3.8 ships its own MTP; force it on even without "mtp" in the filename
+      # Qwen3.8 内部自带 MTP，即使文件名不带 mtp 也强制启用
+      spec_draft_n_max: 2
+      rea: true             # reasoning on / 开启深度思考
+
   # ── Qwen3.6-27B-Fable (MTP, Q4_K_S) ──
   - name: "qwen3.6-27b-fable-mtp"
-    match: ["qwen3.6-27b-fable", "qwen3.6-27b"]
+    match:
+      - qwen3.6-27b-fable
+      - qwen3.6-27b
     params:
       ctk: q4_0
       ctv: q4_0
@@ -128,14 +202,17 @@ model_profiles:
       ubatch_size: 2048
       threads: 24
       cpu_moe: false
-      cpu_mask: ""
+      cpu_mask: ''
       cache_ram: 8192
       no_warmup: false
       spec_draft_n_max: 1
       rea: false
+
   # ── Hermes3.6-35B Genesis V7 (MTP, APEX Compact, MoE) ──
   - name: "hermes3.6-35b-genesis-v7-mtp"
-    match: ["hermes3.6-35b-genesis", "hermes3.6-35b"]
+    match:
+      - hermes3.6-35b-genesis
+      - hermes3.6-35b
     params:
       ctk: q4_0
       ctv: q4_0
@@ -143,14 +220,16 @@ model_profiles:
       ubatch_size: 2048
       threads: 24
       cpu_moe: true
-      cpu_mask: "0xFFFFFFFF"
+      cpu_mask: '0xFFFFFFFF'
       cache_ram: 3000
       no_warmup: true
       spec_draft_n_max: 2
       rea: false
-  # ── Qwen3.6-35B (MTP, 通用预设) ──
+
+  # ── Qwen3.6-35B (MTP, generic) / 通用预设 ──
   - name: "qwen3.6-35b-fable-mtp"
-    match: ["qwen3.6-35b"]
+    match:
+      - qwen3.6-35b
     params:
       ctk: q4_0
       ctv: q4_0
@@ -164,13 +243,30 @@ model_profiles:
       rea: false
 
 # ============================================================
-# Memory & Embedding（长期记忆 + 向量库）
+# Model path map (llama_model_map) / 模型路径映射表
 # ============================================================
+# Map a model name to its GGUF path. When switching models,
+# shiki_daemon.py updates llama_model from this table.
+# One "model name: path" entry per line; leave empty to skip.
+# 按模型名映射到 GGUF 文件路径。切换模型时，shiki_daemon.py 会根据此表
+# 更新 llama_model 路径。留空或每行一个 "模型名: 路径" 映射。
+llama_model_map:
+  qwen3.6-35b: "E:\\Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf"
+  qwen3.8-27b: "D:\\model\\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf"
+  qwen3.6-27b: "E:\\Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf"
+
+# ============================================================
+# Memory & Embedding (long-term memory + vector DB) / 长期记忆 + 向量库
+# ============================================================
+# Role-play memory dir / 角色扮演记忆目录
 role_memory_dir: "C:\\Users\\<你的用户名>\\.openclaw\\workspace\\memory\\role_play"
+# Qdrant vector DB storage for mem0 / mem0 的 Qdrant 向量库存储目录
 mem0_qdrant_dir: "C:\\Users\\<你的用户名>\\.openclaw\\workspace\\skills\\sakura\\data\\memory\\qdrant"
+# mem0 bridge script (read/write long-term memories) / 记忆桥接脚本
 mem0_bridge: "C:\\Users\\<你的用户名>\\.openclaw\\workspace\\skills\\shared\\mem0_bridge.py"
+# mem0 periodic sync script / 记忆定期同步脚本
 mem0_sync_cron: "C:\\Users\\<你的用户名>\\.openclaw\\workspace\\skills\\shared\\mem0_sync_cron.py"
+# Embedding model cache dir / embedding 模型缓存路径
 embedding_dir: "填写 embedding 模型缓存路径，例如 C:\\Users\\<你的用户名>\\Desktop\\vllm\\models\\embedding\\all-MiniLM-L6-v2"
+# Script that starts the embedding server / 启动 embedding 服务器的脚本
 embedding_server: "C:\\Users\\<你的用户名>\\.openclaw\\workspace\\skills\\shared\\start_embedding_server.ps1"
-
-
