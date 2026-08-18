@@ -1,5 +1,7 @@
 ﻿Fourth girlfriend voting in progress - please vote on Issues.
 
+Config tutorial BV16XTV6fEoH
+
 Baidu Netdisk: https://pan.baidu.com/s/1sLeSyVp76yzWcR3Q4pX0kA?pwd=0721
 You don't actually need Baidu Netdisk - HuggingFace mirrors work fine in China. Use it only if you really don't want to configure hf-mirror.
 
@@ -622,7 +624,6 @@ Then open **http://127.0.0.1:19280** - create tasks, watch Claude Code pick them
 | Component | Version / Source | Purpose |
 |-|-|-|
 | [OpenClaw](https://docs.openclaw.ai) | latest | AI Agent Gateway |
-| [Claude Code](https://github.com/anthropics/claude-code) | latest | Terminal-based AI agent (optional, MCP integration) |
 | QQ Bot | OpenClaw qqbot channel | QQ message relay |
 | Telegram Bot | OpenClaw telegram channel | Telegram message relay |
 | [llama.cpp](https://github.com/ggml-org/llama.cpp) | b9222 | Local LLM inference server |
@@ -712,13 +713,26 @@ powershell -File setup-llama.ps1
 bash setup-llama.sh
 ```
 
+**API Key (optional, recommended):**
+
+From this version, llama-server enables API key authentication by default (for security and extensibility). Configure in `config.yaml`:
+
+```yaml
+llama_api_key: "123456"   # change to your own key; leave empty to skip --api-key
+```
+
+- After setting, the llama-server inference endpoints (`/v1/chat/completions`, etc.) require requests with `Authorization: Bearer <key>` or `api_key:<key>`.
+- `/health` remains unauthenticated (health checks unaffected).
+- All clients (headroom proxy / sakura / shiki_daemon forwarding) will automatically read `llama_api_key` and include the key, no additional config needed.
+- When connecting to CCR, the CCR provider config also needs the upstream API key set to the same value.
+
 ### 3. Configure Paths
 
 ```powershell
 powershell -File quick_setup.ps1
 ```
 
-Interactive wizard -enter your local paths once, all scripts are updated automatically.
+Interactive wizard - enter your local paths once, all scripts are updated automatically.
 
 ### 4. Quick Launch
 

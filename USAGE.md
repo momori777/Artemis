@@ -1,91 +1,91 @@
 # Artemis — Usage Guide
 
-## 启动方式 — 两条通道
+## Launch Methods — Two Channels
 
-Artemis 提供两种 Agent 运行时，按需选用：
+Artemis provides two Agent runtimes, choose as needed:
 
-### 方式 A：OpenClaw（生产主通道）
+### Method A: OpenClaw (Production Main Channel)
 
 ```
-用途：QQ Bot、Telegram Bot、WebChat 浏览器聊天
-涵盖：角色扮演、TTS、ComfyUI、ASR、Live2D、记忆系统、定时任务
+Usage: QQ Bot, Telegram Bot, WebChat Browser Chat
+Covers: Roleplay, TTS, ComfyUI, ASR, Live2D, Memory System, Scheduled Tasks
 
-Windows: 双击 shiki-start.cmd（或待机托盘）
+Windows: Double-click shiki-start.cmd (or system tray)
 Linux:   bash start.sh
 
-启动后可用界面：
+Interfaces after startup:
   WebChat → http://127.0.0.1:19270
-  任务看板 → http://127.0.0.1:19280
+  Task Board → http://127.0.0.1:19280
   OpenClaw Gateway → port 18789
 ```
 
-### 方式 B：Claude Code（终端开发通道）
+### Method B: Claude Code (Terminal Dev Channel)
 
 ```
-用途：终端 Agent、AgentRQ 风格任务看板
-涵盖：TTS、ComfyUI、ASR、Live2D、记忆系统、任务队列
-不含：QQ/TG/WX 消息通道
+Usage: Terminal Agent, AgentRQ-style Task Board
+Covers: TTS, ComfyUI, ASR, Live2D, Memory System, Task Queue
+Not included: QQ/TG/WX message channels
 
-前提：npm install -g @anthropic-ai/claude-code
+Prerequisite: npm install -g @anthropic-ai/claude-code
 
-Windows: .\claude-code-ccr.ps1      (CCR 网关版，前端走本地 llama)
-         .\claude-code.ps1          (无 CCR，直连 OpenClaw)
+Windows: .\claude-code-ccr.ps1      (CCR Gateway version, frontend uses local llama)
+         .\claude-code.ps1          (No CCR, direct connect to OpenClaw)
 Linux:   bash claude-code-ccr.sh
          bash claude-code.sh
 
-快捷操作：
-  .\claude-code-ccr.ps1 -BoardOnly    ← 只开任务看板（浏览器）
-  .\claude-code-ccr.ps1 -KillBoard    ← 关闭任务看板
-  停止CCR: .\stop-claude-code-ccr.ps1
+Quick operations:
+  .\claude-code-ccr.ps1 -BoardOnly    ← Open Task Board only (browser)
+  .\claude-code-ccr.ps1 -KillBoard    ← Close Task Board
+  Stop CCR: .\stop-claude-code-ccr.ps1
 
-CCR 链路：Claude Code ─→ CCR 网关(:3456) ─→ llama-server(:8080)
+CCR Pipeline: Claude Code ─→ CCR Gateway (:3456) ─→ llama-server (:8080)
 ```
 
-### 功能覆盖对比
+### Feature Coverage Comparison
 
-| 功能            | OpenClaw | Claude Code |
-|-----------------|----------|-------------|
-| QQ Bot 消息     | ✅       | ❌          |
-| Telegram Bot    | ✅       | ❌          |
-| WebChat 浏览器  | ✅       | ❌          |
-| 终端对话        | ❌       | ✅          |
-| TTS 语音        | ✅       | ✅          |
-| ComfyUI 画图    | ✅       | ✅          |
-| ASR 语音识别    | ✅       | ✅          |
-| Live2D 桌宠     | ✅       | ✅          |
-| 角色切换        | ✅       | ✅          |
-| mem0 记忆       | ✅       | ✅          |
-| 定时任务        | ✅       | ❌          |
-| 任务看板        | ❌       | ✅          |
+| Feature               | OpenClaw | Claude Code |
+|-----------------------|----------|-------------|
+| QQ Bot messages       | ✅       | ❌          |
+| Telegram Bot          | ✅       | ❌          |
+| WebChat browser       | ✅       | ❌          |
+| Terminal chat         | ❌       | ✅          |
+| TTS voice             | ✅       | ✅          |
+| ComfyUI image gen     | ✅       | ✅          |
+| ASR speech recognition| ✅       | ✅          |
+| Live2D desktop pet    | ✅       | ✅          |
+| Character switch      | ✅       | ✅          |
+| mem0 memory           | ✅       | ✅          |
+| Scheduled tasks       | ✅       | ❌          |
+| Task board            | ❌       | ✅          |
 
-## 模型配置（改 config.yaml 就能换模型）
+## Model Configuration (change config.yaml to swap models)
 
-所有启动入口（`shiki_daemon.py` / `start.ps1` / `restart_llama_rea.bat` /
-`restart_llama_degraded.ps1` / `llama_lifecycle.py`）统一走 `skills/shared/llama_config.py`
-解析启动参数，**无硬编码模型路径**。换模型只需改 `config.yaml`：
+All launch entry points (`shiki_daemon.py` / `start.ps1` / `restart_llama_rea.bat` /
+`restart_llama_degraded.ps1` / `llama_lifecycle.py`) use `skills/shared/llama_config.py`
+for parameter parsing, with **no hardcoded model paths**. To swap models, just edit `config.yaml`:
 
 ```yaml
-llama_model: "E:\\Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf"   # GGUF 文件路径（唯一真源）
-llama_model_name: "qwen3.6-27b"                        # API alias（留空自动取文件名）
-llama_model_id: "llama/qwen3.6-27b"                    # model id（留空自动 = local/<name>）
-llama_api_key: "123456"                                # API 密钥（留空则不加 --api-key）
+llama_model: "E:\\Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf"   # GGUF file path (single source of truth)
+llama_model_name: "qwen3.6-27b"                        # API alias (leave empty to auto-use filename)
+llama_model_id: "llama/qwen3.6-27b"                    # model id (leave empty to auto-set = local/<name>)
+llama_api_key: "123456"                                # API key (leave empty to skip --api-key)
 ```
 
-关键机制：
+Key mechanisms:
 
-| 机制 | 说明 |
-|------|------|
-| **model_profiles 预设匹配** | 按 `llama_model` 文件名关键字自动匹配启动参数（`ctk/ctv/batch/cpu_moe/spec_draft_n_max/rea`），无需手动调参数表 |
-| **MTP 自动检测** | 模型名含 `mtp` 时自动加 `--spec-type draft-mtp`，非 MTP 模型不会误加 |
-| **model_id 自动校准** | 若 `llama_model_id` 后缀与 `llama_model_name` 不一致（例如残留旧值 `…/qwen3.6-35b`），会自动修正为 `…/<name>` |
-| **API 密钥认证** | `llama_api_key` 非空时加 `--api-key <key>`，推理端点要求 `Authorization: Bearer <key>`；headroom proxy / sakura / shiki_daemon 自动带 key，`/health` 仍免认证 |
-| **llama_model_map** | 运行时切换模型用（`shiki_daemon` 的 `/switch_model` 接口） |
+| Mechanism | Description |
+|-----------|-------------|
+| **model_profiles preset matching** | Automatically matches launch parameters (`ctk/ctv/batch/cpu_moe/spec_draft_n_max/rea`) by `llama_model` filename keywords, no manual parameter table adjustment needed |
+| **MTP auto-detection** | When model name contains `mtp`, automatically adds `--spec-type draft-mtp`; non-MTP models won't get it |
+| **model_id auto-calibration** | If `llama_model_id` suffix doesn't match `llama_model_name` (e.g., stale old value `…/qwen3.6-35b`), auto-corrects to `…/<name>` |
+| **API key auth** | When `llama_api_key` is non-empty, adds `--api-key <key>`; inference endpoints require `Authorization: Bearer <key>`; headroom proxy / sakura / shiki_daemon automatically include key, `/health` remains unauthenticated |
+| **llama_model_map** | For runtime model switching (via `shiki_daemon`'s `/switch_model` endpoint) |
 
-> ⚠️ **停启调试**（2026-08 已验证）：改 `llama_model` 后，`python skills/shared/llama_lifecycle.py stop 8080` 停旧模型，再 `start 8080` 拉新模型，`/v1/models` 即返回新 alias，推理链路（含 MTP draft）正常。
+> ⚠️ **Stop/start debugging** (verified 2026-08): After changing `llama_model`, run `python skills/shared/llama_lifecycle.py stop 8080` to stop the old model, then `start 8080` to load the new model, `/v1/models` returns the new alias immediately, inference chain (including MTP draft) works normally.
 
 ## 2. Stop
 
-Windows: 双击 shiki-stop.cmd
+Windows: Double-click shiki-stop.cmd
 
 Linux:   bash stop.sh
 

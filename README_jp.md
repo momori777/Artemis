@@ -1,4 +1,6 @@
-﻿第四の女友投票中 - Issues で投票してください。
+﻿4号のガールフレンド投票中 - Issues で投票してください。
+
+配置教程BV16XTV6fEoH
 
 百度网盘: https://pan.baidu.com/s/1sLeSyVp76yzWcR3Q4pX0kA?pwd=0721
 実際には百度网盘は不要です - HuggingFace ミラーは中国国内でも正常に動作します。hf-mirror の設定をしたくない場合のみ使用してください。
@@ -94,11 +96,9 @@ OpenClaw + QQ Bot + Telegram Bot + llama.cpp + GPT-SoVITS + ComfyUI + Sakura デ
 
 > 👆 **夜乃 桜** デスクトップペット: 銀ピンクグラデーション髪、淡い青の瞳、学生服 - 反応的なポートレート表現、主動的なケアリマインダー、GPT-SoVITS によるリアルタイム TTS 音声。
 
-### 🌐 ウェブチャットフロントエンド
+![Web Chat デモ](media/webchat-demo.gif)
 
-![ウェブチャット デモ](media/webchat-demo.gif)
-
-> 👆 **ウェブチャット**: ブラウザベースのチャットインターフェース `http://127.0.0.1:19270` — QQ/Telegramボットの代替。ローカルデーモンプロキシに接続 → llama.cpp サーバー。8GB VRAMで全量正常動作。
+> 👆 **Web Chat**: ブラウザベースのチャットインターフェース `http://127.0.0.1:19270` — QQ/Telegramボットの代替。ローカルデーモンプロキシに接続 → llama.cpp サーバー。一切のサービスを停止せず!! 8GB VRAMで全量正常動作!!!!
 
 ### 🎙️ TTS 音声
 
@@ -130,7 +130,7 @@ OpenClaw + QQ Bot + Telegram Bot + llama.cpp + GPT-SoVITS + ComfyUI + Sakura デ
 | コンポーネント | モデル |
 |-|-|
 | GPU | NVIDIA GeForce RTX 5070 Laptop (8 GB VRAM) |
-| CPU | Intel Core i9-14900HX (24コア, 32スレッド) |
+| CPU | Intel Core i9-14900 (24コア, 32スレッド) |
 | RAM | 32 GB DDR5 |
 | OS | Windows 11 |
 
@@ -173,29 +173,30 @@ Qwen3.6-35B（言語の心）  ←→  Cosmos 3 Nano（物理の心）
 - 📋 ~24GB+ VRAM ハードウェアを待機中
 
 
-## 機能
+## 機能特性
 
-- 🔄 **マルチキャラクターホットスワップ** - AIガールフレンド間のワンクリック切替（夏目 ↔ アトリ ↔ 桜）; SOUL/IDENTITY/TTS 重み/Live2D モデルが自動切替、メモリはキャラクターごとに分離
-- 🃏 **SillyTavern キャラクターカード取り込み** - PNG/JSON カードを自動検出して取り込み；カードインポート時にエージェントが自動でペルソナ切替
-- 💬 **チャット履歴取り込み** - SillyTavern JSONL 会話ログを `memory/role_play/<character>/` に取り込み；キャラクター切替時にエージェントがコンテキストを復元
-- 🎤 **TTS 音声合成** - ローカル GPT-SoVITS 推論、日本語音声（会話ごとに感情マッチ）、3 キャラクターの音声モデル（夏目 / アトリ / 桜）
+- 🔄 **マルチキャラクターホットスワップ** - 一キーで AI ガールフレンド切替（夏目 ⇄ アトリ ⇄ 夜乃樜）；SOUL/IDENTITY/TTS 重み/Live2D モデルが全部自動切替、メモリはキャラクターごとに分離
+- 🃏 **SillyTavern キャラクターカード取り込み** - PNG/JSON キャラクターカードの自動検出と取り込み、インポート後にエージェントが自動でキャラクター切替
+- 💬 **チャット履歴取り込み** - SillyTavern JSONL 会話ログを `memory/role_play/<角色>/` に取り込み、キャラクター切替時にエージェントがコンテキストを復元
+- 💬 **QQ + Telegram 双チャンネル** - OpenClaw Gateway 経由で QQ Bot と Telegram Bot を接入
+- 🎤 **TTS 音声合成** - ローカル GPT-SoVITS 推論、日本語音声（会話ごとに感情マッチ）、3 套キャラクター音声モデル（夏目 / アトリ / 夜乃桜）
 - 🎤 **ASR 音声認識** - ローカル Faster-Whisper small モデル（~1.5GB VRAM）、llama と共存可能；99言語対応
-- 🎨 **AI 画像生成** - ローカル ComfyUI 推論、SDXL/Illustrious モデル、3 キャラクターのプロンプトテンプレート
-- 🖥️ **Sakura デスクトップペット** - PySide6 デスクトップコンパニオン、主動的ケア、画面観察 & ローカルLLM認識；3キャラクター対応
-- 🎭 **Live2D キャラクターモデル** - 感情駆動の表情 & 吹き出し付きリアルタイム Live2D レンダリング（夏目 / アトリ L2D; 桜ポートレートモード）
-- 🧠 **スマートVRAMティアリング** - GPU VRAM を自動検出して最適な実行モードを選択：≥12GB はすべてオンライン維持（llama + スキル共存）、8GB は GPU 重負荷タスク用に llama をホットスワップ、<8GB は安全モード。手動設定ゼロ
-- 🎛️ **Artemis Studio コンソール** - TTS + ComfyUI のビジュアルワークショップ、llama 状態に関係なくいつでも音声/画像 DIY - 真のオフラインクリエイティブスイート
-- 💾 **ロールプレイメモリ** - キャラクターごとの `memory/role_play/` に日別会話サマリー
-- 🧠 **長期記憶システム** - [headroom](https://github.com/chopratejas/headroom)（SmartCrusher + CCR）と [mem0](https://github.com/mem0ai/mem0)（Qdrant ベクターデータベース）搭載：
-  - **中国語埋め込み強化** - all-MiniLM-L6-v2 に BGE-small-zh-v1.5 を追加し、日中英ミックス検索の精度を向上
-  - **SmartCrusher コンテキストトリミング** - チャット履歴を LLM リクエストごとに 24メッセージ/40K文字でハードキャップ
-  - **CCR（収集-統合-取得）** - バックグラウンドワーカーが 8 ターンごとに永続的ファクトを抽出し、mem0 Qdrant に書き込み
-  - **ベクター + BM25 複合検索** - セマンティック類似度 + キーワードマッチングを Qdrant + 二重埋め込みモデルで実現
-  - **自動同期ブリッジ** - クローンジョブが 30 分ごとに Qdrant → `_mem0_auto.md` を同期し、OpenClaw 原生の `memory_search` でベクターメモリを検索可能に
-  - **キャラクター別分離** - Qdrant 内の `user_id` スコーピング；4 つの独立メモリ空間（sakura / natsume / enola / atori）
-  - **検索優先順位** - ベクター長期記憶 > 手書き日付ノート > SOUL 基本ペルソナ
+- 🎨 **AI 画像生成** - ローカル ComfyUI 推論、SDXL/Illustrious モデル、3 套キャラクタープロンプトテンプレート
+- 🖥️ **Sakura デスクトップペット** - PySide6 デスクトップコンパニオン、主動的ケア、画面観察 & ローカル LLM 認識；3 キャラクター対応
+- 🎭 **Live2D キャラクターモデル** - リアルタイム Live2D レンダリング、感情駆動の表情 & 吹き出し（夏目 / アトリ L2D; 夜乃桜ポートレートモード）
+- 🧠 **VRAM 智能ティアリング** - GPU VRAM を自動検出して最適な実行モードを選択：≥12GB は全スキルオンライン（含 llama）；8GB は llama 停止して GPU 切替；<8GB は安全モード。手動設定ゼロ
+- 🎛️ **Artemis Studio コンソール** - TTS + ComfyUI のビジュアルワークショップ、llama 状態に関係なくいつでも音声/画像 DIY、真のオフラインクリエイティブ台
+- 💾 **ロールプレイメモリ** - キャラクターごとの `memory/role_play/` に日別会話サマリーを保存
+- 🧠 **長期記憶システム** - [headroom](https://github.com/chopratejas/headroom)（SmartCrusher + CCR 整理-合并-检索）と [mem0](https://github.com/mem0ai/mem0)（Qdrant ベクターデータベース）を搭載：
+  - **中国語埋め込み強化** - BGE-small-zh-v1.5 中国語埋め込みモデルを新規追加、中日英ミックスメモリ検索をより正確に；all-MiniLM-L6-v2 は引き続き英語/英語のクロス言語に使用
+  - **SmartCrusher テキスト圧縮** - 各 LLM リクエストごとに 24 件のメッセージ / 40K 文字でハードトリミング
+  - **CCR（整理-合并-检索）** - バックグラウンドスレッドが各 8 回の会話で永続的メモリを抽出、mem0 Qdrant に書き込み
+  - **ベクター + BM25 複合検索** - セマンティック類似度 + キーワードマッチ、Qdrant + 二重埋め込みモデルベース
+  - **自動同期ブリッジ** - Cron job が各 30 分ごとに Qdrant → `_mem0_auto.md` を同期、ベクターのメモリを OpenClaw 原生 `memory_search` で検索可能に
+  - **キャラクター分離** - Qdrant 内で `user_id` で 4 つの独立したメモリ空間（sakura / natsume / enola / atori）を区切る
+  - **検索優先順位** - ベクター長期記憶 > 手書き日記 > SOUL 基本ペルソナ
 
-> 詳細は [`skills/behavior-engine/README.md`](skills/behavior-engine/README.md) と [`AGENTS_roleplay_JA.md`](AGENTS_roleplay_JA.md) を参照。
+> 詳細は [`skills/behavior-engine/README.md`](skills/behavior-engine/README.md) と [`AGENTS_roleplay_CN.md#行为引擎`](AGENTS_roleplay_CN.md#行为引擎behavior-engine)。
 
 ### 💖 好感度システム（Behavior Engine）
 
@@ -219,9 +220,6 @@ Qwen3.6-35B（言語の心）  ←→  Cosmos 3 Nano（物理の心）
 
 **状態ファイル：** `memory/role_play/<キャラ>/relationship.json`（キャラごとに独立、ホットロード）
 **モジュール位置：** `skills/behavior-engine/`
-- 🔄 **マルチキャラクターホットスワップ** - ワンドコマンドで AI ガールフレンド切替（夏目 ↔ アトリ ↔ 桜）；SOUL/IDENTITY/TTS 重み/Live2D モデルが自動切替、メモリ分離済み
-- 🃏 **キャラクターカード取り込み** - `skills/character_importer/` 経由で SillyTavern キャラクターカードを自動検出、取り込み → エージェント自動で役割切替
-- 💬 **チャット取り込み** - SillyTavern JSONL チャットログを `memory/role_play/<character>/` に取り込み、ロール切替時に会話コンテキストを復元
 
 ## モデル
 
@@ -707,6 +705,19 @@ powershell -File setup-llama.ps1
 bash setup-llama.sh
 ```
 
+**API キー（任意、推奨）:**
+
+本バージョン以降、llama-server はデフォルトで API キー認証を有効化（セキュリティと拡張性のため）。`config.yaml` で設定：
+
+```yaml
+llama_api_key: "123456"   # 自分自身のキーに変更；空欄なら --api-key 不加
+```
+
+- 設定後、llama-server の推論エンドポイント（`/v1/chat/completions` 等）は `Authorization: Bearer <key>` または `api_key:<key>` 付きの要求を必要とする。
+- `/health` は認証不要（ヘルスチェックに影響なし）。
+- すべてのクライアント（headroom proxy / sakura / shiki_daemon 転送）は自動的に `llama_api_key` を読み取り、キーを添付し、追加設定不要。
+- CCR 接続時、CCR の provider 設定でもアップストリーム API キーを同じ値にする必要がある。
+
 ### 3. パス設定
 
 ```powershell
@@ -736,7 +747,7 @@ powershell -File start.ps1
 
 **シャットダウン: `shiki.cmd -Stop`** - 全サービスを正常停止（llama → live2d → sakura → embedding → comfyui → gateway → cleanup）。
 
-### 5. Live2D を個別起動
+### 5. Live2D 個別起動
 
 ```powershell
 # ブリッジ起動
