@@ -75,7 +75,8 @@ echo ""
 
 # Model file list: repo_path|local_path|description
 MODELS=(
-    "llm/Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf|Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact.gguf|LLM GGUF — LuffyTheFox Genesis Hermes V6 APEX Compact (16.11 GB)"
+    "llm/Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf|llm/Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf|LLM GGUF — Hermes V7 MTP MoE 35B (17.1 GB)"
+    "llm/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf|llm/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf|LLM GGUF — Qwen3.8-27B Uncensored HauhauCS Aggressive IQ4_XS (16.3 GB, 备选)"
     "comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors|comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors|ComfyUI Checkpoint — WAI (6.46 GB)"
     "comfyui-checkpoints/miaomiaoHarem_v20.safetensors|comfyui-checkpoints/miaomiaoHarem_v20.safetensors|ComfyUI Checkpoint — Miaomiao (6.46 GB)"
     "gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt|gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt|GPT-SoVITS ckpt (~155 MB)"
