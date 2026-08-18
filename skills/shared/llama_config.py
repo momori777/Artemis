@@ -39,7 +39,11 @@ def load_config(path=None):
     try:
         import yaml
         with open(path, "r", encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
+            cfg = yaml.safe_load(f) or {}
+        # 记录配置文件真实路径，供相对路径解析(如 chat_template.jinja)
+        if isinstance(cfg, dict):
+            cfg["_cfg_path"] = os.path.abspath(path)
+        return cfg
     except ImportError:
         # 无 yaml 时使用简单回退
         return {}
@@ -133,11 +137,19 @@ def resolve_llama_params(cfg, model_path=None):
         # 静默校准：多数情况下前缀 local/ 与 llama/ 是等价的本地别名，
         # 这里不打印噪声日志，避免脚本输出被污染。
 
+    # fix overthinking: 使用统一的 chat_template.jinja (froggeric v22.1)
+    # 相对路径基于项目根(config.yaml 所在目录)解析为绝对路径
+    _tpl = cfg.get("llama_chat_template", "llama-server/chat_template.jinja")
+    _cfg_path = cfg.get("_cfg_path", "")
+    if _cfg_path and not os.path.isabs(_tpl):
+        _tpl = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(_cfg_path)), _tpl))
+
     params = {
         "model_path": model_path,
         "model_name": model_name,
         "model_id": model_id,
         "exe_path": cfg.get("llama_exe", ""),
+        "chat_template": _tpl,
         "port": int(cfg.get("llama_port", 8080)),
         "log_dir": cfg.get("llama_log_dir", ""),
         "restart_script": cfg.get("restart_script", ""),
@@ -196,6 +208,10 @@ def build_llama_args(params):
         "--jinja",
         "--reasoning-preserve",
     ]
+
+    # Overthink 修复：用固定聊天模板，结合 --reasoning-preserve 保留推理块
+    if params.get("chat_template"):
+        args += ["--chat-template-file", params["chat_template"]]
 
     if params["cache_ram"] > 0:
         args += ["--cache-ram", str(params["cache_ram"])]
