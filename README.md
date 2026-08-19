@@ -316,6 +316,28 @@ llama-server.exe `
 
 > 💡 **About `--no-mmap` vs `-ngl`:** `--no-mmap` lets llama.cpp manage memory on its own, which is far more efficient than manually specifying layers with `-ngl`. Forcing GPU layers via `-ngl` can cut speed in half; `--no-mmap` allows the engine to dynamically allocate based on actual VRAM. Using `q4_0` for KV cache halves VRAM usage.
 
+### Why the root `chat_template.jinja` exists
+
+The project root ships a **fixed Jinja chat template** ([froggeric/Qwen-Fixed-Chat-Templates](https://huggingface.co/froggeric/Qwen-Fixed-Chat-Templates), pinned at **v22.1** in `chat_template.jinja`) that overrides the template baked into the GGUFs. The official Qwen 3.5/3.6/3.8 templates contain engine restrictions, Python-specific Jinja logic, and regressions that break local inference and agent workflows — the most visible one is **overthinking**: the official Qwen 3.8 template hardcodes `xhigh` reasoning depth by default, which can exhaust the token budget on thinking before the model ever answers.
+
+The fixed template (v22 generation) delivers:
+
+- **Sane reasoning baseline** — defaults to `medium` (zero injected tokens) instead of hardcoded `xhigh`, preserving KV-cache parity and preventing empty-content timeouts
+- **Working fast mode** — official 3.8 crashes on `enable_thinking=false`; here non-reasoning mode works via kwargs or inline `<|think_off|>`
+- **Clean history extraction** — extracts prior-turn thinking across OpenAI (`reasoning_content`), Anthropic (`thinking`), and in-content `<think>` tags without blank-block poisoning or tag duplication
+- **Tool-call safety** — handles serialized JSON tool arguments from standard OpenAI API clients without Jinja syntax crashes / KV cache invalidation (critical for OpenClaw tool loops)
+- **Native `--reasoning-preserve` support** — via the `preserve_reasoning` hook, so `-rea on` + `--reasoning-preserve` keeps 100% prefix KV cache retention
+- **Client reasoning aliases** — maps `high`/`max`/`minimal`/`none` etc. automatically; per-turn inline steering via `<|think_low|>` … `<|think_xhigh|>` / `<|think_off|>` tags
+
+One file covers all Qwen 3.5 / 3.6 / 3.8 sizes, so it works unchanged for both local models. Launch plumbing: `config.yaml` → `llama_chat_template: chat_template.jinja` (relative to the project root), and `llama_config.py` resolves it to `--chat-template-file` — nothing hardcoded. That's also why the file must stay at the root and must **not** be gitignored (`!chat_template.jinja` in `.gitignore`):
+
+```powershell
+llama-server.exe ... --jinja --reasoning-preserve \
+  --chat-template-file "D:\AI_Girlfriend\chat_template.jinja"
+```
+
+> 📌 To inspect which template version a GGUF/dir currently carries, the froggeric repo ships `scripts/check_applied.py`. To upgrade, replace the root file with a newer release (v22.2+ adds Qwen 3.8 refinements) and restart llama — no code changes needed.
+
 ### Switching models (`restart_llama_degraded.ps1 -SwitchTo`)
 
 Switch between the two active models with a **one-liner** — the script kills the

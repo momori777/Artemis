@@ -337,6 +337,28 @@ VRAM 不足時は `-ForceBatch 1024` でバッチサイズを下げられます�
 
 > 💡 **`--no-mmap` vs `-ngl` について：** `--no-mmap` は llama.cpp にメモリ管理を任せ、手動で `-ngl` 層数を指定するよりはるかに効率的です。`-ngl` で GPU 層を強制すると速度が半減する可能性がありますが、`--no-mmap` は実際の VRAM に応じて動的割り当てを行います。KV キャッシュに `q4_0` を使用すると VRAM 使用量が半減します。
 
+### プロジェクトルートの `chat_template.jinja` が存在する理由
+
+プロジェクトルートには**修復版の Jinja チャットテンプレート** ([froggeric/Qwen-Fixed-Chat-Templates](https://huggingface.co/froggeric/Qwen-Fixed-Chat-Templates)、v22.1 固定、ファイル `chat_template.jinja`) が同梱されており、GGUF に内蔵されているテンプレートを上書きします。公式の Qwen 3.5/3.6/3.8 テンプレートには、エンジン制限、Python 固有の Jinja 論理、局所推論とエージェントワークフローを壊す後退が含まれています——最も目立つのは**思考の暴走**です：公式 3.8 テンプレートはデフォルトで `xhigh` の推論深度をハードコードしており、モデルが答えを生成する前に思考にトークン予算を使い果たしてしまいます。
+
+修復版テンプレート（v22 世代）は以下を提供します：
+
+- **適切な推論ベースライン** — デフォルトで `medium`（注入トークンゼロ）、ハードコードされた `xhigh` ではなく、KV キャッシュの一貫性を維持し、空コンテンツのタイムアウトを防ぐ
+- **動作する高速モード** — 公式 3.8 は `enable_thinking=false` でクラッシュしますが、本テンプレートは kwargs またはインライン `<|think_off|>` 経由で非推論モードをサポート
+- **クリーンな履歴抽出** — OpenAI (`reasoning_content`)、Anthropic (`thinking`)、インライン `<think>` タグをまたいで過去の思考を空白ブロックの汚染やタグ重複なしで抽出
+- **ツール呼び出しの安全** — 標準 OpenAI API クライアントからのシリアライズ JSON 引数を処理し、Jinja 構文クラッシュ / KV キャッシュ無効化を防ぐ（OpenClaw ツールループに重要）
+- **ネイティブ `--reasoning-preserve` サポート** — `preserve_reasoning` フック経由で、`-rea on` + `--reasoning-preserve` で 100% 接頭辞 KV キャッシュ維持
+- **クライアント推論エイリアス** — `high`/`max`/`minimal`/`each` を自動マッピング；各ターンごとのインライン操作は `<|think_low|>` … `<|think_xhigh|>` / `<|think_off|>` タグ経由
+
+1 つのファイルで Qwen 3.5 / 3.6 / 3.8 全てのサイズをカバーするため、両方のローカルモデルでそのまま使えます。起動パイプライン：`config.yaml` → `llama_chat_template: chat_template.jinja`（プロジェクトルート基準）、`llama_config.py` が `--chat-template-file` に展開——ハードコードなし。ファイルがルートのままかつ **gitignore しない**（`.gitignore` に `!chat_template.jinja`）理由もここにあります：
+
+```powershell
+llama-server.exe ... --jinja --reasoning-preserve \
+  --chat-template-file "D:\AI_Girlfriend\chat_template.jinja"
+```
+
+> 📌 GGUF/ディレクトリが現在どのテンプレートバージョンを保持するかを確認するには、froggeric リポジトリの `scripts/check_applied.py` をご利用ください。アップグレードするにはルートファイルを新しいリリース（v22.2+ で Qwen 3.8 の改善）に置き換え、llama を再起動——コード変更不要。
+
 MTP（Multi-Token Prediction）は CPU で 2 語先のトークンを予測し、メインモデルが GPU で検証します。受け入れ率約 71%、実出力約 48 tok/s。
 
 ### 主要指標 (35B MoE)
