@@ -102,6 +102,13 @@ def resolve_llama_params(cfg, model_path=None):
     if model_path is None:
         model_path = cfg.get("llama_model", "")
 
+    # 相对路径解析：model_path 为相对路径时，基于项目根(config.yaml 所在目录)解析为绝对路径，
+    # 这样 llama_model / llama_model_map 可写相对路径（如 model/xxx.gguf），
+    # 无论从哪个 CWD 启动都能正确找到模型文件。
+    _cfg_dir = os.path.dirname(os.path.abspath(cfg.get("_cfg_path", ""))) if cfg.get("_cfg_path") else ""
+    if model_path and _cfg_dir and not os.path.isabs(model_path):
+        model_path = os.path.normpath(os.path.join(_cfg_dir, model_path))
+
     llm_block = cfg.get("llama", {})
     profiles = cfg.get("model_profiles", [])
     profile_match = match_profile(model_path, profiles)
@@ -138,8 +145,8 @@ def resolve_llama_params(cfg, model_path=None):
         # 这里不打印噪声日志，避免脚本输出被污染。
 
     # fix overthinking: 使用统一的 chat_template.jinja (froggeric v22.1)
-    # 相对路径基于项目根(config.yaml 所在目录)解析为绝对路径
-    _tpl = cfg.get("llama_chat_template", "llama-server/chat_template.jinja")
+    # 该修复文件放在项目根目录(不可 gitignore)，相对路径基于项目根(config.yaml 所在目录)解析为绝对路径
+    _tpl = cfg.get("llama_chat_template", "chat_template.jinja")
     _cfg_path = cfg.get("_cfg_path", "")
     if _cfg_path and not os.path.isabs(_tpl):
         _tpl = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(_cfg_path)), _tpl))
@@ -160,6 +167,7 @@ def resolve_llama_params(cfg, model_path=None):
         "batch_size": int(_v("batch_size", 2048)),
         "ubatch_size": int(_v("ubatch_size", 1024)),
         "threads": int(_v("threads", 24)),
+        "threads_batch": int(_v("threads_batch", 0)),   # 0 = 不传 --threads-batch
         "ngl": int(_v("ngl", 41)),
         "ctk": _v("ctk", "q8_0"),
         "ctv": _v("ctv", "q8_0"),
@@ -204,6 +212,13 @@ def build_llama_args(params):
         "--batch-size", str(params["batch_size"]),
         "--ubatch-size", str(params["ubatch_size"]),
         "--threads", str(params["threads"]),
+    ]
+
+    # 批量(解码)线程数：仅当 > 0 时传入 --threads-batch
+    if params.get("threads_batch", 0) > 0:
+        args += ["--threads-batch", str(params["threads_batch"])]
+
+    args += [
         "-rea", params["rea_mode"],
         "--jinja",
         "--reasoning-preserve",
