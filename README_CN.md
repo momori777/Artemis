@@ -228,10 +228,11 @@ Qwen3.6-35B (语言心智) ←→ Cosmos 3 Nano (物理心智)
 
 详见 [`models.yaml`](models.yaml)。
 
-| 模型 | 用途 | 大小 |
-|-|-|-|
-| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V7 MTP APEX Compact** (GGUF) | 聊天 LLM (主模型 MoE) | 16.11 GB |
-| **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | 聊天 LLM (备选密集模型) | 13.5 GB |
+| 模型 | 用途 | 大小 | 上下文 |
+|-|-|-|-|
+| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V9 MTP APEX Compact** (GGUF) | 聊天 LLM (主模型 MoE) | 16.11 GB | 120K |
+| **Qwen3.8-27B-Uncensored-HauhauCS-Aggressive** (IQ4_XS GGUF) | 聊天 LLM (稠密,备选) | 14.6 GB | 120K |
+| **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | 聊天 LLM (稠密,旧版) | 13.5 GB | 150K |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI 画图(默认) | 6.46 GB |
 | **miaomiaoHarem_v20** | ComfyUI 画图(备用) | 6.46 GB |
 | **GPT-SoVITS 语音权重** | TTS 语音合成 | ~303 MB |
@@ -271,24 +272,64 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-d
 
 ## 本地 LLM 性能
 
-通过 llama.cpp 运行 Qwen3.6-35B-A3B-MTP (Genesis Hermes V7 MTP APEX Compact, MoE, 16.11 GiB, 34.66B 参数)，启用 MTP (Multi-Token Prediction) 投机解码。
+通过 llama.cpp 运行 Qwen3.6-35B-A3B Genesis Hermes **V9** MTP APEX Compact (MoE, 16.11 GiB, 34.66B 参数, 8/256 experts)，启用 MTP (Multi-Token Prediction) 投机解码。
 
-### 启动命令
+### 启动命令（唯一参数源）
+
+> 🚀 **无需手写 llama-server 参数。** 所有启动入口（`start.ps1`、`shiki_daemon.py`、
+> `restart_llama_degraded.ps1`）都从 `config.yaml` 读取参数（经 `skills/shared/llama_config.py`），
+> 按当前模型文件名自动匹配 `model_profiles` 并生成完整 `llama-server` 命令。模型自动检测，参数按 profile 自动分离——无硬编码。
+> 切换模型见下方 **“切换模型”** 小节。
+
+**`llama_config.py` 为当前模型（V9 MoE）实际生成的命令：**
 
 ```powershell
 llama-server.exe `
-  -m "Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf" `
-  -c 150000 `
+  -m "D:\model\Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf" `
+  -c 120000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
   --cpu-moe --cpu-mask 0xFFFFFFFF `
   --batch-size 4096 --ubatch-size 2048 `
-  -rea off --jinja `
+  -rea on --jinja --reasoning-preserve `
+  --chat-template-file "D:\AI_Girlfriend\chat_template.jinja" `
   --cache-ram 3000 --parallel 1 `
-  --kv-unified --no-mmap `
+  --kv-unified --no-mmap --no-warmup `
   --spec-type draft-mtp --spec-draft-n-max 2
 ```
 
-> 💡 **关于 `--no-mmap` 与 `-ngl`:** `--no-mmap` 让 llama.cpp 自行管理内存分配,比手动指定 `-ngl` 层数效率更高。`-ngl` 强制锁定指定层数到 GPU,可能导致一半速度损失;而 `--no-mmap` 让引擎根据实际显存动态调度。KV 缓存用 `q4_0` 量化可节省一半显存,16K 上下文下 q4 可稳定运行 50K+ token。
+> ⚠️ **`chat_template.jinja` 必须放在项目根目录**（`D:\AI_Girlfriend\chat_template.jinja`）
+> 且**不可被 gitignore**（`.gitignore` 已加 `!chat_template.jinja`）。这是固定的 froggeric v22.1
+> 模板，配合 `-rea on` + `--reasoning-preserve` 保留思考块。若缺失或被忽略，llama 启动参数会错误。
+> `config.yaml` → `llama_chat_template: chat_template.jinja` 指向它。
+
+### 切换模型（`restart_llama_degraded.ps1 -SwitchTo`）
+
+一条命令在两个模型间切换——脚本会：杀当前 llama → 重写 `config.yaml`（`llama_model` /
+`llama_model_name` / `llama_model_id`）→ 重新解析 profile → 重启 → 等待 `/health`：
+
+```powershell
+cd D:\AI_Girlfriend
+# 27B 稠密 (Qwen3.8-27B) —— 主要工具模型
+.\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.8-27b
+
+# 35B MoE (Hermes Genesis V9) —— 主要角色扮演模型
+.\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.6-35b
+```
+
+`-SwitchTo` 接受 `config.yaml` → `llama_model_map` 的**键名**（如 `qwen3.8-27b` /
+`qwen3.6-35b`），也支持子串（如 `-SwitchTo 27b`）。显存不足时可用 `-ForceBatch 1024` 降低 batch。
+
+### 模型 profile 与上下文窗口
+
+| 模型 | `-SwitchTo` 键 | Profile | Context | `rea` |
+|-|-|-|-|-|
+| **Qwen3.8-27B** (稠密) | `qwen3.8-27b` | `qwen3.8-27b-mtp` | **120000** | `on`（强制） |
+| **Hermes Genesis V9** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v7-mtp` | **120000** | `on`（强制） |
+
+> 🧠 **两个模型默认都带 `-rea on`**（DeepSeek 式深度思考）——在 `config.yaml` → `model_profiles` 中设置。
+> `-rea on` 时思考 token 会计入上下文/输出预算；本地 `max_tokens` 不要写死，且长文本 TTS/画图请务必**先** `sessions_spawn`。
+
+> 💡 **关于 `--no-mmap` 与 `-ngl`:** `--no-mmap` 让 llama.cpp 自行管理内存分配,比手动指定 `-ngl` 层数效率更高。`-ngl` 强制锁定指定层数到 GPU,可能导致一半速度损失;而 `--no-mmap` 让引擎根据实际显存动态调度。KV 缓存用 `q4_0` 量化可节省一半显存。
 
 MTP (Multi-Token Prediction) 在 CPU 上预测 2 个未来 token，主模型在 GPU 上验证。接受率约 71%，实际输出约 48 tok/s。
 
@@ -310,7 +351,7 @@ MTP (Multi-Token Prediction) 在 CPU 上预测 2 个未来 token，主模型在 
 
 **参测模型**（均为 `--seed 622539`）：
 - **deepseek-v4-flash (0731)** — 云端、无限上下文基线。云级智能体能力（本基准约 Claude 4.6–4.8 级别）。
-- **Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf** — RTX5070 LAPTOP,8G VRAM, 32g d5 RAM,
+- **Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf** *(基准测试跑在 V7；现为 V9)* — RTX5070 LAPTOP,8G VRAM, 32g d5 RAM,
 
 #### 结果 (Seed 622539, Level 1, 24 游戏小时)
 
@@ -348,24 +389,33 @@ Qwen3.6 MoE 使用 SSM (Gated Delta Net) 混合注意力,配合 `--kv-unified`�
 
 ---
 
-## Qwen3.6-27B-Fable-MTP (密集模型，备选)
+## Qwen3.8-27B (密集模型，备选)
 
-辅助密集模型，适用于需要全 27B 参数激活的任务。通过 llama.cpp 运行，启用 MTP 投机解码。
+辅助密集模型，适用于需要全 27B 参数激活的任务。通过 llama.cpp 运行，启用 MTP 投机解码。同样由 `config.yaml` → `model_profiles` 自动检测（`qwen3.8-27b-mtp`）。
 
 ### 启动命令
 
+切换或手动启动（参数由 `llama_config.py` 解析）：
+
 ```powershell
+# 推荐：自动切换 + 自动参数（见上方“切换模型”）
+.\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.8-27b
+
+# 等效手动命令
 llama-server.exe `
-  -m "Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf" `
-  -c 150000 `
+  -m "D:\model\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf" `
+  -c 120000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
-  --batch-size 4096 --ubatch-size 2048 `
-  -rea off --jinja `
-  --parallel 1 --kv-unified --no-mmap `
-  --spec-type draft-mtp --spec-draft-n-max 1
+  --batch-size 2048 --ubatch-size 1024 `
+  --threads 24 --threads-batch 24 `
+  -rea on --jinja --reasoning-preserve `
+  --chat-template-file "D:\AI_Girlfriend\chat_template.jinja" `
+  --cache-ram 2000 --parallel 1 `
+  --kv-unified --no-mmap --no-warmup `
+  --spec-type draft-mtp --spec-draft-n-max 2
 ```
 
-> ⚠️ **8GB 显存跑密集模型**:27B Q4_K_S ≈ 14 GB，远超 8 GB 显存。大部分层跑在 CPU 上，仅 attention 等层在 GPU。这是**主要瓶颈**，生成速度远低于 MoE 版本。
+> ⚠️ **8GB 显存跑密集模型**:27B Q4 ≈ 15 GB，远超 8 GB 显存。大部分层跑在 CPU 上，仅 attention 等层在 GPU。这是**主要瓶颈**，生成速度远低于 MoE 版本。
 
 ### 关键指标 (27B 密集)
 
@@ -375,7 +425,7 @@ llama-server.exe `
 | 预填充速度 | **~156 t/s** | Prompt 在 GPU 处理 |
 | Token 生成 | **~3.8 tok/s** | 密集 27B，CPU 为主，MTP ~84% |
 | MTP 接受率 | 84.1% (draft=1) | 草稿头更简单，接受率更高 |
-| 上下文长度 | 150K | KV 在 GPU/CPU 混合 |
+| 上下文长度 | **120K** | KV 在 GPU/CPU 混合 |
 
 > 💡 **MoE vs 密集**:35B MoE 每 token 只激活 ~3B 参数 (8/256 experts)，完美适配 GPU，可达 48 tok/s。27B 密集激活全部 27B，超显存后被 CPU 瓶颈卡在 3.8 tok/s。在该硬件上(RTX 5070 8GB)，**强烈推荐 35B MoE 做主模型**。
 

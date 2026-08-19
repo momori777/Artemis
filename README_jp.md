@@ -227,10 +227,11 @@ Qwen3.6-35B（言語の心）  ←→  Cosmos 3 Nano（物理の心）
 
 詳細は [`models.yaml`](models.yaml) を参照。
 
-| モデル | 用途 | サイズ |
-|-|-|-|
-| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V7 MTP APEX Compact** (GGUF) | チャット LLM（主モデル MoE）| 16.11 GB |
-| **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | チャット LLM（代替密集モデル）| 13.5 GB |
+| モデル | 用途 | サイズ | コンテキスト |
+|-|-|-|-|
+| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V9 MTP APEX Compact** (GGUF) | チャット LLM（主モデル MoE）| 16.11 GB | 120K |
+| **Qwen3.8-27B-Uncensored-HauhauCS-Aggressive** (IQ4_XS GGUF) | チャット LLM（Dense,代替）| 14.6 GB | 120K |
+| **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | チャット LLM（Dense,旧版）| 13.5 GB | 150K |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI 生成（デフォルト） | 6.46 GB |
 | **miaomiaoHarem_v20** | ComfyUI 生成（バックアップ） | 6.46 GB |
 | **GPT-SoVITS 音声重み** | TTS 音声合成 | ~303 MB |
@@ -273,24 +274,68 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-d
 
 ## ローカル LLM パフォーマンス
 
-llama.cpp 経由で Qwen3.6-35B-A3B-MTP（Genesis Hermes V7 MTP APEX Compact、MoE、16.11 GiB、34.66B パラメータを）実行。MTP（Multi-Token Prediction 擬似デコード）有効。
+llama.cpp 経由で Qwen3.6-35B-A3B Genesis Hermes **V9** MTP APEX Compact（MoE、16.11 GiB、34.66B パラメータ、8/256 experts）を実行。MTP（Multi-Token Prediction 擬似デコード）有効。
 
-### 起動コマンド
+### 起動コマンド（唯一のパラメータ源）
+
+> 🚀 **llama-server 引数を手書きする必要はありません。** すべての起動エントリ（`start.ps1`、
+> `shiki_daemon.py`、`restart_llama_degraded.ps1`）は `config.yaml` からパラメータを読み込み
+> （`skills/shared/llama_config.py` 経由）、現在のモデルファイル名に一致する `model_profiles` を自動マッチして
+> 完全な `llama-server` コマンドを生成します。モデルは自動検出され、パラメータはプロファイルごとに自動分離——ハードコードなし。
+> モデル切替は下の「モデル切替」を参照。
+
+**`llama_config.py` が現在のモデル（V9 MoE）用に生成する実際のコマンド：**
 
 ```powershell
 llama-server.exe `
-  -m "Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf" `
-  -c 150000 `
+  -m "D:\model\Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf" `
+  -c 120000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
   --cpu-moe --cpu-mask 0xFFFFFFFF `
   --batch-size 4096 --ubatch-size 2048 `
-   -rea off --jinja `
+  -rea on --jinja --reasoning-preserve `
+  --chat-template-file "D:\AI_Girlfriend\chat_template.jinja" `
   --cache-ram 3000 --parallel 1 `
-  --kv-unified --no-mmap `
+  --kv-unified --no-mmap --no-warmup `
   --spec-type draft-mtp --spec-draft-n-max 2
 ```
 
-> 💡 **`--no-mmap` vs `-ngl` について：** `--no-mmap` は llama.cpp にメモリ管理を任せ、手動で `-ngl` 層数を指定するよりはるかに効率的です。`-ngl` で GPU 層を強制すると速度が半減する可能性がありますが、`--no-mmap` は実際の VRAM に応じて動的割り当てを行います。KV キャッシュに `q4_0` を使用すると VRAM 使用量が半減し、16K コンテキストで q4 は 50K+ トークンまで安定動作します。
+> ⚠️ **`chat_template.jinja` はプロジェクトルート**（`D:\AI_Girlfriend\chat_template.jinja`）に置き、
+> **gitignore してはいけません**（`.gitignore` に `!chat_template.jinja` を追加済み）。
+> これは固定の froggeric v22.1 テンプレートで、`-rea on` + `--reasoning-preserve` と組み合わせて
+> 思考ブロックを保持します。欠落・無視されると llama 起動引数が壊れます。
+> `config.yaml` → `llama_chat_template: chat_template.jinja` が指します。
+
+### モデル切替（`restart_llama_degraded.ps1 -SwitchTo`）
+
+1 コマンドで 2 モデルを切替えます——スクリプトが：現在の llama を kill → `config.yaml` を書き換え
+（`llama_model` / `llama_model_name` / `llama_model_id`）→ プロファイルを再解決 → 再起動 → `/health` 待ち：
+
+```powershell
+cd D:\AI_Girlfriend
+# 27B Dense (Qwen3.8-27B) —— 主なツール用モデル
+.\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.8-27b
+
+# 35B MoE (Hermes Genesis V9) —— 主なロールプレイ用モデル
+.\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.6-35b
+```
+
+`-SwitchTo` は `config.yaml` → `llama_model_map` の**キー名**（例 `qwen3.8-27b` /
+`qwen3.6-35b`）、または部分文字列（例 `-SwitchTo 27b`）を受け付けます。
+VRAM 不足時は `-ForceBatch 1024` でバッチサイズを下げられます。
+
+### モデルプロファイルとコンテキストウィンドウ
+
+| モデル | `-SwitchTo` キー | プロファイル | Context | `rea` |
+|-|-|-|-|-|
+| **Qwen3.8-27B** (Dense) | `qwen3.8-27b` | `qwen3.8-27b-mtp` | **120000** | `on`（強制） |
+| **Hermes Genesis V9** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v7-mtp` | **120000** | `on`（強制） |
+
+> 🧠 **両モデルともデフォルトで `-rea on`**（DeepSeek 式の深い推論）—— `config.yaml` → `model_profiles` で設定。
+> `-rea on` では思考トークンがコンテキスト/出力予算に加算されます。ローカル `max_tokens` を固定せず、
+> 長文 TTS・画像生成は必ず**最初の**ツールコールで `sessions_spawn` してください。
+
+> 💡 **`--no-mmap` vs `-ngl` について：** `--no-mmap` は llama.cpp にメモリ管理を任せ、手動で `-ngl` 層数を指定するよりはるかに効率的です。`-ngl` で GPU 層を強制すると速度が半減する可能性がありますが、`--no-mmap` は実際の VRAM に応じて動的割り当てを行います。KV キャッシュに `q4_0` を使用すると VRAM 使用量が半減します。
 
 MTP（Multi-Token Prediction）は CPU で 2 語先のトークンを予測し、メインモデルが GPU で検証します。受け入れ率約 71%、実出力約 48 tok/s。
 
@@ -312,7 +357,7 @@ MTP（Multi-Token Prediction）は CPU で 2 語先のトークンを予測し�
 
 **テストモデル（すべて `--seed 622539`）：**
 - **deepseek-v4-flash (0731)** — クラウド、無限コンテキストベースライン。クラスエージェント能力（このベンチマークでは Claude 4.6〜4.8 レベル）。
-- **Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf** — RTX5070 LAPTOP、8G VRAM、32G D5 RAM。
+- **Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf** *(ベンチマークは V7 で実施；現在は V9)* — RTX5070 LAPTOP、8G VRAM、32G D5 RAM。
 
 #### 結果（Seed 622539、Level 1、24 ゲーム時間）
 
@@ -350,24 +395,33 @@ Qwen3.6 MoE は SSM（Gated Delta Net）ハイブリッド注意力と `--kv-uni
 
 ---
 
-## Qwen3.6-27B-Fable-MTP（密集モデル、代替）
+## Qwen3.8-27B（密集モデル、代替）
 
-全 27B パラメータ活性化が必要なタスク用の補助密集モデル。llama.cpp 経由で実行、MTP 擬似デコード有効。
+全 27B パラメータ活性化が必要なタスク用の補助密集モデル。llama.cpp 経由で実行、MTP 擬似デコード有効。`config.yaml` → `model_profiles` で自動検出（`qwen3.8-27b-mtp`）。
 
 ### 起動コマンド
 
+切替または手動起動（引数は `llama_config.py` が解決）：
+
 ```powershell
+# 推奨：自動切替 + 自動パラメータ（上の「モデル切替」参照）
+.\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.8-27b
+
+# 同等の手動コマンド
 llama-server.exe `
-  -m "Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf" `
-  -c 150000 `
+  -m "D:\model\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf" `
+  -c 120000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
-  --batch-size 4096 --ubatch-size 2048 `
-  -rea off --jinja `
-  --parallel 1 --kv-unified --no-mmap `
-  --spec-type draft-mtp --spec-draft-n-max 1
+  --batch-size 2048 --ubatch-size 1024 `
+  --threads 24 --threads-batch 24 `
+  -rea on --jinja --reasoning-preserve `
+  --chat-template-file "D:\AI_Girlfriend\chat_template.jinja" `
+  --cache-ram 2000 --parallel 1 `
+  --kv-unified --no-mmap --no-warmup `
+  --spec-type draft-mtp --spec-draft-n-max 2
 ```
 
-> ⚠️ **8GB VRAM で密集モデル**: 27B Q4_K_S ≈ 14 GB、8 GB VRAM を大幅に超える。大部分の層が CPU で動作し、attention などの層のみが GPU で動作。**主なボトルネック**で、MoE 版よりも生成速度が大幅に低下する。
+> ⚠️ **8GB VRAM で密集モデル**: 27B Q4 ≈ 15 GB、8 GB VRAM を大幅に超える。大部分の層が CPU で動作し、attention などの層のみが GPU で動作。**主なボトルネック**で、MoE 版よりも生成速度が大幅に低下する。
 
 ### 主要指標 (27B 密集)
 
@@ -377,7 +431,7 @@ llama-server.exe `
 | プリフィル速度 | **~156 t/s** | GPU でプロンプト処理 |
 | トークン生成 | **~3.8 tok/s** | 密集 27B、CPU 主体、MTP ~84% |
 | MTP 受け入れ率 | 84.1% (draft=1) | 単純な草稿ヘッダーのため受け入れ率が高い |
-| コンテキスト制限 | 150K | KV が GPU/CPU 混合 |
+| コンテキスト制限 | **120K** | KV が GPU/CPU 混合 |
 
 > 💡 **MoE vs 密集**: 35B MoE は各トークンで約 3B パラメータのみ活性化 (8/256 エキスパート)、GPU に完璧に適合して 48 tok/s を達成。27B 密集は全 27B を活性化し、VRAM を超えて CPU ボトルネックで 3.8 tok/s に制限。このハードウェア（RTX 5070 8GB）では、**35B MoE を主モデルとして強く推奨**。
 

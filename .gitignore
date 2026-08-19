@@ -54,6 +54,9 @@ __pycache__/
 llama-server/
 llama-server.bak.*/
 
+# 修复版聊天模板 chat_template.jinja (froggeric v22.1) 必须放在项目根目录，不可 gitignore，否则 llama 启动参数会错误
+!chat_template.jinja
+
 # llama 杩愯鏃ュ織锛堜粎鏍圭洰褰曪級
 /*llama*.txt
 *.log

@@ -232,10 +232,11 @@ All models hosted on HuggingFace: **[TAOTAO777/ai-girlfriend-natsume](https://hu
 
 See [`models.yaml`](models.yaml) for full details.
 
-| Model | Purpose | Size |
-|-|-|-|
-| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V7 MTP APEX Compact** (GGUF) | Chat LLM (primary MoE) | 16.11 GB |
-| **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | Chat LLM (secondary dense) | 13.5 GB |
+| Model | Purpose | Size | Context |
+|-|-|-|-|
+| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V9 MTP APEX Compact** (GGUF) | Chat LLM (primary MoE) | 16.11 GB | 120K |
+| **Qwen3.8-27B-Uncensored-HauhauCS-Aggressive** (IQ4_XS GGUF) | Chat LLM (dense, secondary) | 14.6 GB | 120K |
+| **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | Chat LLM (dense, legacy) | 13.5 GB | 150K |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI generation (default) | 6.46 GB |
 | **miaomiaoHarem_v20** | ComfyUI generation (backup) | 6.46 GB |
 | **GPT-SoVITS voice weights** | TTS voice synthesis | ~303 MB |
@@ -278,26 +279,73 @@ All Python/PS scripts read paths from `config.yaml` -no hardcoded paths to edit.
 
 ## Local LLM Performance
 
-Running Qwen3.6-35B-A3B-MTP (Genesis Hermes V7 MTP APEX Compact, MoE, 16.11 GiB, 34.66B params) via llama.cpp with speculative MTP (Multi-Token Prediction) decoding.
+Running **Qwen3.6-35B-A3B Genesis Hermes V9 MTP APEX Compact** (MoE, 16.11 GiB, 34.66B params, 8/256 experts) via llama.cpp with speculative MTP (Multi-Token Prediction) decoding.
 
-### Launch Command
+### Launch Command (one source of truth)
+
+> 🚀 **You don't hand-type llama-server args anymore.** Every launch entry point
+> (`start.ps1`, `shiki_daemon.py`, `restart_llama_degraded.ps1`) reads the launch
+> parameters from `config.yaml` via `skills/shared/llama_config.py`, which
+> auto-matches the active model filename against `model_profiles` and builds the
+> full `llama-server` command. Models are auto-detected and parameters separate
+> by profile — nothing is hardcoded.
+>
+> See **"Switching models"** below for the one-liner.
+
+**What `llama_config.py` actually generates** for the active model (V9 MoE):
 
 ```powershell
 llama-server.exe `
-  -m "Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf" `
-  -c 150000 `
+  -m "D:\model\Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf" `
+  -c 120000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
   --cpu-moe --cpu-mask 0xFFFFFFFF `
   --batch-size 4096 --ubatch-size 2048 `
-  -rea off --jinja `
+  -rea on --jinja --reasoning-preserve `
+  --chat-template-file "D:\AI_Girlfriend\chat_template.jinja" `
   --cache-ram 3000 --parallel 1 `
-  --kv-unified --no-mmap `
+  --kv-unified --no-mmap --no-warmup `
   --spec-type draft-mtp --spec-draft-n-max 2
 ```
 
-> 💡 **About `--no-mmap` vs `-ngl`:** `--no-mmap` lets llama.cpp manage memory on its own, which is far more efficient than manually specifying layers with `-ngl`. Forcing GPU layers via `-ngl` can cut speed in half; `--no-mmap` allows the engine to dynamically allocate based on actual VRAM. Using `q4_0` for KV cache halves VRAM usage - at 16K context, q4 runs stably for 50K+ tokens.
+> ⚠️ **`chat_template.jinja` must live at the project root** (`D:\AI_Girlfriend\chat_template.jinja`)
+> and must **not** be gitignored (`.gitignore` has `!chat_template.jinja`). It is the
+> fixed froggeric v22.1 template that makes `-rea on` + `--reasoning-preserve`
+> work (thinking blocks are preserved). If it's missing or ignored, llama launch
+> args break. `config.yaml` → `llama_chat_template: chat_template.jinja` points to it.
 
-MTP (Multi-Token Prediction) uses a draft head that predicts 2 future tokens at each step on CPU, then the main model verifies them on GPU. Acceptance rate ~71%, yielding ~48 tok/s effective output.
+> 💡 **About `--no-mmap` vs `-ngl`:** `--no-mmap` lets llama.cpp manage memory on its own, which is far more efficient than manually specifying layers with `-ngl`. Forcing GPU layers via `-ngl` can cut speed in half; `--no-mmap` allows the engine to dynamically allocate based on actual VRAM. Using `q4_0` for KV cache halves VRAM usage.
+
+### Switching models (`restart_llama_degraded.ps1 -SwitchTo`)
+
+Switch between the two active models with a **one-liner** — the script kills the
+current llama-server, rewrites `config.yaml` (`llama_model` / `llama_model_name` /
+`llama_model_id`), re-resolves the profile, restarts, and waits for `/health`:
+
+```powershell
+cd D:\AI_Girlfriend
+# 27B dense (Qwen3.8-27B) — primary tooling model
+.\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.8-27b
+
+# 35B MoE (Hermes Genesis V9) — primary roleplay model
+.\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.6-35b
+```
+
+`-SwitchTo` accepts the **key** in `config.yaml` → `llama_model_map` (e.g.
+`qwen3.8-27b` / `qwen3.6-35b`), or a substring (e.g. `-SwitchTo 27b`). Use
+`-ForceBatch 1024` to lower batch size if you hit VRAM limits.
+
+### Model profiles & context windows
+
+| Model | `-SwitchTo` key | Profile | Context | `rea` |
+|-|-|-|-|-|
+| **Qwen3.8-27B** (dense) | `qwen3.8-27b` | `qwen3.8-27b-mtp` | **120000** | `on` (forced) |
+| **Hermes Genesis V9** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v7-mtp` | **120000** | `on` (forced) |
+
+> 🧠 **Both models default to `-rea on`** (DeepSeek-style deep reasoning) — set in
+> `config.yaml` → `model_profiles`. `-rea on` makes thinking tokens count toward
+> the context/output budget; keep that in mind for `max_tokens` / spawning long
+> TTS or image requests first.
 
 ### Key Metrics (35B MoE)
 
@@ -317,7 +365,7 @@ This is a **pure black-box agent test**: the model decides every move itself via
 
 **Models under test** (all `--seed 622539`):
 - **deepseek-v4-flash (0731)** — remote, unlimited-context baseline. Cloud-class agent ability (~Claude 4.6–4.8 tier in this benchmark).
-- **Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf** — RTX5070 LAPTOP, 8G VRAM, 32G D5 RAM,
+- **Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf** *(benchmark ran on V7; V9 is now current)* — RTX5070 LAPTOP, 8G VRAM, 32G D5 RAM,
 
 #### Results (Seed 622539, Level 1, 24 game-hours)
 
@@ -357,24 +405,33 @@ Qwen3.6 MoE uses SSM (Gated Delta Net) hybrid attention with `--kv-unified`.
 
 ---
 
-## Qwen3.6-27B-Fable-MTP (Dense, Alt Model)
+## Qwen3.8-27B (Dense, Secondary Model)
 
-Secondary dense model for tasks where full 27B parameter activation is preferred. Runs via llama.cpp with MTP speculative decoding.
+Secondary dense model for tasks where full 27B parameter activation is preferred. Runs via llama.cpp with MTP speculative decoding. Also auto-detected via `config.yaml` → `model_profiles` (`qwen3.8-27b-mtp`).
 
 ### Launch Command
 
+Switch to it, or launch manually with the resolved params:
+
 ```powershell
+# Preferred: auto-switch + auto-params (see "Switching models" above)
+.\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.8-27b
+
+# Equivalent manual command (what llama_config.py generates)
 llama-server.exe `
-  -m "Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf" `
-  -c 150000 `
+  -m "D:\model\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf" `
+  -c 120000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
-  --batch-size 4096 --ubatch-size 2048 `
-  -rea off --jinja `
-  --parallel 1 --kv-unified --no-mmap `
-  --spec-type draft-mtp --spec-draft-n-max 1
+  --batch-size 2048 --ubatch-size 1024 `
+  --threads 24 --threads-batch 24 `
+  -rea on --jinja --reasoning-preserve `
+  --chat-template-file "D:\AI_Girlfriend\chat_template.jinja" `
+  --cache-ram 2000 --parallel 1 `
+  --kv-unified --no-mmap --no-warmup `
+  --spec-type draft-mtp --spec-draft-n-max 2
 ```
 
-> ⚠️ **Dense model on 8GB VRAM**: 27B Q4_K_S ≈ 14 GB, far exceeding 8 GB VRAM. Most layers run on CPU while attention etc. runs on GPU. This is the **main bottleneck**; expect much lower generation speed than the MoE variant.
+> ⚠️ **Dense model on 8GB VRAM**: 27B Q4 ≈ 15 GB, far exceeding 8 GB VRAM. Most layers run on CPU while attention etc. runs on GPU. This is the **main bottleneck**; expect much lower generation speed than the MoE variant.
 
 ### Key Metrics (27B Dense)
 
@@ -384,9 +441,9 @@ llama-server.exe `
 | Prefill Speed | **~156 t/s** | Prompt processing on GPU |
 | Token Generation | **~3.8 tok/s** | Dense 27B, CPU-heavy, MTP ~84% accept |
 | MTP Acceptance | 84.1% (draft=1) | Higher rate due to simpler draft head |
-| Context Limit | 150K | Full KV on GPU/CPU hybrid |
+| Context Limit | **120K** | Full KV on GPU/CPU hybrid |
 
-> 💡 **MoE vs Dense**: The 35B MoE activates only ~3B parameters per token (8/256 experts) and fits GPU well, hitting 48 tok/s. The 27B dense activates all 27B and exceeds VRAM, bottlenecked to 3.8 tok/s. For this hardware (RTX 5070 8GB), **the 35B MoE is strongly recommended** as primary.
+> 💡 **MoE vs Dense**: The 35B MoE activates only ~3B parameters per token (8/256 experts) and fits GPU well, hitting 48 tok/s. The 27B dense activates all 27B and exceeds VRAM, bottlenecked to 3.8 tok/s. For this hardware (RTX 5070 8GB), **the 35B MoE is strongly recommended** as primary. Use the 27B dense when you want full 27B activation for tooling / agent tasks.
 
 ### VRAM Tiering Strategy
 
@@ -914,6 +971,8 @@ A complete web-based AI girlfriend chat interface, served locally at `http://127
 
 ## ⚠️ Important Notes
 
+- **`chat_template.jinja` must stay at the project root** (`D:\AI_Girlfriend\chat_template.jinja`) and **must not be gitignored**. It is the fixed froggeric v22.1 template referenced by `config.yaml` → `llama_chat_template` and passed via `--chat-template-file`. Deleting it or letting it be gitignored breaks llama launch args (the model falls back to a broken default template). `.gitignore` already has `!chat_template.jinja` to keep it tracked.
+- **Both models force `-rea on`** (DeepSeek-style deep reasoning) by default via `model_profiles`. Thinking tokens count toward the context window / output budget, so don't hardcode a small local `max_tokens`, and always run TTS / image-gen as the **first** tool call (`sessions_spawn`) before sending long text.
 - **RTX 50xx (Blackwell) + CUDA 13.x = `munmap_chunk(): invalid pointer` crash** - CUDA 13.x has known memory management incompatibility with llama.cpp on Blackwell GPUs. **Solution: use pre-built llama.cpp binaries compiled with CUDA 12.x** (not self-compiled with CUDA 13.x). Download from [llama.cpp Releases](https://github.com/ggml-org/llama.cpp/releases), choose `cudart-llama-bin-win-cuda-12.4-x64.zip`. RTX 5070 Ti is fully compatible with CUDA 12.x drivers.
 - Llama-server is offline for ~60-120s during TTS/ComfyUI inference on 8GB VRAM (Tier 1) - conversation pauses, but Live2D + Artemis Studio keep running. On 12GB+ (Tier 2), no interruption at all
 - Sub-sessions use **local model** (same as main), DeepSeek as optional fallback

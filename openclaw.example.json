@@ -1,5 +1,5 @@
 {
-  "_comment": "Copy this file to openclaw.json and fill in your API keys. Then restart OpenClaw Gateway. Note: tools.byProvider denies the cron tool for the local llama model because llama.cpp's GBNF converter rejects non-anchored JSON Schema patterns; without it every local request fails with HTTP 400.",
+  "_comment": "Copy this file to openclaw.json and fill in your API keys. Then restart OpenClaw Gateway. Note: tools.byProvider denies the cron tool for local llama models because llama.cpp's GBNF converter rejects non-anchored JSON Schema patterns; without it every local request fails with HTTP 400.",
   "gateway": {
     "mode": "local"
   },
@@ -13,7 +13,7 @@
   "agents": {
     "defaults": {
       "model": {
-        "primary": "llama/qwen3.6-35b",
+        "primary": "llama/qwen3.8-27b",
         "fallbacks": []
       },
       "timeoutSeconds": 600
@@ -29,11 +29,18 @@
         "timeoutSeconds": 600,
         "models": [
           {
+            "id": "qwen3.8-27b",
+            "name": "qwen3.8 27B",
+            "contextWindow": 120000,
+            "maxTokens": 12000,
+            "reasoning": true
+          },
+          {
             "id": "qwen3.6-35b",
-            "name": "qwen3.6 35B",
+            "name": "qwen3.6 35B MoE",
             "contextWindow": 150000,
             "maxTokens": 12000,
-            "reasoning": false
+            "reasoning": true
           },
           {
             "id": "qwen3.6-27b",
@@ -41,13 +48,6 @@
             "contextWindow": 150000,
             "maxTokens": 12000,
             "reasoning": false
-          },
-          {
-            "id": "qwen3.8-27b",
-            "name": "qwen3.8 27B",
-            "contextWindow": 80000,
-            "maxTokens": 12000,
-            "reasoning": true
           }
         ]
       },
@@ -58,6 +58,13 @@
         "auth": "api-key",
         "timeoutSeconds": 600,
         "models": [
+          {
+            "id": "qwen3.8-27b",
+            "name": "qwen3.8 27B via Headroom",
+            "contextWindow": 120000,
+            "maxTokens": 12000,
+            "reasoning": true
+          },
           {
             "id": "llama-local",
             "name": "Local Llama (Headroom+Mem0)",
@@ -73,73 +80,10 @@
           },
           {
             "id": "qwen3.6-35b",
-            "name": "qwen3.6 35B via Headroom",
+            "name": "qwen3.6 35B MoE via Headroom",
             "contextWindow": 150000,
             "maxTokens": 12000,
-            "reasoning": false
-          },
-          {
-            "id": "deepseek-v4-flash",
-            "name": "deepseek-v4-flash via Headroom",
-            "contextWindow": 500000,
-            "maxTokens": 131072,
             "reasoning": true
-          },
-          {
-            "id": "deepseek-v4-pro",
-            "name": "deepseek-v4-pro via Headroom",
-            "contextWindow": 204800,
-            "maxTokens": 131072,
-            "reasoning": true
-          },
-          {
-            "id": "gemini-3.6-flash",
-            "name": "gemini-3.6-flash via Headroom",
-            "contextWindow": 320000,
-            "maxTokens": 131072,
-            "reasoning": true
-          },
-          {
-            "id": "gemini-3.5-flash",
-            "name": "gemini-3.5-flash via Headroom",
-            "contextWindow": 320000,
-            "maxTokens": 131072,
-            "reasoning": true
-          },
-          {
-            "id": "claude-opus-4-8",
-            "name": "claude-opus-4-8 via Headroom",
-            "contextWindow": 400000,
-            "maxTokens": 16000,
-            "reasoning": true
-          },
-          {
-            "id": "grok-4.5",
-            "name": "grok-4.5 via Headroom",
-            "contextWindow": 204800,
-            "maxTokens": 131072,
-            "reasoning": true
-          },
-          {
-            "id": "grok-4.2-fast",
-            "name": "grok-4.2-fast via Headroom",
-            "contextWindow": 204800,
-            "maxTokens": 131072,
-            "reasoning": true
-          },
-          {
-            "id": "glm-5.2",
-            "name": "GLM-5.2 via Headroom",
-            "contextWindow": 204800,
-            "maxTokens": 131072,
-            "reasoning": true
-          },
-          {
-            "id": "glbsp-4-flash",
-            "name": "GLM-4-Flash via Headroom",
-            "contextWindow": 128000,
-            "maxTokens": 8192,
-            "reasoning": false
           }
         ]
       }
@@ -154,6 +98,11 @@
   },
   "tools": {
     "byProvider": {
+      "llama/qwen3.8-27b": {
+        "deny": [
+          "cron"
+        ]
+      },
       "llama/qwen3.6-35b": {
         "deny": [
           "cron"
@@ -164,12 +113,7 @@
           "cron"
         ]
       },
-      "llama/qwen3.8-27b": {
-        "deny": [
-          "cron"
-        ]
-      },
-      "local-llama/qwen3.6-35b": {
+      "local-llama/qwen3.8-27b": {
         "deny": [
           "cron"
         ]

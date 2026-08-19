@@ -115,6 +115,10 @@ llama_port: 8080
 llama_log_dir: "llama-server/restart-logs"
 # Script used to restart llama in degraded mode / 降级重启脚本
 restart_script: "skills/shared/restart_llama_degraded.ps1"
+# Fixed chat template (froggeric v22.1) MUST live at the project root
+# and NOT be gitignored, otherwise llama launch args break.
+# 修复版聊天模板 (froggeric v22.1) 必须放在项目根目录，不可 gitignore，否则启动参数会错误。
+llama_chat_template: "chat_template.jinja"
 
 # ---- CCR (Claude Code Router) ports / 端口 ----
 # Claude Code routes to the local llama through CCR. Ports live here so
@@ -172,12 +176,13 @@ model_profiles:
     match:
       - qwen3.8-27b
     params:
-      context: 80000        # Effective context for this model / 该模型生效上下文
+      context: 120000        # Effective context for this model / 该模型生效上下文
       ctk: q4_0
       ctv: q4_0
       batch_size: 2048
       ubatch_size: 1024
       threads: 24
+      threads_batch: 24
       # No ngl: let llama.cpp auto-assign GPU layers (keep no-mmap + mixed CPU/GPU)
       # 不带 ngl：由 llama.cpp 自动分配 GPU 层（保持 no-mmap + CPU/GPU 混合）
       ngl: 0
@@ -208,7 +213,7 @@ model_profiles:
       spec_draft_n_max: 1
       rea: false
 
-  # ── Hermes3.6-35B Genesis V7 (MTP, APEX Compact, MoE) ──
+  # ── Hermes3.6-35B Genesis V9 (MTP, APEX Compact, MoE) ──
   - name: "hermes3.6-35b-genesis-v7-mtp"
     match:
       - hermes3.6-35b-genesis
@@ -224,7 +229,7 @@ model_profiles:
       cache_ram: 3000
       no_warmup: true
       spec_draft_n_max: 2
-      rea: false
+      rea: true
 
   # ── Qwen3.6-35B (MTP, generic) / 通用预设 ──
   - name: "qwen3.6-35b-fable-mtp"
@@ -251,7 +256,7 @@ model_profiles:
 # 按模型名映射到 GGUF 文件路径。切换模型时，shiki_daemon.py 会根据此表
 # 更新 llama_model 路径。留空或每行一个 "模型名: 路径" 映射。
 llama_model_map:
-  qwen3.6-35b: "E:\\Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf"
+  qwen3.6-35b: "D:\\model\\Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf"
   qwen3.8-27b: "D:\\model\\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf"
   qwen3.6-27b: "E:\\Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf"
 
