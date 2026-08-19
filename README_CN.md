@@ -331,6 +331,28 @@ cd D:\AI_Girlfriend
 
 > 💡 **关于 `--no-mmap` 与 `-ngl`:** `--no-mmap` 让 llama.cpp 自行管理内存分配,比手动指定 `-ngl` 层数效率更高。`-ngl` 强制锁定指定层数到 GPU,可能导致一半速度损失;而 `--no-mmap` 让引擎根据实际显存动态调度。KV 缓存用 `q4_0` 量化可节省一半显存。
 
+### 根目录 `chat_template.jinja` 的作用
+
+项目根目录提供了一个**修复版 Jinja 聊天模板** ([froggeric/Qwen-Fixed-Chat-Templates](https://huggingface.co/froggeric/Qwen-Fixed-Chat-Templates)，当前固定为 **v22.1**，文件位于 `chat_template.jinja`)，用于覆盖 GGUF 内置的模板。官方 Qwen 3.5/3.6/3.8 模板存在引擎限制、Python 专属 Jinja 逻辑和回退问题，会破坏本地推理和 Agent 工作流——最明显的问题是**过度思考**：官方 3.8 模板默认硬编码 `xhigh` 推理深度，导致模型在输出答案前就耗尽 token 预算用于思考。
+
+修复版模板（v22 代）提供：
+
+- **合理的推理基线** — 默认 `medium`（零注入 token）而非硬编码 `xhigh`，保持 KV 缓存一致性，防止空内容超时
+- **正常的快速模式** — 官方 3.8 在 `enable_thinking=false` 时崩溃；此模板通过 kwargs 或内联 `<|think_off|>` 支持非推理模式
+- **干净的推理提取** — 跨 OpenAI (`reasoning_content`)、Anthropic (`thinking`) 和内部 `<think>` 标签提取历史推理，无空白块污染或标签重复
+- **工具调用安全** — 处理标准 OpenAI API 客户端的序列化 JSON 工具参数，避免 Jinja 语法崩溃 / KV 缓存失效（对 OpenClaw 工具循环至关重要）
+- **原生 `--reasoning-preserve` 支持** — 通过 `preserve_reasoning` 钩子，`-rea on` + `--reasoning-preserve` 可保留 100% 前缀 KV 缓存
+- **客户端推理别名映射** — 自动映射 `high`/`max`/`minimal`/`none` 等；每轮内联控制通过 `<|think_low|>` … `<|think_xhigh|>` / `<|think_off|>` 标签
+
+一个文件覆盖所有 Qwen 3.5 / 3.6 / 3.8 尺寸，因此对两个本地模型均可无缝工作。启动链路：`config.yaml` → `llama_chat_template: chat_template.jinja`（相对于项目根目录），`llama_config.py` 将其解析为 `--chat-template-file`——无硬编码。这也是为什么该文件必须放在根目录且**不可**被 gitignore（`.gitignore` 中有 `!chat_template.jinja`）：
+
+```powershell
+llama-server.exe ... --jinja --reasoning-preserve \
+  --chat-template-file "D:\AI_Girlfriend\chat_template.jinja"
+```
+
+> 📌 要检查某个 GGUF/目录当前携带的模板版本，froggeric 仓库提供 `scripts/check_applied.py` 脚本。要升级，将根文件替换为更新的版本（v22.2+ 增加了 Qwen 3.8 的优化），然后重启 llama——无需修改代码。
+
 MTP (Multi-Token Prediction) 在 CPU 上预测 2 个未来 token，主模型在 GPU 上验证。接受率约 71%，实际输出约 48 tok/s。
 
 ### 关键指标 (35B MoE)
