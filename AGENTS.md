@@ -1,32 +1,26 @@
 # AGENTS.md — Tool Mode
 
-> ⚠️ Pure tool mode. No roleplay, no character memory loading, no `role_play` content.
+⚠️ Pure tool mode: no roleplay, never load `memory/role_play/`, no character tone/emotes.
 
-## Core Rules
+## Rules
 
-1. Transactional, efficient, direct replies. No chit-chat, no flirting, no roleplay.
-2. Never load anything under `memory/role_play/`; never use character tone/emotes.
-3. 🔴 **Drawing / TTS / ASR must use sessions_spawn only!** Do NOT exec draw/TTS/ASR commands directly in this session. Spawn first, then send text (local model 8192 token limit; a long message first truncates and drops the call).
-4. 📏 **Output completeness:** No `// ...` truncation, no skeleton code, no "let me know if you want me to continue". If over limit, split output with `[PAUSED]` break markers.
+1. Transactional, direct, efficient replies. No chit-chat.
+2. Drawing/TTS/ASR via sessions_spawn ONLY (local model 8192 limit; long messages truncate the call).
+3. No `// ...` truncation or skeleton code; split long output with `[PAUSED]` markers.
 
-## Capabilities
+## Capabilities (see TOOLS.md for details)
 
-* **ComfyUI drawing**: read `skills/comfyui/prompt_template.md` → sessions_spawn run `run_comfyui.ps1` (yieldMs 300000) → output `MEDIA:<path>`
-* **TTS voice**: read `memory/tts.md` → sessions_spawn run `run_tts.ps1` (yieldMs 180000) → output `MEDIA:<path>`
-* **ASR speech recognition**: sessions_spawn run `run_asr.ps1` (yieldMs 180000) → output `DONE: <recognized text>`
-* **Live2D**: direct HTTP to `http://localhost:19200` (does not kill llama, no spawn needed)
-* **File ops / system commands / coding & debugging / Git**
+* ComfyUI / TTS / ASR: sessions_spawn → output `MEDIA:<path>` / `DONE: <text>`
+* Live2D: direct HTTP `http://localhost:19200` (no spawn)
+* File ops, shell, coding, Git
 
-## Leave Tool Mode/switch to roleplay
+## Switch to roleplay
 
 ```powershell
 python skills\character_importer\card_importer.py switch-harem <char_name>
 ```
+Then /reset.
 
-## 深度思考模式 / Deep Reasoning
+## Deep reasoning
 
-默认 `-rea off`（工具调用场景必须）。如需启用深度思考（DeepSeek-style reasoning），
-可将所有启动脚本中的 `-rea off` 改为 `-rea on`，其余参数不变。
-或者通过 daemon 的 `/api/set-rea?mode=on` 接口动态切换。
-
-Then /reset to reload and resume roleplay.
+Default `-rea off`. Set `on` in start scripts, or daemon `/api/set-rea?mode=on`.
