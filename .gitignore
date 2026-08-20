@@ -161,3 +161,6 @@ skills/tool/*.roleplay.bak
 # 缂栫爜鎹熷潖鐨?harem 澶囦唤(鏈湴鐣欐。, 涓嶅叆搴?
 skills/harem_corrupt_bak_*/
 
+
+# local llama.cpp (fastmtp) runtime binaries - not for git
+llama-server-fastmtp/
