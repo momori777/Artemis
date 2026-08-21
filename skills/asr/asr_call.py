@@ -81,6 +81,7 @@ OUTPUT_DIR = ASR_OUTPUT_DIR  # asr 使用专用输出目录
 # 并行调用保护
 LLAMA_PORT = int(_config.get("llama_port", 8080))
 RESTART_SCRIPT = _config.get("restart_script")
+SKILL_TIMEOUT = int(_config.get("skill_timeout", 9000))  # unified from config.yaml
 
 # ---- 模型管理 ----
 MODEL_CACHE_DIR = os.path.join(os.path.expanduser("~"), ".cache", "asr_models")
@@ -221,7 +222,7 @@ def main():
     start_time = time.time()
 
     try:
-        with TimeoutGuard(300, lock_file=lock_file):
+        with TimeoutGuard(SKILL_TIMEOUT, lock_file=lock_file):
             # 加载模型（首次下载，后续缓存）
             model = load_model(MODEL_SIZE)
 

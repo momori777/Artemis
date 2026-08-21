@@ -72,7 +72,7 @@ RESTART_SCRIPT = _cfg['restart_script']
 LLAMA_PORT = _cfg.get('llama_port', 8080)
 
 # ========== 硬超时（防止子进程卡死不退出，导致 gateway session 锁死） ==========
-HARD_TIMEOUT = 480  # TTS推理~10s + llama重启等待(含重试)最多420s，留余量
+HARD_TIMEOUT = int(_cfg.get('skill_timeout', 9000))  # unified from config.yaml
 
 
 def slugify(text, max_len=20):

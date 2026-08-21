@@ -48,7 +48,7 @@ DASHBOARD_PORT = 19260
 WEBCHAT_PORT = 19270
 
 # ── API 超时和重试配置 ──
-REQUEST_TIMEOUT = int(CFG.get("api_timeout", 180))  # 默认 180s
+REQUEST_TIMEOUT = int(CFG.get("api_timeout", 600))  # 默认 600s (10min), 长生成需要足够超时
 REQUEST_MAX_RETRIES = int(CFG.get("api_max_retries", 2))  # 默认重试 2 次
 LLAMA_BASE_URL = f"http://127.0.0.1:{LLAMA_PORT}/v1"
 
@@ -353,7 +353,7 @@ def start_llama():
             "--cache-ram", str(cache_ram),
             "-ngl", str(ngl),
             "--parallel", "1", "--kv-unified",
-            "--port", str(LLAMA_PORT), "--timeout", "600",
+            "--port", str(LLAMA_PORT), "--timeout", "0",
         ]
         if LLAMA_API_KEY:
             args += ["--api-key", LLAMA_API_KEY]
@@ -517,7 +517,7 @@ def ensure_openclaw_headroom_provider():
         "api": "openai-completions",
         "apiKey": "***",
         "auth": "api-key",
-        "timeoutSeconds": 300,
+        "timeoutSeconds": 3600,
         "models": all_models,
     }
     changed = True

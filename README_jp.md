@@ -1,9 +1,6 @@
 ﻿4号のガールフレンド投票中 - Issues で投票してください。
 
-配置教程BV16XTV6fEoH
-
-百度网盘: https://pan.baidu.com/s/1sLeSyVp76yzWcR3Q4pX0kA?pwd=0721
-実際には百度网盘は不要です - HuggingFace ミラーは中国国内でも正常に動作します。hf-mirror の設定をしたくない場合のみ使用してください。
+配置教程: [BV16XTV6fEoH](https://www.bilibili.com/video/BV16XTV6fEoH)
 
 > ⚠️ デフォルトのスクリプトは NVIDIA GPU 用です。AMD GPU ユーザーは `AMD_GPU/` フォルダを参照してください。
 
@@ -175,16 +172,15 @@ Qwen3.6-35B（言語の心）  ←→  Cosmos 3 Nano（物理の心）
 
 ## 機能特性
 
-- 🔄 **マルチキャラクターホットスワップ** - 一キーで AI ガールフレンド切替（夏目 ⇄ アトリ ⇄ 夜乃樜）；SOUL/IDENTITY/TTS 重み/Live2D モデルが全部自動切替、メモリはキャラクターごとに分離
+- 🔄 **マルチキャラクターホットスワップ** - 一キーで AI ガールフレンド切替（夏目 ⇄ アトリ ⇄ 夜乃桜）；SOUL/IDENTITY/TTS 重み/Live2D モデルが全部自動切替、メモリはキャラクターごとに分離
 - 🃏 **SillyTavern キャラクターカード取り込み** - PNG/JSON キャラクターカードの自動検出と取り込み、インポート後にエージェントが自動でキャラクター切替
-- 💬 **チャット履歴取り込み** - SillyTavern JSONL 会話ログを `memory/role_play/<角色>/` に取り込み、キャラクター切替時にエージェントがコンテキストを復元
-- 💬 **QQ + Telegram 双チャンネル** - OpenClaw Gateway 経由で QQ Bot と Telegram Bot を接入
-- 🎤 **TTS 音声合成** - ローカル GPT-SoVITS 推論、日本語音声（会話ごとに感情マッチ）、3 套キャラクター音声モデル（夏目 / アトリ / 夜乃桜）
+- 💬 **チャット履歴取り込み** - SillyTavern JSONL 会話ログを `memory/role_play/<char>/` に取り込み、キャラクター切替時にエージェントがコンテキストを復元
+- 🎤 **TTS 音声合成** - ローカル GPT-SoVITS 推論、日本語音声（会話ごとに感情マッチ）、3 種キャラクター音声モデル（夏目 / アトリ / 夜乃桜）
 - 🎤 **ASR 音声認識** - ローカル Faster-Whisper small モデル（~1.5GB VRAM）、llama と共存可能；99言語対応
-- 🎨 **AI 画像生成** - ローカル ComfyUI 推論、SDXL/Illustrious モデル、3 套キャラクタープロンプトテンプレート
+- 🎨 **AI 画像生成** - ローカル ComfyUI 推論、SDXL/Illustrious モデル、3 種キャラクタープロンプトテンプレート
 - 🖥️ **Sakura デスクトップペット** - PySide6 デスクトップコンパニオン、主動的ケア、画面観察 & ローカル LLM 認識；3 キャラクター対応
 - 🎭 **Live2D キャラクターモデル** - リアルタイム Live2D レンダリング、感情駆動の表情 & 吹き出し（夏目 / アトリ L2D; 夜乃桜ポートレートモード）
-- 🧠 **VRAM 智能ティアリング** - GPU VRAM を自動検出して最適な実行モードを選択：≥12GB は全スキルオンライン（含 llama）；8GB は llama 停止して GPU 切替；<8GB は安全モード。手動設定ゼロ
+- 🧠 **VRAM スマートティアリング** - GPU VRAM を自動検出して最適な実行モードを選択：≥12GB は全スキルオンライン（llama 含む）；8GB は llama 停止して GPU 切替；<8GB は安全モード。手動設定ゼロ
 - 🎛️ **Artemis Studio コンソール** - TTS + ComfyUI のビジュアルワークショップ、llama 状態に関係なくいつでも音声/画像 DIY、真のオフラインクリエイティブ台
 - 💾 **ロールプレイメモリ** - キャラクターごとの `memory/role_play/` に日別会話サマリーを保存
 - 🧠 **長期記憶システム** - [headroom](https://github.com/chopratejas/headroom)（SmartCrusher + CCR 整理-合并-检索）と [mem0](https://github.com/mem0ai/mem0)（Qdrant ベクターデータベース）を搭載：
@@ -260,7 +256,7 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-d
 ```
 
 > 🇨🇳 国内ユーザー: hf-mirror.com を使用 - VPN不要：
-> `set HF_ENDPOINT=https://hf-mirror.com` として通常通り hf download を実行。
+> `setx HF_ENDPOINT https://hf-mirror.com` として通常通り hf download を実行。
 
 ### ローカル設定
 
@@ -302,7 +298,7 @@ llama-server.exe `
 
 > ⚠️ **`chat_template.jinja` はプロジェクトルート**（`D:\AI_Girlfriend\chat_template.jinja`）に置き、
 > **gitignore してはいけません**（`.gitignore` に `!chat_template.jinja` を追加済み）。
-> これは固定の froggeric v22.1 テンプレートで、`-rea on` + `--reasoning-preserve` と組み合わせて
+> これは固定の froggeric v22.3 テンプレートで、`-rea on` + `--reasoning-preserve` と組み合わせて
 > 思考ブロックを保持します。欠落・無視されると llama 起動引数が壊れます。
 > `config.yaml` → `llama_chat_template: chat_template.jinja` が指します。
 
@@ -339,7 +335,7 @@ VRAM 不足時は `-ForceBatch 1024` でバッチサイズを下げられます�
 
 ### プロジェクトルートの `chat_template.jinja` が存在する理由
 
-プロジェクトルートには**修復版の Jinja チャットテンプレート** ([froggeric/Qwen-Fixed-Chat-Templates](https://huggingface.co/froggeric/Qwen-Fixed-Chat-Templates)、v22.1 固定、ファイル `chat_template.jinja`) が同梱されており、GGUF に内蔵されているテンプレートを上書きします。公式の Qwen 3.5/3.6/3.8 テンプレートには、エンジン制限、Python 固有の Jinja 論理、局所推論とエージェントワークフローを壊す後退が含まれています——最も目立つのは**思考の暴走**です：公式 3.8 テンプレートはデフォルトで `xhigh` の推論深度をハードコードしており、モデルが答えを生成する前に思考にトークン予算を使い果たしてしまいます。
+プロジェクトルートには**修復版の Jinja チャットテンプレート** ([froggeric/Qwen-Fixed-Chat-Templates](https://huggingface.co/froggeric/Qwen-Fixed-Chat-Templates)、v22.3 固定、ファイル `chat_template.jinja`) が同梱されており、GGUF に内蔵されているテンプレートを上書きします。公式の Qwen 3.5/3.6/3.8 テンプレートには、エンジン制限、Python 固有の Jinja 論理、局所推論とエージェントワークフローを壊す後退が含まれています——最も目立つのは**思考の暴走**です：公式 3.8 テンプレートはデフォルトで `xhigh` の推論深度をハードコードしており、モデルが答えを生成する前に思考にトークン予算を使い果たしてしまいます。
 
 修復版テンプレート（v22 世代）は以下を提供します：
 
@@ -348,7 +344,8 @@ VRAM 不足時は `-ForceBatch 1024` でバッチサイズを下げられます�
 - **クリーンな履歴抽出** — OpenAI (`reasoning_content`)、Anthropic (`thinking`)、インライン `<think>` タグをまたいで過去の思考を空白ブロックの汚染やタグ重複なしで抽出
 - **ツール呼び出しの安全** — 標準 OpenAI API クライアントからのシリアライズ JSON 引数を処理し、Jinja 構文クラッシュ / KV キャッシュ無効化を防ぐ（OpenClaw ツールループに重要）
 - **ネイティブ `--reasoning-preserve` サポート** — `preserve_reasoning` フック経由で、`-rea on` + `--reasoning-preserve` で 100% 接頭辞 KV キャッシュ維持
-- **クライアント推論エイリアス** — `high`/`max`/`minimal`/`each` を自動マッピング；各ターンごとのインライン操作は `<|think_low|>` … `<|think_xhigh|>` / `<|think_off|>` タグ経由
+- **v22.3 追加機能** — 標準 OpenAI クライアントからの JSON 文字列ツール引数のクラッシュ修正、検索結果の二重フェールリトライ防止（エージェント層の二重エラー回復）、オプションのペイロード切断（max_tool_arg_chars / max_tool_response_chars）、オプトインの tool_call_format: "json" 上書き（デフォルトは Qwen XML 維持）
+- **クライアント推論エイリアス** — `high`/`max`/`minimal`/`none` を自動マッピング；各ターンごとのインライン操作は `<|think_low|>` … `<|think_xhigh|>` / `<|think_off|>` タグ経由
 
 1 つのファイルで Qwen 3.5 / 3.6 / 3.8 全てのサイズをカバーするため、両方のローカルモデルでそのまま使えます。起動パイプライン：`config.yaml` → `llama_chat_template: chat_template.jinja`（プロジェクトルート基準）、`llama_config.py` が `--chat-template-file` に展開——ハードコードなし。ファイルがルートのままかつ **gitignore しない**（`.gitignore` に `!chat_template.jinja`）理由もここにあります：
 
@@ -357,7 +354,7 @@ llama-server.exe ... --jinja --reasoning-preserve \
   --chat-template-file "D:\AI_Girlfriend\chat_template.jinja"
 ```
 
-> 📌 GGUF/ディレクトリが現在どのテンプレートバージョンを保持するかを確認するには、froggeric リポジトリの `scripts/check_applied.py` をご利用ください。アップグレードするにはルートファイルを新しいリリース（v22.2+ で Qwen 3.8 の改善）に置き換え、llama を再起動——コード変更不要。
+> 📌 GGUF/ディレクトリが現在どのテンプレートバージョンを保持するかを確認するには、froggeric リポジトリの `scripts/check_applied.py` をご利用ください。アップグレードするにはルートファイルを新しいリリース（v22.3）に置き換え、llama を再起動——コード変更不要。`chat_template.jinja.bak-v22old`（v22.1）のバックアップを同级に保持してロールバック可能。
 
 MTP（Multi-Token Prediction）は CPU で 2 語先のトークンを予測し、メインモデルが GPU で検証します。受け入れ率約 71%、実出力約 48 tok/s。
 

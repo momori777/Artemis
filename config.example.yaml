@@ -120,6 +120,16 @@ restart_script: "skills/shared/restart_llama_degraded.ps1"
 # 修复版聊天模板 (froggeric v22.1) 必须放在项目根目录，不可 gitignore，否则启动参数会错误。
 llama_chat_template: "chat_template.jinja"
 
+# ============================================================
+# All-in-one timeout (seconds) / 统一超时（秒）
+# All skill scripts (TTS, ComfyUI, ASR, HTTP bridge, headroom proxy)
+# use this single value as their hard timeout to kill the process tree.
+# Set to 9000 (150 min) to match llama-server's --timeout 9000.
+# 所有 skill 脚本的硬超时（子进程卡死自动 kill）统一从此处读取，
+# 设为 9000（150 分钟），与 llama-server --timeout 9000 一致。
+# ============================================================
+skill_timeout: 9000
+
 # ---- CCR (Claude Code Router) ports / 端口 ----
 # Claude Code routes to the local llama through CCR. Ports live here so
 # scripts do not hardcode them. / Claude Code 通过 CCR 网关转发到本地 llama。
