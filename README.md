@@ -292,6 +292,18 @@ Running **Qwen3.6-35B-A3B Genesis Hermes V9 MTP APEX Compact** (MoE, 16.11 GiB, 
 >
 > See **"Switching models"** below for the one-liner.
 
+> ⚙️ **The baked-in launch commands are semi-hardcoded — treat them as a
+> starting point, not gospel.** The profile parameters in `config.yaml` /
+> `llama_config.py` were tuned for the reference machine. Before trusting them
+> on your own hardware, read **[LLAMA_TUNING.md](LLAMA_TUNING.md)** (handwritten
+> field notes: when to use `-ngl 99` vs `--load-mode none` vs `--cpu-moe`, MTP
+> draft tuning, KV cache sizing, batch/ubatch, threads, context window) and
+> decide the final `llama-server` command **based on that guide plus your
+> machine's GPU/RAM/CPU configuration**. In short: pick the offload tier that
+> matches your VRAM vs model size, tune `--spec-draft-n-max` ×
+> `--spec-draft-p-min` until acceptance looks good, and size context/KV cache to
+> your RAM. The command that follows is what the reference config generates.
+
 **What `llama_config.py` actually generates** for the active model (V9 MoE):
 
 ```powershell
@@ -310,7 +322,7 @@ llama-server.exe `
 
 > ⚠️ **`chat_template.jinja` must live at the project root** (`D:\AI_Girlfriend\chat_template.jinja`)
 > and must **not** be gitignored (`.gitignore` has `!chat_template.jinja`). It is the
-> fixed froggeric v22.1 template that makes `-rea on` + `--reasoning-preserve`
+> fixed froggeric v22.3 template that makes `-rea on` + `--reasoning-preserve`
 > work (thinking blocks are preserved). If it's missing or ignored, llama launch
 > args break. `config.yaml` → `llama_chat_template: chat_template.jinja` points to it.
 
@@ -318,7 +330,7 @@ llama-server.exe `
 
 ### Why the root `chat_template.jinja` exists
 
-The project root ships a **fixed Jinja chat template** ([froggeric/Qwen-Fixed-Chat-Templates](https://huggingface.co/froggeric/Qwen-Fixed-Chat-Templates), pinned at **v22.1** in `chat_template.jinja`) that overrides the template baked into the GGUFs. The official Qwen 3.5/3.6/3.8 templates contain engine restrictions, Python-specific Jinja logic, and regressions that break local inference and agent workflows — the most visible one is **overthinking**: the official Qwen 3.8 template hardcodes `xhigh` reasoning depth by default, which can exhaust the token budget on thinking before the model ever answers.
+The project root ships a **fixed Jinja chat template** ([froggeric/Qwen-Fixed-Chat-Templates](https://huggingface.co/froggeric/Qwen-Fixed-Chat-Templates), pinned at **v22.3** in `chat_template.jinja`) that overrides the template baked into the GGUFs. The official Qwen 3.5/3.6/3.8 templates contain engine restrictions, Python-specific Jinja logic, and regressions that break local inference and agent workflows — the most visible one is **overthinking**: the official Qwen 3.8 template hardcodes `xhigh` reasoning depth by default, which can exhaust the token budget on thinking before the model ever answers.
 
 The fixed template (v22 generation) delivers:
 
@@ -328,6 +340,7 @@ The fixed template (v22 generation) delivers:
 - **Tool-call safety** — handles serialized JSON tool arguments from standard OpenAI API clients without Jinja syntax crashes / KV cache invalidation (critical for OpenClaw tool loops)
 - **Native `--reasoning-preserve` support** — via the `preserve_reasoning` hook, so `-rea on` + `--reasoning-preserve` keeps 100% prefix KV cache retention
 - **Client reasoning aliases** — maps `high`/`max`/`minimal`/`none` etc. automatically; per-turn inline steering via `<|think_low|>` … `<|think_xhigh|>` / `<|think_off|>` tags
+- **v22.3 additions** — JSON-string tool args from standard OpenAI clients no longer crash, two-tier agentic error recovery (no false retries on search results containing "error"), optional payload truncation (`max_tool_arg_chars` / `max_tool_response_chars`), and an opt-in `tool_call_format: "json"` override (default stays Qwen XML)
 
 One file covers all Qwen 3.5 / 3.6 / 3.8 sizes, so it works unchanged for both local models. Launch plumbing: `config.yaml` → `llama_chat_template: chat_template.jinja` (relative to the project root), and `llama_config.py` resolves it to `--chat-template-file` — nothing hardcoded. That's also why the file must stay at the root and must **not** be gitignored (`!chat_template.jinja` in `.gitignore`):
 
@@ -336,7 +349,7 @@ llama-server.exe ... --jinja --reasoning-preserve \
   --chat-template-file "D:\AI_Girlfriend\chat_template.jinja"
 ```
 
-> 📌 To inspect which template version a GGUF/dir currently carries, the froggeric repo ships `scripts/check_applied.py`. To upgrade, replace the root file with a newer release (v22.2+ adds Qwen 3.8 refinements) and restart llama — no code changes needed.
+> 📌 To inspect which template version a GGUF/dir currently carries, the froggeric repo ships `scripts/check_applied.py`. To upgrade, replace the root file with a newer release and restart llama — no code changes needed. (A `chat_template.jinja.bak-v22old` backup of the previous v22.1 file is kept alongside for rollback.)
 
 ### Switching models (`restart_llama_degraded.ps1 -SwitchTo`)
 
@@ -520,6 +533,7 @@ The system auto-detects GPU VRAM and selects the optimal run mode, no manual con
 ├── HEARTBEAT.md                      # Heartbeat config
 ├── TOOLS.md                          # Tool quick reference
 ├── models.yaml                       # Model catalog + download links
+├── LLAMA_TUNING.md                   # ⚙️ Handwritten llama.cpp tuning field notes (read before trusting baked-in launch args)
 ├── imagination.md                    # 🔮 Cosmos WFM integration vision (future)
 ├── README.md                         # This file
 ├── .gitignore

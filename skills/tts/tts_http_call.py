@@ -61,6 +61,9 @@ OUTPUT_DIR = _cfg.get('tts_temp_output_dir') or os.path.join(_PROJECT_ROOT, 'med
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 LOCK_FILE = os.path.join(OUTPUT_DIR, ".tts_http_running.lock")
 
+# ========== 硬超时（防止子进程卡死，统一从 config.yaml 读取） ==========
+SKILL_TIMEOUT = int(_cfg.get('skill_timeout', 9000))
+
 # ========== 文本到情绪模式的映射规则 ==========
 TEXT_MOODS = {
     "casual": [
@@ -586,7 +589,7 @@ req = urllib.request.Request(
 
 # 发送请求，获取音频
 try:
-    with urllib.request.urlopen(req, timeout=120) as resp:
+    with urllib.request.urlopen(req, timeout=SKILL_TIMEOUT) as resp:
         audio_data = resp.read()
 except urllib.error.URLError as e:
     print(f"[ERROR] HTTP 请求失败: {e}", file=sys.stderr)

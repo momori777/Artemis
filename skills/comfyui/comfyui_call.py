@@ -76,7 +76,7 @@ RESTART_SCRIPT = _cfg['restart_script']
 LLAMA_PORT = _cfg.get('llama_port', 8080)
 
 # ========== 硬超时（防止子进程卡死不退出，导致 gateway session 锁死） ==========
-HARD_TIMEOUT = 900  # 秒（推理最长 2min + llama 重启两轮含 VRAM 回收 ~10min，留余量）
+HARD_TIMEOUT = int(_cfg.get('skill_timeout', 9000))  # unified from config.yaml
 
 # ========== 默认参数 ==========
 DEFAULT_CKPT = "WAI-Nsfw-Illustrious-17.safetensors"

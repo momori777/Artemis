@@ -45,6 +45,7 @@ def _load_config():
 
 _CFG = _load_config()
 
+SKILL_TIMEOUT = int(_CFG.get("skill_timeout", 9000))  # unified from config.yaml
 LLAMA_PORT = int(os.environ.get("LLAMA_PORT", str(_CFG.get("llama_port", 8080))))
 LLAMA_URL = f"http://127.0.0.1:{LLAMA_PORT}/v1/chat/completions"
 # API 密钥：llama-server 设置 --api-key 后，本地转发必须带 Authorization
@@ -441,13 +442,13 @@ def register_headroom_endpoint(app):
             )
 
             if stream:
-                resp = urllib.request.urlopen(req, timeout=600)
+                resp = urllib.request.urlopen(req, timeout=SKILL_TIMEOUT)
                 def generate():
                     for line_bytes in resp:
                         yield line_bytes
                 return Response(generate(), content_type="text/event-stream")
             else:
-                resp = urllib.request.urlopen(req, timeout=600)
+                resp = urllib.request.urlopen(req, timeout=SKILL_TIMEOUT)
                 return jsonify(json.loads(resp.read()))
 
         except urllib.error.HTTPError as e:

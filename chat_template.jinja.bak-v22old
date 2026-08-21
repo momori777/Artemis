@@ -1,4 +1,4 @@
-{%- set template_version = "qwen3.8-froggeric-v22.3" %}
+{%- set template_version = "qwen3.8-froggeric-v22.1" %}
 {%- set _tool_format = tool_call_format if tool_call_format is defined else 'xml' %}
 {%- set image_count = namespace(value=0) %}
 {%- set video_count = namespace(value=0) %}
@@ -18,12 +18,12 @@
 {%- set _effort_raw = (reasoning_effort | string | lower) if reasoning_effort is defined and reasoning_effort is not none else 'medium' %}
 {%- set _initial_thinking = enable_thinking %}
 {%- set _initial_effort = 'medium' %}
-{%- if _effort_raw in ('none', 'off') %}
+{%- if _effort_raw == 'none' %}
     {%- set _initial_thinking = false %}
     {%- set _initial_effort = 'medium' %}
-{%- elif _effort_raw in ('minimal', 'low') %}
+{%- elif _effort_raw == 'minimal' or _effort_raw == 'low' %}
     {%- set _initial_effort = 'low' %}
-{%- elif _effort_raw in ('high', 'xhigh', 'max', 'ultracode', 'extreme') %}
+{%- elif _effort_raw == 'high' or _effort_raw == 'xhigh' or _effort_raw == 'max' %}
     {%- set _initial_effort = 'xhigh' %}
 {%- else %}
     {%- set _initial_effort = 'medium' %}
@@ -39,7 +39,7 @@
                 {%- set ns_state.thinking = false %}
             {%- elif '<|think_on|>' in msg.content %}
                 {%- set ns_state.thinking = true %}
-            {%- elif '<|think_xhigh|>' in msg.content or '<|think_high|>' in msg.content or '<|think_ultracode|>' in msg.content or '<|think_extreme|>' in msg.content or '<|think_max|>' in msg.content %}
+            {%- elif '<|think_xhigh|>' in msg.content or '<|think_high|>' in msg.content %}
                 {%- set ns_state.thinking = true %}
                 {%- set ns_state.effort = 'xhigh' %}
             {%- elif '<|think_low|>' in msg.content or '<|think_minimal|>' in msg.content %}
@@ -63,7 +63,7 @@
                         {%- set ns_state.thinking = false %}
                     {%- elif '<|think_on|>' in _item_text %}
                         {%- set ns_state.thinking = true %}
-                    {%- elif '<|think_xhigh|>' in _item_text or '<|think_high|>' in _item_text or '<|think_ultracode|>' in _item_text or '<|think_extreme|>' in _item_text or '<|think_max|>' in _item_text %}
+                    {%- elif '<|think_xhigh|>' in _item_text or '<|think_high|>' in _item_text %}
                         {%- set ns_state.thinking = true %}
                         {%- set ns_state.effort = 'xhigh' %}
                     {%- elif '<|think_low|>' in _item_text or '<|think_minimal|>' in _item_text %}
@@ -132,38 +132,25 @@
 {%- if not messages %}
     {{- raise_exception('No messages provided.') }}
 {%- endif %}
-{%- set head = namespace(count=0, seen_non_system=false) %}
-{%- for message in messages %}
-    {%- set _is_sys = (message.role == 'system' or message.role == 'developer') %}
-    {%- if _is_sys and not head.seen_non_system %}
-        {%- set head.count = head.count + 1 %}
-    {%- else %}
-        {%- set head.seen_non_system = true %}
-    {%- endif %}
-{%- endfor %}
-{%- set sys_state = namespace(content='') %}
-{%- for message in messages[:head.count] %}
-    {%- set _part = render_content(message.content, false, true) | trim %}
-    {%- if '<|think_off|>' in _part %}{%- set _part = _part.split('<|think_off|>') | join('') | trim %}{%- endif %}
-    {%- if '<|think_on|>' in _part %}{%- set _part = _part.split('<|think_on|>') | join('') | trim %}{%- endif %}
-    {%- if '<|think_xhigh|>' in _part %}{%- set _part = _part.split('<|think_xhigh|>') | join('') | trim %}{%- endif %}
-    {%- if '<|think_high|>' in _part %}{%- set _part = _part.split('<|think_high|>') | join('') | trim %}{%- endif %}
-    {%- if '<|think_ultracode|>' in _part %}{%- set _part = _part.split('<|think_ultracode|>') | join('') | trim %}{%- endif %}
-    {%- if '<|think_extreme|>' in _part %}{%- set _part = _part.split('<|think_extreme|>') | join('') | trim %}{%- endif %}
-    {%- if '<|think_max|>' in _part %}{%- set _part = _part.split('<|think_max|>') | join('') | trim %}{%- endif %}
-    {%- if '<|think_medium|>' in _part %}{%- set _part = _part.split('<|think_medium|>') | join('') | trim %}{%- endif %}
-    {%- if '<|think_low|>' in _part %}{%- set _part = _part.split('<|think_low|>') | join('') | trim %}{%- endif %}
-    {%- if '<|think_minimal|>' in _part %}{%- set _part = _part.split('<|think_minimal|>') | join('') | trim %}{%- endif %}
-    {%- if _part %}
-        {%- if sys_state.content %}
-            {%- set sys_state.content = sys_state.content ~ '\n\n' ~ _part %}
-        {%- else %}
-            {%- set sys_state.content = _part %}
-        {%- endif %}
-    {%- endif %}
-{%- endfor %}
-{%- set _sc = sys_state.content %}
-{%- set _msgs = messages[head.count:] %}
+{%- set _first_role = messages[0].role %}
+{%- if _first_role == 'system' or _first_role == 'developer' %}
+    {%- set _sys_msg = messages[0] %}
+    {%- set _msgs = messages[1:] %}
+{%- else %}
+    {%- set _sys_msg = none %}
+    {%- set _msgs = messages %}
+{%- endif %}
+{%- set _sc = '' %}
+{%- if _sys_msg is not none %}
+    {%- set _sc = render_content(_sys_msg.content, false, true) | trim %}
+    {%- if '<|think_off|>' in _sc %}{%- set _sc = _sc.split('<|think_off|>') | join('') | trim %}{%- endif %}
+    {%- if '<|think_on|>' in _sc %}{%- set _sc = _sc.split('<|think_on|>') | join('') | trim %}{%- endif %}
+    {%- if '<|think_xhigh|>' in _sc %}{%- set _sc = _sc.split('<|think_xhigh|>') | join('') | trim %}{%- endif %}
+    {%- if '<|think_high|>' in _sc %}{%- set _sc = _sc.split('<|think_high|>') | join('') | trim %}{%- endif %}
+    {%- if '<|think_medium|>' in _sc %}{%- set _sc = _sc.split('<|think_medium|>') | join('') | trim %}{%- endif %}
+    {%- if '<|think_low|>' in _sc %}{%- set _sc = _sc.split('<|think_low|>') | join('') | trim %}{%- endif %}
+    {%- if '<|think_minimal|>' in _sc %}{%- set _sc = _sc.split('<|think_minimal|>') | join('') | trim %}{%- endif %}
+{%- endif %}
 {%- if _has_tools %}
     {{- '<|im_start|>system\n' }}
     {%- if reasoning_instructions %}
@@ -219,9 +206,6 @@
         {%- if '<|think_on|>' in content %}{%- set content = content.split('<|think_on|>') | join('') | trim %}{%- endif %}
         {%- if '<|think_xhigh|>' in content %}{%- set content = content.split('<|think_xhigh|>') | join('') | trim %}{%- endif %}
         {%- if '<|think_high|>' in content %}{%- set content = content.split('<|think_high|>') | join('') | trim %}{%- endif %}
-        {%- if '<|think_ultracode|>' in content %}{%- set content = content.split('<|think_ultracode|>') | join('') | trim %}{%- endif %}
-        {%- if '<|think_extreme|>' in content %}{%- set content = content.split('<|think_extreme|>') | join('') | trim %}{%- endif %}
-        {%- if '<|think_max|>' in content %}{%- set content = content.split('<|think_max|>') | join('') | trim %}{%- endif %}
         {%- if '<|think_medium|>' in content %}{%- set content = content.split('<|think_medium|>') | join('') | trim %}{%- endif %}
         {%- if '<|think_low|>' in content %}{%- set content = content.split('<|think_low|>') | join('') | trim %}{%- endif %}
         {%- if '<|think_minimal|>' in content %}{%- set content = content.split('<|think_minimal|>') | join('') | trim %}{%- endif %}
@@ -233,35 +217,18 @@
         {{- '<|im_start|>user\n' + content + '<|im_end|>\n' }}
     {%- elif message.role == 'assistant' %}
         {%- set reasoning_content = '' %}
-        {%- set _explicit_reasoning = '' %}
         {%- if message.reasoning_content is defined and message.reasoning_content is not none %}
             {%- if message.reasoning_content is string %}
-                {%- set _explicit_reasoning = message.reasoning_content %}
+                {%- set reasoning_content = message.reasoning_content %}
             {%- else %}
-                {%- set _explicit_reasoning = message.reasoning_content | string %}
+                {%- set reasoning_content = message.reasoning_content | string %}
             {%- endif %}
         {%- elif message.thinking is defined and message.thinking is not none %}
             {%- if message.thinking is string %}
-                {%- set _explicit_reasoning = message.thinking %}
+                {%- set reasoning_content = message.thinking %}
             {%- else %}
-                {%- set _explicit_reasoning = message.thinking | string %}
+                {%- set reasoning_content = message.thinking | string %}
             {%- endif %}
-        {%- endif %}
-        {%- if _explicit_reasoning %}
-            {%- set _lead_end = '' %}
-            {%- if content.startswith('<think>') and '</think>' in content %}
-                {%- set _lead_end = '</think>' %}
-            {%- elif content.startswith('<thinking>') and '</thinking>' in content %}
-                {%- set _lead_end = '</thinking>' %}
-            {%- elif content.startswith('</think>') %}
-                {%- set _lead_end = '</think>' %}
-            {%- elif content.startswith('</thinking>') %}
-                {%- set _lead_end = '</thinking>' %}
-            {%- endif %}
-            {%- if _lead_end %}
-                {%- set content = content.split(_lead_end)[-1].lstrip('\n') %}
-            {%- endif %}
-            {%- set reasoning_content = _explicit_reasoning %}
         {%- else %}
             {%- set _think_end = '' %}
             {%- if content.startswith('</think>') %}
@@ -276,10 +243,6 @@
                 {%- set _think_end = '\n</ think>' %}
             {%- elif '\n</think >' in content %}
                 {%- set _think_end = '\n</think >' %}
-            {%- elif content.startswith('<think>') and '</think>' in content %}
-                {%- set _think_end = '</think>' %}
-            {%- elif content.startswith('<thinking>') and '</thinking>' in content %}
-                {%- set _think_end = '</thinking>' %}
             {%- endif %}
             {%- if _think_end %}
                 {%- if 'thinking' in _think_end %}
@@ -295,7 +258,7 @@
             {%- endif %}
         {%- endif %}
         {%- set reasoning_content = reasoning_content | trim %}
-        {%- if (_preserve_thinking or loop.index0 > ns.last_query_index) %}
+        {%- if (_preserve_thinking or loop.index0 > ns.last_query_index) and reasoning_content %}
             {{- '<|im_start|>assistant\n<think>\n' + reasoning_content + '\n</think>\n\n' + content }}
         {%- else %}
             {{- '<|im_start|>assistant\n' + content }}
@@ -316,12 +279,8 @@
                     {%- if tc.arguments is defined and tc.arguments is not none %}
                         {%- if tc.arguments is mapping %}
                             {%- set _args = tc.arguments | tojson %}
-                        {%- elif tc.arguments is string %}
-                            {%- if tc.arguments %}
-                                {%- set _args = tc.arguments %}
-                            {%- endif %}
-                        {%- else %}
-                            {%- set _args = tc.arguments | tojson %}
+                        {%- elif tc.arguments is string and tc.arguments %}
+                            {%- set _args = tc.arguments %}
                         {%- endif %}
                     {%- endif %}
                     {{- '<tool_call>\n{"name": ' }}{{- tc_name | tojson }}{{- ', "arguments": ' }}{{- _args }}{{- '}\n</tool_call>' }}
@@ -339,10 +298,10 @@
                         {%- if tc.arguments is mapping %}
                             {%- for args_name, args_value in tc.arguments.items() %}
                                 {{- '<parameter=' + args_name + '>\n' }}
-                                {%- if args_value is string %}
-                                    {%- set _av = args_value %}
-                                {%- else %}
+                                {%- if args_value is mapping or (args_value is sequence and args_value is not string) %}
                                     {%- set _av = args_value | tojson %}
+                                {%- else %}
+                                    {%- set _av = args_value | string %}
                                 {%- endif %}
                                 {%- if max_tool_arg_chars > 0 and _av | length > max_tool_arg_chars %}
                                     {{- _av[:max_tool_arg_chars] + '\n[TRUNCATED - original length ' ~ (_av | length | string) ~ ' chars]' }}
@@ -351,19 +310,8 @@
                                 {%- endif %}
                                 {{- '\n</parameter>\n' }}
                             {%- endfor %}
-                        {%- else %}
-                            {%- if tc.arguments is string %}
-                                {%- set _raw_args = tc.arguments %}
-                            {%- else %}
-                                {%- set _raw_args = tc.arguments | tojson %}
-                            {%- endif %}
-                            {%- if _raw_args %}
-                                {%- if max_tool_arg_chars > 0 and _raw_args | length > max_tool_arg_chars %}
-                                    {{- _raw_args[:max_tool_arg_chars] + '\n[TRUNCATED - original length ' ~ (_raw_args | length | string) ~ ' chars]' }}
-                                {%- else %}
-                                    {{- _raw_args }}
-                                {%- endif %}
-                            {%- endif %}
+                        {%- elif tc.arguments is string and tc.arguments %}
+                            {{- tc.arguments }}
                         {%- endif %}
                     {%- endif %}
                     {{- '</function>\n</tool_call>' }}
@@ -373,14 +321,8 @@
         {{- '<|im_end|>\n' }}
     {%- elif message.role == 'tool' %}
         {%- set _content_lower = content | lower %}
-        {%- set _content_head = _content_lower[:120] %}
-        {%- set _is_code_or_grep = ('throw new ' in _content_lower or 'throw error' in _content_lower or 'console.error' in _content_lower or 'logger.error' in _content_lower or 'logging.error' in _content_lower or 'import ' in _content_head or 'def ' in _content_head or 'function ' in _content_head) %}
-        {%- set _exit_code_zero = ('exit code: 0' in _content_head or 'process exited with code 0' in _content_head) %}
-        {%- set _error_field_ok = ('"error": null' in _content_head or '"error":null' in _content_head or '"error": false' in _content_head or '"error":false' in _content_head or '"error": ""' in _content_head or '"error":""' in _content_head) %}
-        {%- set _strong_error = (('"error":' in _content_head and not _error_field_ok) or '"status": "error"' in _content_head or '"status":"error"' in _content_head or 'traceback (most recent call last):' in _content_head or 'command not found' in _content_head or 'invalid syntax' in _content_head or 'fatal:' in _content_head or (('exit code: ' in _content_head or 'process exited with code' in _content_head) and not _exit_code_zero) or _content_head.startswith('exception:') or _content_head.startswith('failed to ')) %}
-        {%- set _weak_error = ('error:' in _content_head or 'err!' in _content_head) %}
-        {%- set _weak_suppressed = ('$ ' in _content_head or 'took ' in _content_head or content | length >= 600) %}
-        {%- if not _is_code_or_grep and (_strong_error or (_weak_error and not _weak_suppressed)) %}
+        {%- set _content_head = _content_lower[:80] %}
+        {%- if content | length < 500 and '$ ' not in content and 'took ' not in _content_lower and ('"error":' in _content_head or 'error:' in _content_head or 'err!' in _content_head or 'fatal:' in _content_head or 'exception:' in _content_head or 'traceback' in _content_head or 'command not found' in _content_head or 'invalid syntax' in _content_head or 'failed to' in _content_head) %}
             {%- set ns2.consecutive_failures = ns2.consecutive_failures + 1 %}
         {%- else %}
             {%- set ns2.consecutive_failures = 0 %}
@@ -388,7 +330,7 @@
         {%- if ns2.prev_role != 'tool' %}
             {{- '<|im_start|>user' }}
         {%- endif %}
-        {%- if _tool_format != 'json' and max_tool_response_chars > 0 and content | length > max_tool_response_chars %}
+        {%- if max_tool_response_chars > 0 and content | length > max_tool_response_chars %}
             {%- set content = content[:max_tool_response_chars] + '\n[TRUNCATED - original length ' ~ (content | length | string) ~ ' chars]' %}
         {%- endif %}
         {{- '\n<tool_response>\n' + content }}

@@ -1,13 +1,10 @@
-﻿四号女友投票中,请在issue里完成投票
+﻿第四号女友投票中，请在 Issues 里完成投票
 
-配置教程BV16XTV6fEoH
+配置教程: [BV16XTV6fEoH](https://www.bilibili.com/video/BV16XTV6fEoH)
 
-度盘链接:https://pan.baidu.com/s/1sLeSyVp76yzWcR3Q4pX0kA?pwd=0721
-度盘链接其实完全不需要,huggingface镜像国内也能访问,如果实在懒得配就用度盘下模型
+项目默认脚本为 N 卡 GPU 配置，A 卡用户看 `AMD_GPU/` 文件夹改
 
-项目默认脚本为N卡GPU配置,A卡用户看AMD_GPU文件夹改
-
-q群: 580322386
+QQ群: 580322386
 
 # AI 女友
 
@@ -30,10 +27,11 @@ q群: 580322386
 
 ### 亚托莉(ATRI)
 
-出自《ATRI -My Dear Moments-》。娇小,天真烂漫,好奇心旺盛--拥有一双红宝石般清澈大眼睛的少女。总是带着笑容奔向明天,顺手拽上你。
-### 夜乃桜(Yono Sakura)
+出自《ATRI -My Dear Moments-》。娇小,天真烂漫,好奇心旺盛——拥有一双红宝石般清澈大眼睛的少女。**与夏目完全相反**：夏目内敛含蓄,她活泼开朗；夏目克制,她情感外露；夏目沉稳,她俏皮灵动。**如果夏目是凉爽的冬夜,亚托莉就是温暖的夏日阳光。**总是带着笑容奔向明天,顺手拽上你。
 
-出自《ディメンション凸ラバース!!》。前任生徒会长,「学园」最强级别的对怪兽战力。银白色长发发尾带淡粉色渐变,浅蓝色眼瞳--冷静、克己、责任感极强。她不擅长圆滑的安慰和漂亮话;她的关心直接而笨拙,像命令一样:休息、吃饭、别逞强。桌宠形态下,她正在学习不必一个人承担一切--在屏幕这一侧守护一个普通而重要的日常就足够了。**安静的守护者**:沉默但注视,固执但忠诚,是不请自来的学姐。
+### 夜乃樱(Yono Sakura)
+
+出自《Dimension W Lovers!!》。前任生徒会长,「学园」最强级别的对怪兽战力。银白色长发发尾带淡粉色渐变,浅蓝色眼瞳--冷静、克己、责任感极强。她不擅长圆滑的安慰和漂亮话;她的关心直接而笨拙,像命令一样:休息、吃饭、别逞强。桌宠形态下,她正在学习不必一个人承担一切--在屏幕这一侧守护一个普通而重要的日常就足够了。**安静的守护者**:沉默但注视,固执但忠诚,是不请自来的学姐。
 
 
 ## ✨ 为什么选这个项目?
@@ -176,10 +174,9 @@ Qwen3.6-35B (语言心智) ←→ Cosmos 3 Nano (物理心智)
 
 ## 功能特性
 
-- 🔄 **多角色热切换** - 一键切换 AI 女友(夏目 ⇄ 亚托莉 ⇄ 夜乃樜);SOUL/IDENTITY/TTS 权重/Live2D 模型全部自动切换,记忆按角色隔离
+- 🔄 **多角色热切换** - 一键切换 AI 女友(夏目 ⇄ 亚托莉 ⇄ 夜乃桜);SOUL/IDENTITY/TTS 权重/Live2D 模型全部自动切换,记忆按角色隔离
 - 🃏 **SillyTavern 角色卡导入** - 自动检测导入 PNG/JSON 角色卡,导入后 agent 自动切换角色
 - 💬 **聊天记录导入** - 导入 SillyTavern JSONL 对话记录到 `memory/role_play/<角色>/`,切换角色时 agent 恢复上下文
-- 💬 **QQ + Telegram 双通道** - 通过 OpenClaw Gateway 接入 QQ Bot 和 Telegram Bot
 - 🎤 **TTS 语音合成** - 本地 GPT-SoVITS 推理,日语语音(根据对话自动匹配情绪),3 套角色声线(夏目 / 亚托莉 / 夜乃桜)
 - 🎤 **ASR 语音识别** - 本地 Faster-Whisper small 模型 (~1.5GB 显存),可与 llama 共存;支持 99 种语言
 - 🎨 **AI 画图** - 本地 ComfyUI 推理,SDXL/Illustrious 模型,3 套角色 prompt 模板
@@ -281,6 +278,8 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-d
 > 按当前模型文件名自动匹配 `model_profiles` 并生成完整 `llama-server` 命令。模型自动检测，参数按 profile 自动分离——无硬编码。
 > 切换模型见下方 **“切换模型”** 小节。
 
+> ⚠️ **`chat_template.jinja` 必须放在项目根目录（`D:\AI_Girlfriend\chat_template.jinja`），且不可被 gitignore（`.gitignore` 已加 `!chat_template.jinja`）。**这是固定的 froggeric **v22.3** 模板，配合 `-rea on` + `--reasoning-preserve` 保留思考块。若缺失或被忽略，llama 启动参数会错误。`config.yaml` → `llama_chat_template: chat_template.jinja` 指向它。
+
 **`llama_config.py` 为当前模型（V9 MoE）实际生成的命令：**
 
 ```powershell
@@ -297,10 +296,7 @@ llama-server.exe `
   --spec-type draft-mtp --spec-draft-n-max 2
 ```
 
-> ⚠️ **`chat_template.jinja` 必须放在项目根目录**（`D:\AI_Girlfriend\chat_template.jinja`）
-> 且**不可被 gitignore**（`.gitignore` 已加 `!chat_template.jinja`）。这是固定的 froggeric v22.1
-> 模板，配合 `-rea on` + `--reasoning-preserve` 保留思考块。若缺失或被忽略，llama 启动参数会错误。
-> `config.yaml` → `llama_chat_template: chat_template.jinja` 指向它。
+> ⚠️ **`chat_template.jinja` 必须放在项目根目录（`D:\AI_Girlfriend\chat_template.jinja`），且不可被 gitignore（`.gitignore` 已加 `!chat_template.jinja`）。**这是固定的 froggeric **v22.3** 模板，配合 `-rea on` + `--reasoning-preserve` 保留思考块。若缺失或被忽略，llama 启动参数会错误。`config.yaml` → `llama_chat_template: chat_template.jinja` 指向它。
 
 ### 切换模型（`restart_llama_degraded.ps1 -SwitchTo`）
 
@@ -333,7 +329,7 @@ cd D:\AI_Girlfriend
 
 ### 根目录 `chat_template.jinja` 的作用
 
-项目根目录提供了一个**修复版 Jinja 聊天模板** ([froggeric/Qwen-Fixed-Chat-Templates](https://huggingface.co/froggeric/Qwen-Fixed-Chat-Templates)，当前固定为 **v22.1**，文件位于 `chat_template.jinja`)，用于覆盖 GGUF 内置的模板。官方 Qwen 3.5/3.6/3.8 模板存在引擎限制、Python 专属 Jinja 逻辑和回退问题，会破坏本地推理和 Agent 工作流——最明显的问题是**过度思考**：官方 3.8 模板默认硬编码 `xhigh` 推理深度，导致模型在输出答案前就耗尽 token 预算用于思考。
+项目根目录提供了一个**修复版 Jinja 聊天模板** ([froggeric/Qwen-Fixed-Chat-Templates](https://huggingface.co/froggeric/Qwen-Fixed-Chat-Templates)，当前固定为 **v22.3**，文件位于 `chat_template.jinja`），用于覆盖 GGUF 内置的模板。官方 Qwen 3.5/3.6/3.8 模板存在引擎限制、Python 专属 Jinja 逻辑和回退问题，会破坏本地推理和 Agent 工作流——最明显的问题是**过度思考**：官方 3.8 模板默认硬编码 `xhigh` 推理深度，导致模型在输出答案前就耗尽 token 预算用于思考。
 
 修复版模板（v22 代）提供：
 
@@ -343,6 +339,7 @@ cd D:\AI_Girlfriend
 - **工具调用安全** — 处理标准 OpenAI API 客户端的序列化 JSON 工具参数，避免 Jinja 语法崩溃 / KV 缓存失效（对 OpenClaw 工具循环至关重要）
 - **原生 `--reasoning-preserve` 支持** — 通过 `preserve_reasoning` 钩子，`-rea on` + `--reasoning-preserve` 可保留 100% 前缀 KV 缓存
 - **客户端推理别名映射** — 自动映射 `high`/`max`/`minimal`/`none` 等；每轮内联控制通过 `<|think_low|>` … `<|think_xhigh|>` / `<|think_off|>` 标签
+- **v22.3 additions** — JSON-string tool args from standard OpenAI clients no longer crash, two-tier agentic error recovery (no false retries on search results containing "error"), optional payload truncation (`max_tool_arg_chars` / `max_tool_response_chars`), and an opt-in `tool_call_format: "json"` override (default stays Qwen XML)
 
 一个文件覆盖所有 Qwen 3.5 / 3.6 / 3.8 尺寸，因此对两个本地模型均可无缝工作。启动链路：`config.yaml` → `llama_chat_template: chat_template.jinja`（相对于项目根目录），`llama_config.py` 将其解析为 `--chat-template-file`——无硬编码。这也是为什么该文件必须放在根目录且**不可**被 gitignore（`.gitignore` 中有 `!chat_template.jinja`）：
 
@@ -351,7 +348,7 @@ llama-server.exe ... --jinja --reasoning-preserve \
   --chat-template-file "D:\AI_Girlfriend\chat_template.jinja"
 ```
 
-> 📌 要检查某个 GGUF/目录当前携带的模板版本，froggeric 仓库提供 `scripts/check_applied.py` 脚本。要升级，将根文件替换为更新的版本（v22.2+ 增加了 Qwen 3.8 的优化），然后重启 llama——无需修改代码。
+> 📌 要检查某个 GGUF/目录当前携带的模板版本，froggeric 仓库提供 `scripts/check_applied.py` 脚本。要升级，将根文件替换为更新的版本（v22.3）并重启 llama——无需修改代码。`chat_template.jinja.bak-v22old` 备份文件（v22.1）保留在旁以便回滚。
 
 MTP (Multi-Token Prediction) 在 CPU 上预测 2 个未来 token，主模型在 GPU 上验证。接受率约 71%，实际输出约 48 tok/s。
 
@@ -457,11 +454,11 @@ llama-server.exe `
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│ VRAM 级别               │ TTS       │ ComfyUI   │ llama   │  tts  │
+│ VRAM Tier               │ TTS       │ ComfyUI   │ llama   │  tts  │
 ├────────────────────────────────────────────────────────────┤
-│ Level 0: <8GB           │ 停 llama  │ 停 llama  │ 被杀    │ 被杀  │
-│ Level 1: 8-12GB (当前)   │ 停 llama  │ 停 llama  │ 被杀    │  不杀  │
-│ Level 2: ≥12GB          │ 不停      │ 不停      │ 始终在线 │  不停 │
+│ Level 0: <8GB           │ Stop llama│ Stop llama│ Killed  │ Killed │
+│ Level 1: 8-12GB (当前)  │ Stop llama│ Stop llama│ Killed  │  No kill│
+│ Level 2: ≥12GB          │ No kill   │ No kill   │ Always on│ No kill │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -788,7 +785,7 @@ bash download-models.sh
 从 HuggingFace 下载全部 5 个模型文件(约 31.7 GB),含进度显示和断点续传。
 
 > 国内用户用 hf-mirror.com 镜像下载,无需梯子:
-> `set HF_ENDPOINT=https://hf-mirror.com` 然后正常 hf download
+> `setx HF_ENDPOINT https://hf-mirror.com` 然后正常 hf download
 
 ### 2. 配置 llama.cpp
 
@@ -858,7 +855,7 @@ Start-Process chrome -ArgumentList "--new-window --app=http://localhost:19200/in
 
 Live2D 在无边框 Chrome 窗口中运行--可以放在桌面上任意位置。
 
-### 5. Windows 任务计划(可选)
+### 6. Windows 任务计划(可选)
 
 ```powershell
 # Llama 健康检查(每 10 分钟)

@@ -35,6 +35,7 @@ COMFYUI_SCRIPT = os.path.join(WORKSPACE_ROOT, "skills", "comfyui", "comfyui_call
 COMFYUI_PYTHON = CFG["comfyui_python"]
 MEDIA_AUDIO = CFG.get("media_qqbot_audio", os.path.join(WORKSPACE_ROOT, "media", "qqbot", "audio"))
 MEDIA_IMAGES = CFG.get("media_qqbot_images", os.path.join(WORKSPACE_ROOT, "media", "qqbot", "images"))
+SKILL_TIMEOUT = int(CFG.get("skill_timeout", 9000))  # unified from config.yaml
 
 # Detect available TTS characters
 TTs_DIR = os.path.join(WORKSPACE_ROOT, "skills", "tts")
@@ -259,7 +260,7 @@ def api_tts():
                 env["TTS_CHARACTER"] = character
 
             cmd = [TTs_PYTHON, TTs_SCRIPT, text, lang, mood, "--no-manage-llama"]
-            proc = subprocess.run(cmd, capture_output=True, text=False, timeout=120,
+            proc = subprocess.run(cmd, capture_output=True, text=False, timeout=SKILL_TIMEOUT,
                                  cwd=WORKSPACE_ROOT, env=env)
 
             stdout_text = proc.stdout.decode("utf-8", errors="replace") if proc.stdout else ""
@@ -327,7 +328,7 @@ def api_comfyui():
             if not manage_llama:
                 cmd.append("--no-manage-llama")
 
-            proc = subprocess.run(cmd, capture_output=True, text=False, timeout=600,
+            proc = subprocess.run(cmd, capture_output=True, text=False, timeout=SKILL_TIMEOUT,
                                  cwd=WORKSPACE_ROOT, env=env)
 
             stdout_text = proc.stdout.decode("utf-8", errors="replace") if proc.stdout else ""

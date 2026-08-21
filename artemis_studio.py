@@ -45,6 +45,7 @@ COMFYUI_SCRIPT = os.path.join(WORKSPACE_ROOT, "skills", "comfyui", "comfyui_call
 COMFYUI_PYTHON = CFG["comfyui_python"]
 MEDIA_AUDIO = CFG.get("media_qqbot_audio", os.path.join(WORKSPACE_ROOT, "media", "qqbot", "audio"))
 MEDIA_IMAGES = CFG.get("media_qqbot_images", os.path.join(WORKSPACE_ROOT, "media", "qqbot", "images"))
+SKILL_TIMEOUT = int(CFG.get("skill_timeout", 9000))  # unified from config.yaml
 
 # ============================================
 # PySide6 UI
@@ -247,7 +248,7 @@ class TTSWorker(QThread):
 
             proc = subprocess.run(
                 cmd,
-                capture_output=True, text=False, timeout=120,
+                capture_output=True, text=False, timeout=SKILL_TIMEOUT,
                 cwd=WORKSPACE_ROOT,
                 env=env,
             )
@@ -336,7 +337,7 @@ class ComfyUIWorker(QThread):
 
             proc = subprocess.run(
                 cmd,
-                capture_output=True, text=False, timeout=600,
+                capture_output=True, text=False, timeout=SKILL_TIMEOUT,
                 cwd=WORKSPACE_ROOT,
                 env=env,
             )
