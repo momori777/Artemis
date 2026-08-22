@@ -1,4 +1,0 @@
-﻿# Sakura 角色选择
-# 当前加载的角色包 ID（对应 characters/<id>/character.json）
-# 可用: shiki_natsume, sakura
-active_character: "sakura"
