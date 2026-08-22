@@ -128,6 +128,12 @@ in).
 Don't set timeouts inside llama itself. Set them in the **agent config**
 (e.g. OpenClaw), based on how you use it.
 
+## 13.Agents
+
+Openclaw detect local llama only Ports,not name,so if you run deepseek v4 and name it as qwen3.8,check the context window and maxtokens whether sync
+
+Claude code, anth hard code their software must use claude series models, so you need claude code router(CCR) to deploy your llama as claude models,port:3458
+
 ---
 
 ## Quick decision table
