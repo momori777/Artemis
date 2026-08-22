@@ -227,8 +227,9 @@ model_profiles:
       rea: false
 
   # ── Hermes3.6-35B Genesis V9 (MTP, APEX Compact, MoE) ──
-  - name: "hermes3.6-35b-genesis-v7-mtp"
+  - name: "hermes3.6-35b-genesis-v9-mtp"
     match:
+      - hermes3.6-35b-genesis-v9
       - hermes3.6-35b-genesis
       - hermes3.6-35b
     params:

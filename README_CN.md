@@ -320,7 +320,7 @@ cd D:\AI_Girlfriend
 | 模型 | `-SwitchTo` 键 | Profile | Context | `rea` |
 |-|-|-|-|-|
 | **Qwen3.8-27B** (稠密) | `qwen3.8-27b` | `qwen3.8-27b-mtp` | **120000** | `on`（强制） |
-| **Hermes Genesis V9** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v7-mtp` | **120000** | `on`（强制） |
+| **Hermes Genesis V9** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v9-mtp` | **120000** | `on`（强制） |
 
 > 🧠 **两个模型默认都带 `-rea on`**（DeepSeek 式深度思考）——在 `config.yaml` → `model_profiles` 中设置。
 > `-rea on` 时思考 token 会计入上下文/输出预算；本地 `max_tokens` 不要写死，且长文本 TTS/画图请务必**先** `sessions_spawn`。
@@ -370,7 +370,7 @@ MTP (Multi-Token Prediction) 在 CPU 上预测 2 个未来 token，主模型在 
 
 **参测模型**（均为 `--seed 622539`）：
 - **deepseek-v4-flash (0731)** — 云端、无限上下文基线。云级智能体能力（本基准约 Claude 4.6–4.8 级别）。
-- **Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf** *(基准测试跑在 V7；现为 V9)* — RTX5070 LAPTOP,8G VRAM, 32g d5 RAM,
+- **Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf**（当前版本，取代 V7）— RTX5070 LAPTOP, 8G VRAM, 32G d5 RAM,
 
 #### 结果 (Seed 622539, Level 1, 24 游戏小时)
 

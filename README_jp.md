@@ -325,7 +325,7 @@ VRAM 不足時は `-ForceBatch 1024` でバッチサイズを下げられます�
 | モデル | `-SwitchTo` キー | プロファイル | Context | `rea` |
 |-|-|-|-|-|
 | **Qwen3.8-27B** (Dense) | `qwen3.8-27b` | `qwen3.8-27b-mtp` | **120000** | `on`（強制） |
-| **Hermes Genesis V9** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v7-mtp` | **120000** | `on`（強制） |
+| **Hermes Genesis V9** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v9-mtp` | **120000** | `on`（強制） |
 
 > 🧠 **両モデルともデフォルトで `-rea on`**（DeepSeek 式の深い推論）—— `config.yaml` → `model_profiles` で設定。
 > `-rea on` では思考トークンがコンテキスト/出力予算に加算されます。ローカル `max_tokens` を固定せず、
@@ -376,7 +376,7 @@ MTP（Multi-Token Prediction）は CPU で 2 語先のトークンを予測し�
 
 **テストモデル（すべて `--seed 622539`）：**
 - **deepseek-v4-flash (0731)** — クラウド、無限コンテキストベースライン。クラスエージェント能力（このベンチマークでは Claude 4.6〜4.8 レベル）。
-- **Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf** *(ベンチマークは V7 で実施；現在は V9)* — RTX5070 LAPTOP、8G VRAM、32G D5 RAM。
+- **Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf** (現在) — RTX5070 LAPTOP、8G VRAM、32G D5 RAM。
 
 #### 結果（Seed 622539、Level 1、24 ゲーム時間）
 

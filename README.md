@@ -375,7 +375,7 @@ cd D:\AI_Girlfriend
 | Model | `-SwitchTo` key | Profile | Context | `rea` |
 |-|-|-|-|-|
 | **Qwen3.8-27B** (dense) | `qwen3.8-27b` | `qwen3.8-27b-mtp` | **100000** | `on` (forced) |
-| **Hermes Genesis V9** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v7-mtp` | **120000** | `on` (forced) |
+| **Hermes Genesis V9** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v9-mtp` | **120000** | `on` (forced) |
 
 > 🧠 **Both models default to `-rea on`** (DeepSeek-style deep reasoning) — set in
 > `config.yaml` → `model_profiles`. `-rea on` makes thinking tokens count toward
@@ -482,7 +482,7 @@ This is a **pure black-box agent test**: the model decides every move itself via
 
 **Models under test** (all `--seed 622539`):
 - **deepseek-v4-flash (0731)** — remote, unlimited-context baseline. Cloud-class agent ability (~Claude 4.6–4.8 tier in this benchmark).
-- **Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf** *(benchmark ran on V7; V9 is now current)* — RTX5070 LAPTOP, 8G VRAM, 32G D5 RAM,
+- **Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf** (current) — RTX5070 LAPTOP, 8G VRAM, 32G D5 RAM,
 
 #### Results (Seed 622539, Level 1, 24 game-hours)
 
