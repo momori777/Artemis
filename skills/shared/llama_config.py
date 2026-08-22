@@ -178,6 +178,13 @@ def resolve_llama_params(cfg, model_path=None):
         # 只在 profile 明确指定时启用 MTP；否则由 _auto_mtp 决定
         "spec_draft_n_max": int(p_params.get("spec_draft_n_max", 0)),
         "rea_mode": _rea(),
+        # MTP 扩展参数（保留率 + draft 上下文 GPU offload）
+        "spec_draft_p_min": _v("spec_draft_p_min", 0),
+        "spec_draft_ngl": _v("spec_draft_ngl", 0),
+        # 附加 llama 启动参数
+        "load_mode": _v("load_mode", ""),
+        "reasoning_format": _v("reasoning_format", ""),
+        "chat_template_kwargs": _v("chat_template_kwargs", ""),
         # MTP 自动检测 fallback: 只在无 profile 且模型名含 "mtp" 时启用
         "_auto_mtp": profile_match is None and "mtp" in _basename_lower(model_path),
         "_default_mtp_n": int(llm_block.get("spec_draft_n_max", 1)),
@@ -199,8 +206,13 @@ def build_llama_args(params):
         "--flash-attn", "on",
         "-ctk", params["ctk"],
         "-ctv", params["ctv"],
-        "--no-mmap",
     ]
+    # --load-mode none 优先；未指定时退回 --no-mmap（两者都让 llama.cpp 自管内存）
+    _lm = (params.get("load_mode") or "").strip()
+    if _lm and _lm.lower() != "mmap":
+        args += ["--load-mode", _lm]
+    else:
+        args.append("--no-mmap")
 
     if params["cpu_moe"]:
         args.append("--cpu-moe")
@@ -223,6 +235,14 @@ def build_llama_args(params):
         "--jinja",
         "--reasoning-preserve",
     ]
+    # DeepSeek 风格 reasoning 输出（-rea on 时生效）
+    _rf = (params.get("reasoning_format") or "").strip()
+    if _rf and params["rea_mode"] == "on":
+        args += ["--reasoning-format", _rf]
+    # 固定推理强度（如 reasoning_effort=low），透传给 chat template
+    _ctk2 = (params.get("chat_template_kwargs") or "").strip()
+    if _ctk2:
+        args += ["--chat-template-kwargs", _ctk2]
 
     # Overthink 修复：用固定聊天模板，结合 --reasoning-preserve 保留推理块
     if params.get("chat_template"):
@@ -250,6 +270,21 @@ def build_llama_args(params):
         mtp_n = params.get("_default_mtp_n", 1)
     if mtp_n > 0:
         args += ["--spec-type", "draft-mtp", "--spec-draft-n-max", str(mtp_n)]
+        # MTP 保留率：draft token 概率阈值（>= p_min 才接受）
+        _pmin = params.get("spec_draft_p_min", 0)
+        try:
+            _pmin_f = float(_pmin) if _pmin not in ("", None, 0) else 0.0
+        except (TypeError, ValueError):
+            _pmin_f = 0.0
+        if _pmin_f > 0:
+            args += ["--spec-draft-p-min", str(_pmin_f)]
+        # MTP draft 上下文 offload 层数（99 = 全部到 GPU）
+        try:
+            _ngl_d = int(params.get("spec_draft_ngl", 0) or 0)
+        except (TypeError, ValueError):
+            _ngl_d = 0
+        if _ngl_d > 0:
+            args += ["--spec-draft-ngl", str(_ngl_d)]
 
     # ── 模型别名 ──
     # 通过 --alias 让 llama.cpp 返回 OpenClaw 能识别的模型 id

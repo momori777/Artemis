@@ -235,7 +235,7 @@ See [`models.yaml`](models.yaml) for full details.
 | Model | Purpose | Size | Context |
 |-|-|-|-|
 | **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V9 MTP APEX Compact** (GGUF) | Chat LLM (primary MoE) | 16.11 GB | 120K |
-| **Qwen3.8-27B-Uncensored-HauhauCS-Aggressive** (IQ4_XS GGUF) | Chat LLM (dense, secondary) | 14.6 GB | 120K |
+| **Qwen3.8-27B-Uncensored-HauhauCS-Aggressive** (Q4_K_P GGUF) | Chat LLM (dense, tooling) | 16.7 GB | 100K |
 | **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | Chat LLM (dense, legacy) | 13.5 GB | 150K |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI generation (default) | 6.46 GB |
 | **miaomiaoHarem_v20** | ComfyUI generation (backup) | 6.46 GB |
@@ -374,7 +374,7 @@ cd D:\AI_Girlfriend
 
 | Model | `-SwitchTo` key | Profile | Context | `rea` |
 |-|-|-|-|-|
-| **Qwen3.8-27B** (dense) | `qwen3.8-27b` | `qwen3.8-27b-mtp` | **120000** | `on` (forced) |
+| **Qwen3.8-27B** (dense) | `qwen3.8-27b` | `qwen3.8-27b-mtp` | **100000** | `on` (forced) |
 | **Hermes Genesis V9** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v7-mtp` | **120000** | `on` (forced) |
 
 > 🧠 **Both models default to `-rea on`** (DeepSeek-style deep reasoning) — set in
@@ -391,6 +391,88 @@ cd D:\AI_Girlfriend
 | Token Generation | **48 tok/s avg** | MTP accepted ~71% (draft=2) |
 | Context Limit | 120K (~120k tokens) | Full reprocess ~55s at 59k |
 | Model Load Time | ~12s | --no-mmap, requires sufficient RAM |
+
+### Qwen3.8-27B Dense (primary tooling model)
+
+The dense 27B **Qwen3.8-27B-Uncensored-HauhauCS-Aggressive (Q4_K_P, 16.7 GB)** is the
+primary tooling/assistant model. It runs with speculative **MTP (Multi-Token
+Prediction)** decoding. Qwen3.8 ships a built-in MTP head, so the draft context is
+created directly against the target model — no separate draft GGUF is needed.
+
+> **Reference hardware:** Intel Core i9-14900HX (16-core / 24-thread) + **NVIDIA RTX
+> 5070 Laptop (8 GB VRAM)** + 64 GB RAM. The model + KV cache are split across GPU
+> and system RAM (`--cache-ram 2000`); the MTP draft is offloaded fully to the GPU
+> (`--spec-draft-ngl 99`), which is what makes speculative decoding fast on an 8 GB card.
+
+#### Launch Command
+
+```powershell
+PS C:\Users\TK> Start-Process -FilePath $exe -ArgumentList @(
+>> "-m", $model,
+>> "-c", "100000",
+>> "--flash-attn", "on",
+>> "-ctk", "q4_0", "-ctv", "q4_0",
+>> "--batch-size", "2048",
+>> "--ubatch-size", "1024",
+>> "--threads", "24",
+>> "--threads-batch", "24",
+>> "--api-key", "123456",
+>> "-rea", "on",
+>> "--jinja",
+>> "--cache-ram", "2000",
+>> "--parallel", "1",
+>> "--kv-unified",
+>> "--no-warmup",
+>> "--spec-type", "draft-mtp",
+>> "--spec-draft-n-max", "3",
+>> "--spec-draft-p-min", "0.88",
+>> "--chat-template-file", $tpl,
+>> "--reasoning-preserve",
+>> "--reasoning-format", "deepseek",
+>> "--load-mode", "none",
+>> "--spec-draft-ngl", "99",
+>> "--chat-template-kwargs", '{\"reasoning_effort\":\"low\"}'
+```
+
+> Where `$exe` = `D:\AI_Girlfriend\llama-server\llama-server.exe`, `$model` =
+> `D:\model\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf`, and `$tpl` =
+> `D:\AI_Girlfriend\chat_template.jinja` (the root template — must stay present and
+> not be gitignored). Served on `http://127.0.0.1:8080` with API key `123456`.
+
+**Flag notes (dense 27B profile):**
+
+| Flag | Value | Why |
+|-|-|-|
+| `-c` | `100000` | 100K context window (`n_ctx_slot = 100096`) |
+| `-ctk` / `-ctv` | `q4_0` | KV cache quantized to q4_0 to halve VRAM |
+| `--cache-ram` | `2000` | Keep 2000 MB of KV in RAM (rest spills to disk) |
+| `--batch-size` / `--ubatch-size` | `2048` / `1024` | Fast prefill |
+| `--threads` / `--threads-batch` | `24` | Match i9-14900HX logical cores |
+| `--spec-type` | `draft-mtp` | Enable built-in MTP speculative decoding |
+| `--spec-draft-n-max` | `3` | Draft up to 3 tokens per step |
+| `--spec-draft-p-min` | `0.88` | Only accept drafts ≥0.88 token probability |
+| `--spec-draft-ngl` | `99` | Offload the whole MTP draft context to GPU |
+| `--reasoning-format` | `deepseek` | DeepSeek-style `reasoning_content` output |
+| `--load-mode` | `none` | Load weights without mmap (clean CPU/GPU split) |
+| `-rea` / `--reasoning-preserve` | `on` | Preserve thinking blocks for KV reuse |
+| `--chat-template-kwargs` | `reasoning_effort: low` | Cap default reasoning depth to low |
+
+#### Key Metrics (Qwen3.8-27B dense, from live `llama-server` log)
+
+| Metric | Value | Notes |
+|-|-|-|
+| Model Load Time | ~14s | `--load-mode none` (16.7 GB) |
+| Prefill Speed | **360 ~ 425 t/s** | Scales down with prompt length (425 → 356 t/s) |
+| Token Generation | **~3.3 ~ 5.3 tok/s** | Steady decode (MTP active) |
+| MTP draft acceptance | **~93 ~ 98%** | e.g. `0.963 (104/108)`, `0.980 (144/147)`; mean accepted run length **2.8 ~ 3.5** |
+| Context Limit | 100K (`n_ctx_slot = 100096`) | `--kv-unified` + `--cache-ram 2000` |
+| MTP retention (`--spec-draft-p-min`) | **0.88** | Draft tokens below 0.88 confidence are rejected |
+
+> 📈 **MTP retention explained:** with `--spec-draft-n-max 3` + `--spec-draft-p-min
+> 0.88`, llama.cpp asks the MTP head to propose up to 3 next tokens, then keeps each
+> only if its probability is ≥0.88. In practice ~**96% of drafted tokens are accepted**
+> (mean accepted run length ≈ 3), so effective throughput is roughly 3× a single
+> speculative token per forward pass while the 8 GB card stays well under its VRAM cap.
 
 ### Silicon Rider Bench (Agent Benchmark)
 
@@ -440,45 +522,57 @@ Qwen3.6 MoE uses SSM (Gated Delta Net) hybrid attention with `--kv-unified`.
 
 ---
 
-## Qwen3.8-27B (Dense, Secondary Model)
+## Qwen3.8-27B (Dense, Tooling Model)
 
-Secondary dense model for tasks where full 27B parameter activation is preferred. Runs via llama.cpp with MTP speculative decoding. Also auto-detected via `config.yaml` → `model_profiles` (`qwen3.8-27b-mtp`).
+Primary tooling/assistant dense model. Runs via llama.cpp with **built-in MTP** speculative decoding (no separate draft GGUF needed). Auto-detected via `config.yaml` → `model_profiles` (`qwen3.8-27b-mtp`).
 
 ### Launch Command
 
-Switch to it, or launch manually with the resolved params:
+Switch to it, or launch manually:
 
 ```powershell
 # Preferred: auto-switch + auto-params (see "Switching models" above)
 .\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.8-27b
 
-# Equivalent manual command (what llama_config.py generates)
-llama-server.exe `
-  -m "D:\model\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf" `
-  -c 120000 `
-  --flash-attn on -ctk q4_0 -ctv q4_0 `
-  --batch-size 2048 --ubatch-size 1024 `
-  --threads 24 --threads-batch 24 `
-  -rea on --jinja --reasoning-preserve `
-  --chat-template-file "D:\AI_Girlfriend\chat_template.jinja" `
-  --cache-ram 2000 --parallel 1 `
-  --kv-unified --no-mmap --no-warmup `
-  --spec-type draft-mtp --spec-draft-n-max 2
+# Equivalent manual command (what the reference config generates)
+Start-Process -FilePath $exe -ArgumentList @(
+  "-m", "D:\model\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf",
+  "-c", "100000",
+  "--flash-attn", "on",
+  "-ctk", "q4_0", "-ctv", "q4_0",
+  "--batch-size", "2048", "--ubatch-size", "1024",
+  "--threads", "24", "--threads-batch", "24",
+  "--api-key", "123456",
+  "-rea", "on", "--jinja",
+  "--cache-ram", "2000", "--parallel", "1", "--kv-unified", "--no-warmup",
+  "--spec-type", "draft-mtp",
+  "--spec-draft-n-max", "3", "--spec-draft-p-min", "0.88",
+  "--spec-draft-ngl", "99",
+  "--chat-template-file", "D:\AI_Girlfriend\chat_template.jinja",
+  "--reasoning-preserve",
+  "--reasoning-format", "deepseek",
+  "--load-mode", "none",
+  "--chat-template-kwargs", '{"reasoning_effort":"low"}'
+)
 ```
 
-> ⚠️ **Dense model on 8GB VRAM**: 27B Q4 ≈ 15 GB, far exceeding 8 GB VRAM. Most layers run on CPU while attention etc. runs on GPU. This is the **main bottleneck**; expect much lower generation speed than the MoE variant.
+> Reference hardware: **i9-14900HX + RTX 5070 Laptop (8 GB) + 64 GB RAM**. The
+> model/KV split across GPU and RAM (`--cache-ram 2000`); the MTP draft context is
+> offloaded fully to the GPU (`--spec-draft-ngl 99`) so speculative decoding stays
+> fast on an 8 GB card. Full flag-by-flag breakdown, hardware notes, and live-log
+> metrics are in the **"Qwen3.8-27B Dense (primary tooling model)"** section above.
 
-### Key Metrics (27B Dense)
+### Key Metrics (27B Dense, Q4_K_P — from live log)
 
 | Metric | Value | Notes |
 |-|-|-|
-| VRAM Usage | ~5.8 GiB model + KV | Cannot fully offload; constrained by 8 GB |
-| Prefill Speed | **~156 t/s** | Prompt processing on GPU |
-| Token Generation | **~3.8 tok/s** | Dense 27B, CPU-heavy, MTP ~84% accept |
-| MTP Acceptance | 84.1% (draft=1) | Higher rate due to simpler draft head |
-| Context Limit | **120K** | Full KV on GPU/CPU hybrid |
+| Prefill Speed | **360 ~ 425 t/s** | Prompt processing on GPU |
+| Token Generation | **~3.3 ~ 5.3 tok/s** | Dense 27B, MTP active |
+| MTP draft acceptance | **~93 ~ 98%** | e.g. `0.963 (104/108)`; mean accepted run length **2.8 ~ 3.5** |
+| MTP retention (`--spec-draft-p-min`) | **0.88** | Drafts below 0.88 confidence rejected |
+| Context Limit | **100K** | `--kv-unified` + `--cache-ram 2000` |
 
-> 💡 **MoE vs Dense**: The 35B MoE activates only ~3B parameters per token (8/256 experts) and fits GPU well, hitting 48 tok/s. The 27B dense activates all 27B and exceeds VRAM, bottlenecked to 3.8 tok/s. For this hardware (RTX 5070 8GB), **the 35B MoE is strongly recommended** as primary. Use the 27B dense when you want full 27B activation for tooling / agent tasks.
+> 💡 **MoE vs Dense**: The 35B MoE activates only ~3B parameters per token (8/256 experts) and fits GPU well (48 tok/s). The 27B dense activates all 27B, exceeding 8 GB VRAM, so it splits to CPU/RAM and decodes ~3–5 tok/s. Use the **27B dense** when you want full 27B activation for tooling / agent tasks; use the **35B MoE** for fast roleplay. The Q4_K_P quant (16.7 GB) gives better quality than the retired IQ4_XS at the cost of a bit more VRAM/RAM.
 
 ### VRAM Tiering Strategy
 
