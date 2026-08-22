@@ -180,29 +180,32 @@ llama:
 # 命中后该预设的 params 覆盖上方 llama 区块的默认值。
 # 未命中任何预设时使用 llama 区块默认值。
 model_profiles:
-  # ---- Qwen3.8-27B (internal MTP, aggressive, IQ4_XS) ----
+  # ---- Qwen3.8-27B (internal MTP, aggressive, Q4_K_P) ----
   - name: "qwen3.8-27b-mtp"
     # Match keywords against the model filename / 按模型文件名匹配的关键字
     match:
       - qwen3.8-27b
     params:
-      context: 120000        # Effective context for this model / 该模型生效上下文
+      context: 100000        # Effective context for this model / 该模型生效上下文
       ctk: q4_0
       ctv: q4_0
       batch_size: 2048
       ubatch_size: 1024
       threads: 24
       threads_batch: 24
-      # No ngl: let llama.cpp auto-assign GPU layers (keep no-mmap + mixed CPU/GPU)
-      # 不带 ngl：由 llama.cpp 自动分配 GPU 层（保持 no-mmap + CPU/GPU 混合）
-      ngl: 0
+      # No ngl: let llama.cpp auto-assign GPU layers (load-mode none + mixed CPU/GPU)
+      # 不带 ngl：由 llama.cpp 自动分配 GPU 层（load-mode none + CPU/GPU 混合）
+      load_mode: none
       cpu_moe: false
       cpu_mask: ''
       cache_ram: 2000
       no_warmup: true
-      # Qwen3.8 ships its own MTP; force it on even without "mtp" in the filename
-      # Qwen3.8 内部自带 MTP，即使文件名不带 mtp 也强制启用
-      spec_draft_n_max: 2
+      # Qwen3.8 ships its own MTP; draft up to 3 tokens, keep only >=0.88 confidence,
+      # offload the whole draft context to GPU. Reference HW: i9-14900HX + RTX 5070 8GB.
+      # Qwen3.8 内部自带 MTP：draft 最多 3 tokens，置信度阈值 0.88，draft 上下文全量上 GPU
+      spec_draft_n_max: 3
+      spec_draft_p_min: 0.88
+      spec_draft_ngl: 99
       rea: true             # reasoning on / 开启深度思考
 
   # ── Qwen3.6-27B-Fable (MTP, Q4_K_S) ──
@@ -267,7 +270,7 @@ model_profiles:
 # 更新 llama_model 路径。留空或每行一个 "模型名: 路径" 映射。
 llama_model_map:
   qwen3.6-35b: "D:\\model\\Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf"
-  qwen3.8-27b: "D:\\model\\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf"
+  qwen3.8-27b: "D:\\model\\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf"
   qwen3.6-27b: "E:\\Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf"
 
 # ============================================================

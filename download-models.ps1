@@ -88,7 +88,7 @@ Write-Host ""
 # 模型文件清单 (repo_path, local_path, description)
 $Models = @(
     @{RepoPath="llm/Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf"; LocalPath="$BaseDir\llm\Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf"; Desc="LLM GGUF — Hermes V7 MTP MoE 35B (17.1 GB, 首推)"},
-    @{RepoPath="llm/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf"; LocalPath="$BaseDir\llm\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf"; Desc="LLM GGUF — Qwen3.8-27B Uncensored HauhauCS Aggressive IQ4_XS (16.3 GB, 备选)"},
+    @{RepoPath="llm/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf"; LocalPath="$BaseDir\llm\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf"; Desc="LLM GGUF — Qwen3.8-27B Uncensored HauhauCS Aggressive Q4_K_P (16.7 GB, 工具模型)"},
     @{RepoPath="comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors"; LocalPath="$BaseDir\comfyui-checkpoints\WAI-Nsfw-Illustrious-17.safetensors"; Desc="ComfyUI Checkpoint — WAI (6.46 GB)"},
     @{RepoPath="comfyui-checkpoints/miaomiaoHarem_v20.safetensors"; LocalPath="$BaseDir\comfyui-checkpoints\miaomiaoHarem_v20.safetensors"; Desc="ComfyUI Checkpoint — Miaomiao (6.46 GB)"},
     @{RepoPath="gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt"; LocalPath="$BaseDir\gpt-sovits-weights\GPT_weights_v2Pro\xxx-e30.ckpt"; Desc="GPT-SoVITS ckpt (155 MB)"},
