@@ -7,25 +7,47 @@ commands (profiles in `config.yaml` / `llama_config.py`) are a starting point;
 
 ---
 
-## 1. GPU offload: when to use `-ngl 99`
+## 1. GPU offload: choosing `-ngl`
 
-- **VRAM > model size + 6 GB** → use `-ngl 99` (all layers on GPU).
-  VRAM can both "cook" (prefill) and "eat" (decode) by itself, no swaps.
-- This is the only tier where forced `-ngl` is the right answer.
+`-ngl N` puts the first `N` transformer layers on the GPU and the rest in
+RAM. This is a **static split** — once loaded, each layer lives in its
+assigned memory for the whole run. There is **no dynamic weight swapping**
+during decode, so partial offload does *not* cause the "swap stall" people
+fear. The GPU layers read from fast VRAM; the rest read from RAM. Net effect:
+**partial `-ngl` is beneficial**, not harmful.
 
-## 2. Dense models that don't fit in VRAM
+Pick `N` by what fits in VRAM *after* reserving space for KV cache + MTP
+draft + flash attention:
 
-When `VRAM < model size` but `VRAM + RAM > model size + 6 GB` and RAM is
-plenty:
-
-- Keep **all layers in RAM**: `--load-mode none`
-  (means no-mmap; the `-no-mmap` parameter is being deprecated in favor of it).
+- **VRAM > model size + 6 GB** → `-ngl 99` (all layers on GPU).
+  VRAM cooks (prefill) and eats (decode) by itself, no RAM in the loop.
+- **VRAM < model size** (dense model doesn't fully fit) → use a **partial**
+  `-ngl N`: the largest `N` that still leaves headroom for KV + MTP draft.
+  Reference: **`-ngl 12`** on an RTX 5070 Laptop (8 GB) with Qwen3.8-27B
+  Q4_K_M (~17.2 GB) runs clean — the log line
+  `n_gpu_layers already set by user to 12, abort` is just llama.cpp skipping
+  auto-fit because you set it; it is **not** an error. Decode holds ~4 tok/s
+  with MTP, prefill ~185–205 t/s.
+- Keep `--load-mode none` (no-mmap) so llama.cpp manages the RAM-side layers.
 - VRAM is still fully usable for KV cache, MTP draft model, flash attention,
   `--kv-unified`, prefill, etc.
 
-**Why not `-ngl` to spill some layers onto GPU?**
-Because RAM↔VRAM swap time >> decode time itself. A few layers on GPU just
-adds swap stalls without meaningful decode gain.
+> ⚠️ **Correcting an earlier wrong note:** This guide once claimed that
+> spilling a few layers onto the GPU via `-ngl` "just adds swap stalls without
+> meaningful decode gain" and that `-ngl` should never be raised. That was
+> **false** — it confused static layer placement with dynamic weight swapping
+> (which llama.cpp does not do). Partial `-ngl` is safe and measurably faster;
+> tune `N` up until VRAM headroom for KV/MTP starts to disappear.
+
+### MoE models
+
+- Condition: `activated params < VRAM + 4 GB` and `RAM > model size`
+  → use `--cpu-moe`. Every *activated* expert runs on GPU; the GPU can cook
+  and eat by itself again — but only for the activated slice.
+- "Activated params" = the `A` in e.g. Qwen **3**5**B A(activated)**3**B**:
+  Qwen 3.6 35B A3B has 3B activated params.
+- There is still some RAM↔VRAM swap cost (the inactive experts still live in
+  RAM), but far less than for dense spilling.
 
 ### MoE models
 
@@ -48,9 +70,10 @@ MTP does **not** reduce quality — it only affects speed.
 
 - You don't have to specify a separate MTP draft model — llama.cpp builds the
   draft context from the target model's embedded MTP head in RAM/VRAM.
-- `x=3, p-min=0.82` matched well in practice:
-  `draft acceptance = 0.92357 (145 accepted / 157 generated), mean len = 3.38`
-  (accepted tokens replace decoded ones; MTP can be higher than raw decoded! ）.
+- Reference values that matched well in practice (Qwen3.8-27B Q4_K_M, 8 GB
+  VRAM, `-ngl 12`): **`x=5, p-min=0.84`**
+  → `draft acceptance ≈ 0.86 ~ 1.00`, `mean len ≈ 3.2 ~ 5.3`.
+  (accepted tokens replace decoded ones; MTP can be higher than raw decoded!）.
 - **Speed ≈ x × acceptance.** Since MTP efficiency depends on the model,
   the machine, and (if used) the MTP draft model — **tune x and 0.ab on your
   own machine**, don't copy values blindly.
@@ -141,7 +164,7 @@ Claude code, anth hard code their software must use claude series models, so you
 | Your situation | Key params |
 |---|---|
 | Model fits in VRAM (+6 GB headroom) | `-ngl 99` |
-| Dense, doesn't fit in VRAM | `--load-mode none`, keep layers in RAM |
+| Dense, doesn't fully fit in VRAM | partial `-ngl N` + `--load-mode none` (N = max that leaves KV/MTP headroom; ref `-ngl 12` on 8 GB) |
 | MoE, activated params fit in VRAM (+4 GB) | `--cpu-moe` |
 | Fast KV + prefix caching | `--ctk q4_0 --ctv q4_0 --kv-unified --reasoning-preserve` |
 | Speculative decoding | tune `--spec-draft-n-max` × `--spec-draft-p-min` on your machine |

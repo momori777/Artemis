@@ -325,7 +325,7 @@ cd D:\AI_Girlfriend
 > 🧠 **两个模型默认都带 `-rea on`**（DeepSeek 式深度思考）——在 `config.yaml` → `model_profiles` 中设置。
 > `-rea on` 时思考 token 会计入上下文/输出预算；本地 `max_tokens` 不要写死，且长文本 TTS/画图请务必**先** `sessions_spawn`。
 
-> 💡 **关于 `--no-mmap` 与 `-ngl`:** `--no-mmap` 让 llama.cpp 自行管理内存分配,比手动指定 `-ngl` 层数效率更高。`-ngl` 强制锁定指定层数到 GPU,可能导致一半速度损失;而 `--no-mmap` 让引擎根据实际显存动态调度。KV 缓存用 `q4_0` 量化可节省一半显存。
+> 💡 **关于 `--no-mmap` 与 `-ngl`:** `--no-mmap` 让 llama.cpp 自行管理 **RAM 侧**内存。`-ngl N` 是**静态**分层(前 N 层放 GPU,其余放 RAM),**不会**发生动态换页,所以**不会**导致速度减半。部分 `-ngl`(如 8GB 显存 + 17GB 模型用 `-ngl 12`)安全且实测更快。建议 `--no-mmap` 与 `-ngl` 配合使用,让 llama.cpp 管理 RAM 层;KV 缓存用 `q4_0` 量化可节省一半显存。
 
 ### 根目录 `chat_template.jinja` 的作用
 
