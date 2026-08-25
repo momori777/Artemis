@@ -23,22 +23,25 @@ Mem0 Qdrant 向量记忆的读/写桥接器，WebChat、QQBot、TelegramBot 共�
 
 ## 使用
 
+> ⚠️ 模块唯一位置：`skills/shared/mem0_bridge.py`（mem0-bridge 目录内不再有副本）。
+> 导入前把 workspace 根加入 sys.path，或直接把 `skills/shared` 加入 sys.path。
+
 ### 搜索记忆（每轮对话注入）
 ```python
-from skills.mem0_bridge import search_mem0_qdrant, CHARACTERS
+from skills.shared.mem0_bridge import search_mem0_qdrant, CHARACTERS
 results = search_mem0_qdrant("natsume", "今天心情怎么样", limit=5)
 # returns [{"id": ..., "memory": "...", "score": 0.85, "metadata": {...}}]
 ```
 
 ### 写入记忆
 ```python
-from skills.mem0_bridge import add_memory
+from skills.shared.mem0_bridge import add_memory
 add_memory("natsume", "用户偏好: 喜欢被叫'笨蛋'")
 ```
 
 ### 列出所有记忆
 ```python
-from skills.mem0_bridge import list_mem0
+from skills.shared.mem0_bridge import list_mem0
 all_memories = list_mem0("natsume", limit=50)
 ```
 
