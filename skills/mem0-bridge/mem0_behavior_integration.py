@@ -24,7 +24,7 @@ if __name__ == "__main__":
 # ── 路径 ──────────────────────────────────────────────────────
 WORKSPACE = Path(r"C:\Users\TK\.openclaw\workspace")
 GIRLFRIEND_ROOT = Path(r"D:\AI_Girlfriend")
-MEM0_BRIDGE = GIRLFRIEND_ROOT / "skills" / "mem0-bridge"
+MEM0_BRIDGE = GIRLFRIEND_ROOT / "skills" / "shared"  # mem0_bridge.py 唯一位置（single source of truth）
 BEHAVIOR_ENGINE = GIRLFRIEND_ROOT / "skills" / "behavior-engine"
 MEMORY_DIR = GIRLFRIEND_ROOT / "memory" / "role_play"
 
@@ -105,7 +105,7 @@ def get_relevant_mem0_context(character: str, query: str, behavior_state: dict) 
     # Import mem0 bridge using importlib (avoids sys.stdout issues)
     import importlib.util
     sys.path.insert(0, str(MEM0_BRIDGE))
-    spec = importlib.util.spec_from_file_location('mb', str(MEM0_BRIDGE / 'mem0_bridge.py'))
+    spec = importlib.util.spec_from_file_location('mb', str(MEM0_BRIDGE / 'mem0_bridge.py'))  # skills/shared/mem0_bridge.py
     if spec and spec.loader:
         mb = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mb)
