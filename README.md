@@ -2,8 +2,6 @@
 
 Config tutorial BV16XTV6fEoH
 
-Baidu Netdisk: https://pan.baidu.com/s/1sLeSyVp76yzWcR3Q4pX0kA?pwd=0721
-You don't actually need Baidu Netdisk - HuggingFace mirrors work fine in China. Use it only if you really don't want to configure hf-mirror.
 
 > ⚠️ Default scripts are for NVIDIA GPUs. AMD GPU users: see the `AMD_GPU/` folder.
 
