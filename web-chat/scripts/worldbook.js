@@ -18,6 +18,15 @@ var WorldBook = {
   _priorityLabel: function(p) {
     return { 0: 'Off', 1: '低', 2: '中', 3: '高', 4: '关键' }[p] || '中';
   },
+  _priorityTooltip: function(p) {
+    return {
+      0: '关闭 — 不注入系统提示词',
+      1: '低优先级 — 注入到系统提示词末尾',
+      2: '中优先级 — 注入到系统提示词中部（默认）',
+      3: '高优先级 — 注入到系统提示词靠前位置',
+      4: '关键 — 注入到系统提示词最前面，模型最重视'
+    }[p] || '中优先级';
+  },
   _priorityColor: function(p) {
     return { 0: '#555', 1: '#6b8f5a', 2: '#d4a017', 3: '#e85d4a', 4: '#c9302e' }[p] || '#6b8f5a';
   },
@@ -154,6 +163,14 @@ var WorldBook = {
         self._updateUI();
         self._syncToDaemon();
         UI.showToast('All entries disabled', 'info');
+      });
+    }
+
+    // "Preview system prompt" button
+    var previewBtn = document.getElementById('btn-preview-system-prompt');
+    if (previewBtn) {
+      previewBtn.addEventListener('click', function() {
+        self._previewSystemPrompt();
       });
     }
   },
@@ -531,6 +548,34 @@ var WorldBook = {
     UI.showToast('Removed: ' + name, 'success');
   },
 
+  _previewSystemPrompt: function() {
+    var self = this;
+    var charId = getActiveCharId() || 'natsume';
+    UI.showToast('Loading system prompt preview...', 'info');
+    fetch('http://localhost:19260/api/preview-system-prompt?character_id=' + encodeURIComponent(charId), {
+      signal: AbortSignal.timeout(10000),
+    }).then(function(res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }).then(function(data) {
+      if (!data.ok) throw new Error(data.error || 'Failed to preview');
+      var prompt = data.prompt;
+      var previewWindow = window.open('', '_blank', 'width=800,height=600');
+      if (previewWindow) {
+        previewWindow.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>System Prompt Preview</title>');
+        previewWindow.document.write('<style>body{font-family:monospace;font-size:13px;padding:20px;line-height:1.5;} h1{font-size:16px;} .info{color:#666;font-size:12px;margin-bottom:15px;} pre{white-space:pre-wrap;word-wrap:break-word;background:#f5f5f5;padding:15px;border-radius:5px;max-height:80vh;overflow-y:auto;}</style>');
+        previewWindow.document.write('</head><body>');
+        previewWindow.document.write('<h1>📖 System Prompt Preview</h1>');
+        previewWindow.document.write('<div class="info">Character: ' + escapeHtml(charId) + ' · Length: ' + data.length + ' chars</div>');
+        previewWindow.document.write('<pre>' + escapeHtml(prompt) + '</pre>');
+        previewWindow.document.write('</body></html>');
+        previewWindow.document.close();
+      }
+    }).catch(function(err) {
+      UI.showToast('Preview failed: ' + err.message, 'error');
+    });
+  },
+
   // ── UI Rendering ──
 
   _updateUI: function() {
@@ -595,11 +640,21 @@ var WorldBook = {
       var icon = e.enabled ? 'ph-toggle-left' : 'ph-toggle-right';
       var iconClass = e.enabled ? '' : 'wb-entry-disabled';
       var disabledStyle = e.enabled ? '' : 'opacity:0.5;';
+      // Show injection status badge
+      var injectBadge = '';
+      if (e.enabled && e.priority >= 1) {
+        injectBadge = '<span class="wb-inject-badge" title="This entry will be injected into the system prompt">✓ 注入</span>';
+      } else if (e.enabled && e.priority === 0) {
+        injectBadge = '<span class="wb-inject-badge wb-inject-off" title="Entry is enabled but priority is Off — not injected">○ 未注入</span>';
+      } else {
+        injectBadge = '<span class="wb-inject-badge wb-inject-off" title="Entry is disabled — not injected">— 未启用</span>';
+      }
 
       html += '<div class="wb-entry" data-wb-id="' + e.id + '" style="' + disabledStyle + '">' +
         '<div class="wb-entry-header">' +
           '<span class="wb-entry-key" title="' + escapeHtml(e.key) + '">' + escapeHtml(e.key) + '</span>' +
-          '<span class="wb-entry-priority" style="color:' + priColor + '" title="Priority ' + e.priority + '">' + priLabel + '</span>' +
+          injectBadge +
+          '<span class="wb-entry-priority" style="color:' + priColor + '" title="' + escapeHtml(self._priorityTooltip(e.priority)) + '">' + priLabel + '</span>' +
         '</div>' +
         '<div class="wb-entry-content">' + escapeHtml(contentPreview) + '</div>' +
         '<div class="wb-entry-actions">' +

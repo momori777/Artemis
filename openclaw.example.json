@@ -226,42 +226,20 @@
     "byProvider": {
       "llama": {
         "deny": [
-          "cron"
         ]
       },
-      "llama/qwen3.6-35b": {
-        "deny": [
-          "cron"
         ]
       },
-      "llama/qwen3.6-27b": {
-        "deny": [
-          "cron"
         ]
       },
-      "llama/qwen3.8-27b": {
-        "deny": [
-          "cron"
         ]
       },
-      "local-llama/llama-local": {
-        "deny": [
-          "cron"
         ]
       },
-      "local-llama/qwen3.6-35b": {
-        "deny": [
-          "cron"
         ]
       },
-      "local-llama/qwen3.6-27b": {
-        "deny": [
-          "cron"
         ]
       },
-      "local-llama/qwen3.8-27b": {
-        "deny": [
-          "cron"
         ]
       }
     }

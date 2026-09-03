@@ -180,7 +180,8 @@ llama:
 # 命中后该预设的 params 覆盖上方 llama 区块的默认值。
 # 未命中任何预设时使用 llama 区块默认值。
 model_profiles:
-  # ---- Qwen3.8-27B (internal MTP, aggressive, Q4_K_P) ----
+  # ---- Qwen3.8-27B (internal MTP, Q4_K_S, 8GB VRAM) ----
+  # Quantization: Q4_K_S (~15.8 GB) — sweet spot for dense 27B on consumer hardware
   - name: "qwen3.8-27b-mtp"
     # Match keywords against the model filename / 按模型文件名匹配的关键字
     match:
@@ -193,12 +194,11 @@ model_profiles:
       ubatch_size: 1024
       threads: 24
       threads_batch: 24
-      # No ngl: let llama.cpp auto-assign GPU layers (load-mode none + mixed CPU/GPU)
-      # 不带 ngl：由 llama.cpp 自动分配 GPU 层（load-mode none + CPU/GPU 混合）
-      load_mode: none
+      ngl: 14                # Partial GPU offload: first 14 layers on GPU (8GB VRAM optimum)
+      no_mmap: true          # Let llama.cpp manage RAM-side memory
       cpu_moe: false
       cpu_mask: ''
-      cache_ram: 2000
+      cache_ram: 2000        # 2 GB RAM budget for KV cache
       no_warmup: true
       # Qwen3.8 ships its own MTP; draft up to 3 tokens, keep only >=0.88 confidence,
       # offload the whole draft context to GPU. Reference HW: i9-14900HX + RTX 5070 8GB.
@@ -206,7 +206,7 @@ model_profiles:
       spec_draft_n_max: 3
       spec_draft_p_min: 0.88
       spec_draft_ngl: 99
-      rea: true             # reasoning on / 开启深度思考
+      rea: null              # Not specified — defaults to 'medium' via chat template
 
   # ── Qwen3.6-27B-Fable (MTP, Q4_K_S) ──
   - name: "qwen3.6-27b-fable-mtp"
@@ -271,7 +271,8 @@ model_profiles:
 # 更新 llama_model 路径。留空或每行一个 "模型名: 路径" 映射。
 llama_model_map:
   qwen3.6-35b: "D:\\model\\Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf"
-  qwen3.8-27b: "D:\\model\\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf"
+  # Q4_K_S (~15.8 GB) — sweet spot for dense 27B on 8GB VRAM with partial offload (-ngl 14)
+  qwen3.8-27b: "D:\\model\\Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_S.gguf"
   qwen3.6-27b: "E:\\Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf"
 
 # ============================================================

@@ -4202,6 +4202,17 @@ document.addEventListener('DOMContentLoaded', function() {
   Studio.init();
   UI.init();
   initLangSwitch();
+  // Fetch available models on page load so chat uses a valid model ID
+  ApiClient.fetchModels().then(function(models) {
+    // If the stored model is the fallback 'local-model' and we have real models,
+    // update settings to use the first available one.
+    var currentSettings = getSettings();
+    if (currentSettings.model === 'local-model' && models.length > 0) {
+      saveSettings({ model: models[0].id });
+    }
+  }).catch(function() {
+    // Models not available yet; will fall back to local-model
+  });
 });
 
 // ── Language Switch (dropdown) ──

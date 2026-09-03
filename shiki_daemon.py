@@ -1391,6 +1391,17 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self.send_json({"entries": [], "count": 0})
             return
 
+        if path == "/api/preview-system-prompt":
+            # Parse character_id from query string
+            qs = parse_qs(urlparse(self.path).query)
+            char_id = qs.get("character_id", [""])[0]
+            try:
+                prompt = _build_system_prompt(char_id)
+                self.send_json({"ok": True, "prompt": prompt, "length": len(prompt)})
+            except Exception as e:
+                self.send_json({"ok": False, "error": str(e)})
+            return
+
         if path == "/api/restart-service":
             qs = parse_qs(urlparse(self.path).query)
             name = qs.get("name", [""])[0]

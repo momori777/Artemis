@@ -30,21 +30,23 @@ models:
     note: 当前活跃模型 MoE，需 --cpu-moe --cpu-mask 0xFFFFFFFF
 
   # =========================================================================
-  # 当前活跃（工具/助手） — Qwen3.8-27B-Uncensored-HauhauCS-Aggressive (Q4_K_P, Dense, MTP)
+  # 当前活跃（工具/助手） — Qwen3.8-27B-TurboFCFusion (Q4_K_S, Dense, MTP)
+  # Quantization: Q4_K_S (~15.8 GB) — sweet spot for dense 27B on consumer hardware
   # =========================================================================
-  - name: Qwen3.8-27B-Uncensored-HauhauCS-Aggressive
-    type: GGUF (Q4_K_P, MTP, ~16.7GB, 27B Dense)
+  - name: Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_S
+    type: GGUF (Q4_K_S, MTP, ~15.8GB, 27B Dense)
     repo: TAOTAO777/ai-girlfriend-natsume
-    repo_path: llm/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf
-    local_path: "D:/model/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf"
+    repo_path: llm/Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_S.gguf
+    local_path: "D:/model/Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_S.gguf"
     download: |
-      huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf --local-dir D:/model
+      huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_S.gguf --local-dir D:/model
     note: |
-      主工具模型。内置 MTP，启动参数见 README "Qwen3.8-27B Dense" 段：
+      主工具模型。Q4_K_S 量化（~15.8 GB），8GB VRAM 上配合 -ngl 14 部分卸载可稳定运行。
+      内置 MTP，启动参数见 README "Qwen3.8-27B Dense" 段：
       -c 100000 -ctk/-ctv q4_0 --cache-ram 2000 --spec-type draft-mtp
-      --spec-draft-n-max 3 --spec-draft-p-min 0.88 --spec-draft-ngl 99 --load-mode none。
+      --spec-draft-n-max 3 --spec-draft-p-min 0.88 --spec-draft-ngl 99 --no-mmap。
       参考硬件 i9-14900HX + RTX 5070 Laptop 8GB。
-      旧 IQ4_XS 变体已从 HF 仓库删除。
+      rea 未指定，默认 medium（通过 chat_template.jinja 控制）。
 
   # =========================================================================
   # 备选 — Qwen3.6-27B Fable MTP (Q4_K_S, Dense)
