@@ -2336,3 +2336,32 @@ text-align:center;
   border-color:var(--accent);color:var(--accent);
   background:var(--accent-soft);
 }
+
+/* World book injection status badges */
+.wb-inject-badge {
+  display:inline-block;
+  font-size:10px;
+  padding:1px 6px;
+  border-radius:10px;
+  background:var(--success-soft);
+  color:var(--success);
+  font-weight:500;
+  margin-left:4px;
+  white-space:nowrap;
+}
+.wb-inject-badge.wb-inject-off {
+  background:var(--bg-elevated);
+  color:var(--text-muted);
+  border:1px solid var(--border-subtle);
+}
+
+/* World book entry priority badge */
+.wb-entry-priority {
+  display:inline-block;
+  font-size:10px;
+  padding:1px 6px;
+  border-radius:10px;
+  font-weight:500;
+  margin-left:4px;
+  white-space:nowrap;
+}

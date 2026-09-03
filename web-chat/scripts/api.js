@@ -66,7 +66,13 @@ var ApiClient = {
   },
 
   chatStream: async function (messages, settings, onToken, onComplete, onError) {
-    var model = settings.model || this.getDefaultModel();
+    // If model is the fallback 'local-model' and we have real models cached,
+    // use the first available one instead.
+    var model = settings.model;
+    if (model === 'local-model' && this._modelsCache && this._modelsCache.length > 0) {
+      model = this._modelsCache[0].id;
+    }
+    if (!model) model = this.getDefaultModel();
     var characterId = settings.characterId || 'natsume';
     // Merge sampler params from sampler panel (SillyTavern-style permanent overrides)
     var samplerParams = {};
@@ -207,7 +213,13 @@ var ApiClient = {
   },
 
   nonStreamChat: function (messages, settings) {
-    var model = settings.model || this.getDefaultModel();
+    // If model is the fallback 'local-model' and we have real models cached,
+    // use the first available one instead.
+    var model = settings.model;
+    if (model === 'local-model' && this._modelsCache && this._modelsCache.length > 0) {
+      model = this._modelsCache[0].id;
+    }
+    if (!model) model = this.getDefaultModel();
     var characterId = settings.characterId || 'natsume';
     var body = {
       model: model,

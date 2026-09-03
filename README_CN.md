@@ -296,6 +296,34 @@ llama-server.exe `
   --spec-type draft-mtp --spec-draft-n-max 2
 ```
 
+**27B 稠密模型（Qwen3.8-27B）在 8GB 显存下的启动命令：**
+
+```powershell
+llama-server.exe `
+  -m "D:\model\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf" `
+  -c 100000 `
+  --flash-attn on -ctk q4_0 -ctv q4_0 `
+  -ngl 14 `
+  --batch-size 2048 --ubatch-size 1024 `
+  --jinja --reasoning-preserve `
+  --chat-template-file "D:\AI_Girlfriend\chat_template.jinja" `
+  --cache-ram 2000 --parallel 1 `
+  --kv-unified --no-mmap --no-warmup `
+  --spec-type draft-mtp --spec-draft-n-max 3 --spec-draft-p-min 0.88 --spec-draft-ngl 99
+```
+
+> 💡 **27B 稠密模型在 8GB 显存下的关键参数说明：**
+>
+> - **`-ngl 14`** — 14 层卸载到 GPU（静态分层，其余放系统内存）。对于 8GB 显存 + ~17GB Q4_K_P 模型，这是不 OOM 且能获得明显 GPU 加速的甜点值。根据你的实际显存调整。
+> - **`-ctk q4_0 -ctv q4_0`** — KV 缓存量化为 4-bit，上下文窗口显存占用减半。显存有限 + 大上下文时必备。
+> - **`--cache-ram 2000`** — CPU 侧 KV 缓存内存预算 2GB。
+> - **`-c 100000`** — 10 万 token 上下文窗口（此量化下模型的有效上限）。
+> - **`--spec-draft-n-max 3`** — MTP 投机解码最多预生成 3 个 token；Qwen3.8 自带 MTP head。
+> - **`--spec-draft-p-min 0.88`** — 只接受置信度 ≥88% 的预生成 token，保持高接受率。
+> - **`--spec-draft-ngl 99`** — 将整个 draft 上下文卸载到 GPU，加速投机解码。
+> - **量化方案：Q4_K_P** — 模型大小约 17GB，质量与显存占用平衡良好。这是稠密（非 MoE）模型，推理时全部 27B 参数都激活（MoE 只激活一部分）。
+> - **`rea` 未指定** — 通过聊天模板默认使用 `medium` 推理深度（不注入思考 token，保持 KV 缓存一致性）。
+
 > ⚠️ **`chat_template.jinja` 必须放在项目根目录（`D:\AI_Girlfriend\chat_template.jinja`），且不可被 gitignore（`.gitignore` 已加 `!chat_template.jinja`）。**这是固定的 froggeric **v22.3** 模板，配合 `-rea on` + `--reasoning-preserve` 保留思考块。若缺失或被忽略，llama 启动参数会错误。`config.yaml` → `llama_chat_template: chat_template.jinja` 指向它。
 
 ### 切换模型（`restart_llama_degraded.ps1 -SwitchTo`）
@@ -422,8 +450,8 @@ Qwen3.6 MoE 使用 SSM (Gated Delta Net) 混合注意力,配合 `--kv-unified`�
 
 # 等效手动命令
 llama-server.exe `
-  -m "D:\model\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf" `
-  -c 120000 `
+  -m "D:\model\Qwen3.8-27B-UD-Q4_K_XL.gguf"`
+  -c 100000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
   --batch-size 2048 --ubatch-size 1024 `
   --threads 24 --threads-batch 24 `
