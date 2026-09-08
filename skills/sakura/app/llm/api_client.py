@@ -80,6 +80,9 @@ class OpenAICompatibleClient:
     def __init__(self, settings: ApiSettings) -> None:
         self.settings = settings
         self._unsupported_chat_params: set[str] = set()
+        # 端点报告 max_tokens 不受支持、要求改用 max_completion_tokens 后置为 True，
+        # 后续请求直接改名发送，避免每次请求都先失败一次。
+        self._use_max_completion_tokens = False
         self._runtime_context_role = "system"
         # 可选事件发射器（由宿主注入），用于派发 llm.request.* 插件事件。
         self._event_emit: Callable[[str, dict[str, Any] | None], None] | None = None
@@ -105,6 +108,7 @@ class OpenAICompatibleClient:
         """运行时更新 API 配置，供设置界面保存后立即生效。"""
         self.settings = settings
         self._unsupported_chat_params.clear()
+        self._use_max_completion_tokens = False
         self._runtime_context_role = "system"
     @property
     def runtime_context_role(self) -> str:
@@ -435,7 +439,13 @@ class OpenAICompatibleClient:
         fallback_payload = dict(payload)
         for param in self._unsupported_chat_params:
             fallback_payload.pop(param, None)
-        for attempt in range(1, MAX_AUTO_RETRY_ATTEMPTS + 1):
+        self._apply_max_tokens_compatibility(fallback_payload)
+        # 每类兼容回退最多触发一次（response_format / temperature / max_tokens 改名），
+        # 互不占用彼此的重试额度，避免多个参数同时被拒时永远修不完。
+        remaining_compat_steps = 3
+        attempt = 0
+        while True:
+            attempt += 1
             check_cancelled(cancel_checker)
             try:
                 return self._post_chat_completions(
@@ -443,9 +453,12 @@ class OpenAICompatibleClient:
                     cancel_checker=cancel_checker,
                 )
             except ApiRequestError as exc:
+                if remaining_compat_steps <= 0:
+                    raise
                 if "response_format" in fallback_payload and _is_response_format_unsupported_error(exc):
                     self._unsupported_chat_params.add("response_format")
                     fallback_payload.pop("response_format", None)
+                    remaining_compat_steps -= 1
                     log_event(
                         "API",
                         "结构化 response_format 不受支持，已回退普通请求",
@@ -459,6 +472,7 @@ class OpenAICompatibleClient:
                 if "temperature" in fallback_payload and _is_temperature_unsupported_error(exc):
                     self._unsupported_chat_params.add("temperature")
                     fallback_payload.pop("temperature", None)
+                    remaining_compat_steps -= 1
                     log_event(
                         "API",
                         "模型不支持自定义 temperature，已回退默认温度",
@@ -469,8 +483,30 @@ class OpenAICompatibleClient:
                         },
                     )
                     continue
+                if "max_tokens" in fallback_payload and _is_max_tokens_unsupported_error(exc):
+                    # 保留原 token 上限，改名重试；缓存结果供后续请求直接使用。
+                    self._use_max_completion_tokens = True
+                    token_limit = fallback_payload.pop("max_tokens")
+                    fallback_payload.setdefault("max_completion_tokens", token_limit)
+                    remaining_compat_steps -= 1
+                    log_event(
+                        "API",
+                        "端点不支持 max_tokens，已改用 max_completion_tokens 重试",
+                        {
+                            "attempt": attempt,
+                            "max_attempts": MAX_AUTO_RETRY_ATTEMPTS,
+                            "error": str(exc),
+                        },
+                    )
+                    continue
                 raise
-        raise ApiRequestError("API 兼容性自动回退已达到最大次数。")
+
+    def _apply_max_tokens_compatibility(self, payload: dict[str, Any]) -> None:
+        """对已知只接受 max_completion_tokens 的端点，发请求前直接把 max_tokens 改名。"""
+        if not self._use_max_completion_tokens or "max_tokens" not in payload:
+            return
+        token_limit = payload.pop("max_tokens")
+        payload.setdefault("max_completion_tokens", token_limit)
 
     def _ensure_chat_config(self, api_key_message: str) -> None:
         if not self.settings.api_key:
@@ -825,6 +861,37 @@ def _value_contains_json_keyword(value: Any) -> bool:
 def _is_response_format_unsupported_error(exc: ApiRequestError) -> bool:
     text = str(exc).lower()
     return "response_format" in text or "json_object" in text or "json schema" in text
+
+
+def _is_max_tokens_unsupported_error(exc: ApiRequestError) -> bool:
+    text = str(exc).lower()
+    if "max_tokens" not in text:
+        return False
+    # 值域错误（如「max_tokens 必须在 xx 之间」）属于配置问题，应原样抛出，
+    # 不能误判成「端点不支持 max_tokens」而改名重试。
+    range_markers = (
+        "between",
+        "range",
+        "minimum",
+        "maximum",
+        "less than",
+        "greater than",
+        "<=",
+        ">=",
+    )
+    if any(marker in text for marker in range_markers):
+        return False
+    markers = (
+        "max_completion_tokens",
+        "unsupported",
+        "not support",
+        "does not support",
+        "not allowed",
+        "unknown parameter",
+        "unexpected parameter",
+        "invalid",
+    )
+    return any(marker in text for marker in markers)
 
 
 def _is_temperature_unsupported_error(exc: ApiRequestError) -> bool:
