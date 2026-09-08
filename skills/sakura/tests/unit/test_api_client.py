@@ -13,6 +13,7 @@ from app.llm.api_client import (
     _build_chat_completion_payload,
     _filter_supported_chat_params,
     _is_temperature_unsupported_error,
+    _is_max_tokens_unsupported_error,
 )
 from app.llm.chat_reply import ChatReply, ChatSegment, parse_chat_reply, sanitize_reply_tones
 
@@ -292,6 +293,217 @@ def test_update_settings_clears_cached_unsupported_params(monkeypatch) -> None: 
     assert "temperature" in calls[0]
     assert "temperature" not in calls[1]
     assert "temperature" in calls[2]
+
+
+def test_is_max_tokens_unsupported_error_matches_provider_wordings() -> None:
+    recoverable = [
+        "API HTTP 400: {\"error\": {\"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\"}}",
+        "max_tokens is not supported with this model",
+        "this endpoint does not support max_tokens, use max_completion_tokens",
+        "unknown parameter: max_tokens",
+    ]
+    for message in recoverable:
+        assert _is_max_tokens_unsupported_error(ApiRequestError(message)), message
+
+
+def test_is_max_tokens_unsupported_error_ignores_value_range_and_unrelated_errors() -> None:
+    non_recoverable = [
+        "max_tokens must be between 1 and 4096",
+        "max_tokens should be in the range [1, 32768]",
+        "invalid api key",
+        "model not found",
+    ]
+    for message in non_recoverable:
+        assert not _is_max_tokens_unsupported_error(ApiRequestError(message)), message
+
+
+def test_complete_raw_renames_max_tokens_when_provider_requires_max_completion_tokens(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    calls: list[dict[str, Any]] = []
+    client = OpenAICompatibleClient(
+        ApiSettings(
+            base_url="https://api.openai.com/v1",
+            api_key="key",
+            model="gpt-5.5",
+        )
+    )
+
+    def fake_post(payload: dict[str, Any], **_kwargs: Any) -> dict[str, Any]:
+        calls.append(dict(payload))
+        if "max_tokens" in payload:
+            raise ApiRequestError(
+                "API HTTP 400: Unsupported parameter: 'max_tokens' is not supported "
+                "with this model. Use 'max_completion_tokens' instead."
+            )
+        return {"choices": [{"message": {"content": "OK"}}]}
+
+    monkeypatch.setattr(client, "_post_chat_completions", fake_post)
+
+    assert client.complete_raw(
+        "system",
+        [{"role": "user", "content": "提取记忆"}],
+        temperature=0.2,
+        max_tokens=2000,
+    ) == "OK"
+
+    assert calls[0]["max_tokens"] == 2000
+    assert "max_completion_tokens" not in calls[0]
+    # 改名重试：保留原 token 上限，不直接删限制。
+    assert "max_tokens" not in calls[1]
+    assert calls[1]["max_completion_tokens"] == 2000
+
+
+def test_complete_raw_remembers_max_completion_tokens_requirement(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    calls: list[dict[str, Any]] = []
+    client = OpenAICompatibleClient(
+        ApiSettings(
+            base_url="https://api.openai.com/v1",
+            api_key="key",
+            model="gpt-5.5",
+        )
+    )
+
+    def fake_post(payload: dict[str, Any], **_kwargs: Any) -> dict[str, Any]:
+        calls.append(dict(payload))
+        if "max_tokens" in payload:
+            raise ApiRequestError(
+                "Unsupported parameter: 'max_tokens' is not supported with this model. "
+                "Use 'max_completion_tokens' instead."
+            )
+        return {"choices": [{"message": {"content": "OK"}}]}
+
+    monkeypatch.setattr(client, "_post_chat_completions", fake_post)
+
+    client.complete_raw("system", [{"role": "user", "content": "first"}], max_tokens=2000)
+    client.complete_raw("system", [{"role": "user", "content": "again"}], max_tokens=2000)
+
+    # 首次失败一次后缓存兼容结果，后续请求直接改名发送，不再重复失败。
+    assert len(calls) == 3
+    assert "max_completion_tokens" not in calls[0]
+    assert calls[1]["max_completion_tokens"] == 2000
+    assert "max_tokens" not in calls[2]
+    assert calls[2]["max_completion_tokens"] == 2000
+
+
+def test_complete_raw_falls_back_when_temperature_and_max_tokens_both_rejected(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    calls: list[dict[str, Any]] = []
+    client = OpenAICompatibleClient(
+        ApiSettings(
+            base_url="https://api.openai.com/v1",
+            api_key="key",
+            model="gpt-5.5",
+        )
+    )
+
+    def fake_post(payload: dict[str, Any], **_kwargs: Any) -> dict[str, Any]:
+        calls.append(dict(payload))
+        if "max_tokens" in payload:
+            raise ApiRequestError(
+                "Unsupported parameter: 'max_tokens' is not supported with this model. "
+                "Use 'max_completion_tokens' instead."
+            )
+        if "temperature" in payload:
+            raise ApiRequestError(
+                "Unsupported value: 'temperature' does not support 0.2 with this model. "
+                "Only the default (1) value is supported."
+            )
+        return {"choices": [{"message": {"content": "OK"}}]}
+
+    monkeypatch.setattr(client, "_post_chat_completions", fake_post)
+
+    assert client.complete_raw(
+        "system",
+        [{"role": "user", "content": "提取记忆"}],
+        temperature=0.2,
+        max_tokens=2000,
+    ) == "OK"
+
+    assert len(calls) == 3
+    assert calls[2]["max_completion_tokens"] == 2000
+    assert "temperature" not in calls[2]
+
+
+def test_update_settings_clears_cached_max_completion_tokens_preference(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    calls: list[dict[str, Any]] = []
+    client = OpenAICompatibleClient(
+        ApiSettings(
+            base_url="https://api.openai.com/v1",
+            api_key="key",
+            model="gpt-5.5",
+        )
+    )
+
+    def fake_post(payload: dict[str, Any], **_kwargs: Any) -> dict[str, Any]:
+        calls.append(dict(payload))
+        if "max_tokens" in payload and payload.get("model") == "gpt-5.5":
+            raise ApiRequestError(
+                "Unsupported parameter: 'max_tokens' is not supported with this model. "
+                "Use 'max_completion_tokens' instead."
+            )
+        return {"choices": [{"message": {"content": "OK"}}]}
+
+    monkeypatch.setattr(client, "_post_chat_completions", fake_post)
+
+    client.complete_raw("system", [{"role": "user", "content": "first"}], max_tokens=2000)
+    client.update_settings(
+        ApiSettings(
+            base_url="https://api.example.com/v1",
+            api_key="key",
+            model="gpt-4.1-mini",
+        )
+    )
+    # 切回仍支持 max_tokens 的兼容服务：新配置下首发仍带 max_tokens 且不报错。
+    client.complete_raw("system", [{"role": "user", "content": "again"}], max_tokens=2000)
+
+    assert calls[-1]["max_tokens"] == 2000
+    assert "max_completion_tokens" not in calls[-1]
+
+
+def test_test_connection_renames_max_tokens_when_required(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    calls: list[dict[str, Any]] = []
+    client = OpenAICompatibleClient(
+        ApiSettings(
+            base_url="https://api.openai.com/v1",
+            api_key="key",
+            model="gpt-5.5",
+        )
+    )
+
+    def fake_post(payload: dict[str, Any], **_kwargs: Any) -> dict[str, Any]:
+        calls.append(dict(payload))
+        if "max_tokens" in payload:
+            raise ApiRequestError(
+                "Unsupported parameter: 'max_tokens' is not supported with this model. "
+                "Use 'max_completion_tokens' instead."
+            )
+        return {"choices": [{"message": {"content": "OK"}}]}
+
+    monkeypatch.setattr(client, "_post_chat_completions", fake_post)
+
+    assert client.test_connection() == "OK"
+    assert calls[1]["max_completion_tokens"] == 8
+    assert "max_tokens" not in calls[1]
+
+
+def test_complete_raw_keeps_max_tokens_for_compat_endpoints_that_accept_it(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    captured: dict[str, Any] = {}
+    client = OpenAICompatibleClient(
+        ApiSettings(
+            base_url="https://api.example.com/v1",
+            api_key="key",
+            model="legacy-compatible",
+        )
+    )
+
+    def fake_post(payload: dict[str, Any], **_kwargs: Any) -> dict[str, Any]:
+        captured.update(payload)
+        return {"choices": [{"message": {"content": "OK"}}]}
+
+    monkeypatch.setattr(client, "_post_chat_completions", fake_post)
+
+    client.complete_raw("system", [{"role": "user", "content": "hi"}], max_tokens=512)
+
+    assert captured["max_tokens"] == 512
+    assert "max_completion_tokens" not in captured
 
 
 def test_complete_raw_requests_structured_json_by_default_for_chat(monkeypatch) -> None:  # type: ignore[no-untyped-def]
