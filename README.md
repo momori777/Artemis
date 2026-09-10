@@ -235,7 +235,7 @@ See [`models.yaml`](models.yaml) for full details.
 
 | Model | Purpose | Size | Context |
 |-|-|-|-|
-| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V9 MTP APEX Compact** (GGUF) | Chat LLM (primary MoE) | 16.11 GB | 120K |
+| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V13 MTP APEX Compact** (GGUF) | Chat LLM (primary MoE) | 16.11 GB | 120K |
 | **Qwen3.8-27B-TurboFCFusion** (Q4_K_S GGUF) | Chat LLM (dense, tooling) | ~15.8 GB | 100K |
 | **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | Chat LLM (dense, legacy) | 13.5 GB | 150K |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI generation (default) | 6.46 GB |
@@ -280,7 +280,7 @@ All Python/PS scripts read paths from `config.yaml` -no hardcoded paths to edit.
 
 ## Local LLM Performance
 
-Running **Qwen3.6-35B-A3B Genesis Hermes V9 MTP APEX Compact** (MoE, 16.11 GiB, 34.66B params, 8/256 experts) via llama.cpp with speculative MTP (Multi-Token Prediction) decoding.
+Running **Qwen3.6-35B-A3B Genesis Hermes V13 MTP APEX Compact** (MoE, 16.11 GiB, 34.66B params, 8/256 experts) via llama.cpp with speculative MTP (Multi-Token Prediction) decoding.
 
 ### Launch Command (one source of truth)
 
@@ -307,11 +307,11 @@ Running **Qwen3.6-35B-A3B Genesis Hermes V9 MTP APEX Compact** (MoE, 16.11 GiB, 
 > size context/KV cache to your RAM. The command that follows is what the
 > reference config generates.
 
-**What `llama_config.py` actually generates** for the active model (V9 MoE):
+**What `llama_config.py` actually generates** for the active model (V13 MoE):
 
 ```powershell
 llama-server.exe `
-  -m "D:\model\Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf" `
+  -m "D:\model\Hermes3.6-35B-A3B-Uncensored-Genesis-V13-MTP-APEX-Compact.gguf" `
   -c 120000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
   --cpu-moe --cpu-mask 0xFFFFFFFF `
@@ -393,7 +393,7 @@ cd D:\AI_Girlfriend
 # 27B dense (Qwen3.8-27B) — primary tooling model
 .\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.8-27b
 
-# 35B MoE (Hermes Genesis V9) — primary roleplay model
+# 35B MoE (Hermes Genesis V13) — primary roleplay model
 .\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.6-35b
 ```
 
@@ -406,14 +406,14 @@ cd D:\AI_Girlfriend
 | Model | `-SwitchTo` key | Profile | Context | `rea` |
 |-|-|-|-|-|
 | **Qwen3.8-27B** (dense) | `qwen3.8-27b` | `qwen3.8-27b-mtp` | **100000** | `on` (forced) |
-| **Hermes Genesis V9** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v9-mtp` | **120000** | `on` (forced) |
+| **Hermes Genesis V13** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v13-mtp` | **120000** | `on` (forced) |
 
 > 🧠 **Both models default to `-rea on`** (DeepSeek-style deep reasoning) — set in
 > `config.yaml` → `model_profiles`. `-rea on` makes thinking tokens count toward
 > the context/output budget; keep that in mind for `max_tokens` / spawning long
 > TTS or image requests first.
 
-### Key Metrics (35B MoE)
+### Key Metrics (35B MoE, V13)
 
 | Metric | Value | Notes |
 |-|-|-|

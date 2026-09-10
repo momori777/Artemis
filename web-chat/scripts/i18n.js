@@ -36,6 +36,8 @@
     settings:                { zh: '设置',                 ja: '設定',                 en: 'Settings' },
     reset_session:           { zh: '重置会话',             ja: 'セッションリセット',     en: 'Reset session' },
     clear_messages:          { zh: '清空消息',             ja: 'メッセージ消去',         en: 'Clear messages' },
+    regen_reply:             { zh: '重置本条回复',         ja: 'この返信を再生成',       en: 'Regenerate this reply' },
+    reroll_image:            { zh: '重画这张图',           ja: 'この絵を描き直す',       en: 'Re-roll this image' },
     search_placeholder:      { zh: '搜索消息...',          ja: 'メッセージ検索...',      en: 'Search messages...' },
     type_message:            { zh: '输入消息...',          ja: 'メッセージ入力...',      en: 'Type a message...' },
     send:                    { zh: '发送',                 ja: '送信',                 en: 'Send' },

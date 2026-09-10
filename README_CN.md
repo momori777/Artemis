@@ -227,8 +227,8 @@ Qwen3.6-35B (语言心智) ←→ Cosmos 3 Nano (物理心智)
 
 | 模型 | 用途 | 大小 | 上下文 |
 |-|-|-|-|
-| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V9 MTP APEX Compact** (GGUF) | 聊天 LLM (主模型 MoE) | 16.11 GB | 120K |
-| **Qwen3.8-27B-Uncensored-HauhauCS-Aggressive** (IQ4_XS GGUF) | 聊天 LLM (稠密,备选) | 14.6 GB | 120K |
+| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V13 MTP APEX Compact** (GGUF) | 聊天 LLM (主模型 MoE) | 16.11 GB | 120K |
+| **Qwen3.8-27B-TurboFCFusion** (Q4_K_S GGUF) | 聊天 LLM (稠密,工具型) | ~15.8 GB | 100K |
 | **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | 聊天 LLM (稠密,旧版) | 13.5 GB | 150K |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI 画图(默认) | 6.46 GB |
 | **miaomiaoHarem_v20** | ComfyUI 画图(备用) | 6.46 GB |
@@ -269,7 +269,7 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-d
 
 ## 本地 LLM 性能
 
-通过 llama.cpp 运行 Qwen3.6-35B-A3B Genesis Hermes **V9** MTP APEX Compact (MoE, 16.11 GiB, 34.66B 参数, 8/256 experts)，启用 MTP (Multi-Token Prediction) 投机解码。
+通过 llama.cpp 运行 Qwen3.6-35B-A3B Genesis Hermes **V13** MTP APEX Compact (MoE, 16.11 GiB, 34.66B 参数, 8/256 experts)，启用 MTP (Multi-Token Prediction) 投机解码。
 
 ### 启动命令（唯一参数源）
 
@@ -280,11 +280,11 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-d
 
 > ⚠️ **`chat_template.jinja` 必须放在项目根目录（`D:\AI_Girlfriend\chat_template.jinja`），且不可被 gitignore（`.gitignore` 已加 `!chat_template.jinja`）。**这是固定的 froggeric **v22.3** 模板，配合 `-rea on` + `--reasoning-preserve` 保留思考块。若缺失或被忽略，llama 启动参数会错误。`config.yaml` → `llama_chat_template: chat_template.jinja` 指向它。
 
-**`llama_config.py` 为当前模型（V9 MoE）实际生成的命令：**
+**`llama_config.py` 为当前模型（V13 MoE）实际生成的命令：**
 
 ```powershell
 llama-server.exe `
-  -m "D:\model\Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf" `
+  -m "D:\model\Hermes3.6-35B-A3B-Uncensored-Genesis-V13-MTP-APEX-Compact.gguf" `
   -c 120000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
   --cpu-moe --cpu-mask 0xFFFFFFFF `
@@ -300,7 +300,7 @@ llama-server.exe `
 
 ```powershell
 llama-server.exe `
-  -m "D:\model\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf" `
+  -m "D:\model\Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_S.gguf" `
   -c 100000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
   -ngl 14 `
@@ -314,17 +314,52 @@ llama-server.exe `
 
 > 💡 **27B 稠密模型在 8GB 显存下的关键参数说明：**
 >
-> - **`-ngl 14`** — 14 层卸载到 GPU（静态分层，其余放系统内存）。对于 8GB 显存 + ~17GB Q4_K_P 模型，这是不 OOM 且能获得明显 GPU 加速的甜点值。根据你的实际显存调整。
+> - **`-ngl 14`** — 14 层卸载到 GPU（静态分层，其余放系统内存）。对于 8GB 显存 + ~15.8GB Q4_K_S 模型，这是不 OOM 且能获得明显 GPU 加速的甜点值。根据你的实际显存调整。
 > - **`-ctk q4_0 -ctv q4_0`** — KV 缓存量化为 4-bit，上下文窗口显存占用减半。显存有限 + 大上下文时必备。
 > - **`--cache-ram 2000`** — CPU 侧 KV 缓存内存预算 2GB。
 > - **`-c 100000`** — 10 万 token 上下文窗口（此量化下模型的有效上限）。
 > - **`--spec-draft-n-max 3`** — MTP 投机解码最多预生成 3 个 token；Qwen3.8 自带 MTP head。
 > - **`--spec-draft-p-min 0.88`** — 只接受置信度 ≥88% 的预生成 token，保持高接受率。
 > - **`--spec-draft-ngl 99`** — 将整个 draft 上下文卸载到 GPU，加速投机解码。
-> - **量化方案：Q4_K_P** — 模型大小约 17GB，质量与显存占用平衡良好。这是稠密（非 MoE）模型，推理时全部 27B 参数都激活（MoE 只激活一部分）。
+> - **量化方案：Q4_K_S** — 模型大小约 15.8GB，质量与显存占用平衡良好。这是稠密（非 MoE）模型，推理时全部 27B 参数都激活（MoE 只激活一部分）。
 > - **`rea` 未指定** — 通过聊天模板默认使用 `medium` 推理深度（不注入思考 token，保持 KV 缓存一致性）。
 
 > ⚠️ **`chat_template.jinja` 必须放在项目根目录（`D:\AI_Girlfriend\chat_template.jinja`），且不可被 gitignore（`.gitignore` 已加 `!chat_template.jinja`）。**这是固定的 froggeric **v22.3** 模板，配合 `-rea on` + `--reasoning-preserve` 保留思考块。若缺失或被忽略，llama 启动参数会错误。`config.yaml` → `llama_chat_template: chat_template.jinja` 指向它。
+
+### 根目录 `chat_template.jinja` 的作用
+
+项目根目录提供了一个**修复版 Jinja 聊天模板** ([froggeric/Qwen-Fixed-Chat-Templates](https://huggingface.co/froggeric/Qwen-Fixed-Chat-Templates)，当前固定为 **v22.3**，文件位于 `chat_template.jinja`），用于覆盖 GGUF 内置的模板。官方 Qwen 3.5/3.6/3.8 模板存在引擎限制、Python 专属 Jinja 逻辑和回退问题，会破坏本地推理和 Agent 工作流——最明显的问题是**过度思考**：官方 3.8 模板默认硬编码 `xhigh` 推理深度，导致模型在输出答案前就耗尽 token 预算用于思考。
+
+修复版模板（v22 代）提供：
+
+- **合理的推理基线** — 默认 `medium`（零注入 token）而非硬编码 `xhigh`，保持 KV 缓存一致性，防止空内容超时
+- **正常的快速模式** — 官方 3.8 在 `enable_thinking=false` 时崩溃；此模板通过 kwargs 或内联 `<|think_off|>` 支持非推理模式
+- **干净的推理提取** — 跨 OpenAI (`reasoning_content`)、Anthropic (`thinking`) 和内部 `<think>` 标签提取历史推理，无空白块污染或标签重复
+- **工具调用安全** — 处理标准 OpenAI API 客户端的序列化 JSON 工具参数，避免 Jinja 语法崩溃 / KV 缓存失效（对 OpenClaw 工具循环至关重要）
+- **原生 `--reasoning-preserve` 支持** — 通过 `preserve_reasoning` 钩子，`-rea on` + `--reasoning-preserve` 可保留 100% 前缀 KV 缓存
+- **客户端推理别名映射** — 自动映射 `high`/`max`/`minimal`/`none` 等；每轮内联控制通过 `<|think_low|>` … `<|think_xhigh|>` / `<|think_off|>` 标签
+- **v22.3 additions** — JSON-string tool args from standard OpenAI clients no longer crash, two-tier agentic error recovery (no false retries on search results containing "error"), optional payload truncation (`max_tool_arg_chars` / `max_tool_response_chars`), and an opt-in `tool_call_format: "json"` override (default stays Qwen XML)
+
+一个文件覆盖所有 Qwen 3.5 / 3.6 / 3.8 尺寸，因此对两个本地模型均可无缝工作。启动链路：`config.yaml` → `llama_chat_template: chat_template.jinja`（相对于项目根目录），`llama_config.py` 将其解析为 `--chat-template-file`——无硬编码。这也是为什么该文件必须放在根目录且**不可**被 gitignore（`.gitignore` 中有 `!chat_template.jinja`）：
+
+```powershell
+llama-server.exe ... --jinja --reasoning-preserve \
+  --chat-template-file "D:\AI_Girlfriend\chat_template.jinja"
+```
+
+> 📌 要检查某个 GGUF/目录当前携带的模板版本，froggeric 仓库提供 `scripts/check_applied.py` 脚本。要升级，将根文件替换为更新的版本（v22.3）并重启 llama——无需修改代码。`chat_template.jinja.bak-v22old` 备份文件（v22.1）保留在旁以便回滚。
+
+### 模型 profile 与上下文窗口
+
+| 模型 | `-SwitchTo` 键 | Profile | Context | `rea` |
+|-|-|-|-|-|
+| **Qwen3.8-27B** (稠密) | `qwen3.8-27b` | `qwen3.8-27b-mtp` | **100000** | `on`（强制） |
+| **Hermes Genesis V13** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v13-mtp` | **120000** | `on`（强制） |
+
+> 🧠 **两个模型默认都带 `-rea on`**（DeepSeek 式深度思考）——在 `config.yaml` → `model_profiles` 中设置。
+> `-rea on` 时思考 token 会计入上下文/输出预算；本地 `max_tokens` 不要写死，且长文本 TTS/画图请务必**先** `sessions_spawn`。
+
+> 💡 **关于 `--no-mmap` 与 `-ngl`:** `--no-mmap` 让 llama.cpp 自行管理 **RAM 侧**内存。`-ngl N` 是**静态**分层(前 N 层放 GPU,其余放 RAM),**不会**发生动态换页,所以**不会**导致速度减半。部分 `-ngl`(如 8GB 显存 + 17GB 模型用 `-ngl 12`)安全且实测更快。建议 `--no-mmap` 与 `-ngl` 配合使用,让 llama.cpp 管理 RAM 层;KV 缓存用 `q4_0` 量化可节省一半显存。
 
 ### 切换模型（`restart_llama_degraded.ps1 -SwitchTo`）
 
@@ -336,7 +371,7 @@ cd D:\AI_Girlfriend
 # 27B 稠密 (Qwen3.8-27B) —— 主要工具模型
 .\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.8-27b
 
-# 35B MoE (Hermes Genesis V9) —— 主要角色扮演模型
+# 35B MoE (Hermes Genesis V13) —— 主要角色扮演模型
 .\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.6-35b
 ```
 
@@ -348,7 +383,7 @@ cd D:\AI_Girlfriend
 | 模型 | `-SwitchTo` 键 | Profile | Context | `rea` |
 |-|-|-|-|-|
 | **Qwen3.8-27B** (稠密) | `qwen3.8-27b` | `qwen3.8-27b-mtp` | **120000** | `on`（强制） |
-| **Hermes Genesis V9** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v9-mtp` | **120000** | `on`（强制） |
+| **Hermes Genesis V13** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v13-mtp` | **120000** | `on`（强制） |
 
 > 🧠 **两个模型默认都带 `-rea on`**（DeepSeek 式深度思考）——在 `config.yaml` → `model_profiles` 中设置。
 > `-rea on` 时思考 token 会计入上下文/输出预算；本地 `max_tokens` 不要写死，且长文本 TTS/画图请务必**先** `sessions_spawn`。

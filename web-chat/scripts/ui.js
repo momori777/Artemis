@@ -1391,21 +1391,15 @@ var UI = {
       if (isImageMsg) {
         // Image messages get their own re-roll affordance so it is obvious the
         // action regenerates the image, not the text model. Paint messages
-        // re-run the ComfyUI job; LLM MEDIA: images re-ask the LLM.
+        // replay their stored ComfyUI job; images without stored params are
+        // re-drawn with a freshly generated prompt (see regenerateMessage).
+        // The button is NEVER disabled: every image is re-rollable one-at-a-time.
         regenBtn.classList.add('msg-repaint-btn');
         regenBtn.innerHTML = '<i class="ph ph-image"></i>';
-        regenBtn.title = msg.paintParams && msg.paintParams.positive
-          ? 'Re-roll this image'
-          : 'Regenerate image';
-        // Paint message with NO stored params cannot be re-run: nothing to
-        // replay to ComfyUI. (LLM MEDIA: images CAN be regenerated via LLM.)
-        if (msg.paint && !(msg.paintParams && msg.paintParams.positive)) {
-          regenBtn.disabled = true;
-          regenBtn.classList.add('is-disabled');
-        }
+        regenBtn.title = (typeof tr === 'function' && tr('reroll_image')) || 'Re-roll this image';
       } else {
         regenBtn.innerHTML = '<i class="ph ph-arrows-clockwise"></i>';
-        regenBtn.title = 'Regenerate reply';
+        regenBtn.title = (typeof tr === 'function' && tr('regen_reply')) || 'Regenerate reply';
       }
       regenBtn.addEventListener('click', function(e) {
         e.stopPropagation();
@@ -1673,16 +1667,10 @@ var UI = {
       if (isImgMsg2) {
         regenBtn2.classList.add('msg-repaint-btn');
         regenBtn2.innerHTML = '<i class="ph ph-image"></i>';
-        regenBtn2.title = msg.paintParams && msg.paintParams.positive
-          ? 'Re-roll this image'
-          : 'Regenerate image';
-        if (msg.paint && !(msg.paintParams && msg.paintParams.positive)) {
-          regenBtn2.disabled = true;
-          regenBtn2.classList.add('is-disabled');
-        }
+        regenBtn2.title = (typeof tr === 'function' && tr('reroll_image')) || 'Re-roll this image';
       } else {
         regenBtn2.innerHTML = '<i class="ph ph-arrows-clockwise"></i>';
-        regenBtn2.title = 'Regenerate reply';
+        regenBtn2.title = (typeof tr === 'function' && tr('regen_reply')) || 'Regenerate reply';
       }
       regenBtn2.addEventListener('click', function(e) {
         e.stopPropagation();
@@ -1725,10 +1713,12 @@ var UI = {
       (target.media && /.(png|jpe?g|webp|gif)$/i.test(target.media)));
     if (targetIsImage) {
       if (target.paintParams && target.paintParams.positive) {
+        // Stored ComfyUI params -> replay the exact same job (new seed).
         this._regeneratePaint(assistantIndex);
-      } else if ((getSettings().model || '').indexOf('local') === 0) {
-        // Local models cannot emit MEDIA: image lines. Re-draw the image
-        // through ComfyUI so "regenerate" actually produces a new picture.
+      } else if (target.paint || (getSettings().model || '').indexOf('local') === 0) {
+        // No stored params, or local model that cannot emit MEDIA: lines.
+        // Re-draw through ComfyUI with a freshly generated prompt so
+        // "reset this one image" always produces a new picture.
         this._regenImageViaComfyUI(assistantIndex);
       } else {
         this._regenerateMediaImage(assistantIndex);
@@ -1935,9 +1925,20 @@ var UI = {
     var msg = this.state.messages[assistantIndex];
     if (!msg || msg.role !== 'assistant') return;
 
-    var triggerUserIdx = assistantIndex - 1;
-    if (triggerUserIdx < 0 || this.state.messages[triggerUserIdx].role !== 'user') {
-      console.warn('No user message immediately before image index', assistantIndex);
+    // Walk back to the nearest user message. Auto-paint images are appended
+    // AFTER the assistant's text reply, so the trigger user message is not
+    // always at assistantIndex - 1; requiring that made single-image re-roll
+    // silently do nothing for most generated pictures.
+    var triggerUserIdx = -1;
+    for (var ti = assistantIndex - 1; ti >= 0; ti--) {
+      if (this.state.messages[ti] && this.state.messages[ti].role === 'user') {
+        triggerUserIdx = ti;
+        break;
+      }
+    }
+    if (triggerUserIdx < 0) {
+      console.warn('No user message before image index', assistantIndex);
+      showToast('找不到这张图对应的用户消息，无法单独重画');
       return;
     }
 
@@ -1991,7 +1992,7 @@ var UI = {
           if (!d.job_id) throw new Error(d.error || 'job submission failed');
           self.appendSystemMsg('🖼️ Re-drawing image... (job: ' + d.job_id.substring(0, 8) + ')');
           self.scrollToBottom();
-          return self._pollImageRegen(assistantIndex, d.job_id, msg, triggerUserIdx);
+          return self._pollImageRegen(assistantIndex, d.job_id, msg, triggerUserIdx, params);
         });
       })
       .catch(function(err) {
@@ -2004,7 +2005,7 @@ var UI = {
   },
 
   // Poll a ComfyUI job and swap the regenerated image into the message slot.
-  _pollImageRegen: function(assistantIndex, jobId, oldMsg, triggerUserIdx) {
+  _pollImageRegen: function(assistantIndex, jobId, oldMsg, triggerUserIdx, newParams) {
     var self = this;
     var bridgeUrl = getSettings().bridgeUrl || 'http://localhost:19250';
     var attempt = 0;
@@ -2021,7 +2022,10 @@ var UI = {
             var newMsg = {
               role: 'assistant', content: oldMsg.content || '', time: self.formatTime(new Date()),
               media: imgPath, mediaType: 'image', paint: true,
-              paintParams: oldMsg.paintParams || null,
+              // Persist the params ACTUALLY used for this draw, so the next
+              // re-roll replays straight against ComfyUI without another
+              // prompt-generation round trip.
+              paintParams: newParams || oldMsg.paintParams || null,
             };
             // Replace the old image message in place.
             var msgs = self.state.messages;
@@ -2030,6 +2034,22 @@ var UI = {
                 msgs[i] = newMsg;
                 break;
               }
+            }
+            // Tree sessions persist through the tree; a flat save alone is
+            // ignored there (saveChatHistory no-ops when s.tree exists), so
+            // without this the re-rolled image reverted on next render.
+            if (self._useTree && self.state.tree) {
+              var tnode = getNodeByChainIndex(self.state.tree, self._flatToChain(self.state.tree, assistantIndex));
+              if (tnode) {
+                tnode.media = imgPath;
+                tnode.mediaType = 'image';
+                tnode.paint = true;
+                tnode.paintParams = newMsg.paintParams;
+                tnode.time = newMsg.time;
+              }
+              saveSessionTree(self.state.currentCharId, self.state.currentSessionId, self.state.tree);
+              self.state.messages = getChainMessages(self.state.tree);
+              msgs = self.state.messages;
             }
             self.$messages.innerHTML = '';
             for (var mi = 0; mi < msgs.length; mi++) {

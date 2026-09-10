@@ -225,8 +225,8 @@ Qwen3.6-35B（言語の心）  ←→  Cosmos 3 Nano（物理の心）
 
 | モデル | 用途 | サイズ | コンテキスト |
 |-|-|-|-|
-| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V9 MTP APEX Compact** (GGUF) | チャット LLM（主モデル MoE）| 16.11 GB | 120K |
-| **Qwen3.8-27B-Uncensored-HauhauCS-Aggressive** (IQ4_XS GGUF) | チャット LLM（Dense,代替）| 14.6 GB | 120K |
+| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V13 MTP APEX Compact** (GGUF) | チャット LLM（主モデル MoE）| 16.11 GB | 120K |
+| **Qwen3.8-27B-TurboFCFusion** (Q4_K_S GGUF) | チャット LLM（Dense,ツール用）| ~15.8 GB | 100K |
 | **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | チャット LLM（Dense,旧版）| 13.5 GB | 150K |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI 生成（デフォルト） | 6.46 GB |
 | **miaomiaoHarem_v20** | ComfyUI 生成（バックアップ） | 6.46 GB |
@@ -270,7 +270,7 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-d
 
 ## ローカル LLM パフォーマンス
 
-llama.cpp 経由で Qwen3.6-35B-A3B Genesis Hermes **V9** MTP APEX Compact（MoE、16.11 GiB、34.66B パラメータ、8/256 experts）を実行。MTP（Multi-Token Prediction 擬似デコード）有効。
+llama.cpp 経由で Qwen3.6-35B-A3B Genesis Hermes **V13** MTP APEX Compact（MoE、16.11 GiB、34.66B パラメータ、8/256 experts）を実行。MTP（Multi-Token Prediction 擬似デコード）有効。
 
 ### 起動コマンド（唯一のパラメータ源）
 
@@ -280,11 +280,11 @@ llama.cpp 経由で Qwen3.6-35B-A3B Genesis Hermes **V9** MTP APEX Compact（MoE
 > 完全な `llama-server` コマンドを生成します。モデルは自動検出され、パラメータはプロファイルごとに自動分離——ハードコードなし。
 > モデル切替は下の「モデル切替」を参照。
 
-**`llama_config.py` が現在のモデル（V9 MoE）用に生成する実際のコマンド：**
+**`llama_config.py` が現在のモデル（V13 MoE）用に生成する実際のコマンド：**
 
 ```powershell
 llama-server.exe `
-  -m "D:\model\Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf" `
+  -m "D:\model\Hermes3.6-35B-A3B-Uncensored-Genesis-V13-MTP-APEX-Compact.gguf" `
   -c 120000 `
   --flash-attn on -ctk q4_0 -ctv q4_0 `
   --cpu-moe --cpu-mask 0xFFFFFFFF `
@@ -302,6 +302,42 @@ llama-server.exe `
 > 思考ブロックを保持します。欠落・無視されると llama 起動引数が壊れます。
 > `config.yaml` → `llama_chat_template: chat_template.jinja` が指します。
 
+### プロジェクトルートの `chat_template.jinja` が存在する理由
+
+プロジェクトルートには**修復版の Jinja チャットテンプレート** ([froggeric/Qwen-Fixed-Chat-Templates](https://huggingface.co/froggeric/Qwen-Fixed-Chat-Templates)、v22.3 固定、ファイル `chat_template.jinja`) が同梱されており、GGUF に内蔵されているテンプレートを上書きします。公式の Qwen 3.5/3.6/3.8 テンプレートには、エンジン制限、Python 固有の Jinja 論理、局所推論とエージェントワークフローを壊す後退が含まれています——最も目立つのは**思考の暴走**です：公式 3.8 テンプレートはデフォルトで `xhigh` の推論深度をハードコードしており、モデルが答えを生成する前に思考にトークン予算を使い果たしてしまいます。
+
+修復版テンプレート（v22 世代）は以下を提供します：
+
+- **適切な推論ベースライン** — デフォルトで `medium`（注入トークンゼロ）、ハードコードされた `xhigh` ではなく、KV キャッシュの一貫性を維持し、空コンテンツのタイムアウトを防ぐ
+- **動作する高速モード** — 公式 3.8 は `enable_thinking=false` でクラッシュしますが、本テンプレートは kwargs またはインライン `<|think_off|>` 経由で非推論モードをサポート
+- **クリーンな履歴抽出** — OpenAI (`reasoning_content`)、Anthropic (`thinking`)、インライン `<think>` タグをまたいで過去の思考を空白ブロックの汚染やタグ重複なしで抽出
+- **ツール呼び出しの安全** — 標準 OpenAI API クライアントからのシリアライズ JSON 引数を処理し、Jinja 構文クラッシュ / KV キャッシュ無効化を防ぐ（OpenClaw ツールループに重要）
+- **ネイティブ `--reasoning-preserve` サポート** — `preserve_reasoning` フック経由で、`-rea on` + `--reasoning-preserve` で 100% 接頭辞 KV キャッシュ維持
+- **v22.3 追加機能** — 標準 OpenAI クライアントからの JSON 文字列ツール引数のクラッシュ修正、検索結果の二重フェールリトライ防止（エージェント層の二重エラー回復）、オプションのペイロード切断（max_tool_arg_chars / max_tool_response_chars）、オプトインの tool_call_format: "json" 上書き（デフォルトは Qwen XML 維持）
+- **クライアント推論エイリアス** — `high`/`max`/`minimal`/`none` を自動マッピング；各ターンごとのインライン操作は `<|think_low|>` … `<|think_xhigh|>` / `<|think_off|>` タグ経由
+
+1 つのファイルで Qwen 3.5 / 3.6 / 3.8 全てのサイズをカバーするため、両方のローカルモデルでそのまま使えます。起動パイプライン：`config.yaml` → `llama_chat_template: chat_template.jinja`（プロジェクトルート基準）、`llama_config.py` が `--chat-template-file` に展開——ハードコードなし。ファイルがルートのままかつ **gitignore しない**（`.gitignore` に `!chat_template.jinja`）理由もここにあります：
+
+```powershell
+llama-server.exe ... --jinja --reasoning-preserve \
+  --chat-template-file "D:\AI_Girlfriend\chat_template.jinja"
+```
+
+> 📌 GGUF/ディレクトリが現在保持しているテンプレートバージョンを確認するには、froggeric リポジトリの `scripts/check_applied.py` を使用してください。アップグレード時は、ルートファイルを新しいバージョンに置き換え、llama を再起動するだけです——コード変更は不要です。（以前の v22.1 ファイルのバックアップ `chat_template.jinja.bak-v22old` はロールバック用に保持されています。）
+
+### モデルプロファイルとコンテキストウィンドウ
+
+| モデル | `-SwitchTo` キー | プロファイル | Context | `rea` |
+|-|-|-|-|-|
+| **Qwen3.8-27B** (Dense) | `qwen3.8-27b` | `qwen3.8-27b-mtp` | **100000** | `on`（強制） |
+| **Hermes Genesis V13** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v13-mtp` | **120000** | `on`（強制） |
+
+> 🧠 **両モデルともデフォルトで `-rea on`**（DeepSeek 式の深い推論）—— `config.yaml` → `model_profiles` で設定。
+> `-rea on` では思考トークンがコンテキスト/出力予算に加算されます。ローカル `max_tokens` を固定せず、
+> 長文 TTS・画像生成は必ず**最初の**ツールコールで `sessions_spawn` してください。
+
+> 💡 **`--no-mmap` vs `-ngl` について：** `--no-mmap` は llama.cpp にメモリ管理を任せ、手動で `-ngl` 層数を指定するよりはるかに効率的です。`-ngl` で GPU 層を強制すると速度が半減する可能性がありますが、`--no-mmap` は実際の VRAM に応じて動的割り当てを行います。KV キャッシュに `q4_0` を使用すると VRAM 使用量が半減します。
+
 ### モデル切替（`restart_llama_degraded.ps1 -SwitchTo`）
 
 1 コマンドで 2 モデルを切替えます——スクリプトが：現在の llama を kill → `config.yaml` を書き換え
@@ -312,7 +348,7 @@ cd D:\AI_Girlfriend
 # 27B Dense (Qwen3.8-27B) —— 主なツール用モデル
 .\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.8-27b
 
-# 35B MoE (Hermes Genesis V9) —— 主なロールプレイ用モデル
+# 35B MoE (Hermes Genesis V13) —— 主なロールプレイ用モデル
 .\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.6-35b
 ```
 
@@ -325,7 +361,7 @@ VRAM 不足時は `-ForceBatch 1024` でバッチサイズを下げられます�
 | モデル | `-SwitchTo` キー | プロファイル | Context | `rea` |
 |-|-|-|-|-|
 | **Qwen3.8-27B** (Dense) | `qwen3.8-27b` | `qwen3.8-27b-mtp` | **120000** | `on`（強制） |
-| **Hermes Genesis V9** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v9-mtp` | **120000** | `on`（強制） |
+| **Hermes Genesis V13** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v13-mtp` | **120000** | `on`（強制） |
 
 > 🧠 **両モデルともデフォルトで `-rea on`**（DeepSeek 式の深い推論）—— `config.yaml` → `model_profiles` で設定。
 > `-rea on` では思考トークンがコンテキスト/出力予算に加算されます。ローカル `max_tokens` を固定せず、
