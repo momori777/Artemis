@@ -159,6 +159,10 @@ in 8.2 openclaw ,least skill lead to countless status check, activate necessary 
 
 Claude code, anth hard code their software must use claude series models, so you need claude code router(CCR) to deploy your llama as claude models,port:3458,archieved in skills
 
+vision
+mmproj is vision tool startup code:
+--mmproj mmproj-Qwen3.8-Flash-Next-F16.gguf \
+
 ---
 
 ## Quick decision table
