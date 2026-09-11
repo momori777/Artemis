@@ -49,6 +49,7 @@ from skills.shared.llama_lifecycle import (
     stop_llama, start_llama,
     TimeoutGuard, register_cleanup_handlers,
 )
+from skills.shared.vram import should_stop_llama
 
 # SoVITS 推理引擎路径 (内置 skills/sovits/ 或外部 sovits_root)
 SOVITS_ROOT = _cfg.get('sovits_root') or os.path.join(_def, 'skills', 'sovits')
@@ -316,6 +317,10 @@ def lookup_ref_info(ref_path):
 no_manage_llama = '--no-manage-llama' in sys.argv
 sys.argv = [a for a in sys.argv if a != '--no-manage-llama']
 
+# VRAM 分级调度：等级判定为不需停 llama 时，无论是否带标志都按 no-manage 处理
+if not no_manage_llama and not should_stop_llama("tts"):
+    no_manage_llama = True
+
 text = sys.argv[1]
 lang = sys.argv[2] if len(sys.argv) > 2 else "ja"
 mood_hint = sys.argv[3] if len(sys.argv) > 3 else None
@@ -343,13 +348,13 @@ if lock_pid is None:
     print("[ERROR] 已有 tts 实例在运行，跳过本次调用", file=sys.stderr)
     sys.exit(0)
 
-# 注册清理钩子（使用 shared 模块）
-if not no_manage_llama:
-    register_cleanup_handlers(
-        lock_file=LOCK_FILE,
-        llama_port=LLAMA_PORT,
-        restart_script=RESTART_SCRIPT,
-    )
+# 注册清理钩子（使用 shared 模块）——锁清理始终注册，防止崩溃/信号退出时残留锁文件；
+# llama 重启保护仅在管理模式下启用
+register_cleanup_handlers(
+    lock_file=LOCK_FILE,
+    llama_port=None if no_manage_llama else LLAMA_PORT,
+    restart_script=None if no_manage_llama else RESTART_SCRIPT,
+)
 
 try:
     with TimeoutGuard(HARD_TIMEOUT, lock_file=LOCK_FILE):

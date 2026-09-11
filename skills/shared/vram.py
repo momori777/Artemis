@@ -36,9 +36,9 @@ LLAMA_STOP_THRESHOLD = {
 def get_vram_level() -> int:
     """
     Resolve current VRAM level from:
-    1. Env var VRAM_LEVEL
-    2. config.yaml vram_level key (if available)
-    3. Default: 2 (ALL_ONLINE — RTX 5070 12GB safe)
+    1. Env var VRAM_LEVEL (debug override)
+    2. config.yaml vram_level key — the authoritative source
+    3. Default: 2 (ALL_ONLINE = no scheduling; conservative when unset)
     """
     env_val = os.environ.get("VRAM_LEVEL")
     if env_val is not None:
@@ -63,7 +63,9 @@ def get_vram_level() -> int:
     except Exception:
         pass
 
-    return 2  # default: ALL_ONLINE
+    # No explicit config → keep llama untouched (level 2). Scheduling is
+    # opt-in via config.yaml vram_level, never auto-detected.
+    return 2
 
 
 def should_stop_llama(skill_name: str) -> bool:
@@ -75,12 +77,15 @@ def should_stop_llama(skill_name: str) -> bool:
     return get_vram_level() <= threshold
 
 
-def skill_flag() -> str:
+def skill_flag(skill_name=None) -> str:
     """
     Returns the appropriate CLI flag for --no-manage-llama based on level.
+    Empty string means llama SHOULD be stopped (manage it) for this skill.
     For use in AGENTS.md spawn templates and skill scripts.
     """
-    return "--no-manage-llama"
+    if skill_name is not None:
+        return "" if should_stop_llama(skill_name) else "--no-manage-llama"
+    return "--no-manage-llama" if get_vram_level() >= 2 else ""
 
 
 if __name__ == "__main__":
