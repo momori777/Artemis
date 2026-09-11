@@ -37,6 +37,9 @@ MEDIA_AUDIO = CFG.get("media_qqbot_audio", os.path.join(WORKSPACE_ROOT, "media",
 MEDIA_IMAGES = CFG.get("media_qqbot_images", os.path.join(WORKSPACE_ROOT, "media", "qqbot", "images"))
 SKILL_TIMEOUT = int(CFG.get("skill_timeout", 9000))  # unified from config.yaml
 
+# VRAM level scheduling — decides whether skills should stop/restart llama
+from skills.shared.vram import get_vram_level, should_stop_llama as _should_stop_llama
+
 # Detect available TTS characters
 TTs_DIR = os.path.join(WORKSPACE_ROOT, "skills", "tts")
 
@@ -152,6 +155,7 @@ def _ensure_llama_running():
                 model_path=LLAMA_MODEL,
                 log_dir=LLAMA_LOG_DIR,
                 timeout=180,
+                use_mmap=True,  # after ComfyUI: avoid --no-mmap full-VK-alloc OOM
             )
             if ok:
                 print("[Bridge] llama-server: restarted successfully", flush=True)
@@ -180,47 +184,47 @@ def _ensure_llama_running():
     return False
 
 
-def _release_vram_before_llama():
-    """Aggressively free VRAM before restarting llama-server.
+def _gpu_free_mib():
+    """Read free VRAM via nvidia-smi (read-only).
 
-    ComfyUI subprocess may leave tensors in GPU driver deferred-free queue.
-    Steps: torch cleanup -> wait for driver reclaim -> then safe to start llama.
+    NOTE: never import torch in the bridge process — it would create a CUDA
+    context (~300MB) inside the long-lived bridge and *consume* VRAM while
+    trying to measure it.
     """
-    # 1. torch-level cleanup (cache release + IPC collect + RSS trim)
     try:
-        import torch
-        if torch.cuda.is_available():
-            torch.cuda.synchronize()
-            torch.cuda.empty_cache()
-            torch.cuda.ipc_collect()
-            import gc
-            gc.collect()
-            torch.cuda.empty_cache()
-            gc.collect()
-            try:
-                import ctypes
-                ctypes.windll.psapi.EmptyWorkingSet(
-                    ctypes.windll.kernel32.GetCurrentProcess())
-            except Exception:
-                pass
-            free = torch.cuda.mem_get_info()[0] / (1024 ** 2)
-            print(f"[Bridge] VRAM after torch cleanup: {free:.0f} MiB", flush=True)
+        r = subprocess.run(
+            ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=10)
+        if r.returncode == 0:
+            return float(r.stdout.strip().splitlines()[0])
     except Exception:
-        print("[Bridge] torch not available, skip torch-level cleanup", flush=True)
+        pass
+    return None
 
-    # 2. Wait for GPU driver to async-reclaim ComfyUI's freed tensors
-    print("[Bridge] Waiting for GPU driver reclaim (15s)...", flush=True)
 
+def _release_vram_before_llama():
+    """Wait for the GPU driver to reclaim VRAM before restarting llama-server.
+
+    ComfyUI runs as a subprocess and has already released its own CUDA
+    context by the time we get here; the driver frees it asynchronously.
+    We only observe via nvidia-smi and wait until free VRAM stops rising.
+    """
+    free = _gpu_free_mib()
+    print(f"[Bridge] VRAM free now: {free if free is not None else 'unknown'} MiB", flush=True)
+    if free is None:
+        time.sleep(10)  # nvidia-smi unavailable: conservative fixed wait
+        return
+
+    prev = free
     for sec in (5, 10, 15):
         time.sleep(5)
-        try:
-            import torch
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-                free = torch.cuda.mem_get_info()[0] / (1024 ** 2)
-                print(f"[Bridge] VRAM after {sec}s: {free:.0f} MiB", flush=True)
-        except Exception:
-            pass
+        free = _gpu_free_mib()
+        if free is None:
+            break
+        print(f"[Bridge] VRAM after {sec}s: {free:.0f} MiB", flush=True)
+        if free - prev < 50:  # stabilized — driver reclaim finished
+            break
+        prev = free
 
 
 @app.route("/api/status")
@@ -259,7 +263,10 @@ def api_tts():
             if character:
                 env["TTS_CHARACTER"] = character
 
-            cmd = [TTs_PYTHON, TTs_SCRIPT, text, lang, mood, "--no-manage-llama"]
+            cmd = [TTs_PYTHON, TTs_SCRIPT, text, lang, mood]
+            # VRAM level decides: only keep llama alive when the level says so
+            if not _should_stop_llama("tts"):
+                cmd.append("--no-manage-llama")
             proc = subprocess.run(cmd, capture_output=True, text=False, timeout=SKILL_TIMEOUT,
                                  cwd=WORKSPACE_ROOT, env=env)
 
@@ -309,7 +316,8 @@ def api_comfyui():
 
     # manage_llama=True → stop llama before ComfyUI (default, safer)
     # manage_llama=False → keep llama alive, risk OOM on low VRAM
-    manage_llama = data.get("manage_llama", True)
+    # VRAM level overrides: ALL_ONLINE (level 2) never stops llama
+    manage_llama = bool(data.get("manage_llama", True)) and _should_stop_llama("comfyui")
 
     job_id = "comfyui_" + uuid.uuid4().hex[:8]
     with jobs_lock:

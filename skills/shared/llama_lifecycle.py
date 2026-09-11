@@ -275,9 +275,12 @@ def acquire_lock(lock_file, label="skill"):
                 ['tasklist', '/FI', f'PID eq {old_pid}', '/NH'],
                 capture_output=True, text=True, timeout=5
             )
-            if (old_pid and str(old_pid) in result.stdout
-                    and 'python.exe' in result.stdout):
-                if old_exe and old_exe in result.stdout:
+            # tasklist 只输出镜像名（python.exe），不含完整路径；
+            # 旧逻辑用 old_exe 全路径匹配 stdout 永远不命中，导致存活实例被覆盖。
+            # 改为：PID 存活且镜像名匹配锁内记录的 exe 基名即视为占用。
+            if old_pid and str(old_pid) in result.stdout:
+                exe_base = os.path.basename(old_exe).lower() if old_exe else 'python.exe'
+                if exe_base in result.stdout.lower():
                     print(f"[LOCK] 检测到正在运行的 {label} (PID={old_pid})，跳过",
                           file=sys.stderr, flush=True)
                     return None, None
