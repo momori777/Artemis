@@ -18,7 +18,8 @@ if (-not $scriptRoot) { $scriptRoot = (Get-Item $PSCommandPath).DirectoryName }
 $llamaExe = "D:\AI_Girlfriend\llama-server\llama-server.exe"
 
 # 模型文件路径（选择一个，取消注释）
-$model = "D:\model\Qwen3.8-27B-UD-Q4_K_M.gguf"
+$model = "C:\model2\Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf"
+# $model = "E:\model3\Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf"
 # $model = "D:\model\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf"
 # $model = "D:\model\Qwen3.8-27B-Cold-Fusion-IQ4_XS.gguf"
 # $model = "D:\model\Qwen3.8-27B-Cold-Fusion-Q4_K_M.gguf"

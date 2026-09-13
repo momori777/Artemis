@@ -31,14 +31,7 @@ draft + flash attention:
 - Keep `--load-mode none` (no-mmap) so llama.cpp manages the RAM-side layers.
 - VRAM is still fully usable for KV cache, MTP draft model, flash attention,
   `--kv-unified`, prefill, etc.
-
-> ⚠️ **Correcting an earlier wrong note:** This guide once claimed that
-> spilling a few layers onto the GPU via `-ngl` "just adds swap stalls without
-> meaningful decode gain" and that `-ngl` should never be raised. That was
-> **false** — it confused static layer placement with dynamic weight swapping
-> (which llama.cpp does not do). Partial `-ngl` is safe and measurably faster;
-> tune `N` up until VRAM headroom for KV/MTP starts to disappear.
-
+ 
 ### MoE models
 
 - Condition: `activated params < VRAM + 4 GB` and `RAM > model size`
@@ -49,17 +42,9 @@ draft + flash attention:
 - There is still some RAM↔VRAM swap cost (the inactive experts still live in
   RAM), but far less than for dense spilling.
 
-### MoE models
-
-- Condition: `activated params < VRAM + 4 GB` and `RAM > model size`
-  → use `--cpu-moe`. Every *activated* expert runs on GPU; the GPU can cook
-  and eat by itself again — but only for the activated slice.
-- "Activated params" = the `A` in e.g. Qwen **3**5**B A(activated)**3**B**:
-  Qwen 3.6 35B A3B has 3B activated params.
-- There is still some RAM↔VRAM swap cost (the inactive experts still live in
-  RAM), but far less than for dense spilling.
 
 ## 3. MTP (speculative Multi-Token Prediction) parameters
+ and N-gram（A O(1) list search so it do not need high bandwith）
 
 MTP does **not** reduce quality — it only affects speed.
 
@@ -77,6 +62,29 @@ MTP does **not** reduce quality — it only affects speed.
 - **Speed ≈ x × acceptance.** Since MTP efficiency depends on the model,
   the machine, and (if used) the MTP draft model — **tune x and 0.ab on your
   own machine**, don't copy values blindly.
+
+n-gram,
+deepseek v4.1 and qwen 4 uses this, that mades some parts of model
+(eg.qwen3.8 flash next 51B N-gram)
+can be unloaded to SSD(Yes, not only RAM) 
+for moe models,
+"--spec-type", "ngram-mod",
+"--spec-ngram-mod-n-match", "24",
+"--spec-ngram-mod-n-min", "48",
+"--spec-ngram-mod-n-max", "96"
+this may be better,
+for dense models,
+"--spec-ngram-mod-n-min", "16",
+"--spec-ngram-mod-n-max", "48"
+is better
+
+"--spec-ngram-mod-n-match", "N",
+N>=24 highly recommend
+
+mtp and ngram can be used simultaneously,
+eg，
+
+"--spec-type", "draft-mtp,ngram-mod",
 
 ## 4. KV cache settings
 
@@ -161,9 +169,83 @@ Claude code, anth hard code their software must use claude series models, so you
 
 vision
 mmproj is vision tool startup code:
---mmproj mmproj-Qwen3.8-Flash-Next-F16.gguf \
+--mmproj mmproj-(model-id).gguf \
 
----
+if you want use bigger or smaller sister models,go https://huggingface.co/LuffyTheFox/Qwen3.6-35B-A3B-Uncensored-Genesis-Hermes-Final-GGUF or https://huggingface.co/DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-L-Uncensored-NM-DAU-NEO-MTP-GGUF for search
+
+my start code settings:
+$model = "C:\model2\Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf"
+
+Start-Process -FilePath $exe -ArgumentList @(
+"-m", $model,
+"-c", "80000",
+"--flash-attn", "on",
+"--temp", "0.6",
+"--top-p", "0.95",
+"--top-k", "40",
+"--min-p", "0.01",
+"--repeat-penalty", "1.02",
+"--presence-penalty", "0.0"
+"-ctk", "q4_0", "-ctv", "q4_0",
+"--batch-size", "400",
+"--ubatch-size", "200",
+"--threads", "24",
+"--api-key", "123456",
+"-rea", "on",
+"--jinja",
+"--cache-ram", "4000",
+"--parallel", "1",
+"--kv-unified",
+"--no-warmup",
+"--spec-type", "draft-mtp,ngram-mod",
+"--spec-draft-n-max", "3",
+"--spec-draft-p-min", "0.84",
+"--spec-draft-type-k", "q4_0", 
+"--spec-draft-type-v", "q4_0", 
+"--chat-template-file", $tpl,
+"--load-mode", "none",
+"--reasoning-preserve",
+"--reasoning-format", "deepseek",
+"-ngl", "15",
+"--reasoning-effort",  "medium",
+"--spec-ngram-mod-n-min", "16",
+"--spec-ngram-mod-n-max", "48"
+)
+prefill 150t/s,decode 8t/s
+
+$model = "E:\model3\Hermes3.6-35B-A3B-Uncensored-Genesis-Final-APEX.gguf"
+Start-Process -FilePath $exe -ArgumentList @(
+"-m", $model,
+"-c", "120000",
+"--cpu-moe"
+"--flash-attn", "on",
+"--temp", "0.6",
+"--top-k", "40",
+"--min-p", "0.01",
+"--repeat-penalty", "1.02",
+"--presence-penalty", "0.0"
+"-ctk", "q4_0", "-ctv", "q4_0",
+"--batch-size", "400",
+"--ubatch-size", "200",
+"--threads", "24",
+"--api-key", "123456",
+"-rea", "on",
+"--jinja",
+"--cache-ram", "5000",
+"--parallel", "1",
+"--kv-unified",
+"--no-warmup",
+"--spec-type", "draft-mtp,ngram-mod",
+"--spec-draft-n-max", "3",
+"--spec-draft-p-min", "0.84",
+"--spec-draft-type-k", "q4_0", 
+"--spec-draft-type-v", "q4_0", 
+"--chat-template-file", $tpl,
+"--load-mode", "none",
+"--reasoning-preserve",
+"--reasoning-format", "deepseek"
+)
+prefill 250t/s,decode 34.88t/s
 
 ## Quick decision table
 

@@ -6,9 +6,8 @@
 
 | 文件 | 大小 | 放哪（相对根目录） |
 |------|------|-------------------|
-| Qwen3.6-27B-Fable-MTP (dense 27B) | 16.3GB | `E:\Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf` |
-| Hermes3.6-35B-A3B Genesis V7 (MoE 35B, **带 MTP**) | 17.1GB | `E:\Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf` |
-| Hermes3.6-35B-A3B Genesis V8 (**不带 MTP**) | 16.6GB | `D:\下载\Hermes3.6-35B-A3B-Uncensored-Genesis-V8-APEX-Compact.gguf` |
+| Hermes3.6-35B-A3B Genesis Final MTP APEX (**带 MTP**) | 24.9GB | `E:\model3\Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf` |
+| Qwen3.8-27B TTURBO Fable C-Fusion MTP (Q4_K_M, **带 MTP**) | 15.7GB | `C:\model2\Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf` |
 | WAI-Nsfw-Illustrious-17 | 6.5GB | `comfyui-checkpoints\WAI-Nsfw-Illustrious-17.safetensors` |
 | miaomiaoHarem_v20 | 6.5GB | `comfyui-checkpoints\miaomiaoHarem_v20.safetensors` |
 | SoVITS ckpt (夏目) | 155MB | `gpt-sovits-weights\GPT_weights_v2Pro\xxx-e30.ckpt` |

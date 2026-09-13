@@ -2,7 +2,7 @@
 # download-models.sh
 # AI Girlfriend 四季夏目 — One-click model download script (Linux / macOS)
 #
-# Downloads all 5 model files (~31.7 GB) from HuggingFace
+# Downloads all model files (~53 GB) from HuggingFace
 # Requires: huggingface-cli (pip install huggingface_hub)
 #
 # Usage:
@@ -70,13 +70,14 @@ mkdir -p "$BASE_DIR/live2d-model"
 echo ""
 echo "Download directory: $BASE_DIR"
 echo "Target: $HF_REPO"
-echo "Total: ~31.7 GB — this may take 30-90 minutes depending on network"
+echo "Total: ~53 GB — this may take 30-90 minutes depending on network"
 echo ""
 
 # Model file list: repo_path|local_path|description
+# LLM 两个模型为本地文件（绝对路径）; 若缺失会尝试从 HF llm/ 目录补下载并移动到目标路径
 MODELS=(
-    "llm/Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf|llm/Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf|LLM GGUF — Hermes V7 MTP MoE 35B (17.1 GB)"
-    "llm/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf|llm/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf|LLM GGUF — Qwen3.8-27B Uncensored HauhauCS Aggressive IQ4_XS (16.3 GB, 备选)"
+    "llm/Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf|E:/model3/Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf|LLM GGUF — Hermes3.6-35B-A3B Genesis Final MTP APEX (~24.9 GB, 主模型)"
+    "llm/Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf|C:/model2/Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf|LLM GGUF — Qwen3.8-27B TTURBO Fable C-Fusion MTP Q4_K_M (~15.7 GB, 工具模型)"
     "comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors|comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors|ComfyUI Checkpoint — WAI (6.46 GB)"
     "comfyui-checkpoints/miaomiaoHarem_v20.safetensors|comfyui-checkpoints/miaomiaoHarem_v20.safetensors|ComfyUI Checkpoint — Miaomiao (6.46 GB)"
     "gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt|gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt|GPT-SoVITS ckpt (~155 MB)"
@@ -91,7 +92,14 @@ FAILED=()
 for ENTRY in "${MODELS[@]}"; do
     CURRENT=$((CURRENT + 1))
     IFS='|' read -r REPO_PATH LOCAL_PATH DESC <<< "$ENTRY"
-    FULL_LOCAL="$BASE_DIR/$LOCAL_PATH"
+    # 绝对路径（/ 开头或 Windows 盘符 X:）直接使用，否则相对 BASE_DIR
+    if [[ "$LOCAL_PATH" == /* || "$LOCAL_PATH" =~ ^[A-Za-z]:[/\\] ]]; then
+        FULL_LOCAL="$LOCAL_PATH"
+        DOWNLOAD_DIR="$(dirname "$FULL_LOCAL")"
+    else
+        FULL_LOCAL="$BASE_DIR/$LOCAL_PATH"
+        DOWNLOAD_DIR="$BASE_DIR"
+    fi
     
     # Check if already exists
     if [ -f "$FULL_LOCAL" ]; then
@@ -105,9 +113,21 @@ for ENTRY in "${MODELS[@]}"; do
     
     START=$(date +%s)
     
-    if $HF_CMD download "$HF_REPO" "$REPO_PATH" --local-dir "$BASE_DIR" --local-dir-use-symlinks False; then
+    mkdir -p "$DOWNLOAD_DIR"
+    if $HF_CMD download "$HF_REPO" "$REPO_PATH" --local-dir "$DOWNLOAD_DIR" --local-dir-use-symlinks False; then
         END=$(date +%s)
         ELAPSED=$((END - START))
+        # 下载落点可能带 repo 子路径 (llm/)，移动到目标位置
+        if [ ! -f "$FULL_LOCAL" ]; then
+            LEAF="$(basename "$REPO_PATH")"
+            for CAND in "$DOWNLOAD_DIR/$REPO_PATH" "$DOWNLOAD_DIR/$LEAF"; do
+                if [ -f "$CAND" ]; then
+                    mkdir -p "$(dirname "$FULL_LOCAL")"
+                    mv -f "$CAND" "$FULL_LOCAL"
+                    break
+                fi
+            done
+        fi
         echo "         OK (${ELAPSED}s)"
     else
         END=$(date +%s)
