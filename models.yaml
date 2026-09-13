@@ -18,64 +18,28 @@
 
 models:
   # =========================================================================
-  # 当前活跃 — Hermes3.6-35B Genesis V7 MTP (APEX Compact, MoE)
+  # 当前活跃 — Hermes3.6-35B Genesis Final APEX
   # =========================================================================
-  - name: Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact
-    type: GGUF (APEX Compact, MTP, ~16GB, 34.66B MoE, 8/256 experts)
+  - name: Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX
+    type: GGUF (MTP, ~24.9 GB)
+    local_path: "E:/model3/Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf"
     repo: TAOTAO777/ai-girlfriend-natsume
-    repo_path: llm/Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf
-    local_path: "E:/Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf"
+    repo_path: llm/Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf
     download: |
-      huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf --local-dir .
-    note: 当前活跃模型 MoE，需 --cpu-moe --cpu-mask 0xFFFFFFFF
+      huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf --local-dir E:/model3
+    note: 当前活跃主模型（带 MTP），已上传至 HF 仓库 llm/ 目录。
 
   # =========================================================================
-  # 当前活跃（工具/助手） — Qwen3.8-27B-TurboFCFusion (Q4_K_S, Dense, MTP)
-  # Quantization: Q4_K_S (~15.8 GB) — sweet spot for dense 27B on consumer hardware
+  # 当前活跃（工具/助手） — Qwen3.8-27B TTURBO Fable C-Fusion MTP (Q4_K_M, Dense)
   # =========================================================================
-  - name: Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_S
-    type: GGUF (Q4_K_S, MTP, ~15.8GB, 27B Dense)
+  - name: Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M
+    type: GGUF (Q4_K_M, MTP, ~15.7 GB, 27B Dense)
+    local_path: "C:/model2/Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf"
     repo: TAOTAO777/ai-girlfriend-natsume
-    repo_path: llm/Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_S.gguf
-    local_path: "D:/model/Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_S.gguf"
+    repo_path: llm/Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf
     download: |
-      huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_S.gguf --local-dir D:/model
-    note: |
-      主工具模型。Q4_K_S 量化（~15.8 GB），8GB VRAM 上配合 -ngl 14 部分卸载可稳定运行。
-      内置 MTP，启动参数见 README "Qwen3.8-27B Dense" 段：
-      -c 100000 -ctk/-ctv q4_0 --cache-ram 2000 --spec-type draft-mtp
-      --spec-draft-n-max 3 --spec-draft-p-min 0.88 --spec-draft-ngl 99 --no-mmap。
-      参考硬件 i9-14900HX + RTX 5070 Laptop 8GB。
-      rea 未指定，默认 medium（通过 chat_template.jinja 控制）。
-
-  # =========================================================================
-  # 备选 — Qwen3.6-27B Fable MTP (Q4_K_S, Dense)
-  # =========================================================================
-  - name: Qwen3.6-27B-Fable-MTP-Q4_K_S
-    type: GGUF (Q4_K_S, MTP, ~16GB, 27B Dense)
-    repo: TAOTAO777/ai-girlfriend-natsume
-    repo_path: llm/Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf
-    local_path: "E:/Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf"
-    download: |
-      huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf --local-dir .
-    note: 备选模型 Dense，无需 --cpu-moe
-
-  # =========================================================================
-  # 旧模型 — Hermes3.6-35B Genesis V7 (APEX Compact, 非 MTP, 已替换)
-  # =========================================================================
-  - name: LuffyTheFox Qwen3.6-35B-A3B-Uncensored-Genesis-Hermes-V7-APEX-Compact
-    type: GGUF (APEX Compact, ~16 GB, 34.66B MoE, 8/256 experts)
-    local_path: "E:/Hermes3.6-35B-A3B-Uncensored-Genesis-V7-APEX-Compact.gguf"
-    note: 旧模型，已替换为 MTP 版
-
-  # =========================================================================
-  # 原模型 — Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact（已删除）
-  # =========================================================================
-  - name: Qwen3.6-35B-A3B-uncensored-heretic-APEX-I-Compact
-    type: GGUF (Q4_K, 16.11 GB, 34.66B MoE, 8/256 experts)
-    upstream: https://huggingface.co/mudler/Qwen3.6-35B-A3B-uncensored-heretic-APEX-GGUF
-    license: Apache 2.0 (Qwen upstream)
-    note: 已从 HF 仓库删除，仅保留参考
+      huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf --local-dir C:/model2
+    note: 主工具模型，内置 MTP，已上传至 HF 仓库 llm/ 目录。
 
   # =========================================================================
   # ComfyUI 文生图 Checkpoints

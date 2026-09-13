@@ -82,17 +82,18 @@ foreach ($d in $Dirs) {
 Write-Host ""
 Write-Host "Download directory: $BaseDir" -ForegroundColor Cyan
 Write-Host "Target: $HFRepo" -ForegroundColor Cyan
-Write-Host "Total: ~47 GB (LLM x2 + ComfyUI x2 + SoVITS + Live2D) — may take 30-90 min" -ForegroundColor Cyan
+Write-Host "Total: ~53 GB (LLM x2 + ComfyUI x2 + SoVITS + Live2D) — may take 30-90 min" -ForegroundColor Cyan
 Write-Host ""
 
-# 模型文件清单 (repo_path, local_path, description)
+# 模型文件清单 (repo_path, download_dir, local_path, description)
+# LLM 两个模型为本地文件; 若缺失会尝试从 HF llm/ 目录补下载并移动到目标路径
 $Models = @(
-    @{RepoPath="llm/Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf"; LocalPath="$BaseDir\llm\Hermes3.6-35B-A3B-Uncensored-Genesis-V7-MTP-APEX-Compact.gguf"; Desc="LLM GGUF — Hermes V7 MTP MoE 35B (17.1 GB, 首推)"},
-    @{RepoPath="llm/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf"; LocalPath="$BaseDir\llm\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf"; Desc="LLM GGUF — Qwen3.8-27B Uncensored HauhauCS Aggressive Q4_K_P (16.7 GB, 工具模型)"},
-    @{RepoPath="comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors"; LocalPath="$BaseDir\comfyui-checkpoints\WAI-Nsfw-Illustrious-17.safetensors"; Desc="ComfyUI Checkpoint — WAI (6.46 GB)"},
-    @{RepoPath="comfyui-checkpoints/miaomiaoHarem_v20.safetensors"; LocalPath="$BaseDir\comfyui-checkpoints\miaomiaoHarem_v20.safetensors"; Desc="ComfyUI Checkpoint — Miaomiao (6.46 GB)"},
-    @{RepoPath="gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt"; LocalPath="$BaseDir\gpt-sovits-weights\GPT_weights_v2Pro\xxx-e30.ckpt"; Desc="GPT-SoVITS ckpt (155 MB)"},
-    @{RepoPath="gpt-sovits-weights/SoVITS_weights_v2Pro/xxx_e20_s6240.pth"; LocalPath="$BaseDir\gpt-sovits-weights\SoVITS_weights_v2Pro\xxx_e20_s6240.pth"; Desc="GPT-SoVITS pth (135 MB)"}
+    @{RepoPath="llm/Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf"; DownloadDir="E:\model3"; LocalPath="E:\model3\Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf"; Desc="LLM GGUF — Hermes3.6-35B-A3B Genesis Final MTP APEX (~24.9 GB, 主模型)"},
+    @{RepoPath="llm/Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf"; DownloadDir="C:\model2"; LocalPath="C:\model2\Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf"; Desc="LLM GGUF — Qwen3.8-27B TTURBO Fable C-Fusion MTP Q4_K_M (~15.7 GB, 工具模型)"},
+    @{RepoPath="comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\comfyui-checkpoints\WAI-Nsfw-Illustrious-17.safetensors"; Desc="ComfyUI Checkpoint — WAI (6.46 GB)"},
+    @{RepoPath="comfyui-checkpoints/miaomiaoHarem_v20.safetensors"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\comfyui-checkpoints\miaomiaoHarem_v20.safetensors"; Desc="ComfyUI Checkpoint — Miaomiao (6.46 GB)"},
+    @{RepoPath="gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\gpt-sovits-weights\GPT_weights_v2Pro\xxx-e30.ckpt"; Desc="GPT-SoVITS ckpt (155 MB)"},
+    @{RepoPath="gpt-sovits-weights/SoVITS_weights_v2Pro/xxx_e20_s6240.pth"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\gpt-sovits-weights\SoVITS_weights_v2Pro\xxx_e20_s6240.pth"; Desc="GPT-SoVITS pth (135 MB)"}
 )
 
 # Live2D 模型单独处理（tar.gz 需要解压）
@@ -123,13 +124,27 @@ foreach ($m in $Models) {
     
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     
-    $output = & $hf download $HFRepo $m.RepoPath --local-dir $BaseDir 2>&1
+    if (-not (Test-Path $m.DownloadDir)) {
+        New-Item -ItemType Directory -Path $m.DownloadDir -Force | Out-Null
+    }
+    $output = & $hf download $HFRepo $m.RepoPath --local-dir $m.DownloadDir 2>&1
     $exitCode = $LASTEXITCODE
     
     $sw.Stop()
     $elapsed = [math]::Round($sw.Elapsed.TotalSeconds, 1)
     
     if ($exitCode -eq 0) {
+        # 下载落点可能带 repo 子路径 (llm\)，移动到目标 LocalPath
+        if (-not (Test-Path $m.LocalPath)) {
+            $landed = @(
+                (Join-Path $m.DownloadDir ($m.RepoPath -replace '/', '\')),
+                (Join-Path $m.DownloadDir (Split-Path $m.RepoPath -Leaf))
+            ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if ($landed) {
+                New-Item -ItemType Directory -Path (Split-Path $m.LocalPath -Parent) -Force | Out-Null
+                Move-Item $landed $m.LocalPath -Force
+            }
+        }
         Write-Host "         OK ($elapsed s)" -ForegroundColor Green
     } else {
         Write-Host "         FAILED ($elapsed s) — exit code $exitCode" -ForegroundColor Red
