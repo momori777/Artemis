@@ -164,3 +164,6 @@ skills/harem_corrupt_bak_*/
 
 # local llama.cpp (fastmtp) runtime binaries - not for git
 llama-server-fastmtp/
+
+# Auto-downloaded dependencies (ComfyUI, GPT-SoVITS) - not for git
+deps/

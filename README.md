@@ -60,7 +60,23 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 > powershell -ExecutionPolicy Bypass -File quick_setup.ps1
 > ```
 >
-> After quick_setup completes, proceed with **download-models.ps1** → **setup-llama.ps1** → **start.ps1**.
+> **Or use the new auto-download script** (clones ComfyUI and GPT-SoVITS from git automatically):
+>
+> ```powershell
+> # Windows
+> powershell -ExecutionPolicy Bypass -File setup-deps.ps1
+>
+> # Linux / macOS
+> bash setup-dependencies.sh
+> ```
+>
+> This script:
+> - Detects your OS and GPU environment
+> - Clones ComfyUI from https://github.com/comfyanonymous/ComfyUI
+> - Clones GPT-SoVITS from https://github.com/RVC-Boss/GPT-SoVITS
+> - Updates `config.yaml` with the new paths
+>
+> After setup completes, proceed with **download-models.ps1** → **setup-llama.ps1** → **start.ps1**.
 
 ## 🎬 Demo
 

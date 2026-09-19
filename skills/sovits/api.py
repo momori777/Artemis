@@ -147,7 +147,12 @@ import sys
 
 now_dir = os.getcwd()
 sys.path.append(now_dir)
-sys.path.append("%s/GPT_SoVITS" % (now_dir))
+# Use git-downloaded GPT-SoVITS from deps directory
+sovits_root = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(now_dir))), "deps", "GPT-SoVITS")
+if not os.path.isdir(sovits_root):
+    # Fallback to local GPT_SoVITS if deps not available
+    sovits_root = "%s/GPT_SoVITS" % (now_dir)
+sys.path.append(sovits_root)
 
 import signal
 from text.LangSegmenter import LangSegmenter

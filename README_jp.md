@@ -59,7 +59,23 @@ OpenClaw + QQ Bot + Telegram Bot + llama.cpp + GPT-SoVITS + ComfyUI + Sakura デ
 > powershell -ExecutionPolicy Bypass -File quick_setup.ps1
 > ```
 >
-> quick_setup 完了後、**download-models.ps1** → **setup-llama.ps1** → **start.ps1** を続行。
+> **または新しい自動ダウンロードスクリプトを使用**（ComfyUI と GPT-SoVITS を git から自動的にクローン、手動インストール不要）:
+>
+> ```powershell
+> # Windows
+> powershell -ExecutionPolicy Bypass -File setup-deps.ps1
+>
+> # Linux / macOS
+> bash setup-dependencies.sh
+> ```
+>
+> このスクリプトは:
+> - OS と GPU 環境を自動検出
+> - https://github.com/comfyanonymous/ComfyUI から ComfyUI をクローン
+> - https://github.com/RVC-Boss/GPT-SoVITS から GPT-SoVITS をクローン
+> - `config.yaml` のパスを自動更新
+>
+> セットアップ完了後、**download-models.ps1** → **setup-llama.ps1** → **start.ps1** を続行。
 
 ## 🎬 デモ
 
