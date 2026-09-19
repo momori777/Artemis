@@ -178,7 +178,7 @@ $model = "C:\model2\Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP
 
 Start-Process -FilePath $exe -ArgumentList @(
 "-m", $model,
-"-c", "80000",
+"-c", "100000",
 "--flash-attn", "on",
 "--temp", "0.6",
 "--top-p", "0.95",
@@ -209,7 +209,8 @@ Start-Process -FilePath $exe -ArgumentList @(
 "-ngl", "15",
 "--reasoning-effort",  "medium",
 "--spec-ngram-mod-n-min", "16",
-"--spec-ngram-mod-n-max", "48"
+"--spec-ngram-mod-n-max", "48",
+"--mmproj", "E:\model3\mmproj-BF16.gguf"
 )
 prefill 150t/s,decode 8t/s
 

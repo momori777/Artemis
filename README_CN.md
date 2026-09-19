@@ -59,7 +59,23 @@ QQ群: 580322386
 > powershell -ExecutionPolicy Bypass -File quick_setup.ps1
 > ```
 >
-> quick_setup 完成后,继续 **download-models.ps1** → **setup-llama.ps1** → **start.ps1**。
+> **或者使用新的自动下载脚本**(自动从 git 克隆 ComfyUI 和 GPT-SoVITS,无需手动安装整合包):
+>
+> ```powershell
+> # Windows
+> powershell -ExecutionPolicy Bypass -File setup-deps.ps1
+>
+> # Linux / macOS
+> bash setup-dependencies.sh
+> ```
+>
+> 这个脚本会:
+> - 自动检测你的操作系统和 GPU 环境
+> - 从 https://github.com/comfyanonymous/ComfyUI 克隆 ComfyUI
+> - 从 https://github.com/RVC-Boss/GPT-SoVITS 克隆 GPT-SoVITS
+> - 自动更新 `config.yaml` 中的路径
+>
+> setup 完成后,继续 **download-models.ps1** → **setup-llama.ps1** → **start.ps1**。
 
 ## 🎬 演示
 

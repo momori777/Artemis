@@ -2,6 +2,8 @@
 # 自动检测已安装的工具路径，没找到的交互式填写，最终生成 config.yaml
 #
 # 用法: powershell -ExecutionPolicy Bypass -File quick_setup.ps1
+#
+# 或者使用 setup-deps.ps1 自动从 git 克隆 ComfyUI 和 GPT-SoVITS（无需手动安装整合包）
 
 $ErrorActionPreference = 'Continue'
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
