@@ -248,6 +248,42 @@ Start-Process -FilePath $exe -ArgumentList @(
 )
 prefill 250t/s,decode 34.88t/s
 
+Ternary-Bonsai-2-27B-PTQ1_0.gguf
+
+Start-Process -FilePath $exe -ArgumentList @(
+"-m", $model,
+"-c", "75000",
+"--flash-attn", "on",
+"--temp", "0.6",
+"--top-p", "0.95",
+"--top-k", "40",
+"--min-p", "0.01",
+"--repeat-penalty", "1.02",
+"--presence-penalty", "0.0"
+"-ctk", "q4_0", "-ctv", "q4_0",
+"--batch-size", "400",
+"--ubatch-size", "200",
+"--threads", "24",
+"--api-key", "123456",
+"-rea", "on",
+"--jinja",
+"--cache-ram", "10000",
+"--parallel", "1",
+"--kv-unified",
+"--no-warmup",
+"--spec-type", "ngram-mod",
+"--chat-template-file", $tpl,
+"--load-mode", "none",
+"--reasoning-preserve",
+"--reasoning-format", "deepseek",
+"-ngl", "99",
+"--reasoning-effort",  "medium",
+"--spec-ngram-mod-n-min", "16",
+"--spec-ngram-mod-n-max", "36"
+)
+
+decode 35T+/s, prefill 300t/s
+
 ## Quick decision table
 
 | Your situation | Key params |

@@ -27,7 +27,12 @@ models:
     repo_path: llm/Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf
     download: |
       huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf --local-dir E:/model3
-    note: 当前活跃主模型（带 MTP），已上传至 HF 仓库 llm/ 目录。
+    upstream: https://huggingface.co/LuffyTheFox/Qwen3.6-35B-A3B-Uncensored-Genesis-Hermes-Final-GGUF/tree/main
+    note: |
+      当前活跃主模型（带 MTP），已上传至 HF 仓库 llm/ 目录。
+      原出处: LuffyTheFox/Qwen3.6-35B-A3B-Uncensored-Genesis-Hermes-Final-GGUF
+      （注: Q4_K_M 版需 16G 显存；本仓库镜像的 APEX Compact 版 8G 可跑）
+      调参: LLAMA_TUNING.md
 
   # =========================================================================
   # 当前活跃（工具/助手） — Qwen3.8-27B TTURBO Fable C-Fusion MTP (Q4_K_M, Dense)
@@ -39,7 +44,32 @@ models:
     repo_path: llm/Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf
     download: |
       huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf --local-dir C:/model2
-    note: 主工具模型，内置 MTP，已上传至 HF 仓库 llm/ 目录。
+    upstream: https://huggingface.co/DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-L-Uncensored-NM-DAU-NEO-MTP-GGUF
+    note: |
+      主工具模型，内置 MTP，已上传至 HF 仓库 llm/ 目录。
+      原出处: DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-L-Uncensored-NM-DAU-NEO-MTP-GGUF
+      （注: APEX COMPACT 版 6G VRAM / 32G RAM）
+      调参: LLAMA_TUNING.md
+
+  # =========================================================================
+  # 当前活跃（8GB 显存全量装载） — Ternary-Bonsai-2-27B PTQ1_0 (三值量化, ~5.9 GB)
+  # =========================================================================
+  - name: Ternary-Bonsai-2-27B-PTQ1_0
+    type: GGUF (PTQ1_0 ternary, ~5.9 GB, 27B)
+    local_path: "E:/model3/Ternary-Bonsai-2-27B-PTQ1_0.gguf"
+    repo: TAOTAO777/ai-girlfriend-natsume
+    repo_path: llm/Ternary-Bonsai-2-27B-PTQ1_0.gguf
+    download: |
+      huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Ternary-Bonsai-2-27B-PTQ1_0.gguf --local-dir E:/model3
+    upstream: https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf
+    quantizer: https://huggingface.co/BoldingBuilds/Ternary-Bonsai-2-27B-Abliterated-PTQ1_0-GGUF
+    note: |
+      三值量化 PTQ1_0，实测 8GB 显存可全量装载（-ngl 99），decode ~35 t/s+，prefill ~300 t/s。
+      已上传至自有 HF 仓库 llm/ 目录（与其它两个 LLM 同目录）；原出处 prism-ml/Ternary-Bonsai-2-27B-gguf，
+      PTQ1_0 三重量化版作者 BoldingBuilds。
+      ⚠️ 硬性要求：KV cache 必须 Q4（-ctk q4_0 -ctv q4_0）且 context window -c ≤ 75000，
+      否则 8GB 显存装不下。需支持 PQ/PTQ 的 llama 构建（E:/model3/llamaPQ/llama-server.exe）。
+      启动命令见 README.md / README_CN.md 「Ternary-Bonsai」小节；调参见 LLAMA_TUNING.md。
 
   # =========================================================================
   # ComfyUI 文生图 Checkpoints

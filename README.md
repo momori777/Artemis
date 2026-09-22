@@ -254,6 +254,7 @@ See [`models.yaml`](models.yaml) for full details.
 | **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V13 MTP APEX Compact** (GGUF) | Chat LLM (primary MoE) | 16.11 GB | 120K |
 | **Qwen3.8-27B-TurboFCFusion** (Q4_K_S GGUF) | Chat LLM (dense, tooling) | ~15.8 GB | 100K |
 | **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | Chat LLM (dense, legacy) | 13.5 GB | 150K |
+| **Ternary-Bonsai-2-27B PTQ1_0** (ternary GGUF) | Chat LLM (**fits fully in 8 GB VRAM**, `-ngl 99`) | ~5.9 GB | **≤ 75K** (KV cache **must** be q4_0) |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI generation (default) | 6.46 GB |
 | **miaomiaoHarem_v20** | ComfyUI generation (backup) | 6.46 GB |
 | **GPT-SoVITS voice weights** | TTS voice synthesis | ~303 MB |
@@ -279,6 +280,9 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/ --local-dir ./mode
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui-checkpoints/ --local-dir ./checkpoints
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/ --local-dir ./gpt-sovits-weights
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-dir ./live2d-model
+
+# Ternary-Bonsai-2-27B PTQ1_0 (mirror of our repo's llm/ folder, fits 8 GB VRAM):
+huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Ternary-Bonsai-2-27B-PTQ1_0.gguf --local-dir ./models
 ```
 
 > 🇨🇳 Users in China: use hf-mirror.com - no VPN needed:
@@ -535,6 +539,63 @@ Start-Process -FilePath $exe -ArgumentList @(
 > (mean accepted run length ≈ 3.2–5.3), so effective throughput is roughly 3–5× a
 > single speculative token per forward pass while the 8 GB card stays within its
 > VRAM cap.
+
+### Ternary-Bonsai-2-27B PTQ1_0 — fits fully in 8 GB VRAM 🔥
+
+**Ternary-Bonsai-2-27B PTQ1_0** — hosted in this project's HF repo: **[TAOTAO777/ai-girlfriend-natsume → `llm/Ternary-Bonsai-2-27B-PTQ1_0.gguf`](https://huggingface.co/TAOTAO777/ai-girlfriend-natsume/tree/main/llm)** (same `llm/` folder as the other two LLM models). Original source: base model [prism-ml/Ternary-Bonsai-2-27B-gguf](https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf); PTQ1_0 ternary quant build by [BoldingBuilds](https://huggingface.co/BoldingBuilds/Ternary-Bonsai-2-27B-Abliterated-PTQ1_0-GGUF).
+
+**5.9 GB on disk (~5.5 GiB)**. Verified running on the reference **8 GB VRAM** laptop with `-ngl 99`: the whole model fits on the card — no RAM layer split needed. Measured: **decode ~35 t/s+, prefill ~300 t/s**. Tuning notes: [LLAMA_TUNING.md](LLAMA_TUNING.md).
+
+> 🔴 **Two NON-NEGOTIABLE constraints for 8 GB VRAM:**
+>
+> 1. **KV cache MUST be Q4: `-ctk q4_0 -ctv q4_0`.** Anything higher (f16 / f32 KV) will blow the VRAM budget immediately.
+> 2. **Context window MUST be `-c ≤ 75000`.** With Q4 KV, weights (~5.5 GiB) + KV cache + compute buffers stay inside 8 GB only up to ~75K tokens. Anything larger does **not** fit on an 8 GB card.
+
+```powershell
+$exe   = "E:\model3\llamaPQ\llama-server.exe"   # PTQ1_0 needs a PQ/PTQ-capable llama build
+$model = "E:\model3\Ternary-Bonsai-2-27B-PTQ1_0.gguf"
+$tpl   = "D:\AI_Girlfriend\chat_template.jinja"
+
+Start-Process -FilePath $exe -ArgumentList @(
+"-m", $model,
+"-c", "75000",                  # MUST be ≤ 75000 — 8 GB VRAM ceiling
+"--flash-attn", "on",
+"-ctk", "q4_0", "-ctv", "q4_0", # MUST be q4_0 — Q4 KV cache
+"--temp", "0.6",
+"--top-p", "0.95",
+"--top-k", "40",
+"--min-p", "0.01",
+"--repeat-penalty", "1.02",
+"--presence-penalty", "0.0",
+"--batch-size", "400",
+"--ubatch-size", "200",
+"--threads", "24",
+"--api-key", "123456",
+"-rea", "on",
+"--jinja",
+"--cache-ram", "10000",
+"--parallel", "1",
+"--kv-unified",
+"--no-warmup",
+"--spec-type", "ngram-mod",
+"--spec-ngram-mod-n-min", "16",
+"--spec-ngram-mod-n-max", "36",
+"--chat-template-file", $tpl,
+"--load-mode", "none",
+"--reasoning-preserve",
+"--reasoning-format", "deepseek",
+"-ngl", "99",
+"--reasoning-effort", "medium"
+)
+```
+
+> 💡 **Notes:**
+>
+> - **`-ngl 99`** — unlike the ~15.8 GB Q4_K_S dense models (which need `-ngl 14` partial offload), the ternary PTQ1_0 weights fit entirely in VRAM, so full offload is used.
+> - **`--spec-type ngram-mod`** — this GGUF has no MTP head; speculative decoding uses ngram-mod only (`n-min 16`, `n-max 36`).
+> - **`--load-mode none`** + `--kv-unified` + `--cache-ram 10000` keep the RAM side stable while the GPU holds weights + Q4 KV.
+> - This is a **manual launch command** — it is not (yet) wired into the `-SwitchTo` model-profile switcher.
+> - Every PowerShell argument pair must be comma-separated — a missing comma silently glues two tokens together.
 
 ### Silicon Rider Bench (Agent Benchmark)
 

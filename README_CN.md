@@ -246,6 +246,7 @@ Qwen3.6-35B (语言心智) ←→ Cosmos 3 Nano (物理心智)
 | **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V13 MTP APEX Compact** (GGUF) | 聊天 LLM (主模型 MoE) | 16.11 GB | 120K |
 | **Qwen3.8-27B-TurboFCFusion** (Q4_K_S GGUF) | 聊天 LLM (稠密,工具型) | ~15.8 GB | 100K |
 | **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | 聊天 LLM (稠密,旧版) | 13.5 GB | 150K |
+| **Ternary-Bonsai-2-27B PTQ1_0** (三值量化 GGUF) | 聊天 LLM (**8GB 显存可全装**, `-ngl 99`) | ~5.9 GB | **≤ 75K**（KV cache **必须** q4_0） |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI 画图(默认) | 6.46 GB |
 | **miaomiaoHarem_v20** | ComfyUI 画图(备用) | 6.46 GB |
 | **GPT-SoVITS 语音权重** | TTS 语音合成 | ~303 MB |
@@ -271,6 +272,9 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/ --local-dir ./mode
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui-checkpoints/ --local-dir ./checkpoints
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/ --local-dir ./gpt-sovits-weights
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-dir ./live2d-model
+
+# Ternary-Bonsai-2-27B PTQ1_0（自有仓库 llm/ 目录镜像，8GB 显存可全装）：
+huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Ternary-Bonsai-2-27B-PTQ1_0.gguf --local-dir ./models
 ```
 
 ### 本地配置
@@ -338,6 +342,63 @@ llama-server.exe `
 > - **`--spec-draft-p-min 0.88`** — 只接受置信度 ≥88% 的预生成 token，保持高接受率。
 > - **`--spec-draft-ngl 99`** — 将整个 draft 上下文卸载到 GPU，加速投机解码。
 > - **量化方案：Q4_K_S** — 模型大小约 15.8GB，质量与显存占用平衡良好。这是稠密（非 MoE）模型，推理时全部 27B 参数都激活（MoE 只激活一部分）。
+
+### Ternary-Bonsai-2-27B PTQ1_0 — 8GB 显存可全量装载 🔥
+
+**Ternary-Bonsai-2-27B PTQ1_0** — 已上传至本项目 HF 仓库：**[TAOTAO777/ai-girlfriend-natsume → `llm/Ternary-Bonsai-2-27B-PTQ1_0.gguf`](https://huggingface.co/TAOTAO777/ai-girlfriend-natsume/tree/main/llm)**（与其它两个 LLM 模型同在 `llm/` 目录）。原出处：底模 [prism-ml/Ternary-Bonsai-2-27B-gguf](https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf)；PTQ1_0 三重量化版由 [BoldingBuilds](https://huggingface.co/BoldingBuilds/Ternary-Bonsai-2-27B-Abliterated-PTQ1_0-GGUF) 制作。
+
+磁盘仅 **5.9 GB（约 5.5 GiB）**。已在参考机（**8GB 显存**笔记本）实测可 `-ngl 99` 全量装载——模型权重完全放进显存，无需 CPU/GPU 分层。实测 **decode ~35 t/s+，prefill ~300 t/s**。调参见 [LLAMA_TUNING.md](LLAMA_TUNING.md)。
+
+> 🔴 **8GB 显存两条不可妥协的硬性要求：**
+>
+> 1. **KV cache 必须 Q4：`-ctk q4_0 -ctv q4_0`。** 任何更高的 KV 精度（f16/f32）都会直接爆显存。
+> 2. **上下文窗口必须 `-c ≤ 75000`。** Q4 KV 下，权重（约 5.5 GiB）+ KV cache + 计算缓冲只有在 ~75K token 以内才能装进 8GB；超过这个值 8GB 显存装不下。
+
+```powershell
+$exe   = "E:\model3\llamaPQ\llama-server.exe"   # PTQ1_0 需要支持 PQ/PTQ 的 llama 构建
+$model = "E:\model3\Ternary-Bonsai-2-27B-PTQ1_0.gguf"
+$tpl   = "D:\AI_Girlfriend\chat_template.jinja"
+
+Start-Process -FilePath $exe -ArgumentList @(
+"-m", $model,
+"-c", "75000",                  # 必须 ≤ 75000 —— 8GB 显存上限
+"--flash-attn", "on",
+"-ctk", "q4_0", "-ctv", "q4_0", # 必须 q4_0 —— Q4 KV cache
+"--temp", "0.6",
+"--top-p", "0.95",
+"--top-k", "40",
+"--min-p", "0.01",
+"--repeat-penalty", "1.02",
+"--presence-penalty", "0.0",
+"--batch-size", "400",
+"--ubatch-size", "200",
+"--threads", "24",
+"--api-key", "123456",
+"-rea", "on",
+"--jinja",
+"--cache-ram", "10000",
+"--parallel", "1",
+"--kv-unified",
+"--no-warmup",
+"--spec-type", "ngram-mod",
+"--spec-ngram-mod-n-min", "16",
+"--spec-ngram-mod-n-max", "36",
+"--chat-template-file", $tpl,
+"--load-mode", "none",
+"--reasoning-preserve",
+"--reasoning-format", "deepseek",
+"-ngl", "99",
+"--reasoning-effort", "medium"
+)
+```
+
+> 💡 **说明：**
+>
+> - **`-ngl 99`** —— 不同于 ~15.8GB 的 Q4_K_S 稠密模型（需 `-ngl 14` 分层卸载），PTQ1_0 三值权重可全量放进显存，因此直接全层卸载。
+> - **`--spec-type ngram-mod`** —— 该 GGUF 没有 MTP head，投机解码只用 ngram-mod（`n-min 16`、`n-max 36`）。
+> - **`--load-mode none`** + `--kv-unified` + `--cache-ram 10000`：GPU 端放权重 + Q4 KV，内存侧保持稳定。
+> - 此为**手动启动命令**，目前尚未接入 `-SwitchTo` 模型 profile 切换器。
+> - PowerShell 数组中每对参数必须用逗号分隔——缺逗号会把两个 token 粘连。
 > - **`rea` 未指定** — 通过聊天模板默认使用 `medium` 推理深度（不注入思考 token，保持 KV 缓存一致性）。
 
 > ⚠️ **`chat_template.jinja` 必须放在项目根目录（`D:\AI_Girlfriend\chat_template.jinja`），且不可被 gitignore（`.gitignore` 已加 `!chat_template.jinja`）。**这是固定的 froggeric **v22.3** 模板，配合 `-rea on` + `--reasoning-preserve` 保留思考块。若缺失或被忽略，llama 启动参数会错误。`config.yaml` → `llama_chat_template: chat_template.jinja` 指向它。

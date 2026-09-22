@@ -2,7 +2,7 @@
 # download-models.sh
 # AI Girlfriend 四季夏目 — One-click model download script (Linux / macOS)
 #
-# Downloads all model files (~53 GB) from HuggingFace
+# Downloads all model files (~59 GB) from HuggingFace
 # Requires: huggingface-cli (pip install huggingface_hub)
 #
 # Usage:
@@ -70,19 +70,24 @@ mkdir -p "$BASE_DIR/live2d-model"
 echo ""
 echo "Download directory: $BASE_DIR"
 echo "Target: $HF_REPO"
-echo "Total: ~53 GB — this may take 30-90 minutes depending on network"
+echo "Total: ~59 GB — this may take 30-90 minutes depending on network"
 echo ""
 
-# Model file list: repo_path|local_path|description
-# LLM 两个模型为本地文件（绝对路径）; 若缺失会尝试从 HF llm/ 目录补下载并移动到目标路径
+# Model file list: repo|repo_path|local_path|description
+# LLM 模型为本地文件（绝对路径）; 若缺失会尝试从 HF 补下载并移动到目标路径
+# repo 字段可指向外部仓库 (如 Ternary-Bonsai PTQ1_0)，缺省仓库为 TAOTAO777/ai-girlfriend-natsume
 MODELS=(
-    "llm/Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf|E:/model3/Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf|LLM GGUF — Hermes3.6-35B-A3B Genesis Final MTP APEX (~24.9 GB, 主模型)"
-    "llm/Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf|C:/model2/Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf|LLM GGUF — Qwen3.8-27B TTURBO Fable C-Fusion MTP Q4_K_M (~15.7 GB, 工具模型)"
-    "comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors|comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors|ComfyUI Checkpoint — WAI (6.46 GB)"
-    "comfyui-checkpoints/miaomiaoHarem_v20.safetensors|comfyui-checkpoints/miaomiaoHarem_v20.safetensors|ComfyUI Checkpoint — Miaomiao (6.46 GB)"
-    "gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt|gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt|GPT-SoVITS ckpt (~155 MB)"
-    "gpt-sovits-weights/SoVITS_weights_v2Pro/xxx_e20_s6240.pth|gpt-sovits-weights/SoVITS_weights_v2Pro/xxx_e20_s6240.pth|GPT-SoVITS pth (~135 MB)"
-    "live2d-model/shiki_natsume.tar.gz|live2d-model/shiki_natsume.tar.gz|Live2D Model — Shiki Natsume (~209 MB)"
+    "TAOTAO777/ai-girlfriend-natsume|llm/Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf|E:/model3/Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf|LLM GGUF — Hermes3.6-35B-A3B Genesis Final MTP APEX (~24.9 GB, 主模型)"
+    "TAOTAO777/ai-girlfriend-natsume|llm/Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf|C:/model2/Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf|LLM GGUF — Qwen3.8-27B TTURBO Fable C-Fusion MTP Q4_K_M (~15.7 GB, 工具模型)"
+    # Ternary-Bonsai PTQ1_0: 自有仓库 llm/ 镜像; 8G 显存可全量装载 (-ngl 99)
+    # 原出处: https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf (PTQ1_0 三重量化版: BoldingBuilds)
+    # ⚠️ 启动时必须 -ctk q4_0 -ctv q4_0 且 -c <= 75000，否则 8G 显存装不下（调参详见 LLAMA_TUNING.md）
+    "TAOTAO777/ai-girlfriend-natsume|llm/Ternary-Bonsai-2-27B-PTQ1_0.gguf|E:/model3/Ternary-Bonsai-2-27B-PTQ1_0.gguf|LLM GGUF — Ternary-Bonsai-2-27B PTQ1_0 (~5.9 GB, 8G显存可全装)"
+    "TAOTAO777/ai-girlfriend-natsume|comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors|comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors|ComfyUI Checkpoint — WAI (6.46 GB)"
+    "TAOTAO777/ai-girlfriend-natsume|comfyui-checkpoints/miaomiaoHarem_v20.safetensors|comfyui-checkpoints/miaomiaoHarem_v20.safetensors|ComfyUI Checkpoint — Miaomiao (6.46 GB)"
+    "TAOTAO777/ai-girlfriend-natsume|gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt|gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt|GPT-SoVITS ckpt (~155 MB)"
+    "TAOTAO777/ai-girlfriend-natsume|gpt-sovits-weights/SoVITS_weights_v2Pro/xxx_e20_s6240.pth|gpt-sovits-weights/SoVITS_weights_v2Pro/xxx_e20_s6240.pth|GPT-SoVITS pth (~135 MB)"
+    "TAOTAO777/ai-girlfriend-natsume|live2d-model/shiki_natsume.tar.gz|live2d-model/shiki_natsume.tar.gz|Live2D Model — Shiki Natsume (~209 MB)"
 )
 
 TOTAL=${#MODELS[@]}
@@ -91,7 +96,7 @@ FAILED=()
 
 for ENTRY in "${MODELS[@]}"; do
     CURRENT=$((CURRENT + 1))
-    IFS='|' read -r REPO_PATH LOCAL_PATH DESC <<< "$ENTRY"
+    IFS='|' read -r REPO REPO_PATH LOCAL_PATH DESC <<< "$ENTRY"
     # 绝对路径（/ 开头或 Windows 盘符 X:）直接使用，否则相对 BASE_DIR
     if [[ "$LOCAL_PATH" == /* || "$LOCAL_PATH" =~ ^[A-Za-z]:[/\\] ]]; then
         FULL_LOCAL="$LOCAL_PATH"
@@ -108,13 +113,13 @@ for ENTRY in "${MODELS[@]}"; do
     fi
     
     echo "[$CURRENT/$TOTAL] Downloading $DESC..."
-    echo "         From: $REPO_PATH"
+    echo "         From: $REPO/$REPO_PATH"
     echo "         To:   $FULL_LOCAL"
     
     START=$(date +%s)
     
     mkdir -p "$DOWNLOAD_DIR"
-    if $HF_CMD download "$HF_REPO" "$REPO_PATH" --local-dir "$DOWNLOAD_DIR" --local-dir-use-symlinks False; then
+    if $HF_CMD download "$REPO" "$REPO_PATH" --local-dir "$DOWNLOAD_DIR" --local-dir-use-symlinks False; then
         END=$(date +%s)
         ELAPSED=$((END - START))
         # 下载落点可能带 repo 子路径 (llm/)，移动到目标位置

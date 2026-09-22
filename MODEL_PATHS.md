@@ -8,6 +8,7 @@
 |------|------|-------------------|
 | Hermes3.6-35B-A3B Genesis Final MTP APEX (**带 MTP**) | 24.9GB | `E:\model3\Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf` |
 | Qwen3.8-27B TTURBO Fable C-Fusion MTP (Q4_K_M, **带 MTP**) | 15.7GB | `C:\model2\Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf` |
+| Ternary-Bonsai-2-27B PTQ1_0 (三值量化, **8G 显存可全装**; KV cache 必须 q4_0 + ctx ≤ 75000) | 5.9GB | `E:\model3\Ternary-Bonsai-2-27B-PTQ1_0.gguf` |
 | WAI-Nsfw-Illustrious-17 | 6.5GB | `comfyui-checkpoints\WAI-Nsfw-Illustrious-17.safetensors` |
 | miaomiaoHarem_v20 | 6.5GB | `comfyui-checkpoints\miaomiaoHarem_v20.safetensors` |
 | SoVITS ckpt (夏目) | 155MB | `gpt-sovits-weights\GPT_weights_v2Pro\xxx-e30.ckpt` |
