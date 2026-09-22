@@ -247,8 +247,12 @@ Qwen3.6-35B (语言心智) ←→ Cosmos 3 Nano (物理心智)
 | **Qwen3.8-27B-TurboFCFusion** (Q4_K_S GGUF) | 聊天 LLM (稠密,工具型) | ~15.8 GB | 100K |
 | **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | 聊天 LLM (稠密,旧版) | 13.5 GB | 150K |
 | **Ternary-Bonsai-2-27B PTQ1_0** (三值量化 GGUF) | 聊天 LLM (**8GB 显存可全装**, `-ngl 99`) | ~5.9 GB | **≤ 75K**（KV cache **必须** q4_0） |
-| **WAI-Nsfw-Illustrious-17** | ComfyUI 画图(默认) | 6.46 GB |
-| **miaomiaoHarem_v20** | ComfyUI 画图(备用) | 6.46 GB |
+| **WAI-Nsfw-Illustrious-17** | ComfyUI 画图(默认, SDXL/Illustrious) | 6.46 GB |
+| **miaomiaoHarem_29BBETA10** | ComfyUI 画图(备用, anima/qwen 29B + qwen VAE) | 5.44 GB |
+| **oneObsession_anima29BV1** | ComfyUI 画图(anima/qwen 29B + qwen VAE) | 5.44 GB |
+| **qwen-image-2.1 Q6_K** | ComfyUI 画图(qwen-image GGUF, 需 qwen3vl_8b TE + qwen VAE) | 5.47 GB |
+| **qwen3vl_8b_int8_convrot** | ComfyUI 文本编码器(qwen-image-2.1) | 8.71 GB |
+| **qwen_image_vae** | ComfyUI VAE(所有非 WAI 模型共用) | 242 MB |
 | **GPT-SoVITS 语音权重** | TTS 语音合成 | ~303 MB |
 | **夜乃桜 SoVITS 语音权重** | TTS 语音合成(桜声线) | ~313 MB |
 | **all-MiniLM-L6-v2** | 英文/跨语言 Embedding(mem0 记忆) | ~80 MB |
@@ -269,7 +273,7 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume --local-dir ./models
 
 # 或单独下载各个组件:
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/ --local-dir ./models
-huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui-checkpoints/ --local-dir ./checkpoints
+huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui/ --local-dir ./comfyui
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/ --local-dir ./gpt-sovits-weights
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-dir ./live2d-model
 

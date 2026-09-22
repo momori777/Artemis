@@ -72,27 +72,64 @@ models:
       启动命令见 README.md / README_CN.md 「Ternary-Bonsai」小节；调参见 LLAMA_TUNING.md。
 
   # =========================================================================
-  # ComfyUI 文生图 Checkpoints
+  # ComfyUI 文生图模型（仓库目录 = ComfyUI models/ 标准子目录）
+  # ⚠️ 除 WAI (SDXL/Illustrious, SDXL VAE) 外，其余均为 qwen-image/anima 架构，共用 qwen_image_vae
   # =========================================================================
   - name: WAI-Nsfw-Illustrious-17
     type: safetensors (SDXL/Illustrious, 6.46 GB)
     repo: TAOTAO777/ai-girlfriend-natsume
-    repo_path: comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors
+    repo_path: comfyui/checkpoints/WAI-Nsfw-Illustrious-17.safetensors
     local_path: ${COMFYUI_CHECKPOINTS_DIR:-checkpoints/}
     download: |
-      huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors --local-dir checkpoints
+      huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui/checkpoints/WAI-Nsfw-Illustrious-17.safetensors --local-dir checkpoints
     upstream: https://civitai.com/models/1185480/wai-nsfw-illustrious
-    note: 二次元角色生成默认模型
+    note: 二次元角色生成默认模型（SDXL 架构，用 SDXL VAE）
 
-  - name: miaomiaoHarem_v20
-    type: safetensors (6.46 GB)
+  - name: miaomiaoHarem_29BBETA10
+    type: safetensors (anima/qwen 29B, 5.44 GB)
     repo: TAOTAO777/ai-girlfriend-natsume
-    repo_path: comfyui-checkpoints/miaomiaoHarem_v20.safetensors
-    local_path: ${COMFYUI_CHECKPOINTS_DIR:-checkpoints/}
+    repo_path: comfyui/diffusion_models/miaomiaoHarem_29BBETA10.safetensors
+    local_path: ${COMFYUI_DIFFUSION_MODELS_DIR:-diffusion_models/}
     download: |
-      huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui-checkpoints/miaomiaoHarem_v20.safetensors --local-dir checkpoints
+      huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui/diffusion_models/miaomiaoHarem_29BBETA10.safetensors --local-dir diffusion_models
     upstream: https://civitai.com/models/1033365/miaomiaoharem
-    note: 备用模型，动漫后宫风格
+    note: 备用模型，动漫后宫风格（anima/qwen 架构，需 qwen_image_vae；替代已删除的 SDXL 版 miaomiaoHarem_v20）
+
+  - name: oneObsession_anima29BV1
+    type: safetensors (anima/qwen 29B, 5.44 GB)
+    repo: TAOTAO777/ai-girlfriend-natsume
+    repo_path: comfyui/diffusion_models/oneObsession_anima29BV1.safetensors
+    local_path: ${COMFYUI_DIFFUSION_MODELS_DIR:-diffusion_models/}
+    download: |
+      huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui/diffusion_models/oneObsession_anima29BV1.safetensors --local-dir diffusion_models
+    note: anima 29B 风格模型（需 qwen_image_vae）
+
+  - name: qwen-image-2.1-Q6_K
+    type: GGUF (qwen-image, 5.47 GB)
+    repo: TAOTAO777/ai-girlfriend-natsume
+    repo_path: comfyui/diffusion_models/qwen-image-2.1-Q6_K.gguf
+    local_path: ${COMFYUI_DIFFUSION_MODELS_DIR:-diffusion_models/}
+    download: |
+      huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui/diffusion_models/qwen-image-2.1-Q6_K.gguf --local-dir diffusion_models
+    note: qwen-image-2.1 GGUF 量化版，配套 text_encoders/qwen3vl_8b_int8_convrot + vae/qwen_image_vae
+
+  - name: qwen3vl_8b_int8_convrot
+    type: safetensors (text encoder, 8.71 GB)
+    repo: TAOTAO777/ai-girlfriend-natsume
+    repo_path: comfyui/text_encoders/qwen3vl_8b_int8_convrot.safetensors
+    local_path: ${COMFYUI_TEXT_ENCODERS_DIR:-text_encoders/}
+    download: |
+      huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui/text_encoders/qwen3vl_8b_int8_convrot.safetensors --local-dir text_encoders
+    note: qwen-image-2.1 文本编码器（int8 convrot 量化）
+
+  - name: qwen_image_vae
+    type: safetensors (VAE, 242 MB)
+    repo: TAOTAO777/ai-girlfriend-natsume
+    repo_path: comfyui/vae/qwen_image_vae.safetensors
+    local_path: ${COMFYUI_VAE_DIR:-vae/}
+    download: |
+      huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui/vae/qwen_image_vae.safetensors --local-dir vae
+    note: qwen VAE，所有非 WAI 扩散模型（qwen-image / anima 29B）共用
 
   # =========================================================================
   # GPT-SoVITS v2 Pro — 声优权重（自训练）

@@ -244,8 +244,12 @@ Qwen3.6-35B（言語の心）  ←→  Cosmos 3 Nano（物理の心）
 | **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V13 MTP APEX Compact** (GGUF) | チャット LLM（主モデル MoE）| 16.11 GB | 120K |
 | **Qwen3.8-27B-TurboFCFusion** (Q4_K_S GGUF) | チャット LLM（Dense,ツール用）| ~15.8 GB | 100K |
 | **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | チャット LLM（Dense,旧版）| 13.5 GB | 150K |
-| **WAI-Nsfw-Illustrious-17** | ComfyUI 生成（デフォルト） | 6.46 GB |
-| **miaomiaoHarem_v20** | ComfyUI 生成（バックアップ） | 6.46 GB |
+| **WAI-Nsfw-Illustrious-17** | ComfyUI 生成（デフォルト、SDXL/Illustrious） | 6.46 GB |
+| **miaomiaoHarem_29BBETA10** | ComfyUI 生成（バックアップ、anima/qwen 29B + qwen VAE） | 5.44 GB |
+| **oneObsession_anima29BV1** | ComfyUI 生成（anima/qwen 29B + qwen VAE） | 5.44 GB |
+| **qwen-image-2.1 Q6_K** | ComfyUI 生成（qwen-image GGUF、qwen3vl_8b TE + qwen VAE 必要） | 5.47 GB |
+| **qwen3vl_8b_int8_convrot** | ComfyUI テキストエンコーダ（qwen-image-2.1） | 8.71 GB |
+| **qwen_image_vae** | ComfyUI VAE（WAI 以外の全モデル共用） | 242 MB |
 | **GPT-SoVITS 音声重み** | TTS 音声合成 | ~303 MB |
 | **桜 SoVITS 重み** | TTS 音声合成（桜の声） | ~313 MB |
 | **all-MiniLM-L6-v2** | 英語/多言語埋め込み（mem0） | ~80 MB |
@@ -266,7 +270,7 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume --local-dir ./models
 
 # あるいは個別コンポーネントのダウンロード：
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/ --local-dir ./models
-huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui-checkpoints/ --local-dir ./checkpoints
+huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui/ --local-dir ./comfyui
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/ --local-dir ./gpt-sovits-weights
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-dir ./live2d-model
 ```

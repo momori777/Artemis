@@ -69,7 +69,10 @@ Write-Host "  OK: $auth" -ForegroundColor Green
 $BaseDir = Resolve-Path $BaseDir
 $Dirs = @(
     "$BaseDir\llm",
-    "$BaseDir\comfyui-checkpoints",
+    "$BaseDir\comfyui\checkpoints",
+    "$BaseDir\comfyui\diffusion_models",
+    "$BaseDir\comfyui\text_encoders",
+    "$BaseDir\comfyui\vae",
     "$BaseDir\gpt-sovits-weights\GPT_weights_v2Pro",
     "$BaseDir\gpt-sovits-weights\SoVITS_weights_v2Pro"
 )
@@ -82,7 +85,7 @@ foreach ($d in $Dirs) {
 Write-Host ""
 Write-Host "Download directory: $BaseDir" -ForegroundColor Cyan
 Write-Host "Target: $HFRepo" -ForegroundColor Cyan
-Write-Host "Total: ~59 GB (LLM x3 + ComfyUI x2 + SoVITS + Live2D) — may take 30-90 min" -ForegroundColor Cyan
+Write-Host "Total: ~72 GB (LLM x3 + ComfyUI x6 [WAI + qwen-image/anima 套件] + SoVITS + Live2D) — may take 30-90 min" -ForegroundColor Cyan
 Write-Host ""
 
 # 模型文件清单 (repo_path, download_dir, local_path, description)
@@ -94,8 +97,13 @@ $Models = @(
     # 原出处: https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf (PTQ1_0 三重量化版: BoldingBuilds)
     # ⚠️ 启动时必须 -ctk q4_0 -ctv q4_0 且 -c <= 75000，否则 8G 显存装不下（调参详见 LLAMA_TUNING.md）
     @{RepoPath="llm/Ternary-Bonsai-2-27B-PTQ1_0.gguf"; DownloadDir="E:\model3"; LocalPath="E:\model3\Ternary-Bonsai-2-27B-PTQ1_0.gguf"; Desc="LLM GGUF — Ternary-Bonsai-2-27B PTQ1_0 (~5.9 GB, 8G显存可全装)"},
-    @{RepoPath="comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\comfyui-checkpoints\WAI-Nsfw-Illustrious-17.safetensors"; Desc="ComfyUI Checkpoint — WAI (6.46 GB)"},
-    @{RepoPath="comfyui-checkpoints/miaomiaoHarem_v20.safetensors"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\comfyui-checkpoints\miaomiaoHarem_v20.safetensors"; Desc="ComfyUI Checkpoint — Miaomiao (6.46 GB)"},
+    # ComfyUI: 除 WAI (SDXL/Illustrious) 外均为 qwen-image/anima 架构，共用 qwen_image_vae
+    @{RepoPath="comfyui/checkpoints/WAI-Nsfw-Illustrious-17.safetensors"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\comfyui\checkpoints\WAI-Nsfw-Illustrious-17.safetensors"; Desc="ComfyUI Checkpoint — WAI SDXL/Illustrious (6.46 GB)"},
+    @{RepoPath="comfyui/diffusion_models/miaomiaoHarem_29BBETA10.safetensors"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\comfyui\diffusion_models\miaomiaoHarem_29BBETA10.safetensors"; Desc="ComfyUI Diffusion — Miaomiao Harem 29B anima/qwen (5.44 GB)"},
+    @{RepoPath="comfyui/diffusion_models/oneObsession_anima29BV1.safetensors"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\comfyui\diffusion_models\oneObsession_anima29BV1.safetensors"; Desc="ComfyUI Diffusion — oneObsession anima 29B (5.44 GB)"},
+    @{RepoPath="comfyui/diffusion_models/qwen-image-2.1-Q6_K.gguf"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\comfyui\diffusion_models\qwen-image-2.1-Q6_K.gguf"; Desc="ComfyUI Diffusion GGUF — qwen-image-2.1 Q6_K (5.47 GB)"},
+    @{RepoPath="comfyui/text_encoders/qwen3vl_8b_int8_convrot.safetensors"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\comfyui\text_encoders\qwen3vl_8b_int8_convrot.safetensors"; Desc="ComfyUI Text Encoder — qwen3vl_8b int8 convrot (8.71 GB, qwen-image-2.1 用)"},
+    @{RepoPath="comfyui/vae/qwen_image_vae.safetensors"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\comfyui\vae\qwen_image_vae.safetensors"; Desc="ComfyUI VAE — qwen_image_vae (242 MB, 所有非 WAI 模型共用)"},
     @{RepoPath="gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\gpt-sovits-weights\GPT_weights_v2Pro\xxx-e30.ckpt"; Desc="GPT-SoVITS ckpt (155 MB)"},
     @{RepoPath="gpt-sovits-weights/SoVITS_weights_v2Pro/xxx_e20_s6240.pth"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\gpt-sovits-weights\SoVITS_weights_v2Pro\xxx_e20_s6240.pth"; Desc="GPT-SoVITS pth (135 MB)"}
 )
