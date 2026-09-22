@@ -82,7 +82,7 @@ foreach ($d in $Dirs) {
 Write-Host ""
 Write-Host "Download directory: $BaseDir" -ForegroundColor Cyan
 Write-Host "Target: $HFRepo" -ForegroundColor Cyan
-Write-Host "Total: ~53 GB (LLM x2 + ComfyUI x2 + SoVITS + Live2D) — may take 30-90 min" -ForegroundColor Cyan
+Write-Host "Total: ~59 GB (LLM x3 + ComfyUI x2 + SoVITS + Live2D) — may take 30-90 min" -ForegroundColor Cyan
 Write-Host ""
 
 # 模型文件清单 (repo_path, download_dir, local_path, description)
@@ -90,6 +90,10 @@ Write-Host ""
 $Models = @(
     @{RepoPath="llm/Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf"; DownloadDir="E:\model3"; LocalPath="E:\model3\Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf"; Desc="LLM GGUF — Hermes3.6-35B-A3B Genesis Final MTP APEX (~24.9 GB, 主模型)"},
     @{RepoPath="llm/Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf"; DownloadDir="C:\model2"; LocalPath="C:\model2\Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf"; Desc="LLM GGUF — Qwen3.8-27B TTURBO Fable C-Fusion MTP Q4_K_M (~15.7 GB, 工具模型)"},
+    # Ternary-Bonsai PTQ1_0: 自有仓库 llm/ 镜像 (与其它两个模型同目录); 8G 显存可全量装载 (-ngl 99)
+    # 原出处: https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf (PTQ1_0 三重量化版: BoldingBuilds)
+    # ⚠️ 启动时必须 -ctk q4_0 -ctv q4_0 且 -c <= 75000，否则 8G 显存装不下（调参详见 LLAMA_TUNING.md）
+    @{RepoPath="llm/Ternary-Bonsai-2-27B-PTQ1_0.gguf"; DownloadDir="E:\model3"; LocalPath="E:\model3\Ternary-Bonsai-2-27B-PTQ1_0.gguf"; Desc="LLM GGUF — Ternary-Bonsai-2-27B PTQ1_0 (~5.9 GB, 8G显存可全装)"},
     @{RepoPath="comfyui-checkpoints/WAI-Nsfw-Illustrious-17.safetensors"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\comfyui-checkpoints\WAI-Nsfw-Illustrious-17.safetensors"; Desc="ComfyUI Checkpoint — WAI (6.46 GB)"},
     @{RepoPath="comfyui-checkpoints/miaomiaoHarem_v20.safetensors"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\comfyui-checkpoints\miaomiaoHarem_v20.safetensors"; Desc="ComfyUI Checkpoint — Miaomiao (6.46 GB)"},
     @{RepoPath="gpt-sovits-weights/GPT_weights_v2Pro/xxx-e30.ckpt"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\gpt-sovits-weights\GPT_weights_v2Pro\xxx-e30.ckpt"; Desc="GPT-SoVITS ckpt (155 MB)"},
@@ -127,7 +131,8 @@ foreach ($m in $Models) {
     if (-not (Test-Path $m.DownloadDir)) {
         New-Item -ItemType Directory -Path $m.DownloadDir -Force | Out-Null
     }
-    $output = & $hf download $HFRepo $m.RepoPath --local-dir $m.DownloadDir 2>&1
+    $repo = if ($m.Repo) { $m.Repo } else { $HFRepo }
+    $output = & $hf download $repo $m.RepoPath --local-dir $m.DownloadDir 2>&1
     $exitCode = $LASTEXITCODE
     
     $sw.Stop()
