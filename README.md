@@ -255,8 +255,12 @@ See [`models.yaml`](models.yaml) for full details.
 | **Qwen3.8-27B-TurboFCFusion** (Q4_K_S GGUF) | Chat LLM (dense, tooling) | ~15.8 GB | 100K |
 | **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | Chat LLM (dense, legacy) | 13.5 GB | 150K |
 | **Ternary-Bonsai-2-27B PTQ1_0** (ternary GGUF) | Chat LLM (**fits fully in 8 GB VRAM**, `-ngl 99`) | ~5.9 GB | **≤ 75K** (KV cache **must** be q4_0) |
-| **WAI-Nsfw-Illustrious-17** | ComfyUI generation (default) | 6.46 GB |
-| **miaomiaoHarem_v20** | ComfyUI generation (backup) | 6.46 GB |
+| **WAI-Nsfw-Illustrious-17** | ComfyUI generation (default, SDXL/Illustrious) | 6.46 GB |
+| **miaomiaoHarem_29BBETA10** | ComfyUI generation (backup, anima/qwen 29B + qwen VAE) | 5.44 GB |
+| **oneObsession_anima29BV1** | ComfyUI generation (anima/qwen 29B + qwen VAE) | 5.44 GB |
+| **qwen-image-2.1 Q6_K** | ComfyUI generation (qwen-image GGUF, needs qwen3vl_8b TE + qwen VAE) | 5.47 GB |
+| **qwen3vl_8b_int8_convrot** | ComfyUI text encoder (qwen-image-2.1) | 8.71 GB |
+| **qwen_image_vae** | ComfyUI VAE (shared by all non-WAI models) | 242 MB |
 | **GPT-SoVITS voice weights** | TTS voice synthesis | ~303 MB |
 | **Sakura SoVITS weights** | TTS voice synthesis (Sakura voice) | ~313 MB |
 | **all-MiniLM-L6-v2** | English/cross-lingual embedding (mem0) | ~80 MB |
@@ -277,7 +281,7 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume --local-dir ./models
 
 # Or download individual components:
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/ --local-dir ./models
-huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui-checkpoints/ --local-dir ./checkpoints
+huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui/ --local-dir ./comfyui
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/ --local-dir ./gpt-sovits-weights
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-dir ./live2d-model
 
