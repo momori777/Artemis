@@ -1231,23 +1231,11 @@ A complete web-based AI girlfriend chat interface, served locally at `http://127
 ## ⚠️ Important Notes
 
 - **`chat_template.jinja` must stay at the project root** (`D:\AI_Girlfriend\chat_template.jinja`) and **must not be gitignored**. It is the fixed froggeric v22.1 template referenced by `config.yaml` → `llama_chat_template` and passed via `--chat-template-file`. Deleting it or letting it be gitignored breaks llama launch args (the model falls back to a broken default template). `.gitignore` already has `!chat_template.jinja` to keep it tracked.
-- **Both models force `-rea on`** (DeepSeek-style deep reasoning) by default via `model_profiles`. Thinking tokens count toward the context window / output budget, so don't hardcode a small local `max_tokens`, and always run TTS / image-gen as the **first** tool call (`sessions_spawn`) before sending long text.
-- **RTX 50xx (Blackwell) + CUDA 13.x = `munmap_chunk(): invalid pointer` crash** - CUDA 13.x has known memory management incompatibility with llama.cpp on Blackwell GPUs. **Solution: use pre-built llama.cpp binaries compiled with CUDA 12.x** (not self-compiled with CUDA 13.x). Download from [llama.cpp Releases](https://github.com/ggml-org/llama.cpp/releases), choose `cudart-llama-bin-win-cuda-12.4-x64.zip`. RTX 5070 Ti is fully compatible with CUDA 12.x drivers.
 - Llama-server is offline for ~60-120s during TTS/ComfyUI inference on 8GB VRAM (Tier 1) - conversation pauses, but Live2D + Artemis Studio keep running. On 12GB+ (Tier 2), no interruption at all
-- Sub-sessions use **local model** (same as main), DeepSeek as optional fallback
-- **The `cron` tool must be denied for the local llama model** -llama.cpp's GBNF grammar converter rejects any JSON Schema `pattern` that is not fully anchored with `^...$`. OpenClaw's cron tool declares `pattern: "\\S"` on nested properties (`job.declarationKey`, `job.displayName`), so **every** request carrying the full toolset fails with `400 JSON schema conversion failed: Pattern must start with '^' and end with '$'`, then silently falls back to the remote model. Only nested/array-level patterns trigger it; top-level ones convert fine. Fix in `~/.openclaw/openclaw.json`:
-  ```jsonc
-  "tools": {
-    "byProvider": {
-      "llama/qwen3.6-35b": { "deny": ["cron"] }
-    }
-  }
-  ```
-  `tools.*` does not hot-reload, so restart the gateway afterwards. Scheduling still works through remote-model sessions.
 - Llama-server does not support cross-turn prompt cache reuse (SSM limitation) -use periodic `/reset`
 - **Live2D requires Cubism Core 4** (not 5 or 6) - pixi-live2d-display v0.5.0 is built for Cubism 4 Framework; Core 5+ causes clipping/layer failures. **Core 4 is bundled** in live2d/live2dcubismcore.min.js - no CDN needed.
-- All model files protected by `.gitignore`
-- GPT-SoVITS weights are self-trained and not distributed -train with your own voice data
+
+
 
 ## 🙏 Credits
 
@@ -1258,3 +1246,6 @@ A complete web-based AI girlfriend chat interface, served locally at `http://127
 - [headroom](https://github.com/chopratejas/headroom) -Inspiration for SmartCrusher context compression + CCR (Curate-Consolidate-Retrieve) memory pipeline
 - [mem0](https://github.com/mem0ai/mem0) -Inspiration for Qdrant vector memory architecture + hybrid search design
 - [NVIDIA Cosmos](https://github.com/NVIDIA/cosmos) -World Foundation Model, [community FP8 quant](https://huggingface.co/benjiaiplayground/Cosmos3-Nano_fp8) archived at `skills/cosmos/`
+
+![Natsume's disgusted face](skills/comfyui/natsume.png)
+Thank you for seeing there!
