@@ -331,36 +331,6 @@ Running **Qwen3.6-35B-A3B Genesis Hermes V13 MTP APEX Compact** (MoE, 16.11 GiB,
 > size context/KV cache to your RAM. The command that follows is what the
 > reference config generates.
 
-**What `llama_config.py` actually generates** for the active model (V13 MoE):
-
-```powershell
-llama-server.exe `
-  -m "D:\model\Hermes3.6-35B-A3B-Uncensored-Genesis-V13-MTP-APEX-Compact.gguf" `
-  -c 120000 `
-  --flash-attn on -ctk q4_0 -ctv q4_0 `
-  --cpu-moe --cpu-mask 0xFFFFFFFF `
-  --batch-size 4096 --ubatch-size 2048 `
-  -rea on --jinja --reasoning-preserve `
-  --chat-template-file "D:\AI_Girlfriend\chat_template.jinja" `
-  --cache-ram 3000 --parallel 1 `
-  --kv-unified --no-mmap --no-warmup `
-  --spec-type draft-mtp --spec-draft-n-max 2
-```
-
-**For the 27B dense model (Qwen3.8-27B) on 8 GB VRAM**, `llama_config.py` generates:
-
-```powershell
-llama-server.exe `
-  -m "D:\model\Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_S.gguf" `
-  -c 100000 `
-  --flash-attn on -ctk q4_0 -ctv q4_0 `
-  -ngl 14 `
-  --batch-size 2048 --ubatch-size 1024 `
-  --jinja --reasoning-preserve `
-  --chat-template-file "D:\AI_Girlfriend\chat_template.jinja" `
-  --cache-ram 2000 --parallel 1 `
-  --kv-unified --no-mmap --no-warmup `
-  --spec-type draft-mtp --spec-draft-n-max 3 --spec-draft-p-min 0.88 --spec-draft-ngl 99
 ```
 
 > 💡 **27B dense on 8 GB VRAM — key parameters explained:**
@@ -381,30 +351,19 @@ llama-server.exe `
 > work (thinking blocks are preserved). If it's missing or ignored, llama launch
 > args break. `config.yaml` → `llama_chat_template: chat_template.jinja` points to it.
 
-> 💡 **About `--no-mmap` vs `-ngl`:** `--no-mmap` lets llama.cpp manage the *RAM-side* memory on its own. `-ngl N` is a **static** layer split (first N layers on GPU, rest in RAM) — it does **not** cause dynamic weight swapping, so it does *not* cut speed in half. Partial `-ngl` (e.g. `-ngl 12` on an 8 GB card with a 17 GB model) is safe and measurably faster than keeping every layer in RAM. Use `--no-mmap` together with `-ngl` so llama.cpp manages the RAM layers, and use `q4_0` for KV cache to halve VRAM usage.
-
+s
 ### Why the root `chat_template.jinja` exists
 
 The project root ships a **fixed Jinja chat template** ([froggeric/Qwen-Fixed-Chat-Templates](https://huggingface.co/froggeric/Qwen-Fixed-Chat-Templates), pinned at **v22.3** in `chat_template.jinja`) that overrides the template baked into the GGUFs. The official Qwen 3.5/3.6/3.8 templates contain engine restrictions, Python-specific Jinja logic, and regressions that break local inference and agent workflows — the most visible one is **overthinking**: the official Qwen 3.8 template hardcodes `xhigh` reasoning depth by default, which can exhaust the token budget on thinking before the model ever answers.
 
-The fixed template (v22 generation) delivers:
 
-- **Sane reasoning baseline** — defaults to `medium` (zero injected tokens) instead of hardcoded `xhigh`, preserving KV-cache parity and preventing empty-content timeouts
-- **Working fast mode** — official 3.8 crashes on `enable_thinking=false`; here non-reasoning mode works via kwargs or inline `<|think_off|>`
-- **Clean history extraction** — extracts prior-turn thinking across OpenAI (`reasoning_content`), Anthropic (`thinking`), and in-content `<think>` tags without blank-block poisoning or tag duplication
-- **Tool-call safety** — handles serialized JSON tool arguments from standard OpenAI API clients without Jinja syntax crashes / KV cache invalidation (critical for OpenClaw tool loops)
-- **Native `--reasoning-preserve` support** — via the `preserve_reasoning` hook, so `-rea on` + `--reasoning-preserve` keeps 100% prefix KV cache retention
-- **Client reasoning aliases** — maps `high`/`max`/`minimal`/`none` etc. automatically; per-turn inline steering via `<|think_low|>` … `<|think_xhigh|>` / `<|think_off|>` tags
-- **v22.3 additions** — JSON-string tool args from standard OpenAI clients no longer crash, two-tier agentic error recovery (no false retries on search results containing "error"), optional payload truncation (`max_tool_arg_chars` / `max_tool_response_chars`), and an opt-in `tool_call_format: "json"` override (default stays Qwen XML)
-
-One file covers all Qwen 3.5 / 3.6 / 3.8 sizes, so it works unchanged for both local models. Launch plumbing: `config.yaml` → `llama_chat_template: chat_template.jinja` (relative to the project root), and `llama_config.py` resolves it to `--chat-template-file` — nothing hardcoded. That's also why the file must stay at the root and must **not** be gitignored (`!chat_template.jinja` in `.gitignore`):
+One file covers all Qwen 3.5 / 3.6 / 3.8 sizes, so it works unchanged for both local models. Launch plumbing: `config.yaml` → `llama_chat_template: chat_template.jinja` (relative to the project root), and `llama_config.py` resolves it to `--chat-template-file` — nothing hardcoded. 
 
 ```powershell
 llama-server.exe ... --jinja --reasoning-preserve \
   --chat-template-file "D:\AI_Girlfriend\chat_template.jinja"
 ```
 
-> 📌 To inspect which template version a GGUF/dir currently carries, the froggeric repo ships `scripts/check_applied.py`. To upgrade, replace the root file with a newer release and restart llama — no code changes needed. (A `chat_template.jinja.bak-v22old` backup of the previous v22.1 file is kept alongside for rollback.)
 
 ### Switching models (`restart_llama_degraded.ps1 -SwitchTo`)
 
@@ -425,79 +384,8 @@ cd D:\AI_Girlfriend
 `qwen3.8-27b` / `qwen3.6-35b`), or a substring (e.g. `-SwitchTo 27b`). Use
 `-ForceBatch 1024` to lower batch size if you hit VRAM limits.
 
-### Model profiles & context windows
+serch llama_tunning.md for more llama details
 
-| Model | `-SwitchTo` key | Profile | Context | `rea` |
-|-|-|-|-|-|
-| **Qwen3.8-27B** (dense) | `qwen3.8-27b` | `qwen3.8-27b-mtp` | **100000** | `on` (forced) |
-| **Hermes Genesis V13** (MoE) | `qwen3.6-35b` | `hermes3.6-35b-genesis-v13-mtp` | **120000** | `on` (forced) |
-
-> 🧠 **Both models default to `-rea on`** (DeepSeek-style deep reasoning) — set in
-> `config.yaml` → `model_profiles`. `-rea on` makes thinking tokens count toward
-> the context/output budget; keep that in mind for `max_tokens` / spawning long
-> TTS or image requests first.
-
-### Key Metrics (35B MoE, V13)
-
-| Metric | Value | Notes |
-|-|-|-|
-| VRAM Usage | ~4.6 GiB (model) + ~1.4 GiB (KV cache) | ~2 GB free on 8 GB VRAM |
-| Prefill Speed | **28 ~ 156 t/s** | Varies with prompt length |
-| Token Generation | **48 tok/s avg** | MTP accepted ~71% (draft=2) |
-| Context Limit | 120K (~120k tokens) | Full reprocess ~55s at 59k |
-| Model Load Time | ~12s | --no-mmap, requires sufficient RAM |
-
-### Qwen3.8-27B Dense (primary tooling model)
-
-The dense 27B **Qwen3.8-27B (Q4_K_S, ~15.8 GB)** is the
-primary tooling/assistant model. It runs with speculative **MTP (Multi-Token
-Prediction)** decoding. Qwen3.8 ships a built-in MTP head, so the draft context is
-created directly against the target model — no separate draft GGUF is needed.
-
-> 💡 **Quantization scheme: Q4_K_S** — 4-bit symmetric quantization with 16-bit
-> residual correction. This gives excellent quality while keeping the model at ~15.8 GB,
-> making it feasible to run on 8 GB VRAM with partial GPU offload (`-ngl 14`).
-> Q4_K_S is the sweet spot for dense 27B models on consumer hardware.
-
-> **Reference hardware:** Intel Core i9-14900HX (16-core / 24-thread) + **NVIDIA RTX
-> 5070 Laptop (8 GB VRAM)** + 64 GB RAM. The model weights are split across GPU and
-> system RAM via a **partial offload `-ngl 14`** (first 14 layers on GPU, rest in RAM);
-> KV cache uses `--cache-ram 2000`; the MTP draft is offloaded fully to the GPU
-> (`--spec-draft-ngl 99`), which is what makes speculative decoding fast on an 8 GB card.
->
-> ⚠️ **`-ngl` is NOT "completely unusable"** — an earlier note claiming partial
-> `-ngl` must never be raised was wrong. `-ngl` is a static layer split (no dynamic
-> weight swapping), and `-ngl 14` is the measured optimum for this ~15.8 GB Q4_K_S model
-> on an 8 GB card: it speeds up decode without starving VRAM of KV/MTP headroom.
-
-#### Launch Command (8 GB VRAM, Q4_K_S)
-
-```powershell
-$model = "D:\model\Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_S.gguf"
-$exe   = "D:\AI_Girlfriend\llama-server\llama-server.exe"
-$tpl   = "D:\AI_Girlfriend\chat_template.jinja"
-
-Start-Process -FilePath $exe -ArgumentList @(
-"-m", $model,
-"-c", "100000",
-"--flash-attn", "on",
-"-ctk", "q4_0", "-ctv", "q4_0",
-"-ngl", "14",
-"--batch-size", "2048",
-"--ubatch-size", "1024",
-"--jinja",
-"--reasoning-preserve",
-"--chat-template-file", $tpl,
-"--cache-ram", "2000",
-"--parallel", "1",
-"--kv-unified",
-"--no-mmap",
-"--no-warmup",
-"--spec-type", "draft-mtp",
-"--spec-draft-n-max", "3",
-"--spec-draft-p-min", "0.88",
-"--spec-draft-ngl", "99"
-)
 ```
 
 > Served on `http://127.0.0.1:8080`. **Note:** every argument pair in the PowerShell
@@ -555,57 +443,11 @@ Start-Process -FilePath $exe -ArgumentList @(
 > 1. **KV cache MUST be Q4: `-ctk q4_0 -ctv q4_0`.** Anything higher (f16 / f32 KV) will blow the VRAM budget immediately.
 > 2. **Context window MUST be `-c ≤ 75000`.** With Q4 KV, weights (~5.5 GiB) + KV cache + compute buffers stay inside 8 GB only up to ~75K tokens. Anything larger does **not** fit on an 8 GB card.
 
-```powershell
-$exe   = "E:\model3\llamaPQ\llama-server.exe"   # PTQ1_0 needs a PQ/PTQ-capable llama build
-$model = "E:\model3\Ternary-Bonsai-2-27B-PTQ1_0.gguf"
-$tpl   = "D:\AI_Girlfriend\chat_template.jinja"
-
-Start-Process -FilePath $exe -ArgumentList @(
-"-m", $model,
-"-c", "75000",                  # MUST be ≤ 75000 — 8 GB VRAM ceiling
-"--flash-attn", "on",
-"-ctk", "q4_0", "-ctv", "q4_0", # MUST be q4_0 — Q4 KV cache
-"--temp", "0.6",
-"--top-p", "0.95",
-"--top-k", "40",
-"--min-p", "0.01",
-"--repeat-penalty", "1.02",
-"--presence-penalty", "0.0",
-"--batch-size", "400",
-"--ubatch-size", "200",
-"--threads", "24",
-"--api-key", "123456",
-"-rea", "on",
-"--jinja",
-"--cache-ram", "10000",
-"--parallel", "1",
-"--kv-unified",
-"--no-warmup",
-"--spec-type", "ngram-mod",
-"--spec-ngram-mod-n-min", "16",
-"--spec-ngram-mod-n-max", "36",
-"--chat-template-file", $tpl,
-"--load-mode", "none",
-"--reasoning-preserve",
-"--reasoning-format", "deepseek",
-"-ngl", "99",
-"--reasoning-effort", "medium"
-)
-```
-
-> 💡 **Notes:**
->
-> - **`-ngl 99`** — unlike the ~15.8 GB Q4_K_S dense models (which need `-ngl 14` partial offload), the ternary PTQ1_0 weights fit entirely in VRAM, so full offload is used.
-> - **`--spec-type ngram-mod`** — this GGUF has no MTP head; speculative decoding uses ngram-mod only (`n-min 16`, `n-max 36`).
-> - **`--load-mode none`** + `--kv-unified` + `--cache-ram 10000` keep the RAM side stable while the GPU holds weights + Q4 KV.
-> - This is a **manual launch command** — it is not (yet) wired into the `-SwitchTo` model-profile switcher.
-> - Every PowerShell argument pair must be comma-separated — a missing comma silently glues two tokens together.
 
 ### Silicon Rider Bench (Agent Benchmark)
 
 **[Silicon Rider Bench](https://github.com/kcores/silicon-rider-bench)** is an agent benchmark that simulates a food-delivery rider working a virtual city: navigate, accept orders, pick up food, deliver on time, and manage battery — scoring total profit over a simulated 24-hour day. Same seed (**622539**) used across all runs for apples-to-apples comparison.
 
-This is a **pure black-box agent test**: the model decides every move itself via tool calls (search → accept → plan route → move → pickup → deliver → swap battery), with no external assistance. The prompt includes two house rules: remember already-calculated routes (route reuse) and **mandatory charging path plan when battery < 30%**.
 
 **Models under test** (all `--seed 622539`):
 - **deepseek-v4-flash (0731)** — remote, unlimited-context baseline. Cloud-class agent ability (~Claude 4.6–4.8 tier in this benchmark).
@@ -661,23 +503,6 @@ Switch to it, or launch manually:
 # Preferred: auto-switch + auto-params (see "Switching models" above)
 .\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.8-27b
 
-# Equivalent manual command (what the reference config generates)
-Start-Process -FilePath $exe -ArgumentList @(
-  "-m", "D:\model\Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_S.gguf",
-  "-c", "100000",
-  "--flash-attn", "on",
-  "-ctk", "q4_0", "-ctv", "q4_0",
-  "-ngl", "14",
-  "--batch-size", "2048", "--ubatch-size", "1024",
-  "--jinja",
-  "--reasoning-preserve",
-  "--chat-template-file", "D:\AI_Girlfriend\chat_template.jinja",
-  "--cache-ram", "2000", "--parallel", "1", "--kv-unified",
-  "--no-mmap", "--no-warmup",
-  "--spec-type", "draft-mtp",
-  "--spec-draft-n-max", "3", "--spec-draft-p-min", "0.88",
-  "--spec-draft-ngl", "99"
-)
 ```
 
 > Reference hardware: **i9-14900HX + RTX 5070 Laptop (8 GB) + 64 GB RAM**. The
