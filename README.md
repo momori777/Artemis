@@ -1247,5 +1247,8 @@ A complete web-based AI girlfriend chat interface, served locally at `http://127
 - [mem0](https://github.com/mem0ai/mem0) -Inspiration for Qdrant vector memory architecture + hybrid search design
 - [NVIDIA Cosmos](https://github.com/NVIDIA/cosmos) -World Foundation Model, [community FP8 quant](https://huggingface.co/benjiaiplayground/Cosmos3-Nano_fp8) archived at `skills/cosmos/`
 
-![Natsume's disgusted face](skills/comfyui/natsume.png)
+
+<p align="center">
+  <img src="skills/comfyui/natsume.png" alt="Natsume" width="400">
+</p>
 Thank you for seeing there!
