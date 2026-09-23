@@ -1,6 +1,8 @@
 正常用户看命令就行，后面是我气话
 ====================
 
+
+
 一、启动 — 两条通道，选一个
 
   【通道 A：OpenClaw — 主通道（QQ/TG/WebChat 聊天用这个）】
@@ -79,6 +81,7 @@
     - Sakura闪退 → 进 skills/sakura/ 手动跑 start.bat 看报啥错
     - Task Board打不开 → 检查 python .claude/task_board_api.py 是否在跑 (:19280)
     - Claude Code MCP工具超时 → 单独跑 .claude/artemis_mcp_server.py 看有没有报错
+   
 
 ##别用什么傻逼DZMM、Glow、星野、筑梦岛、CharStar，举个例子，
 dzmm的代号sigma"旗舰"模型在4.17发布,而https://huggingface.co/HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive发布日期就是4.17！！！！
