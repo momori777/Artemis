@@ -135,22 +135,6 @@ var UI = {
       btnStopLlamaLabel.style.display = isActive ? 'inline' : 'none';
     });
 
-    // (画图停 llama 改为每次弹窗决定，不再用全局 toggle)
-    var llamaToggleLabel = document.getElementById('toggle-chat-llama-label');
-    var llamaToggleCheck = document.getElementById('chat-manage-llama');
-    var llamaToggleSwitch = document.getElementById('toggle-chat-llama-switch');
-    if (llamaToggleLabel && llamaToggleCheck && llamaToggleSwitch) {
-      llamaToggleLabel.addEventListener('click', function(e) {
-        e.preventDefault();
-        llamaToggleCheck.checked = !llamaToggleCheck.checked;
-        if (llamaToggleCheck.checked) {
-          llamaToggleSwitch.classList.add('on');
-        } else {
-          llamaToggleSwitch.classList.remove('on');
-        }
-      });
-    }
-
     // Reasoning (deep think) toggle
     var reasoningLabel = document.getElementById('toggle-reasoning-label');
     var reasoningCheck = document.getElementById('chat-reasoning');
@@ -308,7 +292,21 @@ var UI = {
       pluginsBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         var visible = pluginsPopup.style.display !== 'none';
-        pluginsPopup.style.display = visible ? 'none' : '';
+        if (visible) { pluginsPopup.style.display = 'none'; return; }
+        pluginsPopup.style.display = '';
+        // Anchor the popup just above the plugins button.
+        // (Markup lives outside #input-area, so its CSS bottom:100% resolves
+        // against #tab-chat and would push it off-screen above the viewport.)
+        var btnRect = pluginsBtn.getBoundingClientRect();
+        var op = pluginsPopup.offsetParent;
+        var parentRect = op ? op.getBoundingClientRect() : { top: 0, left: 0 };
+        var h = pluginsPopup.offsetHeight;
+        var w = pluginsPopup.offsetWidth;
+        pluginsPopup.style.bottom = 'auto';
+        pluginsPopup.style.right = 'auto';
+        pluginsPopup.style.top = Math.max(8, btnRect.top - parentRect.top - h - 8) + 'px';
+        // Right-align with the button so the popup never overflows the right edge.
+        pluginsPopup.style.left = Math.max(8, btnRect.right - parentRect.left - w) + 'px';
       });
       document.addEventListener('click', function(e) {
         if (!pluginsPopup.contains(e.target) && e.target !== pluginsBtn && !pluginsBtn.contains(e.target)) {
@@ -3454,7 +3452,7 @@ var UI = {
 
     if (saveBtn) saveBtn.addEventListener('click', function() {
       var s = getSettings();
-      s.apiBase = document.getElementById('setting-api-base').value.trim() || 'http://localhost:18789';
+      s.apiBase = document.getElementById('setting-api-base').value.trim() || 'http://localhost:19260';
       s.bridgeUrl = document.getElementById('setting-bridge-url').value.trim() || 'http://localhost:19250';
       s.model = document.getElementById('setting-model-select').value || ApiClient.getDefaultModel();
       s.streamEnabled = document.getElementById('setting-stream').checked;
@@ -3633,7 +3631,7 @@ var UI = {
     var reasoningToggle = document.getElementById('toggle-setting-reasoning-switch');
     var overlay = document.getElementById('settings-overlay');
 
-    if (apiBase) apiBase.value = s.apiBase || 'http://localhost:18789';
+    if (apiBase) apiBase.value = s.apiBase || 'http://localhost:19260';
     if (bridgeUrl) bridgeUrl.value = s.bridgeUrl || 'http://localhost:19250';
     if (streamCheckbox) streamCheckbox.checked = s.streamEnabled !== false;
     if (streamToggle) streamToggle.classList.toggle('on', s.streamEnabled !== false);
@@ -3928,7 +3926,8 @@ var UI = {
         saveSettings(s);
         if (llmCheck.checked) showToast('LLM 联动已开启 — AI 回复将驱动 Live2D 口型');
       };
-      llmSwitch.onclick = function() { llmCheck.click(); };
+      // NOTE: label[for=live2d-llm-link] forwards clicks natively; do NOT add
+      // llmSwitch.onclick here or switch clicks would double-toggle the checkbox.
     }
 
     this._loadLive2dModels();

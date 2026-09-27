@@ -30,6 +30,21 @@
   --success: #7eb8a0;
   --error: #d4787a;
 
+  /* Legacy palette aliases — referenced by older rules and JS inline styles.
+     Defined as var() references so they follow whichever theme block applies. */
+  --surface: var(--bg-surface);
+  --surface-primary: var(--bg-surface);
+  --surface-secondary: var(--bg-elevated);
+  --surface-tertiary: var(--bg-overlay);
+  --surface-elevated: var(--bg-elevated);
+  --surface-hover: var(--bg-overlay);
+  --border: var(--border-moderate);
+  --text: var(--text-primary);
+  --font-ui: var(--font-sans);
+  --danger: var(--error);
+  --success-soft: rgba(126,184,160,0.15);
+  --success-soft: color-mix(in srgb, var(--success) 15%, transparent);
+
   --icon-color: var(--text-muted);
   --icon-size: 14px;
 
