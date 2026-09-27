@@ -198,7 +198,10 @@ var Studio = {
     var llamaToggleCheck1 = document.getElementById('comfy-manage-llama');
     var llamaToggleSwitch1 = document.getElementById('toggle-llama-manage-switch');
     if (llamaToggleLabel1 && llamaToggleCheck1 && llamaToggleSwitch1) {
-      llamaToggleLabel1.addEventListener('click', function() {
+      llamaToggleLabel1.addEventListener('click', function(e) {
+        // label[for=comfy-manage-llama] would also natively toggle the checkbox;
+        // suppress that and toggle manually once.
+        e.preventDefault();
         llamaToggleCheck1.checked = !llamaToggleCheck1.checked;
         if (llamaToggleCheck1.checked) {
           llamaToggleSwitch1.classList.add('on');

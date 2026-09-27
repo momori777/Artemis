@@ -15,7 +15,7 @@ var ApiClient = {
   fetchModels: function () {
     var self = this;
     // Get models from daemon's gateway-config
-    return fetch('http://localhost:19260/api/gateway-config', {
+    return fetch(self.base + '/api/gateway-config', {
       signal: AbortSignal.timeout(5000),
     })
       .then(function (r) {
@@ -105,7 +105,7 @@ var ApiClient = {
     }
     if (settings.systemPrompt) body.systemPrompt = settings.systemPrompt;
     try {
-      var res = await fetch('http://localhost:19260/api/chat', {
+      var res = await fetch(this.base + '/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -221,11 +221,23 @@ var ApiClient = {
     }
     if (!model) model = this.getDefaultModel();
     var characterId = settings.characterId || 'natsume';
+    // Merge sampler params from sampler panel (same as the streaming path above)
+    var samplerParams = {};
+    if (typeof getSamplerParams === 'function') {
+      samplerParams = getSamplerParams();
+    }
     var body = {
       model: model,
       messages: this._cleanMessages(messages),
       stream: false,
-      max_tokens: 4096,
+      max_tokens: samplerParams.max_tokens || 4096,
+      temperature: samplerParams.temperature ?? 0.7,
+      top_p: samplerParams.top_p ?? 0.9,
+      top_k: samplerParams.top_k ?? 40,
+      min_p: samplerParams.min_p ?? 0.05,
+      frequency_penalty: samplerParams.frequency_penalty ?? 0.0,
+      presence_penalty: samplerParams.presence_penalty ?? 0.0,
+      repeat_penalty: samplerParams.repeat_penalty ?? 1.1,
       characterId: characterId,
       reasoning: settings.reasoningEnabled !== false ? 'on' : 'off',
       thinkingMode: settings.thinkingMode || 'default',
@@ -239,7 +251,7 @@ var ApiClient = {
       body.headroom_config = getHeadroomConfig();
     }
     if (settings.systemPrompt) body.systemPrompt = settings.systemPrompt;
-    return fetch('http://localhost:19260/api/chat', {
+    return fetch(this.base + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -255,7 +267,7 @@ var ApiClient = {
   },
 
   checkStatus: function () {
-    return fetch('http://localhost:19260/api/status', {
+    return fetch(this.base + '/api/status', {
       signal: AbortSignal.timeout(3000),
     })
       .then(function (r) { return r.ok; })
@@ -272,7 +284,7 @@ var ApiClient = {
     sessionKey = sessionKey || 'main';
     limit = limit || 10;
     return fetch(
-      'http://localhost:19260/api/session-history?sessionKey=' + encodeURIComponent(sessionKey) + '&limit=' + limit,
+      this.base + '/api/session-history?sessionKey=' + encodeURIComponent(sessionKey) + '&limit=' + limit,
       {
         signal: AbortSignal.timeout(10000),
       }
@@ -297,7 +309,7 @@ var ApiClient = {
     query = query || '';
     limit = limit || 20;
     return fetch(
-      'http://localhost:19260/api/mem0-search?query=' + encodeURIComponent(query) + '&limit=' + limit,
+      this.base + '/api/mem0-search?query=' + encodeURIComponent(query) + '&limit=' + limit,
       {
         signal: AbortSignal.timeout(10000),
       }

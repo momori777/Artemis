@@ -6,13 +6,14 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💖</text></svg>">
 <title>AI Girlfriend</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Noto+Sans+SC:wght@300;400;500;700&display=swap">
 <link rel="stylesheet" href="styles/phosphor-icons.css">
-<link rel="stylesheet" href="styles/main.css?v=46">
+<link rel="stylesheet" href="styles/main.css?v=47">
 <link rel="stylesheet" href="styles/polish.css?v=28">
 <link rel="stylesheet" href="styles/refine.css?v=9">
 <link rel="stylesheet" href="styles/uiverse.css?v=2">
@@ -238,12 +239,12 @@
             <button class="memory-view-btn" id="btn-view-memory" data-i18n-title="plugin_mem_view" title="查看记忆内容">
               <i class="ph ph-eye"></i> <span data-i18n="plugin_mem_view">查看记忆</span>
             </button>
-            <label class="plugin-toggle" id="toggle-mem0-label" for="toggle-mem0-label">
+            <label class="plugin-toggle" id="toggle-mem0-label" for="chat-mem0-enhanced">
               <span class="toggle-switch" id="toggle-mem0-switch"></span>
               <input type="checkbox" id="chat-mem0-enhanced" style="display:none">
               <span class="plugin-toggle-text" data-i18n="plugin_mem_search">每轮搜索记忆</span>
             </label>
-            <label class="plugin-toggle" id="toggle-mem0-write-label" style="padding-left:16px" for="toggle-mem0-write">
+            <label class="plugin-toggle" id="toggle-mem0-write-label" style="padding-left:16px" for="chat-mem0-write">
               <span class="toggle-switch" id="toggle-mem0-write-switch"></span>
               <input type="checkbox" id="chat-mem0-write" style="display:none">
               <span class="plugin-toggle-text" data-i18n="plugin_mem_write">自动写入记忆</span>
@@ -391,7 +392,7 @@
               </div>
 
               <div class="studio-field" style="margin-top:2px">
-                <label class="settings-toggle" id="toggle-llama-manage-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text-muted)" for="toggle-llama-manage">
+                <label class="settings-toggle" id="toggle-llama-manage-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text-muted)" for="comfy-manage-llama">
                   <span class="toggle-switch on" id="toggle-llama-manage-switch"></span>
                   <input type="checkbox" id="comfy-manage-llama" checked style="display:none">
                   Stop llama-server before generating (frees VRAM, prevents OOM)
@@ -500,7 +501,7 @@
                 </div>
               </div>
               <div class="studio-field" style="display:flex;align-items:center;gap:12px;margin:8px 0">
-                <label class="settings-toggle" style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px" for="setting-mem0">
+                <label class="settings-toggle" style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px" for="debug-logprobs">
                   <span class="toggle-switch" id="toggle-debug-logprobs"></span>
                   <input type="checkbox" id="debug-logprobs" style="display:none">
                   Logprobs
@@ -523,7 +524,7 @@
               <div class="debug-output">
                 <div class="debug-output-header">
                   <span>Response</span>
-                  <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer" for="face-llm-toggle">
+                  <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer" for="debug-toggle-raw">
                     <input type="checkbox" id="debug-toggle-raw"> Raw JSON
                   </label>
                 </div>
@@ -561,7 +562,7 @@
     </div>
 
     <div class="settings-group">
-      <label class="settings-toggle" id="toggle-stream-label" for="toggle-stream-label">
+      <label class="settings-toggle" id="toggle-stream-label" for="setting-stream">
         <span class="toggle-switch on" id="toggle-stream-switch"></span>
         <input type="checkbox" id="setting-stream" checked style="display:none">
         <span data-i18n="settings_stream">流式响应</span>
@@ -569,7 +570,7 @@
     </div>
 
     <div class="settings-group">
-      <label class="settings-toggle" id="toggle-setting-reasoning-label" for="toggle-setting-reasoning-label">
+      <label class="settings-toggle" id="toggle-setting-reasoning-label" for="setting-reasoning">
         <span class="toggle-switch on" id="toggle-setting-reasoning-switch"></span>
         <input type="checkbox" id="setting-reasoning" checked style="display:none">
         <span data-i18n="plugin_reasoning">Reasoning (深度思考)</span>
@@ -577,7 +578,7 @@
     </div>
 
     <div class="settings-group">
-      <label class="settings-toggle" id="toggle-setting-mem0-label" for="toggle-setting-mem0-label">
+      <label class="settings-toggle" id="toggle-setting-mem0-label" for="setting-mem0">
         <span class="toggle-switch" id="toggle-setting-mem0-switch"></span>
         <input type="checkbox" id="setting-mem0" style="display:none">
         <span data-i18n="settings_mem0">Mem0 记忆增强 (每轮搜索长期记忆)</span>
@@ -585,7 +586,7 @@
     </div>
 
     <div class="settings-group">
-      <label class="settings-toggle" id="toggle-setting-mem0-write-label" for="toggle-setting-mem0-write-label">
+      <label class="settings-toggle" id="toggle-setting-mem0-write-label" for="setting-mem0-write">
         <span class="toggle-switch" id="toggle-setting-mem0-write-switch"></span>
         <input type="checkbox" id="setting-mem0-write" style="display:none">
         <span data-i18n="settings_mem0_write">Mem0 自动写入</span>
@@ -776,7 +777,7 @@
       </div>
       <div class="live2d-section">
         <div class="live2d-section-title">LLM 联动</div>
-        <label class="plugin-toggle" for="toggle-live2d-llm-switch">
+        <label class="plugin-toggle" for="live2d-llm-link">
           <span class="toggle-switch" id="toggle-live2d-llm-switch"></span>
           <input type="checkbox" id="live2d-llm-link" style="display:none">
           <span class="plugin-toggle-text">流式 TTS + Live2D 口型同步（AI 回复时自动说话）</span>
@@ -826,12 +827,12 @@
 <script>window.addEventListener('error',function(e){document.title='JS ERR: '+e.message;console.error(e);});</script>
 <script src="scripts/store.js?v=28"></script>
 <script src="scripts/tree.js?v=2"></script>
-<script src="scripts/api.js?v=27"></script>
+<script src="scripts/api.js?v=28"></script>
 <script src="scripts/sampler_panel.js?v=1"></script>
 <script src="scripts/importer.js?v=26"></script>
 <script src="scripts/worldbook.js?v=1"></script>
-<script src="scripts/ui.js?v=56"></script>
-<script src="scripts/studio.js?v=27"></script>
+<script src="scripts/ui.js?v=59"></script>
+<script src="scripts/studio.js?v=28"></script>
 <script src="scripts/debug_sampler.js?v=1"></script>
 </body>
 </html>
