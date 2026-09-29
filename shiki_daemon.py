@@ -2386,8 +2386,15 @@ Conversation:
         except Exception as e:
             self.send_json({"error": str(e)}, 502)
 
-import pystray
-from PIL import Image, ImageDraw
+# pystray/PIL are only needed for the tray icon; servers must run even without them
+# (missing pystray used to crash the whole daemon -> webchat "fail to fetch").
+try:
+    import pystray
+    from PIL import Image, ImageDraw
+except ImportError:
+    pystray = None
+    Image = None
+    ImageDraw = None
 
 def make_icon():
     img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
@@ -2448,7 +2455,18 @@ def main():
     # Open webchat (dashboard is embedded there)
     webbrowser.open(f"http://127.0.0.1:{WEBCHAT_PORT}")
 
-    # Tray icon
+    # Tray icon (optional — headless fallback keeps dashboard/webchat alive)
+    if pystray is None:
+        print("[daemon] pystray/PIL unavailable — running headless (stop with shutdown_all.py or Ctrl+C)")
+        try:
+            while True:
+                time.sleep(30)
+        except KeyboardInterrupt:
+            pass
+        stop_all()
+        daemon.stop()
+        return
+
     icon = pystray.Icon(
         "shiki_daemon",
         make_icon(),
@@ -2470,15 +2488,21 @@ def main():
         daemon.stop()
         os._exit(0)
 
-    icon.run()
+    try:
+        icon.run()
+    except Exception as e:
+        # Tray died (e.g. remote/headless session) — keep servers serving instead of exiting.
+        print("[daemon] Tray icon failed (%s) — continuing headless" % e)
+        while True:
+            time.sleep(30)
 
 
 if __name__ == "__main__":
-    # Check deps
+    # Deps check is informational only now — main() has a headless fallback,
+    # so a missing tray dependency no longer kills the dashboard/webchat servers.
     try:
-        import pystray
+        import pystray  # noqa: F401
     except ImportError:
-        print("[daemon] Missing pystray. Install: pip install pystray pillow")
-        sys.exit(1)
+        print("[daemon] Missing pystray — tray disabled, servers run headless. Install: pip install pystray pillow")
 
     main()
