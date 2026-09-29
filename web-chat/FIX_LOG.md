@@ -119,6 +119,23 @@ if (s.tree) { saveStore(store); return; }  // 直接返回，新消息丢失！
 ## 缓存版本号
 - ui.js v=58→59、api.js v=27→28、main.css v=46→47（studio.js v=28 本轮早前已升）
 
+## 修复 11：startup 脚本启动后 “fail to fetch” ✅ (2026-09-29)
+
+### 根因
+`shiki-start.cmd` → `shiki_daemon.py` 在模块顶层 `import pystray`（第 2389 行）抛 `ModuleNotFoundError` → **daemon 在 dashboard(19260)/webchat(19270) 服务器启动之前就崩溃退出** → 前端所有 fetch 全部 connection refused。
+（`__main__` 里的 ImportError 保护是死代码：顶层 import 先执行，永远到不了保护分支。）
+
+### 修复
+1. `pip install pystray pillow`（补齐依赖）
+2. `shiki_daemon.py` 加固：
+   - pystray/PIL 改为 guarded import（`except ImportError: pystray = None`）
+   - `main()`：pystray 缺失时进入 headless 保活循环，服务器照常跑；`icon.run()` 抛异常（如远程/无桌面会话）也不退出，继续 headless
+   - `__main__` 检查改为仅提示，不再 `sys.exit(1)`
+
+### 验证
+- daemon 后台运行：19260 + 19270 均在 Listen，`/api/status`、`/api/gateway-config`、`/` 全部 200
+- 页面加载全部脚本/字体 200
+
 ## 已知非 bug / 遗留说明
 - `probe_corrupt_ls` 输出的乱码是 PowerShell GBK 控制台显示问题，页面本身 UTF-8 正常
 - ERR_CONNECTION_REFUSED console 噪音 = daemon(19260)/bridge(19250) 未启动时的 fetch，属预期行为（均有 catch）
