@@ -8,15 +8,102 @@ var ApiClient = {
   _modelsCache: null,
   _modelsPromise: null,
 
+  _baseChecked: false,
+
   init: function (apiBase) {
-    this.base = apiBase || 'http://localhost:19260';
+    this.base = this._normalizeBase(apiBase) || this._defaultBase();
+    this._baseChecked = false;
+  },
+
+  // A stale apiBase in localStorage (old port / dead proxy / typo / missing
+  // scheme) makes every chat call die with the browser's opaque
+  // "Failed to fetch" while ui.js's hardcoded status polls keep working.
+  _normalizeBase: function (b) {
+    if (!b) return '';
+    b = String(b).trim().replace(/\/+$/, '');
+    if (!/^https?:\/\//i.test(b)) return '';
+    return b;
+  },
+
+  // Prefer the host the page itself was served from: that host+family is
+  // proven reachable, whereas "localhost" can resolve to ::1 while the daemon
+  // only binds 127.0.0.1.
+  _defaultBase: function () {
+    var host = (location && location.hostname) || '127.0.0.1';
+    return 'http://' + host + ':19260';
+  },
+
+  /**
+   * Probe the configured base; if it is dead (wrong port, IPv6 mismatch, typo),
+   * switch to a reachable daemon base and persist the correction so chat stops
+   * targeting a dead port. Returns the working base.
+   */
+  ensureBase: async function (force) {
+    if (this._baseChecked && !force) return this.base;
+    var candidates = [];
+    var push = function (b) { if (b && candidates.indexOf(b) === -1) candidates.push(b); };
+    push(this.base);
+    push(this._defaultBase());
+    push('http://localhost:19260');
+    push('http://127.0.0.1:19260');
+    for (var i = 0; i < candidates.length; i++) {
+      var b = candidates[i];
+      try {
+        var r = await fetch(b + '/api/status', { signal: AbortSignal.timeout(2500) });
+        // Only accept a real shiki daemon (some other local service could answer
+        // 200 on that path and then choke on /api/chat).
+        var info = r.ok ? await r.json().catch(function () { return null; }) : null;
+        // /api/status is a top-level service array (older builds wrap it in {services}).
+        var isDaemon = Array.isArray(info) || !!(info && Array.isArray(info.services));
+        if (isDaemon && (!info || info.length === 0 || info.some(function (x) { return x && x.name; }))) {
+          if (this.base !== b) {
+            console.warn('[api] base ' + this.base + ' unreachable/wrong, switching to ' + b);
+            this.base = b;
+            this._persistBase(b);
+          }
+          this._baseChecked = true;
+          console.info('[api] using base ' + this.base);
+          return this.base;
+        }
+      } catch (_) { /* try next candidate */ }
+    }
+    // Nothing answered: keep the derived default so error text stays meaningful.
+    this.base = this._defaultBase();
+    return this.base;
+  },
+
+  _persistBase: function (b) {
+    try {
+      if (typeof getSettings === 'function' && typeof saveSettings === 'function') {
+        var s = getSettings();
+        s.apiBase = b;
+        saveSettings(s);
+      }
+      var el = document.getElementById('setting-api-base');
+      if (el) el.value = b;
+    } catch (_) {}
+  },
+
+  // Turn the browser's opaque network error into something diagnosable.
+  _diag: function (err, url) {
+    var name = (err && err.name) || 'Error';
+    if (name === 'TypeError' || /failed to fetch/i.test((err && err.message) || '')) {
+      return '无法连接 ' + url + '（网络/CORS 被拒）— 请检查设置里的 API Base 是否为 http://127.0.0.1:19260';
+    }
+    if (name === 'TimeoutError' || /timeout/i.test((err && err.message) || '')) {
+      return '请求超时：' + url;
+    }
+    return (err && err.message) || String(err);
   },
 
   fetchModels: function () {
     var self = this;
-    // Get models from daemon's gateway-config
-    return fetch(self.base + '/api/gateway-config', {
-      signal: AbortSignal.timeout(5000),
+    // Get models from daemon's gateway-config. ensureBase() runs first so a dead
+    // saved apiBase cannot silently pin the whole client to an unreachable host.
+    return self.ensureBase().then(function () {
+      return fetch(self.base + '/api/gateway-config', {
+        signal: AbortSignal.timeout(5000),
+      });
     })
       .then(function (r) {
         if (!r.ok) throw new Error('Daemon returned ' + r.status);
@@ -105,12 +192,33 @@ var ApiClient = {
     }
     if (settings.systemPrompt) body.systemPrompt = settings.systemPrompt;
     try {
-      var res = await fetch(this.base + '/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(180000),
-      });
+      // Self-heal the base before the real call, so a stale saved apiBase
+      // cannot turn into another bare "Failed to fetch".
+      await this.ensureBase();
+      var url = this.base + '/api/chat';
+      var res;
+      try {
+        res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(180000),
+        });
+      } catch (e) {
+        // One retry against a re-probed base, then surface the real target.
+        await this.ensureBase(true);
+        url = this.base + '/api/chat';
+        try {
+          res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(180000),
+          });
+        } catch (e2) {
+          throw new Error(this._diag(e2, url));
+        }
+      }
 
       if (!res.ok) {
         var errText = '';
@@ -251,11 +359,14 @@ var ApiClient = {
       body.headroom_config = getHeadroomConfig();
     }
     if (settings.systemPrompt) body.systemPrompt = settings.systemPrompt;
-    return fetch(this.base + '/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(180000),
+    var self = this;
+    return this.ensureBase().then(function () {
+      return fetch(self.base + '/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(180000),
+      });
     })
       .then(function (res) {
         if (!res.ok) throw new Error('API ' + res.status);

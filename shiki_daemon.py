@@ -300,6 +300,28 @@ def find_python():
 
 PYTHON = find_python()
 
+def python_with(module):
+    """Return an interpreter command list that can import `module`.
+    The daemon may run under a Python (e.g. 3.13 via the py launcher) whose
+    site-packages lack service deps (flask_cors, torch); spawning with the
+    wrong interpreter crashes services -> webchat 'failed to fetch'.
+    Probe candidates and pick the first interpreter that imports cleanly."""
+    candidates = [
+        [sys.executable],
+        [PYTHON],
+        ["py", "-3.12"],
+        ["py", "-3.13"],
+        [os.path.expandvars(r"%LOCALAPPDATA%\Programs\Python\Python312\python.exe")],
+    ]
+    for cmd in candidates:
+        try:
+            r = subprocess.run(cmd + ["-c", "import " + module], capture_output=True, timeout=15)
+            if r.returncode == 0:
+                return cmd
+        except Exception:
+            pass
+    return [PYTHON]  # fallback: original behavior
+
 def is_port_open(port):
     try:
         sock = socket.create_connection(("127.0.0.1", port), timeout=1)
@@ -379,7 +401,7 @@ def start_embedding():
         return "already running"
     if not os.path.isfile(EMBED_SCRIPT):
         return "script not found"
-    subprocess.Popen([PYTHON, EMBED_SCRIPT], creationflags=subprocess.CREATE_NO_WINDOW)
+    subprocess.Popen(python_with("torch") + [EMBED_SCRIPT], creationflags=subprocess.CREATE_NO_WINDOW)
     for _ in range(20):
         if is_port_open(9999): return "ready"
         time.sleep(2)
@@ -570,7 +592,7 @@ def start_bridge():
 
     bridge_log = os.path.join(WORKSPACE, "bridge.log")
     proc = subprocess.Popen(
-        [PYTHON, BRIDGE_SCRIPT, "--port", "19250"],
+        python_with("flask_cors") + [BRIDGE_SCRIPT, "--port", "19250"],
         cwd=WORKSPACE,
         creationflags=subprocess.CREATE_NO_WINDOW,
         stdout=open(bridge_log, "a", encoding="utf-8"),
@@ -1300,7 +1322,17 @@ def _switch_llama_model(short_id, rea_mode="off"):
 
 
 class DashboardHandler(BaseHTTPRequestHandler):
-    def log_message(self, *args): pass
+    def log_message(self, fmt, *args):
+        # Log API traffic so browser "Failed to fetch" reports can be traced
+        # (previously dropped silently, making daemon-side failures invisible).
+        try:
+            msg = fmt % args
+        except Exception:
+            msg = str(fmt)
+        try:
+            print(f"[api] {getattr(self, 'command', '-')} {msg}", file=sys.stderr, flush=True)
+        except Exception:
+            pass
 
     def do_GET(self):
         path = urlparse(self.path).path
@@ -1428,6 +1460,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        # Chrome Local Network Access: without this header a loopback fetch from
+        # another loopback origin can be blocked -> surfaces as "Failed to fetch".
+        self.send_header('Access-Control-Allow-Private-Network', 'true')
         self.send_header('Access-Control-Max-Age', '86400')
         self.end_headers()
 
@@ -1994,7 +2029,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
                         self.send_header("Content-Type", "text/event-stream")
                         self.send_header("Cache-Control", "no-cache")
                         self.send_header("Access-Control-Allow-Origin", "*")
+                        self.send_header("Access-Control-Allow-Private-Network", "true")
                         self.end_headers()
+                        self._stream_committed = True
                         try:
                             for line_bytes in resp:
                                 line = line_bytes.decode("utf-8", errors="replace")
@@ -2018,9 +2055,17 @@ class DashboardHandler(BaseHTTPRequestHandler):
                         resp.close()
                         self.send_json(json.loads(response_data))
 
-                    # Mem0: trigger write after response (non-blocking)
+                    # Mem0: trigger write after response (non-blocking).
+                    # NOTE: _maybe_write_mem0 is a module-level function, not a
+                    # handler method. Calling self._maybe_write_mem0 raised
+                    # AttributeError *after* the response was already sent, which
+                    # then injected a stray "HTTP/1.1 502" status line into the
+                    # SSE body and made the browser report "Failed to fetch".
                     if mem0_write_enabled:
-                        self._maybe_write_mem0(character_id, messages, mem0_write_interval)
+                        try:
+                            _maybe_write_mem0(character_id, messages, mem0_write_interval)
+                        except Exception as _me:
+                            print(f"[mem0] write trigger error: {_me}", file=sys.stderr)
                     break  # 成功，跳出重试循环
                     
                 except urllib.error.HTTPError as http_err:
@@ -2050,7 +2095,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
         except Exception as e:
             error_msg = f"{type(e).__name__}: {str(e)}"
             print(f"[chat] final error: {error_msg}", file=sys.stderr)
-            self.send_json({"error": error_msg, "model": model_id, "endpoint": endpoint}, 502)
+            if getattr(self, "_stream_committed", False):
+                # Status line already flushed to the client; writing a second
+                # response corrupts the stream. Log only.
+                pass
+            else:
+                self.send_json({"error": error_msg, "model": model_id, "endpoint": endpoint}, 502)
         finally:
             if semaphore:
                 semaphore.release()
@@ -2406,10 +2456,14 @@ def make_icon():
 class ThreadingDashboardServer(ThreadingMixIn, HTTPServer):
     """Multi-threaded HTTP server so chat proxy doesn't block status checks."""
     daemon_threads = True
+    # Default listen backlog is 5 -> connection refusals ('Failed to fetch')
+    # under page-load bursts. Same fix as start_webchat.py.
+    request_queue_size = 128
     
 class ThreadingWebChatServer(ThreadingMixIn, http.server.HTTPServer):
     """Multi-threaded HTTP server for web-chat static files."""
     daemon_threads = True
+    request_queue_size = 128
 
 def run_dashboard_server(daemon):
     global daemon_instance

@@ -91,10 +91,23 @@ if not AVAILABLE_CHARACTERS:
 
 # Flask app
 from flask import Flask, request, jsonify, send_file, send_from_directory
-from flask_cors import CORS
+try:
+    from flask_cors import CORS
+except ImportError:
+    CORS = None
 
 app = Flask(__name__)
-CORS(app)
+if CORS:
+    CORS(app)
+else:
+    # Manual CORS fallback — missing flask_cors must not crash the bridge
+    # (a dead bridge makes the webchat UI show "failed to fetch").
+    @app.after_request
+    def _add_cors_headers(resp):
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+        resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        return resp
 
 # Job store
 jobs = {}

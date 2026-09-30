@@ -1,0 +1,5 @@
+[Artemis Bridge] Starting on http://localhost:19250
+[Artemis Bridge] TTS characters: ['atri', 'atori', 'natsume', 'sakura']
+[Artemis Bridge] ComfyUI python: C:\Users\momori\AppData\Local\Programs\Python\Python312\python.exe
+ * Serving Flask app 'artemis_bridge'
+ * Debug mode: off
