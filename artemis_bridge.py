@@ -117,7 +117,7 @@ jobs_lock = threading.Lock()
 # Llama health check & recovery
 # ================================================================
 
-LLAMA_PORT = CFG.get("llama_port", 8080)
+LLAMA_PORT = CFG.get("llama_port", 9931)
 LLAMA_EXE = CFG.get("llama_exe", "")
 LLAMA_MODEL = CFG.get("llama_model", "")
 LLAMA_LOG_DIR = CFG.get("llama_log_dir", WORKSPACE_ROOT)

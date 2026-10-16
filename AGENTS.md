@@ -12,6 +12,7 @@
 
 * ComfyUI / TTS / ASR: sessions_spawn → output `MEDIA:<path>` / `DONE: <text>`
 * Live2D: direct HTTP `http://localhost:19200` (no spawn)
+* Strata: Qwen3.8-Flash-Next only, engine on `:8080` (provider `strata/*`); llama.cpp moved to `:9931` — see `skills/strata/SKILL.md`
 * File ops, shell, coding, Git
 
 ## Switch to roleplay

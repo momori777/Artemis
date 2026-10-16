@@ -53,7 +53,7 @@ def load_config():
 
 CFG = load_config()
 
-LLAMA_PORT = int(CFG.get("llama_port", 8080))
+LLAMA_PORT = int(CFG.get("llama_port", 9931))
 LIVE2D_BRIDGE = "http://localhost:19200"
 MEDIA_AUDIO = CFG.get("media_qqbot_audio", os.path.join(WORKSPACE, "media", "qqbot", "audio"))
 MEDIA_IMAGES = CFG.get("media_qqbot_images", os.path.join(WORKSPACE, "media", "qqbot", "images"))
@@ -504,7 +504,7 @@ def tool_memory_add(params):
 def tool_get_status(params):
     import socket
     status = {"character":_read_current_character(), "services":{}}
-    ports = {"llama":8080,"live2d":19200,"artemis_bridge":19250,"webchat":19270,"openclaw_gateway":18789,"embedding":9999}
+    ports = {"llama":9931,"live2d":19200,"artemis_bridge":19250,"webchat":19270,"openclaw_gateway":18789,"embedding":9999}
     for name,port in ports.items():
         try:
             s = socket.create_connection(("127.0.0.1",port),timeout=1)

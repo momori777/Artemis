@@ -89,6 +89,9 @@ tts_temp_output_dir: "填写 TTS 临时输出目录"
 
 # ============================================================
 # llama.cpp (local LLM) / 本地 LLM
+# NOTE (2026-10): Qwen3.8-Flash-Next is NOT served here — it runs on
+# the Strata engine at :8080 (see the Strata block below).
+# 注意 (2026-10)：Qwen3.8-Flash-Next 不走 llama.cpp，由 Strata 引擎在 8080 服务。
 # ============================================================
 # Path to llama-server.exe / llama-server.exe 路径
 llama_exe: "填写 llama-server.exe 路径，例如 D:\\AI_Girlfriend\\llama-server\\llama-server.exe"
@@ -110,7 +113,8 @@ llama_model_id: "llama/qwen3.6-27b"
 llama_api_key: "123456"
 
 # llama-server port / llama-server 端口
-llama_port: 8080
+# 2026-10: llama.cpp 移至 9931；8080 现在是 Strata 引擎端口（仅服务 Qwen3.8-Flash-Next）
+llama_port: 9931
 # Log dir for llama-server restarts / llama-server 重启日志目录
 llama_log_dir: "llama-server/restart-logs"
 # Script used to restart llama in degraded mode / 降级重启脚本
@@ -142,10 +146,26 @@ skill_timeout: 9000
 #                    CCR 转发的上游 llama-server 端口（通常 == llama_port）
 ccr_port: 3456
 ccr_web_port: 3458
-ccr_upstream_port: 8080
+ccr_upstream_port: 9931
 # Task board (AgentRQ web UI) port, launched by claude-code-ccr.ps1
 # 任务面板（AgentRQ 可视化网页）端口，由 claude-code-ccr.ps1 拉起
 task_board_port: 19280
+
+# ============================================================
+# Strata engine — Qwen3.8-Flash-Next ONLY (not llama.cpp)
+# 仅 Qwen3.8-Flash-Next 走 Strata 引擎，其余本地模型仍走 llama.cpp。
+# Upstream ORIGINAL path — do NOT clone the whole repo into this
+# project, reference it instead / 上游原始路径，勿把整仓 clone 进本项目：
+#   https://github.com/Niko1221/Strata   (install / 安装: docs/AI_SETUP.md)
+# OpenAI-compatible endpoint / OpenAI 兼容端点: http://127.0.0.1:<strata_port>/v1
+# Health check / 健康检查: http://127.0.0.1:<strata_port>/health
+# Served model id (any name accepted) / 服务端模型 id（任意名均可）:
+#   qwen3.8-flash-next-iq3_s   (131072 ctx, KV int8, MTP)
+# Start / 启动: run-iq3_s.bat in the Strata install dir (installer-managed,
+# NOT part of this repo) / Strata 安装目录内，安装器自管，不在本仓库内
+# Full manual / 完整手册: skills/strata/SKILL.md
+# ============================================================
+strata_port: 8080
 
 # ============================================================
 # Default llama-server parameters / llama 默认启动参数
@@ -270,6 +290,9 @@ model_profiles:
 # 按模型名映射到 GGUF 文件路径。切换模型时，shiki_daemon.py 会根据此表
 # 更新 llama_model 路径。留空或每行一个 "模型名: 路径" 映射。
 llama_model_map:
+  # ⚠️ Qwen3.8-Flash-Next is NOT in this map: it is served by Strata on
+  # :8080. Do not load the flash-next GGUF into llama.cpp (RAM/VRAM clash).
+  # ⚠️ flash-next 不在本表：由 Strata 在 8080 服务，勿用 llama.cpp 加载（内存/显存冲突）。
   qwen3.6-35b: "D:\\model\\Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf"
   # Q4_K_S (~15.8 GB) — sweet spot for dense 27B on 8GB VRAM with partial offload (-ngl 14)
   qwen3.8-27b: "D:\\model\\Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_S.gguf"

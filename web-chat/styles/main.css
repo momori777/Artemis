@@ -2380,3 +2380,21 @@ text-align:center;
   margin-left:4px;
   white-space:nowrap;
 }
+
+
+#user-profile-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(10,10,18,0.7);z-index:200;
+  align-items:center;justify-content:center;
+}
+
+#user-profile-overlay.open{display:flex}
+
+#user-profile-panel{
+  background:var(--bg-root);
+  border:1px solid var(--border-moderate);
+  border-radius:var(--radius-lg);
+  width:min(480px,90vw);max-height:min(680px,85vh);
+  overflow-y:auto;padding:28px;
+  animation:fadeIn var(--dur-normal) var(--ease-out-expo);
+}

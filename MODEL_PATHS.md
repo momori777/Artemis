@@ -4,10 +4,13 @@
 > HF 仓库: **TAOTAO777/ai-girlfriend-natsume**
 > ComfyUI 本地实例: `E:\comfyui\ComfyUI-aki-v3\ComfyUI\models\`
 
-## LLM (llama.cpp)
+## LLM (llama.cpp / Strata)
+
+> 🔴 端口布局 (2026-10): llama.cpp = **9931**；**8080 = Strata 引擎**，仅服务 Qwen3.8-Flash-Next（见 `skills/strata/SKILL.md`）。
 
 | 文件 | 大小 | 本地路径 | HF 仓库路径 |
 |------|------|---------|-------------|
+| Qwen3.8-Flash-Next GSQ-RCO IQ3_S (**Strata 后端**，8080，不走 llama.cpp；131072 ctx) | ~50GB 分卷 | `C:\Users\19214\.openclaw\workspace\Strata-data\models\IQ3_S\Qwen3.8-Flash-Next-GSQ-RCO-IQ3_S-0000{1,2}-of-00002.gguf` | 上游 `Qwen/Qwen3.8-Flash-Next`（Strata 安装器自动下载，https://github.com/Niko1221/Strata） |
 | Hermes3.6-35B-A3B Genesis Final MTP APEX (**带 MTP**) | 24.9GB | `E:\model3\Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf` | `llm/Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf` |
 | Qwen3.8-27B TTURBO Fable C-Fusion MTP (Q4_K_M, **带 MTP**) | 15.7GB | `C:\model2\Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf` | `llm/Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf` |
 | Ternary-Bonsai-2-27B PTQ1_0 (三值量化, **8G 显存可全装**; KV cache 必须 q4_0 + ctx ≤ 75000) | 5.9GB | `E:\model3\Ternary-Bonsai-2-27B-PTQ1_0.gguf` | `llm/Ternary-Bonsai-2-27B-PTQ1_0.gguf` |

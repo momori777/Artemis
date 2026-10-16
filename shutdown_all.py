@@ -29,6 +29,20 @@ if sys.platform == "win32":
 WORKSPACE = os.path.dirname(os.path.abspath(__file__))
 
 
+# llama-server port comes from config.yaml (llama.cpp moved 8080→9931; 8080 is Strata now)
+def _load_llama_port():
+    try:
+        import re
+        with open(os.path.join(WORKSPACE, "config.yaml"), "r", encoding="utf-8", errors="replace") as f:
+            m = re.search(r"^llama_port:\s*(\d+)", f.read(), re.M)
+        return int(m.group(1)) if m else 9931
+    except Exception:
+        return 9931
+
+
+LLAMA_PORT = _load_llama_port()
+
+
 # ---- Helpers ----
 
 def port_open(host, port, timeout=1):
@@ -115,26 +129,26 @@ def _force_kill_pid(pid, name, force=False):
 # ---- Service-specific killers ----
 
 def kill_llama():
-    if not port_open("127.0.0.1", 8080):
+    if not port_open("127.0.0.1", LLAMA_PORT):
         print("[shutdown] llama-server: not running")
         return True
-    print("[shutdown] llama-server: stopping...")
+    print(f"[shutdown] llama-server: stopping... (port {LLAMA_PORT})")
     try:
         import urllib.request
-        urllib.request.urlopen("http://127.0.0.1:8080/shutdown", timeout=3)
+        urllib.request.urlopen(f"http://127.0.0.1:{LLAMA_PORT}/shutdown", timeout=3)
         print("[shutdown] llama-server: /shutdown sent")
     except Exception:
         print("[shutdown] llama-server: HTTP shutdown failed, force killing")
 
     for i in range(15):
         time.sleep(0.5)
-        if not port_open("127.0.0.1", 8080):
+        if not port_open("127.0.0.1", LLAMA_PORT):
             print(f"[shutdown] llama-server: stopped ({i*0.5:.0f}s)")
             return True
 
     subprocess.run(["taskkill", "/f", "/im", "llama-server.exe"], capture_output=True)
     time.sleep(1)
-    ok = not port_open("127.0.0.1", 8080)
+    ok = not port_open("127.0.0.1", LLAMA_PORT)
     if ok:
         print("[shutdown] llama-server: killed")
     else:

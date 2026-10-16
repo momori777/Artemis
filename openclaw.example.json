@@ -1,5 +1,5 @@
 {
-  "_comment": "Copy this file to ~/.openclaw/openclaw.json and fill in your API keys. Then restart OpenClaw Gateway. Note: tools.byProvider denies the cron tool for local llama models because llama.cpp's GBNF converter rejects non-anchored JSON Schema patterns; without it every local request fails with HTTP 400. Cloud models routed through the local-llama (Headroom) proxy resolve their upstream baseUrl + apiKey from the deepseek provider entries below (sidecar headroom_routes.json is optional).",
+  "_comment": "Copy this file to ~/.openclaw/openclaw.json and fill in your API keys. Then restart OpenClaw Gateway. Port layout (2026-10): llama.cpp moved to 9931; 8080 is now the Strata engine port serving Qwen3.8-Flash-Next ONLY (https://github.com/Niko1221/Strata, see skills/strata/SKILL.md — reference the original path, do NOT clone the whole Strata repo into this project). tools.byProvider denies the cron tool for llama.cpp providers because llama.cpp's GBNF converter rejects non-anchored JSON Schema patterns; without it every local request fails with HTTP 400. Strata parses tool calls itself and needs no deny. Cloud models routed through the local-llama (Headroom) proxy resolve their upstream baseUrl + apiKey from the deepseek provider entries below (sidecar headroom_routes.json is optional).",
   "gateway": {
     "mode": "local"
   },
@@ -15,6 +15,7 @@
       "model": {
         "primary": "llama/qwen3.8-27b",
         "fallbacks": [
+          "strata/qwen3.8-flash-next",
           "deepseek-v4-flash-0731"
         ]
       },
@@ -27,11 +28,26 @@
   "models": {
     "mode": "merge",
     "providers": {
-      "llama": {
+      "strata": {
         "baseUrl": "http://127.0.0.1:8080/v1",
         "api": "openai-completions",
-        "apiKey": "123456",
-        "timeoutSeconds": 9000,
+        "timeoutSeconds": 90000,
+        "models": [
+          {
+            "id": "qwen3.8-flash-next",
+            "name": "Qwen3.8-Flash-Next (Strata)",
+            "contextWindow": 131072,
+            "maxTokens": 32000,
+            "reasoning": true
+          }
+        ]
+      },
+      "llama": {
+        "baseUrl": "http://127.0.0.1:9931/v1",
+        "api": "openai-completions",
+        "apiKey": "***",
+        "auth": "api-key",
+        "timeoutSeconds": 90000,
         "models": [
           {
             "id": "qwen3.6-35b",
@@ -56,7 +72,7 @@
           }
         ]
       },
-            "deepseek": {
+      "deepseek": {
         "baseUrl": "https://api.deepseek.com",
         "api": "openai-completions",
         "apiKey": "",
@@ -82,7 +98,7 @@
       "local-llama": {
         "baseUrl": "http://127.0.0.1:19251/v1",
         "api": "openai-completions",
-        "apiKey": "any",
+        "apiKey": "***",
         "auth": "api-key",
         "timeoutSeconds": 30000,
         "models": [
@@ -226,20 +242,12 @@
     "byProvider": {
       "llama": {
         "deny": [
+          "cron"
         ]
       },
-        ]
-      },
-        ]
-      },
-        ]
-      },
-        ]
-      },
-        ]
-      },
-        ]
-      },
+      "local-llama": {
+        "deny": [
+          "cron"
         ]
       }
     }

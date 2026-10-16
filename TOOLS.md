@@ -21,6 +21,10 @@ Voice message → spawn `skills/asr/run_asr.ps1` (yieldMs 180000) → use `DONE:
 Direct HTTP, no spawn. Full table: `skills/live2d/SKILL.md`.
 Idle | Tap head=shy | Tap frame=tsundere | Tap hand=tender | Start=entrance | Leave=exit
 
+## Strata (Qwen3.8-Flash-Next)
+
+Only Qwen3.8-Flash-Next runs on the Strata engine at **:8080** (NOT llama.cpp; llama.cpp moved to **:9931**). Health: `http://127.0.0.1:8080/health`. Start: `run-iq3_s.bat` in the Strata install dir (original path, never clone the whole repo). Full table: `skills/strata/SKILL.md`.
+
 ## Characters
 
 Memory: `memory/role_play/<name>/`. Active char = name in SOUL.md line 1.
