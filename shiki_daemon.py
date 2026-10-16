@@ -30,7 +30,7 @@ with open(os.path.join(WORKSPACE, "config.yaml"), "r", encoding="utf-8-sig") as 
 
 LLAMA_EXE = CFG["llama_exe"]
 LLAMA_MODEL = CFG["llama_model"]
-LLAMA_PORT = int(CFG.get("llama_port", 8080))
+LLAMA_PORT = int(CFG.get("llama_port", 9931))
 LLAMA_LOG = os.path.join(CFG.get("llama_log_dir", WORKSPACE), "llama-err.log")
 # 模型名从 config.yaml 读取：优先 llama_model_name，否则取 llama_model 路径 basename
 import os as _os
@@ -51,6 +51,33 @@ WEBCHAT_PORT = 19270
 REQUEST_TIMEOUT = int(CFG.get("api_timeout", 600))  # 默认 600s (10min), 长生成需要足够超时
 REQUEST_MAX_RETRIES = int(CFG.get("api_max_retries", 2))  # 默认重试 2 次
 LLAMA_BASE_URL = f"http://127.0.0.1:{LLAMA_PORT}/v1"
+
+# ── 动态解析 llama-server 实际加载的模型 id ──
+# llama-server 只认它自己加载的 alias（未传 --alias 时就是 GGUF 全路径）。
+# 手动启动/换模型后 config 里的 llama_model_name 可能与实际不符 → 400。
+# 这里从 /v1/models 探测真实 id，带缓存，切换模型后自动更新。
+_llama_served_id_cache = {"id": "", "ts": 0.0}
+
+def _get_llama_served_model():
+    import time as _time
+    now = _time.time()
+    if _llama_served_id_cache["id"] and now - _llama_served_id_cache["ts"] < 30:
+        return _llama_served_id_cache["id"]
+    try:
+        import urllib.request
+        req = urllib.request.Request(LLAMA_BASE_URL + "/models")
+        if LLAMA_API_KEY:
+            req.add_header("Authorization", "Bearer " + LLAMA_API_KEY)
+        with urllib.request.urlopen(req, timeout=5) as r:
+            data = json.load(r)
+        served = (data.get("data") or [{}])[0].get("id", "")
+        if served:
+            _llama_served_id_cache["id"] = served
+            _llama_served_id_cache["ts"] = now
+            return served
+    except Exception as e:
+        print(f"[chat] llama /models probe failed: {e}", file=sys.stderr)
+    return LLAMA_MODEL_NAME  # 探测失败时回退到 config 别名
 
 # ── 并发控制：限制同时请求数 ──
 import threading
@@ -457,7 +484,7 @@ def ensure_openclaw_headroom_provider():
       - 现有 provider（zai 等）原封不动
       - 新增 local-llama provider，baseUrl 指向 19251
       - local-llama 下挂载：llama-local（本地）+ 所有云端模型的副本
-      - headroom proxy 根据 model id 路由：llama-local → 8080，其他 → sidecar
+      - headroom proxy 根据 model id 路由：llama-local → 9931，其他 → sidecar
 
     幂等：已配置则跳过。
     如果 19251 未开或 openclaw.json 不存在，静默跳过。
@@ -1219,7 +1246,8 @@ def _resolve_provider_for_model(model_id):
     if not os.path.isfile(cfg_path):
         return None
     try:
-        with open(cfg_path, "r", encoding="utf-8") as f:
+        # utf-8-sig: openclaw.json 可能被 PowerShell/wizard 写入 BOM，纯 utf-8 会解析失败
+        with open(cfg_path, "r", encoding="utf-8-sig") as f:
             cfg = json.load(f)
         providers = cfg.get("models", {}).get("providers", {})
         parts = model_id.split("/", 1)
@@ -1349,7 +1377,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             gw_config = {"baseUrl": "http://localhost:18789", "token": "", "models": []}
             if os.path.isfile(cfg_path):
                 try:
-                    with open(cfg_path, "r", encoding="utf-8") as f:
+                    with open(cfg_path, "r", encoding="utf-8-sig") as f:
                         cfg = _json.load(f)
                     gw_config["token"] = cfg.get("gateway", {}).get("auth", {}).get("token", "")
                     # Extract model aliases
@@ -1978,13 +2006,18 @@ class DashboardHandler(BaseHTTPRequestHandler):
         # ── End headroom ──
 
         # Local llama: skip provider lookup, use config-based endpoint
-        use_local = model_id.startswith("local/")
+        # 兼容 webchat 回退占位 'local-model' / 'llama-local' / 无前缀裸模型名
+        use_local = (
+            model_id.startswith("local/")
+            or model_id in ("local-model", "llama-local")
+            or "/" not in model_id
+        )
         if use_local:
             api_key = LLAMA_API_KEY
             auth_header = ("Bearer " + api_key) if api_key else ""
             base_url = LLAMA_BASE_URL
-            backend_model = LLAMA_MODEL_NAME
-            print(f"[chat] routing to local llama: {base_url}", file=sys.stderr)
+            backend_model = _get_llama_served_model()
+            print(f"[chat] routing to local llama: {base_url} model={backend_model}", file=sys.stderr)
         else:
             provider_cfg = _resolve_provider_for_model(model_id)
             if not provider_cfg:
@@ -1994,6 +2027,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             auth_header = "Bearer " + api_key
             base_url = provider_cfg.get("baseUrl", "").rstrip("/")
             backend_model = model_id.split("/")[-1]
+            # llama/local-model 等指向本地 8080 的 provider：后端别名可能与 id 不一致
+            # （llama-server 只认 --alias 的名字），统一换成实际加载的模型 id
+            if f":{LLAMA_PORT}" in base_url:
+                backend_model = _get_llama_served_model()
             print(f"[chat] routing to cloud provider: {base_url} model={backend_model}", file=sys.stderr)
 
         endpoint = base_url + "/chat/completions"

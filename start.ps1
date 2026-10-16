@@ -6,7 +6,7 @@
 # ����˳��:
 #   1. llama-server (ngl=41, batch=4096/2048)
 #   2. Embedding Server (localhost:9999, all-MiniLM-L6-v2)
-#   3. Artemis Headroom Proxy (localhost:19251 �� llama:8080)
+#   3. Artemis Headroom Proxy (localhost:19251 �� llama:9931)
 #   4. Live2D Bridge (localhost:19200)
 #   5. OpenClaw Gateway (localhost:18789)
 #   6. Cron Jobs (mem0-auto-sync + cleanup-orphans)
@@ -305,7 +305,7 @@ if (Test-Online $embedPort "Embedding Server") {
 }
 
 # ========== 3. Headroom Proxy ==========
-Write-Host "[3/7] Headroom Proxy (19251 �� llama:8080)" -ForegroundColor Yellow
+Write-Host "[3/7] Headroom Proxy (19251 �� llama:9931)" -ForegroundColor Yellow
 
 $headroomPort = 19251
 $headroomScript = Join-Path $scriptRoot "artemis_headroom_proxy.py"
@@ -352,7 +352,7 @@ if (Test-Online 19251 "Headroom Proxy") {
             $ocCfg = Get-Content $ocJson -Raw -Encoding UTF8 | ConvertFrom-Json
             $headroomBase = "http://127.0.0.1:19251/v1"
             $llamaCtx = if ($config.llama.context) { [int]$config.llama.context } else { 150000 }
-            $llamaPort = if ($config.llama_port) { $config.llama_port } else { 8080 }
+            $llamaPort = if ($config.llama_port) { $config.llama_port } else { 9931 }
 
             # �ռ� sidecar ·��
             $routes = [PSCustomObject]@{}

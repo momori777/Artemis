@@ -344,12 +344,39 @@ VRAM 上限に当たったら `-ForceBatch 1024` でバッチサイズを下げ�
 
 llama チューニングの詳細は [LLAMA_TUNING.md](LLAMA_TUNING.md) を参照。
 
-> `http://127.0.0.1:8080` でサービス。**注意:** PowerShell 配列のすべての引数対は
+> `http://127.0.0.1:9931` でサービス（llama.cpp は 8080 から移行済み——**8080 は Strata エンジンのポート**、下記の flash-next 節参照）。**注意:** PowerShell 配列のすべての引数対は
 > コンマ区切り必須 - コンマ欠落は 2 トークンを黙って接着します。
 >
 > 💡 **`rea` 未指定** - チャットテンプレート経由で推論深度 `medium` がデフォルト
 > （思考トークン注入なし、KV キャッシュパリティ保持）。速い直接返信が欲しい
 > ツール/エージェントタスクに最適な設定。
+
+### Qwen3.8-Flash-Next — Strata エンジン（llama.cpp ではない）🔥
+
+**Qwen3.8-Flash-Next（125B MoE）は唯一 [Strata エンジン](https://github.com/Niko1221/Strata) が提供するモデルで、llama.cpp は使いません。**
+2026-10 以降のポート構成：**llama.cpp = 9931**、**Strata = 8080**。flash-next を llama.cpp で読み込まないこと（RAM/VRAM 競合）。
+
+セットアップ — **元リポジトリ**を clone（本プロジェクト外の任意の場所、`skills/` に同梱しない）：
+
+```powershell
+# 1) 元リポジトリを clone（プロジェクトの隣など）
+git clone https://github.com/Niko1221/Strata
+cd Strata
+# 2) 起動スクリプトを一度実行：モデル/量子化/コンテキストを尋ね、
+#    全ファイルをダウンロードし、量子化別の起動 bat（例 run-iq3_s.bat）を生成
+START-HERE.bat
+# 3) 以降は生成された bat で LLM を起動：
+.\run-iq3_s.bat
+```
+
+- Strata は選択した量子化を `Strata-data\models\IQ3_S\`（clone からの相対パス、IQ3_S を選んだ場合）へ自動ダウンロード。
+- **Uncensored ビルド（本プロジェクトでは必須）：**
+  [SC117/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF](https://huggingface.co/SC117/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF)
+  からダウンロードし、`Strata-data\models\IQ3_S\`（量子化名ディレクトリ）の自動ダウンロードファイルを差し替え、
+  **リネームして `-abliterated-` を除去**（残りは元ファイル名のまま）—— Strata はリネーム後のファイルのみ認識。例：
+  `Qwen3.8-Flash-Next-GSQ-RCO-abliterated-IQ3_S-00001-of-00002.gguf` → `Qwen3.8-Flash-Next-GSQ-RCO-IQ3_S-00001-of-00002.gguf`。
+- ヘルスチェック：`http://127.0.0.1:8080/health` → `"service": "strata"`。OpenAI 互換エンドポイント：`http://127.0.0.1:8080/v1`。
+- OpenClaw：`strata/qwen3.8-flash-next` provider を使用（`openclaw.example.json` 参照）。完全マニュアル：`skills/strata/SKILL.md`。
 
 ### Ternary-Bonsai-2-27B PTQ1_0 — 8 GB VRAM に完全収載 🔥
 
@@ -700,11 +727,12 @@ Claude Code は起動時にタスクループを自動実行:
 |-|-|-|-|
 | **Embedding** | バックグラウンドプロセス | ❌ No | all-MiniLM-L6-v2 + BGE-small-zh-v1.5 デュアルモデル（CPU、ポート 9999） - OpenClaw メモリ検索 + mem0 ブリッジ |
 | **Live2D** | HTTP exec | ❌ No | `localhost:19200` ブリッジへの直接 HTTP 呼び出し |
-| **Web Chat** | ブラウザ | ❌ No | llama :8080 へのローカルデーモンプロキシ、ポート 19270、リアルタイムチャット |
-| **Claude Code** | ターミナル（MCP） | ❌ No | .claude/artemis_mcp_server.py 経由の並列エージェントランタイム、llama :8080 を直接使用 |
+| **Web Chat** | ブラウザ | ❌ No | llama :9931 へのローカルデーモンプロキシ、ポート 19270、リアルタイムチャット |
+| **Claude Code** | ターミナル（MCP） | ❌ No | .claude/artemis_mcp_server.py 経由の並列エージェントランタイム、llama :9931 を直接使用 |
 | **TTS** | sessions_spawn | 🔶 VRAM 階層化 | ≥12GB: kill なし。8GB: llama 停止 → GPT-SoVITS → llama 再起動 |
 | **ComfyUI** | sessions_spawn | 🔶 VRAM 階層化 | ≥12GB: kill なし。8GB: llama 停止 → 画像生成 → llama 再起動 |
 | **ASR** | sessions_spawn | ❌ No | Faster-Whisper small（~1.5GB VRAM、llama と共存） |
+| **Strata** | 外部エンジン | 🔶 RAM/VRAM | Qwen3.8-Flash-Next のみ、:8080 で提供（llama.cpp は :9931）；2 つの大型モデルの同時起動禁止 |
 | **Sakura** | 共有 llama-client | ❌ No | llama 停止を検出 → 待機 → 自動再開 |
 | **Artemis Studio** | デスクトップコンソール | ❌ No | TTS/ComfyUI ビジュアルワークショップ、standalone - llama の状態に関係なく動作 |
 
@@ -830,7 +858,7 @@ powershell -File start.ps1
 
 起動シーケンス:
 ```
-[1/8] llama-server        (8080, Qwen3.6-35B-A3B-MTP, --no-mmap, --spec-type draft-mtp)
+[1/8] llama-server        (9931, Qwen3.6-35B-A3B-MTP, --no-mmap, --spec-type draft-mtp)
 [2/8] Embedding Server    (9999, all-MiniLM + BGE dual models, CPU, ~100MB RAM)
 [3/8] VRAM Tier Detection (auto-selects whether TTS/ComfyUI stops llama)
 [4/8] Headroom Proxy      (19251, mem0 memory injection + SmartCrusher compression + cloud routing)
@@ -883,7 +911,8 @@ schtasks /create /tn "cleanup-orphans" `
 
 | コンポーネント | 説明 |
 |-|-|
-| `llama-server :8080` | Qwen3.6-35B-A3B-MTP MoE |
+| `llama-server :9931` | Qwen3.6-35B-A3B-MTP MoE |
+| `strata :8080` | Qwen3.8-Flash-Next 125B MoE（Strata エンジン、llama.cpp ではない） |
 | `headroom proxy :19251` | mem0 メモリ注入 + SmartCrusher 圧縮 + モデルルーティング |
 | メインセッション | AGENTS.md 駆動のロールプレイ |
 | TTS | VRAM 階層化 stop/run |
@@ -918,7 +947,7 @@ schtasks /create /tn "cleanup-orphans" `
 ```
 OpenClaw Gateway (18789)
   ├─ <provider>/<model-id>           → Direct to original backend (skips headroom)
-  ├─ local-llama/llama-local          → 19251 → llama-server:8080
+  ├─ local-llama/llama-local          → 19251 → llama-server:9931
   └─ local-llama/<model-id>           → 19251 → original backend (via headroom+mem0)
          │
          ▼
@@ -926,7 +955,7 @@ OpenClaw Gateway (18789)
     ├─ [1] mem0 character memory injection (Qdrant vector search)
     ├─ [2] SmartCrusher 5-dim compressed conversation history
     └─ [3] Route to real backend
-         ├─ llama-local → llama-server:8080
+         ├─ llama-local → llama-server:9931
          └─ Cloud models    → sidecar finds real baseUrl
 ```
 

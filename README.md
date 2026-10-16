@@ -346,12 +346,39 @@ cd D:\AI_Girlfriend
 
 See [LLAMA_TUNING.md](LLAMA_TUNING.md) for more llama tuning details.
 
-> Served on `http://127.0.0.1:8080`. **Note:** every argument pair in the PowerShell
+> Served on `http://127.0.0.1:9931` (llama.cpp moved from 8080 — **8080 is now the Strata engine port**, see the flash-next section below). **Note:** every argument pair in the PowerShell
 > array must be comma-separated — a missing comma silently glues two tokens together.
 >
 > 💡 **`rea` not specified** — defaults to `medium` reasoning depth via the chat
 > template (no injected thinking tokens, preserving KV-cache parity). This is the
 > optimal setting for tooling/agent tasks where you want fast, direct responses.
+
+### Qwen3.8-Flash-Next — Strata engine (NOT llama.cpp) 🔥
+
+**Qwen3.8-Flash-Next (125B MoE) is the only model served by the [Strata engine](https://github.com/Niko1221/Strata) instead of llama.cpp.**
+Port layout since 2026-10: **llama.cpp = 9931**, **Strata = 8080**. Never load flash-next into llama.cpp (RAM/VRAM clash).
+
+Setup — clone the **original repo** (anywhere outside this project; do not vendor it into `skills/`):
+
+```powershell
+# 1) Clone the original repo, e.g. next to the project
+git clone https://github.com/Niko1221/Strata
+cd Strata
+# 2) Run the start script once: it asks model/quant/context questions,
+#    downloads everything, and generates a per-quant launcher bat (e.g. run-iq3_s.bat)
+START-HERE.bat
+# 3) From now on, start the LLM with the generated bat:
+.\run-iq3_s.bat
+```
+
+- Strata auto-downloads the chosen quant to `Strata-data\models\IQ3_S\` (relative to the clone, when IQ3_S was selected).
+- **Uncensored build (required here):** download from
+  [SC117/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF](https://huggingface.co/SC117/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF),
+  replace the auto-downloaded files in `Strata-data\models\IQ3_S\`, and **rename them removing `-abliterated-`**
+  (keep the rest of the original filename) — Strata only recognizes the renamed files, e.g.
+  `Qwen3.8-Flash-Next-GSQ-RCO-abliterated-IQ3_S-00001-of-00002.gguf` → `Qwen3.8-Flash-Next-GSQ-RCO-IQ3_S-00001-of-00002.gguf`.
+- Health check: `http://127.0.0.1:8080/health` → `"service": "strata"`. OpenAI-compatible endpoint: `http://127.0.0.1:8080/v1`.
+- OpenClaw: use the `strata/qwen3.8-flash-next` provider (see `openclaw.example.json`). Full manual: `skills/strata/SKILL.md`.
 
 ### Ternary-Bonsai-2-27B PTQ1_0 — fits fully in 8 GB VRAM 🔥
 
@@ -708,11 +735,12 @@ Then open **http://127.0.0.1:19280** - create tasks, watch Claude Code pick them
 |-|-|-|-|
 | **Embedding** | Background process | ❌ No | all-MiniLM-L6-v2 + BGE-small-zh-v1.5 dual models (CPU, port 9999) - OpenClaw memory search + mem0 bridge |
 | **Live2D** | HTTP exec | ❌ No | Direct HTTP calls to `localhost:19200` bridge |
-| **Web Chat** | Browser | ❌ No | Local daemon proxy to llama :8080, port 19270, real-time chat |
-| **Claude Code** | Terminal (MCP) | ❌ No | Parallel agent runtime via .claude/artemis_mcp_server.py, uses llama :8080 directly |
+| **Web Chat** | Browser | ❌ No | Local daemon proxy to llama :9931, port 19270, real-time chat |
+| **Claude Code** | Terminal (MCP) | ❌ No | Parallel agent runtime via .claude/artemis_mcp_server.py, uses llama :9931 directly |
 | **TTS** | sessions_spawn | 🔶 VRAM-tiered | ≥12GB: no kill; 8GB: stop llama → GPT-SoVITS → restart llama |
 | **ComfyUI** | sessions_spawn | 🔶 VRAM-tiered | ≥12GB: no kill; 8GB: stop llama → image gen → restart llama |
 | **ASR** | sessions_spawn | ❌ No | Faster-Whisper small (~1.5GB VRAM, coexists with llama) |
+| **Strata** | External engine | 🔶 RAM/VRAM | Qwen3.8-Flash-Next only, serves :8080 (llama.cpp on :9931); don't run both big models at once |
 | **Sakura** | Shared llama-client | ❌ No | Detects llama down → waits → auto-resumes |
 | **Artemis Studio** | Desktop console | ❌ No | TTS/ComfyUI visual workshop, standalone - works regardless of llama status |
 
@@ -838,7 +866,7 @@ powershell -File start.ps1
 
 Startup sequence:
 ```
-[1/8] llama-server        (8080, Qwen3.6-35B-A3B-MTP, --no-mmap, --spec-type draft-mtp)
+[1/8] llama-server        (9931, Qwen3.6-35B-A3B-MTP, --no-mmap, --spec-type draft-mtp)
 [2/8] Embedding Server    (9999, all-MiniLM + BGE dual models, CPU, ~100MB RAM)
 [3/8] VRAM Tier Detection (auto-selects whether TTS/ComfyUI stops llama)
 [4/8] Headroom Proxy      (19251, mem0 memory injection + SmartCrusher compression + cloud routing)
@@ -891,7 +919,8 @@ schtasks /create /tn "cleanup-orphans" `
 
 | Component | Description |
 |-|-|
-| `llama-server :8080` | Qwen3.6-35B-A3B-MTP MoE |
+| `llama-server :9931` | Qwen3.6-35B-A3B-MTP MoE |
+| `strata :8080` | Qwen3.8-Flash-Next 125B MoE (Strata engine, NOT llama.cpp) |
 | `headroom proxy :19251` | mem0 memory injection + SmartCrusher compression + model routing |
 | Main session | AGENTS.md-driven roleplay |
 | TTS | VRAM-tiered stop/run |
@@ -926,7 +955,7 @@ schtasks /create /tn "cleanup-orphans" `
 ```
 OpenClaw Gateway (18789)
   ├─ <provider>/<model-id>           → Direct to original backend (skips headroom)
-  ├─ local-llama/llama-local          → 19251 → llama-server:8080
+  ├─ local-llama/llama-local          → 19251 → llama-server:9931
   └─ local-llama/<model-id>           → 19251 → original backend (via headroom+mem0)
          │
          ▼
@@ -934,7 +963,7 @@ OpenClaw Gateway (18789)
     ├─ [1] mem0 character memory injection (Qdrant vector search)
     ├─ [2] SmartCrusher 5-dim compressed conversation history
     └─ [3] Route to real backend
-         ├─ llama-local → llama-server:8080
+         ├─ llama-local → llama-server:9931
          └─ Cloud models    → sidecar finds real baseUrl
 ```
 

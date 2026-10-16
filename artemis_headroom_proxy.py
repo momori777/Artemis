@@ -11,7 +11,7 @@ OpenAI-compatible /v1/chat/completions proxy with forced Headroom + Mem0.
     → [2] 注入 mem0 结果到 system prompt
     → [3] SmartCrusher 5维压缩对话历史
     → [4] 根据 model 字段路由:
-         - local-llama/*  → llama-server:8080
+         - local-llama/*  → llama-server:9931 (flash-next 经 sidecar → Strata:8080)
          - 其他 provider  → 对应云端 baseUrl (apiKey 从 openclaw.json 读取)
 
 关键参数 (与 shiki_daemon.py 对齐):
@@ -46,7 +46,7 @@ def _load_config():
 _CFG = _load_config()
 
 SKILL_TIMEOUT = int(_CFG.get("skill_timeout", 9000))  # unified from config.yaml
-LLAMA_PORT = int(os.environ.get("LLAMA_PORT", str(_CFG.get("llama_port", 8080))))
+LLAMA_PORT = int(os.environ.get("LLAMA_PORT", str(_CFG.get("llama_port", 9931))))
 LLAMA_URL = f"http://127.0.0.1:{LLAMA_PORT}/v1/chat/completions"
 # API 密钥：llama-server 设置 --api-key 后，本地转发必须带 Authorization
 LLAMA_API_KEY = _CFG.get("llama_api_key", "")
@@ -148,7 +148,7 @@ def _resolve_upstream(model_field: str) -> tuple[str, str, dict]:
     根据 request 中的 model 字段解析目标后端。
     
     model_field 可能是:
-    - "llama-local"             → 本地 llama-server:8080
+    - "llama-local"             → 本地 llama-server:9931
     - "glm-5.2"                 → sidecar 查找真实后端
     - "local-llama/glm-5.2"     → 去掉前缀后同上
     

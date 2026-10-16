@@ -52,6 +52,26 @@ models:
       调参: LLAMA_TUNING.md
 
   # =========================================================================
+  # 当前活跃（Strata 后端） — Qwen3.8-Flash-Next 125B MoE
+  # ⚠️ 仅此模型不走 llama.cpp，后端为 Strata 引擎（端口 8080）
+  # =========================================================================
+  - name: Qwen3.8-Flash-Next-GSQ-RCO-IQ3_S
+    type: GGUF 分卷 (IQ3_S, ~50 GB, 125B MoE)
+    backend: strata
+    local_path: "C:/Users/19214/.openclaw/workspace/Strata-data/models/IQ3_S/"
+    repo: Qwen/Qwen3.8-Flash-Next
+    upstream: https://github.com/Niko1221/Strata
+    download: |
+      Strata 安装器自动下载（START-HERE.bat / SETUP.bat，见 skills/strata/SKILL.md）;
+      原始权重: https://huggingface.co/Qwen/Qwen3.8-Flash-Next
+    note: |
+      ⚠️ 仅此模型后端从 llama.cpp 换为 Strata (https://github.com/Niko1221/Strata)；
+      其余模型（Hermes 35B / Qwen3.8-27B / Ternary-Bonsai）仍走 llama.cpp（已移至端口 9931）。
+      服务端点: http://127.0.0.1:8080/v1（OpenAI 兼容），模型 id qwen3.8-flash-next-iq3_s，
+      131072 ctx，KV int8，MTP 投机解码。健康检查: http://127.0.0.1:8080/health
+      不要把 Strata 整个仓库 clone 进本项目——按原始路径引用，见 skills/strata/SKILL.md。
+
+  # =========================================================================
   # 当前活跃（8GB 显存全量装载） — Ternary-Bonsai-2-27B PTQ1_0 (三值量化, ~5.9 GB)
   # =========================================================================
   - name: Ternary-Bonsai-2-27B-PTQ1_0

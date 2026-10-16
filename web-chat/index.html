@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Noto+Sans+SC:wght@300;400;500;700&display=swap">
 <link rel="stylesheet" href="styles/phosphor-icons.css">
-<link rel="stylesheet" href="styles/main.css?v=47">
+<link rel="stylesheet" href="styles/main.css?v=48">
 <link rel="stylesheet" href="styles/polish.css?v=28">
 <link rel="stylesheet" href="styles/refine.css?v=9">
 <link rel="stylesheet" href="styles/uiverse.css?v=2">
@@ -138,6 +138,9 @@
           </button>
           <button class="header-action mem-header-btn" id="btn-mem-view" data-i18n-title="plugin_mem_view" title="Mem0 记忆 & 可视化">
             <i class="ph ph-brain"></i> <span data-i18n="plugin_memory">记忆</span>
+          </button>
+          <button class="header-action" id="btn-user-profile" data-i18n-title="user_profile" title="我的档案">
+            <i class="ph ph-user-circle"></i> <span data-i18n="user_profile">档案</span>
           </button>
           <button class="header-action" id="btn-search" data-i18n-title="search" title="搜索">
             <i class="ph ph-magnifying-glass"></i> <span data-i18n="search">搜索</span>
@@ -628,6 +631,54 @@
 
 <div id="toast-container"></div>
 
+<!-- User Profile Overlay -->
+<div id="user-profile-overlay">
+  <div id="user-profile-panel">
+    <div class="settings-title">我的档案</div>
+    <div class="settings-subtitle">填写你的个人信息，AI 会据此更好地了解你</div>
+
+    <div class="settings-group">
+      <div class="settings-label">姓名</div>
+      <input class="settings-input" id="profile-name" placeholder="例如：小明">
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">年龄</div>
+      <input class="settings-input" id="profile-age" type="number" placeholder="例如：25" min="1" max="150">
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">职业</div>
+      <input class="settings-input" id="profile-occupation" placeholder="例如：程序员、学生">
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">性格特点</div>
+      <input class="settings-input" id="profile-personality" placeholder="例如：内向、喜欢安静">
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">兴趣爱好</div>
+      <textarea class="settings-input" id="profile-hobbies" rows="2" placeholder="例如：看书、打游戏、看电影"></textarea>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">喜欢的食物</div>
+      <input class="settings-input" id="profile-food" placeholder="例如：寿司、火锅">
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">其他信息</div>
+      <textarea class="settings-input" id="profile-extra" rows="2" placeholder="任何其他想告诉她的事情..."></textarea>
+    </div>
+
+    <div class="settings-actions">
+      <button class="btn-secondary" id="profile-cancel">取消</button>
+      <button class="btn-primary" id="profile-send">发送给 AI</button>
+    </div>
+  </div>
+</div>
+
 <!-- World Book Modal -->
 <div id="worldbook-modal">
   <div id="worldbook-modal-panel">
@@ -831,7 +882,7 @@
 <script src="scripts/sampler_panel.js?v=1"></script>
 <script src="scripts/importer.js?v=26"></script>
 <script src="scripts/worldbook.js?v=1"></script>
-<script src="scripts/ui.js?v=59"></script>
+<script src="scripts/ui.js?v=60"></script>
 <script src="scripts/studio.js?v=28"></script>
 <script src="scripts/debug_sampler.js?v=1"></script>
 </body>

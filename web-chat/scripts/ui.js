@@ -1,3 +1,5 @@
+var UI_PROFILE_KEYS = ['name','age','occupation','personality','hobbies','food','extra'];
+var UI_PROFILE_LABELS = { name: '姓名', age: '年龄', occupation: '职业', personality: '性格特点', hobbies: '兴趣爱好', food: '喜欢的食物', extra: '其他信息' };
 // ============================================================
 // ui.js - Chat UI controller with multi-session support
 // ============================================================
@@ -77,6 +79,14 @@ var UI = {
     document.getElementById('btn-reset').addEventListener('click', function() { self.resetSession(); });
     document.getElementById('btn-clear').addEventListener('click', function() { self.clearMessages(); });
     document.getElementById('btn-search').addEventListener('click', function() { self.toggleSearch(); });
+    var profileBtn = document.getElementById('btn-user-profile');
+    if (profileBtn) profileBtn.addEventListener('click', function() { self.openUserProfile(); });
+    var profileCancelBtn = document.getElementById('profile-cancel');
+    if (profileCancelBtn) profileCancelBtn.addEventListener('click', function() { self.closeUserProfile(); });
+    var profileSendBtn = document.getElementById('profile-send');
+    if (profileSendBtn) profileSendBtn.addEventListener('click', function() { self.sendUserProfile(); });
+    var profileOverlay = document.getElementById('user-profile-overlay');
+    if (profileOverlay) profileOverlay.addEventListener('click', function(e) { if (e.target === profileOverlay) self.closeUserProfile(); });
     document.getElementById('btn-settings').addEventListener('click', function() { self.openSettings(); });
     document.getElementById('mobile-sidebar-toggle').addEventListener('click', function() {
       document.getElementById('sidebar').classList.toggle('mobile-open');
@@ -3620,7 +3630,44 @@ var UI = {
     });
   },
 
-  openSettings: function() {
+  // ---- User Profile (optional) ----
+  openUserProfile: function() {
+    var overlay = document.getElementById('user-profile-overlay');
+    if (!overlay) return;
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem('shiki_user_profile') || '{}'); } catch (e) { saved = {}; }
+    UI_PROFILE_KEYS.forEach(function(k) {
+      var el = document.getElementById('profile-' + k);
+      if (el) el.value = saved[k] || '';
+    });
+    overlay.classList.add('open');
+  },
+
+  closeUserProfile: function() {
+    var overlay = document.getElementById('user-profile-overlay');
+    if (overlay) overlay.classList.remove('open');
+  },
+
+  sendUserProfile: function() {
+    var self = this;
+    var data = {}; var lines = [];
+    UI_PROFILE_KEYS.forEach(function(k) {
+      var el = document.getElementById('profile-' + k);
+      var v = el ? String(el.value).trim() : '';
+      data[k] = v;
+      if (v) lines.push(UI_PROFILE_LABELS[k] + '：' + v);
+    });
+    try { localStorage.setItem('shiki_user_profile', JSON.stringify(data)); } catch (e) {}
+    // 关闭弹窗（档案为可选项，不强制填写）
+    self.closeUserProfile();
+    if (!lines.length) return;
+    var text = '【我的档案】' + String.fromCharCode(10) + lines.join(String.fromCharCode(10));
+    if (self.state.streaming) { self.$input.value = text; return; }
+    self.$input.value = text;
+    self.sendMessage();
+  },
+
+    openSettings: function() {
     var self = this;
     var s = getSettings();
     var apiBase = document.getElementById('setting-api-base');
