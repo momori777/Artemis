@@ -52,6 +52,10 @@ REQUEST_TIMEOUT = int(CFG.get("api_timeout", 600))  # 默认 600s (10min), 长�
 REQUEST_MAX_RETRIES = int(CFG.get("api_max_retries", 2))  # 默认重试 2 次
 LLAMA_BASE_URL = f"http://127.0.0.1:{LLAMA_PORT}/v1"
 
+# ── Strata 引擎（仅 Qwen3.8-Flash-Next）：llama.cpp 不在线时本地路由对接到这里 ──
+STRATA_PORT = int(CFG.get("strata_port", 8080))
+STRATA_BASE_URL = f"http://127.0.0.1:{STRATA_PORT}/v1"
+
 # ── 动态解析 llama-server 实际加载的模型 id ──
 # llama-server 只认它自己加载的 alias（未传 --alias 时就是 GGUF 全路径）。
 # 手动启动/换模型后 config 里的 llama_model_name 可能与实际不符 → 400。
@@ -78,6 +82,37 @@ def _get_llama_served_model():
     except Exception as e:
         print(f"[chat] llama /models probe failed: {e}", file=sys.stderr)
     return LLAMA_MODEL_NAME  # 探测失败时回退到 config 别名
+
+# ── 动态解析 Strata 引擎实际加载的模型 id（无鉴权，带缓存）──
+_strata_served_id_cache = {"id": "", "ts": 0.0}
+
+def _get_strata_served_model():
+    import time as _time
+    now = _time.time()
+    if _strata_served_id_cache["id"] and now - _strata_served_id_cache["ts"] < 30:
+        return _strata_served_id_cache["id"]
+    try:
+        import urllib.request
+        req = urllib.request.Request(STRATA_BASE_URL + "/models")
+        with urllib.request.urlopen(req, timeout=5) as r:
+            data = json.load(r)
+        served = (data.get("data") or [{}])[0].get("id", "")
+        if served:
+            _strata_served_id_cache["id"] = served
+            _strata_served_id_cache["ts"] = now
+            return served
+    except Exception as e:
+        print(f"[chat] strata /models probe failed: {e}", file=sys.stderr)
+    return _strata_served_id_cache["id"]
+
+def _local_chat_backend():
+    """webchat 本地模型路由的后端选择：llama.cpp 在线优先，否则回退 Strata 引擎。
+    返回 (base_url, api_key, backend_model)。"""
+    if is_port_open(LLAMA_PORT):
+        return LLAMA_BASE_URL, LLAMA_API_KEY, _get_llama_served_model()
+    if is_port_open(STRATA_PORT):
+        return STRATA_BASE_URL, "", (_get_strata_served_model() or LLAMA_MODEL_NAME)
+    return LLAMA_BASE_URL, LLAMA_API_KEY, _get_llama_served_model()
 
 # ── 并发控制：限制同时请求数 ──
 import threading
@@ -300,6 +335,7 @@ def _maybe_write_mem0(character_id, messages, write_interval):
 
 SERVICES = [
     {"name": "llama-server",    "port": LLAMA_PORT,  "enabled": True},
+    {"name": "Strata",          "port": STRATA_PORT, "enabled": True,  "note": "Qwen3.8-Flash-Next engine (external install, self-managed)"},
     {"name": "Embedding",       "port": 9999,         "enabled": True},
     {"name": "Headroom Proxy",  "port": 19251,        "enabled": True},
     {"name": "Live2D Bridge",   "port": 19200,        "enabled": True},
@@ -2013,11 +2049,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
             or "/" not in model_id
         )
         if use_local:
-            api_key = LLAMA_API_KEY
+            base_url, api_key, backend_model = _local_chat_backend()
             auth_header = ("Bearer " + api_key) if api_key else ""
-            base_url = LLAMA_BASE_URL
-            backend_model = _get_llama_served_model()
-            print(f"[chat] routing to local llama: {base_url} model={backend_model}", file=sys.stderr)
+            print(f"[chat] routing to local backend: {base_url} model={backend_model}", file=sys.stderr)
         else:
             provider_cfg = _resolve_provider_for_model(model_id)
             if not provider_cfg:
@@ -2031,6 +2065,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
             # （llama-server 只认 --alias 的名字），统一换成实际加载的模型 id
             if f":{LLAMA_PORT}" in base_url:
                 backend_model = _get_llama_served_model()
+            elif f":{STRATA_PORT}" in base_url:
+                backend_model = _get_strata_served_model() or backend_model
             print(f"[chat] routing to cloud provider: {base_url} model={backend_model}", file=sys.stderr)
 
         endpoint = base_url + "/chat/completions"
@@ -2250,8 +2286,9 @@ Conversation:
                 conv_lines.append(f"{char_name}: {content}")
         instruction += "\n".join(conv_lines)
 
-        # Check if llama is online; if not, use fallback prompt immediately
-        if not is_port_open(LLAMA_PORT):
+        # Check if a local backend (llama.cpp / Strata) is online; if not, fall back immediately
+        _pb_url, _pb_key, _pb_model = _local_chat_backend()
+        if not (is_port_open(LLAMA_PORT) or is_port_open(STRATA_PORT)):
             fallback = _make_fallback_prompt(character_id, char_name, messages)
             self.send_json(fallback)
             return
@@ -2260,17 +2297,20 @@ Conversation:
         try:
             import urllib.request, urllib.error
             payload = {
-                "model": LLAMA_MODEL_NAME,
+                "model": _pb_model,
                 "messages": [{"role": "user", "content": instruction}],
                 "stream": False,
                 "max_tokens": 800,
                 "temperature": 0.7,
             }
             data = json.dumps(payload).encode("utf-8")
+            _pb_headers = {"Content-Type": "application/json"}
+            if _pb_key:
+                _pb_headers["Authorization"] = "Bearer " + _pb_key
             req = urllib.request.Request(
-                f"{LLAMA_BASE_URL}/chat/completions",
+                f"{_pb_url}/chat/completions",
                 data=data,
-                headers={"Content-Type": "application/json"}
+                headers=_pb_headers
             )
             resp = urllib.request.urlopen(req, timeout=120)
             result = json.loads(resp.read())
@@ -2414,9 +2454,7 @@ Conversation:
 
         # Resolve backend
         if model_id.startswith("local/"):
-            api_key = LLAMA_API_KEY
-            base_url = LLAMA_BASE_URL
-            backend_model = LLAMA_MODEL_NAME
+            base_url, api_key, backend_model = _local_chat_backend()
         else:
             provider_cfg = _resolve_provider_for_model(model_id)
             if not provider_cfg:
@@ -2425,6 +2463,8 @@ Conversation:
             api_key = provider_cfg.get("apiKey", "")
             base_url = provider_cfg.get("baseUrl", "").rstrip("/")
             backend_model = model_id.split("/")[-1]
+            if f":{STRATA_PORT}" in base_url:
+                backend_model = _get_strata_served_model() or backend_model
 
         # Forward all llama-compatible params
         payload = {
