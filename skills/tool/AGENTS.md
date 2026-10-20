@@ -17,6 +17,12 @@
 * **Live2D**: direct HTTP to `http://localhost:19200` (does not kill llama, no spawn needed)
 * **File ops / system commands / coding & debugging / Git**
 
+## VRAM handoff (stop / start the LLM)
+
+The LLM engine (`:8080`, Strata) keeps the GPU resident, so ComfyUI (`:8188`) cannot start while it runs.
+Whole-card jobs: **stop LLM → run ComfyUI → restart LLM**, and never `exec` that in your own turn
+(killing the engine kills this session) — launch it detached. Scripts: `skills/comfyui/gpu_handoff/`.
+
 ## Leave Tool Mode
 
 ```powershell

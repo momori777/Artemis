@@ -105,6 +105,7 @@ def _get_strata_served_model():
         print(f"[chat] strata /models probe failed: {e}", file=sys.stderr)
     return _strata_served_id_cache["id"]
 
+
 def _local_chat_backend():
     """webchat 本地模型路由的后端选择：llama.cpp 在线优先，否则回退 Strata 引擎。
     返回 (base_url, api_key, backend_model)。"""
@@ -113,6 +114,29 @@ def _local_chat_backend():
     if is_port_open(STRATA_PORT):
         return STRATA_BASE_URL, "", (_get_strata_served_model() or LLAMA_MODEL_NAME)
     return LLAMA_BASE_URL, LLAMA_API_KEY, _get_llama_served_model()
+
+# 'llama' provider (:9931) 与 'local-llama' provider（Headroom :19251，其 llama-local 路由
+# 同样指向 :9931）只有在 llama.cpp 在跑时才有响应。引擎换成 Strata 后，webchat 的
+# 模型下拉里仍然列着这些 id，选中就直接 502，前端表现为“连不上后端”。
+# 这里统一回退到当前活着的本地引擎（Strata），两种引擎下所有本地 id 都能用。
+HEADROOM_PROXY_BASE = f"http://127.0.0.1:{int(CFG.get('headroom_port', 19251))}/v1"
+
+
+def _llama_only_backend(base_url):
+    """True when base_url only answers while llama.cpp is running."""
+    return f":{LLAMA_PORT}" in base_url or base_url == HEADROOM_PROXY_BASE
+
+
+def _strata_fallback_if_needed(base_url, api_key, backend_model):
+    """llama.cpp down + Strata up -> retarget a llama-only route to Strata."""
+    if not _llama_only_backend(base_url):
+        return base_url, api_key, backend_model
+    if is_port_open(LLAMA_PORT) or not is_port_open(STRATA_PORT):
+        return base_url, api_key, backend_model
+    url, key, model = _local_chat_backend()
+    print(f"[chat] llama.cpp :{LLAMA_PORT} offline -> rerouting {base_url} "
+          f"to Strata :{STRATA_PORT} model={model or backend_model}", file=sys.stderr)
+    return url, key, (model or backend_model)
 
 # ── 并发控制：限制同时请求数 ──
 import threading
@@ -803,7 +827,10 @@ SERVICE_STARTERS = {
 }
 
 SERVICE_KILLERS = {
-    "llama-server": 8080,
+    # llama.cpp moved 8080 -> 9931 (8080 is the Strata engine now); killing by
+    # the stale 8080 used to take Strata down whenever the UI restarted
+    # "llama-server", which is what made webchat lose 8080.
+    "llama-server": LLAMA_PORT,
     "Embedding": 9999,
     "Headroom Proxy": 19251,
     "Live2D Bridge": 19200,
@@ -2067,6 +2094,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 backend_model = _get_llama_served_model()
             elif f":{STRATA_PORT}" in base_url:
                 backend_model = _get_strata_served_model() or backend_model
+            # llama.cpp / Headroom 都不在线而 Strata 在跑时，回退到 Strata 而不是抛 502
+            base_url, api_key, backend_model = _strata_fallback_if_needed(
+                base_url, api_key, backend_model)
+            auth_header = ("Bearer " + api_key) if api_key else ""
             print(f"[chat] routing to cloud provider: {base_url} model={backend_model}", file=sys.stderr)
 
         endpoint = base_url + "/chat/completions"
@@ -2465,6 +2496,8 @@ Conversation:
             backend_model = model_id.split("/")[-1]
             if f":{STRATA_PORT}" in base_url:
                 backend_model = _get_strata_served_model() or backend_model
+            base_url, api_key, backend_model = _strata_fallback_if_needed(
+                base_url, api_key, backend_model)
 
         # Forward all llama-compatible params
         payload = {

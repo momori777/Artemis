@@ -64,6 +64,7 @@ function migrateToTree(messages) {
       mediaType: msg.mediaType || null,
       paint: !!msg.paint,
       paintParams: msg.paintParams || null,
+      reasoning: msg.reasoning || null,
       regenerated: !!msg.regenerated,
     };
     nodes[prevId].childrenIds.push(nid);
@@ -126,6 +127,7 @@ function getChainMessages(tree) {
       if (n.mediaType) m.mediaType = n.mediaType;
       if (n.paint) m.paint = true;
       if (n.paintParams) m.paintParams = n.paintParams;
+      if (n.reasoning) m.reasoning = n.reasoning;
       if (n.time) m.time = n.time;
       return m;
     });
@@ -158,6 +160,9 @@ function appendTreeNode(tree, msg) {
     mediaType: msg.mediaType || null,
     paint: !!msg.paint,
     paintParams: msg.paintParams || null,
+    // The thinking process has to survive the round-trip into the tree, or a
+    // reload (which renders from the persisted nodes) loses it.
+    reasoning: msg.reasoning || null,
   };
   tree.nodes[tree.currentNodeId].childrenIds.push(nid);
   tree.currentNodeId = nid;

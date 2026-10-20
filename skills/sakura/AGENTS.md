@@ -43,3 +43,10 @@ python -m pytest tests/unit
 - 不使用 `git reset --hard`、`git checkout --` 等破坏性命令，除非用户明确要求。
 - 可读写范围内只修改完成任务必需的文件。
 - 对二进制、角色资源、运行时缓存、大型第三方目录进行修改前要格外谨慎。
+
+## 显存与画图（停 / 启 LLM）
+
+- 本地 LLM 引擎（Strata，`:8080`）常驻占满显存，ComfyUI（`:8188`）此时起不来属正常现象，不是坏了。
+- 需要整卡独占的活（大工作流 / 高 batch / 训练）：顺序固定是 **停 LLM → 跑 ComfyUI → 重启 LLM**，中间 LLM 失联 1～3 分钟。
+- 不要在自己的 turn 里 `exec` 这类活：引擎一杀，正在答话的 session 自己会死，「重启 LLM」可能跑不到；必须挂计划任务 detached 跑。
+- 现成脚本与工作流：`skills/comfyui/gpu_handoff/`（入口 `gpu_handoff_launch.ps1`，说明 `README.md`），用到时再查。

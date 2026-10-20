@@ -15,6 +15,12 @@
 * Strata: Qwen3.8-Flash-Next only, engine on `:8080` (provider `strata/*`); llama.cpp moved to `:9931` — see `skills/strata/SKILL.md`
 * File ops, shell, coding, Git
 
+## VRAM handoff (stop / start the LLM)
+
+The LLM engine (`:8080`, Strata) keeps the GPU resident, so ComfyUI (`:8188`) cannot start while it runs.
+Whole-card jobs: **stop LLM → run ComfyUI → restart LLM**, and never `exec` that in your own turn
+(killing the engine kills this session) — launch it detached. Scripts: `skills/comfyui/gpu_handoff/`.
+
 ## Switch to roleplay
 
 ```powershell

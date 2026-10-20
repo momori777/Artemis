@@ -230,8 +230,17 @@ var ApiClient = {
           for (var ri = 0; ri < maxRetries; ri++) {
             await new Promise(function(r) { setTimeout(r, delay); });
             try {
-              var probe = await fetch('http://localhost:8080/health', { signal: AbortSignal.timeout(2000) });
-              if (probe.ok) {
+              // Ask the daemon whether llama-server is back on its real port.
+              // (llama.cpp moved 8080->9931; 8080 is Strata now and answers
+              // without CORS, so a direct browser probe of :8080/health from
+              // the webchat origin always failed and the retry loop timed out.)
+              var probe = await fetch(this.base + '/api/status', { signal: AbortSignal.timeout(2000) });
+              var svcs = probe.ok ? await probe.json().catch(function () { return null; }) : null;
+              var arr = Array.isArray(svcs) ? svcs : (svcs && Array.isArray(svcs.services) ? svcs.services : null);
+              var llamaUp = !!arr && arr.some(function (x) {
+                return x && x.name === 'llama-server' && x.online;
+              });
+              if (llamaUp) {
                 showToast('llama 就绪，继续对话', 2000);
                 return this.chatStream(messages, settings, onToken, onComplete, onError);
               }
@@ -373,7 +382,10 @@ var ApiClient = {
         return res.json();
       })
       .then(function (data) {
-        return data.choices?.[0]?.message?.content || '';
+        // reasoning_content must come back too, otherwise the non-streaming
+        // path has nothing to persist and a refresh loses the thinking block.
+        var msg = (data.choices && data.choices[0] && data.choices[0].message) || {};
+        return { text: msg.content || '', reasoningText: msg.reasoning_content || '' };
       });
   },
 

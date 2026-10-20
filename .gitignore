@@ -167,3 +167,7 @@ llama-server-fastmtp/
 
 # Auto-downloaded dependencies (ComfyUI, GPT-SoVITS) - not for git
 deps/
+
+# GPU handoff run artifacts + per-machine path overrides (absolute paths stay local)
+skills/comfyui/gpu_handoff/logs/
+skills/comfyui/gpu_handoff/gpu_handoff.local.ps1

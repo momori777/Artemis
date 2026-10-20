@@ -1,5 +1,16 @@
 # ComfyUI 文生图执行手册（主 session 专用）
 
+## 🎮 显存交接（先看这条）
+
+LLM 引擎（**Strata，`:8080`**）常驻占满显存，ComfyUI（`:8188`）就起不来。
+凡是「整卡独占」的活（大工作流 / 高 batch / 训练），必须 **停 LLM → 跑 ComfyUI → 重启 LLM**，
+而且**不能在自己的 turn 里 exec**（一杀引擎，正在答你的 session 跟着死）。
+
+→ 走计划任务：`skills/comfyui/gpu_handoff/gpu_handoff_launch.ps1`，细节和现成工作流见
+`skills/comfyui/gpu_handoff/README.md`（用到时再查，别现在读）。
+
+普通画图（下面这套 `run_comfyui.ps1` 流程）照旧走 `sessions_spawn`，不用管交接脚本。
+
 ## ⚠️ 核心规则：你不能 exec ComfyUI！你要 spawn 子 session！
 
 **❌ 绝对禁止**: `exec` 跑 comfyui_call.py
@@ -96,6 +107,10 @@ MEDIA: 在行首，不在代码块里；<qqmedia> 标签也单独一行。
 ```
 
 ## 故障排查
+
+### Q: ComfyUI 起不来 / 8188 连不上，但 8080 正常？
+**A**: 显存被 Strata 占满。普通画图交给 `run_comfyui.ps1` 自己腾；整卡独占的活走 `gpu_handoff/`。
+
 
 ### Q: 子 session announce 时 llama 503？
 **A**: Python 脚本内部三阶段检测 + PS 脚本末尾 /health 双重确认。若仍超时，检查 /completion 阶段是否卡住。
