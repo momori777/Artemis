@@ -63,6 +63,9 @@ media_qqbot_images: "C:\\Users\\<你的用户名>\\.openclaw\\media\\qqbot\\imag
 # ============================================================
 # ComfyUI image generation / 文生图
 # ============================================================
+# ComfyUI install dir (contains main.py; output/ lands there)
+# ComfyUI 安装目录（内有 main.py，出图到其 output/）；skills/comfyui/gpu_handoff/ 也读这一项
+comfyui_root: "填写 ComfyUI 安装目录，例如 D:\\ComfyUI"
 # ComfyUI Python env (system or venv; needs torch + safetensors)
 # ComfyUI Python 环境（系统 Python 或虚拟环境，需有 torch + safetensors）
 comfyui_python: "填写 Python 路径，例如 C:\\Users\\<你的用户名>\\AppData\\Local\\Programs\\Python\\Python310\\python.exe"
@@ -166,6 +169,11 @@ task_board_port: 19280
 # Full manual / 完整手册: skills/strata/SKILL.md
 # ============================================================
 strata_port: 8080
+# Install dir + launch config, read by skills/comfyui/gpu_handoff/ (whole-card jobs
+# that stop the engine, draw, then bring it back). strata_config may be relative
+# to strata_dir. / 安装目录与启动配置，供整卡显存交接脚本读取；strata_config 可写相对路径
+strata_dir: "填写 Strata 安装目录（安装器自管，不在本仓库内）"
+strata_config: "strata-iq3_s.json"
 
 # ============================================================
 # Default llama-server parameters / llama 默认启动参数

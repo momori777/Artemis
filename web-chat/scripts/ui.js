@@ -1305,6 +1305,29 @@ var UI = {
     return el;
   },
 
+  // Collapsed-by-default 思考过程 block for finished/persisted messages.
+  // Same markup and CSS classes as the live streaming block (createStreamBubble)
+  // so a reloaded bubble is indistinguishable from the streamed one.
+  _buildReasoningBlock: function(text) {
+    var block = document.createElement('div');
+    block.className = 'reasoning-block';
+    var header = document.createElement('div');
+    header.className = 'reasoning-header';
+    header.innerHTML = '<i class="ph ph-brain"></i> 思考过程 <span class="reasoning-expand">展开</span>';
+    var content = document.createElement('div');
+    content.className = 'reasoning-content';
+    content.style.display = 'none';
+    content.textContent = text;
+    header.onclick = function() {
+      var isVisible = content.style.display !== 'none';
+      content.style.display = isVisible ? 'none' : '';
+      header.querySelector('.reasoning-expand').textContent = isVisible ? '展开' : '收起';
+    };
+    block.appendChild(header);
+    block.appendChild(content);
+    return block;
+  },
+
   renderMessage: function(msg, index) {
     var isUser = msg.role === 'user';
     var isSystem = msg.role === 'system';
@@ -1366,6 +1389,13 @@ var UI = {
     var contentWrap = document.createElement('div');
     var bubble = document.createElement('div');
     bubble.className = 'msg-bubble';
+
+    // The thinking process must live on the saved message and be re-rendered
+    // here: the streaming #stream-reasoning node is throwaway DOM, so a reload
+    // used to rebuild every assistant bubble without its 思考过程 block.
+    if (!isUser && msg.reasoning) {
+      contentWrap.appendChild(self._buildReasoningBlock(msg.reasoning));
+    }
 
     // Text content
     var textEl = document.createElement('span');
@@ -1812,6 +1842,7 @@ var UI = {
           tree.nodes[newId]._pending = false;
           if (result.media) tree.nodes[newId].media = result.media;
           else if (parsed.mediaPath) tree.nodes[newId].media = self._resolveMediaPath(parsed.mediaPath);
+          if (result.reasoningText) tree.nodes[newId].reasoning = result.reasoningText;
           self.state.messages = getChainMessages(tree);
           saveSessionTree(charId, sessionId, tree);
           // Re-render DOM to show the new response and update branch indicators
@@ -1898,6 +1929,7 @@ var UI = {
         var newMsg = { role: 'assistant', content: cleanText, time: self.formatTime(new Date()) };
         if (result.media) newMsg.media = result.media;
         else if (parsed.mediaPath) newMsg.media = self._resolveMediaPath(parsed.mediaPath);
+        if (result.reasoningText) newMsg.reasoning = result.reasoningText;
         self.state.messages.splice(triggerUserIdx + 1, 0, newMsg);
         self.$messages.innerHTML = '';
         for (var mi = 0; mi < self.state.messages.length; mi++) {
@@ -2152,6 +2184,7 @@ var UI = {
         var newMsg = { role: 'assistant', content: cleanText, time: self.formatTime(new Date()) };
         if (result.media) newMsg.media = result.media;
         else if (parsed.mediaPath) newMsg.media = self._resolveMediaPath(parsed.mediaPath);
+        if (result.reasoningText) newMsg.reasoning = result.reasoningText;
         newMsg.mediaType = 'image';
         // LLM did not return a new image (e.g. local llama has no image
         // capability): keep the original image so the message is not replaced
@@ -2568,6 +2601,8 @@ var UI = {
           var charMsg = { role: 'assistant', content: cleanText, time: self.formatTime(new Date()) };
           if (result.media) charMsg.media = result.media;
           else if (parsed.mediaPath) charMsg.media = self._resolveMediaPath(parsed.mediaPath);
+          // Persisted so the 思考过程 block survives a refresh.
+          if (result.reasoningText) charMsg.reasoning = result.reasoningText;
 
           if (self._useTree && self.state.tree) {
             appendTreeNode(self.state.tree, charMsg);
@@ -2600,11 +2635,15 @@ var UI = {
       );
     } else {
       var apiMsgs = self._useTree && self.state.tree ? getChainMessages(self.state.tree) : self.state.messages;
-      ApiClient.nonStreamChat(apiMsgs, settings).then(function(reply) {
+      ApiClient.nonStreamChat(apiMsgs, settings).then(function(result) {
         self.hideTyping();
+        // Tolerate both shapes: { text, reasoningText } (current) and a bare
+        // string (a cached older api.js served over a stale index.html).
+        var reply = (result && typeof result === 'object') ? (result.text || '') : (result || '');
         var parsed = self._parseMediaFromText(reply);
         var charMsg = { role: 'assistant', content: parsed.cleanText, time: self.formatTime(new Date()) };
         if (parsed.mediaPath) charMsg.media = self._resolveMediaPath(parsed.mediaPath);
+        if (result && typeof result === 'object' && result.reasoningText) charMsg.reasoning = result.reasoningText;
         self.appendMessage(charMsg);
         if (self._useTree && self.state.tree) {
           appendTreeNode(self.state.tree, charMsg);
