@@ -47,9 +47,9 @@
     btn_manual_paint:        { zh: '手动输入提示词画图',    ja: '手動で絵の指示を入力',    en: 'Manual prompt image gen' },
     btn_tts_voice:           { zh: '语音朗读最近回复',      ja: '最新の返信を音声読上',    en: 'TTS read last reply' },
     btn_tts_streaming:       { zh: '流式TTS+Live2D口型同步', ja: 'ストリームTTS+口形同期', en: 'Stream TTS + Lip Sync' },
-    btn_stop_llama:          { zh: '停llama释放显存',       ja: 'llama停止でVRAM解放',    en: 'Stop llama to free VRAM' },
+    btn_stop_llama:          { zh: '停LLM释放显存',        ja: 'LLM停止でVRAM解放',    en: 'Stop LLM to free VRAM' },
     btn_plugins:             { zh: '增强功能 (Mem0等)',     ja: '拡張機能 (Mem0等)',      en: 'Plugins (Mem0 etc.)' },
-    stop_llama_label:        { zh: '停llama',              ja: 'llama停止',            en: 'Stop llama' },
+    stop_llama_label:        { zh: '停LLM',                ja: 'LLM停止',             en: 'Stop LLM' },
 
     // Thinking mode
     thinking_default:        { zh: '默认',                 ja: 'デフォルト',           en: 'Default' },
@@ -60,7 +60,7 @@
     // Plugins popup
     plugin_model:            { zh: '💬 模型',              ja: '💬 モデル',            en: '💬 Model' },
     plugin_reasoning:        { zh: 'Reasoning · 深度思考',  ja: 'Reasoning · 深層思考',  en: 'Reasoning · Deep Think' },
-    plugin_rea_hint:         { zh: '⚠ 开关会重启llama，需等待~30秒', ja: '⚠ llama再起動、約30秒待機', en: '⚠ Toggle restarts llama, ~30s wait' },
+    plugin_rea_hint:         { zh: '⚠ 开关会重启LLM，需等待~30秒', ja: '⚠ LLM再起動、約30秒待機', en: '⚠ Toggle restarts LLM, ~30s wait' },
     plugin_think_style:      { zh: '思考风格',             ja: '思考スタイル',          en: 'Thinking Style' },
     plugin_memory:           { zh: '🧠 记忆',              ja: '🧠 記憶',              en: '🧠 Memory' },
     plugin_mem_source:       { zh: '记忆源',               ja: '記憶ソース',           en: 'Memory Source' },
@@ -110,7 +110,7 @@
     studio_cfg:              { zh: 'CFG',                  ja: 'CFG',                  en: 'CFG' },
     studio_checkpoint:       { zh: '模型',                 ja: 'モデル',               en: 'Checkpoint' },
     studio_presets:          { zh: '快速预设',             ja: 'クイックプリセット',    en: 'Quick Presets' },
-    studio_stop_llama:       { zh: '生成前停llama (释放显存防OOM)', ja: '生成前にllama停止 (VRAM解放)', en: 'Stop llama before gen (free VRAM)' },
+    studio_stop_llama:       { zh: '生成前停LLM (释放显存防OOM)', ja: '生成前にLLM停止 (VRAM解放)', en: 'Stop LLM before gen (free VRAM)' },
     studio_generate:         { zh: '生成',                 ja: '生成',                 en: 'Generate' },
     studio_image_placeholder:{ zh: '图片预览',             ja: '画像プレビュー',        en: 'Image preview' },
     studio_start_all:        { zh: '启动全部服务',          ja: '全サービス起動',        en: 'Start All Services' },
@@ -262,8 +262,8 @@
     paint_need_pos:          { zh: '请输入正向提示词',     ja: 'ポジティブプロンプトを入力してください', en: 'Please enter a positive prompt' },
     paint_cancel:            { zh: '取消',                 ja: 'キャンセル',           en: 'Cancel' },
     paint_generate:          { zh: '生成',                 ja: '生成',                 en: 'Generate' },
-    paint_stop_llama_hint:   { zh: '将停止 llama 以释放资源（生成后自动重启）', ja: 'llamaを停止して資源解放（生成後に自動再開）', en: 'Will stop llama to free resources (auto-restarts after)' },
-    paint_keep_llama_hint:   { zh: 'llama 保持运行（未停止）', ja: 'llama 稼働中（停止しない）', en: 'llama stays running (not stopped)' },
+    paint_stop_llama_hint:   { zh: '将停止 LLM 后端以释放资源（生成后自动重启）', ja: 'LLMを停止して資源解放（生成後に自動再開）', en: 'Will stop LLM backend to free resources (auto-restarts after)' },
+    paint_keep_llama_hint:   { zh: 'LLM 保持运行（未停止）', ja: 'LLM 稼働中（停止しない）', en: 'LLM stays running (not stopped)' },
 
     // Forced injection (auto paint / regenerate)
     paint_forced_title:      { zh: '🔒 AI 自动画图强制注入', ja: '🔒 AI自動描画の強制注入', en: '🔒 Forced Injection (Auto Paint)' },
