@@ -186,9 +186,9 @@
                 <i class="ph ph-broadcast"></i>
               </button>
               <span class="paint-mode-divider">/</span>
-              <button class="input-action" id="btn-stop-llama" data-i18n-title="btn_stop_llama" title="停llama释放显存">
+              <button class="input-action" id="btn-stop-llama" data-i18n-title="btn_stop_llama" title="停LLM释放显存">
                 <i class="ph ph-stop-circle"></i>
-                <span class="stop-llama-label" style="display:none" data-i18n="stop_llama_label">停llama</span>
+                <span class="stop-llama-label" style="display:none" data-i18n="stop_llama_label">停LLM</span>
               </button>
               <span class="paint-mode-divider">/</span>
               <button class="input-action" id="btn-plugins-toggle" data-i18n-title="btn_plugins" title="增强功能 (Mem0等)">
@@ -218,7 +218,7 @@
               <span class="plugin-toggle-text" data-i18n="plugin_reasoning">Reasoning · 深度思考</span>
             </label>
             <div class="plugin-sub-row" id="rea-hint-row" style="font-size:11px;color:var(--text-muted);padding:2px 0 0 44px" data-i18n="plugin_rea_hint">
-              ⚠ 开关会重启llama，需等待~30秒
+              ⚠ 开关会重启LLM，需等待~30秒
             </div>
             <div class="plugin-sub-row" id="thinking-mode-row" style="display:none">
               <span class="plugin-sub-label" data-i18n="plugin_think_style">思考风格</span>
@@ -398,7 +398,7 @@
                 <label class="settings-toggle" id="toggle-llama-manage-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text-muted)" for="comfy-manage-llama">
                   <span class="toggle-switch on" id="toggle-llama-manage-switch"></span>
                   <input type="checkbox" id="comfy-manage-llama" checked style="display:none">
-                  Stop llama-server before generating (frees VRAM, prevents OOM)
+                  Stop LLM backend before generating (frees VRAM, prevents OOM)
                 </label>
               </div>
 

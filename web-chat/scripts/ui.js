@@ -171,7 +171,7 @@ var UI = {
         if (thinkingModeRow) thinkingModeRow.style.display = enabled ? '' : 'none';
         saveSettings({ reasoningEnabled: enabled });
         var rea = enabled ? 'on' : 'off';
-        showToast(enabled ? 'Reasoning ON — 重启llama中，等~30s' : 'Reasoning OFF — 重启llama中，等~30s');
+        showToast(enabled ? 'Reasoning ON — 重启LLM中，等~30s' : 'Reasoning OFF — 重启LLM中，等~30s');
         // Trigger restart immediately via daemon API
         var xhr = new XMLHttpRequest();
         xhr.open('POST', 'http://localhost:19260/api/set-rea?mode=' + rea);
@@ -2817,7 +2817,7 @@ var UI = {
       var checkpoint = overlay.querySelector('#paint-checkpoint') ? overlay.querySelector('#paint-checkpoint').value : undefined;
       // manage_llama follows the stop-llama toggle in the input area
       var manage_llama = self._shouldManageLlama();
-      if (manage_llama) self.appendSystemMsg('🎨 Stopping llama for painting...');
+      if (manage_llama) self.appendSystemMsg('🎨 Stopping LLM backend for painting...');
       closeModal();
 
       self.appendSystemMsg('🎨 Generating from manual prompt...');
@@ -3102,7 +3102,7 @@ var UI = {
     var manage_llama = self._shouldManageLlama();
     
     // Show generating indicator
-    var indicatorMsg = '🎨 Generating prompt (will stop llama after)...';
+    var indicatorMsg = '🎨 Generating prompt (will stop LLM backend after)...';
     self.appendSystemMsg(indicatorMsg);
     this.scrollToBottom();
 
@@ -3131,7 +3131,7 @@ var UI = {
             self.scrollToBottom();
           }
           // Step 2: Now submit the job (bridge will stop llama if manage_llama is set)
-          if (manage_llama) self.appendSystemMsg('🎨 Submitting paint job (stopping llama)...');
+          if (manage_llama) self.appendSystemMsg('🎨 Submitting paint job (stopping LLM backend)...');
           self._submitPaintJob(forced.positive, forced.negative, forced.width, forced.height, forced.steps, undefined, manage_llama);
         } else {
           self.appendSystemMsg('⚠️ Failed to generate paint prompt: ' + (data.error || 'unknown'));
