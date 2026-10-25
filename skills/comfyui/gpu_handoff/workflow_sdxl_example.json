@@ -7,7 +7,7 @@
   "2": {
     "class_type": "CLIPTextEncode",
     "inputs": {
-      "text": "masterpiece, best quality, 1girl, silver hair, blue eyes, white dress, standing in a field of flowers, soft sunlight, detailed background, depth of field",
+      "text": "masterpiece, best quality, 1girl, long black hair, red eyes, summer beach at sunset, waves, seagulls, wind blowing hair, detailed sky gradient, depth of field",
       "clip": ["1", 1]
     },
     "_meta": { "title": "Positive Prompt" }

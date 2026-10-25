@@ -773,7 +773,7 @@ def start_gateway():
         )
     else:
         # 降级：直接 node 启动，从 workspace 推算 dist 路径
-        node_exe = CFG.get("node_exe", "") or shutil.which("node") or r"C:\Program Files\nodejs\node.exe"
+        node_exe = CFG.get("node_exe", "") or shutil.which("node") or os.path.expandvars(r"%ProgramFiles%\nodejs\node.exe")
         openclaw_git = os.path.join(openclaw_dir, "openclaw-git", "dist", "index.js")
         npm_dist = os.path.expandvars(r"%APPDATA%\npm\node_modules\openclaw\dist\index.js")
         gateway_js = openclaw_git if os.path.isfile(openclaw_git) else npm_dist
@@ -1736,7 +1736,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         # Find the sessions.json path for this agent
         import glob
         # os.path.dirname(os.path.expanduser("~")) drops the username
-        # (C:\Users\TK -> C:\Users); use expanduser directly so the path
+        # (home dir -> its parent); use expanduser directly so the path
         # stays dynamic/portable across machines.
         agents_dir = os.path.join(os.path.expanduser("~"), ".openclaw", "agents")
         session_files = []

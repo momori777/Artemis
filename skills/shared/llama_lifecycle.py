@@ -326,6 +326,172 @@ def release_lock(lock_file):
 
 # ---- Llama Server 启停 ----
 
+def stop_strata(port=8080, wait_vram_stable=True):
+    """
+    停止 Strata 推理引擎（POST /shutdown），并等待端口释放。
+
+    Strata 与 llama.cpp 一样监听 HTTP 端口，/shutdown 为 POST 优雅关闭。
+    端口未释放时回退到 taskkill 杀端口持有进程。
+    返回 True 表示已停止（或本来就没运行），False 表示失败。
+    """
+    print(f"[STRATA] 检查 Strata 引擎状态 (port {port})...", file=sys.stderr, flush=True)
+
+    if not _port_open("127.0.0.1", port, timeout=1):
+        print("[STRATA] Strata 未运行，跳过", file=sys.stderr, flush=True)
+        return True
+
+    print("[STRATA] 停止 Strata 引擎...", file=sys.stderr, flush=True)
+    killed = False
+    try:
+        import urllib.request
+        req = urllib.request.Request(f"http://127.0.0.1:{port}/shutdown", method="POST")
+        urllib.request.urlopen(req, timeout=3)
+        print("[STRATA] 已发送优雅关闭请求", file=sys.stderr, flush=True)
+    except Exception:
+        print("[STRATA] HTTP 关闭失败，强杀端口持有进程", file=sys.stderr, flush=True)
+        killed = _kill_port_owner(port)
+
+    # 等待端口释放
+    for i in range(60):
+        if not _port_open("127.0.0.1", port, timeout=1):
+            print(f"[STRATA] 端口 {port} 已释放 ({(i + 1) * 0.5:.1f}s)",
+                  file=sys.stderr, flush=True)
+            break
+        if not killed and i == 10:
+            # 优雅关闭 5s 没生效 → 强杀
+            _kill_port_owner(port)
+            killed = True
+        time.sleep(0.5)
+    else:
+        print(f"[STRATA] 警告：端口 {port} 仍未释放", file=sys.stderr, flush=True)
+        return False
+
+    if wait_vram_stable:
+        _wait_for_vram_stable_nosmoke(max_wait=15)
+
+    return True
+
+
+def _wait_for_vram_stable_nosmoke(max_wait=15):
+    """torch 不可用时（bridge 进程禁 import torch）用 nvidia-smi 轮询显存释放。"""
+    try:
+        import torch  # noqa: F401
+        return _wait_for_vram_stable(min_free_mb=None, max_wait=max_wait)
+    except Exception:
+        pass
+    last = -1
+    for i in range(max_wait):
+        time.sleep(1)
+        try:
+            r = subprocess.run(
+                ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,noheader,nounits"],
+                capture_output=True, timeout=10)
+            cur = float((r.stdout or b"").decode("ascii", errors="replace").strip().splitlines()[0])
+        except Exception:
+            return
+        if last >= 0 and abs(cur - last) < 50:
+            print(f"[STRATA] VRAM stable at {cur:.0f} MiB free ({i + 1}s)",
+                  file=sys.stderr, flush=True)
+            return
+        last = cur
+    print(f"[STRATA] VRAM still settling after {max_wait}s", file=sys.stderr, flush=True)
+
+
+def _kill_port_owner(port):
+    """Kill the process holding the given TCP port (no admin needed)."""
+    import re as _re
+    try:
+        r = subprocess.run(["netstat", "-ano", "-p", "TCP"],
+                           capture_output=True, timeout=10)
+        # Chinese Windows netstat prints GBK; text=True would crash the reader thread.
+        out = (r.stdout or b"").decode("mbcs", errors="replace")
+        pids = set()
+        for line in out.splitlines():
+            parts = _re.split(r"\s+", line.strip())
+            if len(parts) >= 5 and parts[0].upper() == "TCP" \
+                    and parts[1].endswith(f":{port}") and parts[3].upper() == "LISTENING":
+                pids.add(parts[4])
+        for pid in pids:
+            if pid.isdigit() and int(pid) > 4:
+                subprocess.run(["taskkill", "/f", "/pid", pid],
+                               capture_output=True, text=False)
+                print(f"[STRATA] taskkill /f /pid {pid}", file=sys.stderr, flush=True)
+        return bool(pids)
+    except Exception:
+        return False
+
+
+def strata_start_command(cfg, engine_name=None):
+    """从 config.yaml 字典构造 Strata 启动命令；配置不全返回 None。"""
+    sd = cfg.get("strata_dir", "")
+    sc = cfg.get("strata_config", "")
+    sp = int(cfg.get("strata_port", 8080) or 8080)
+    if not sd or not sc:
+        return None
+    py = os.path.join(sd, ".venv", "Scripts", "python.exe")
+    if not os.path.exists(py):
+        py = "python"
+    svc = os.path.join(sd, "serve", "server.py")
+    if not os.path.exists(svc):
+        return None
+    cfg_path = sc if os.path.isabs(sc) else os.path.join(sd, sc)
+    return [py, svc, "--engine", "strata", "--config", cfg_path, "--port", str(sp)]
+
+
+def start_strata(port=8080, timeout=300, cfg=None):
+    """
+    启动 Strata 推理引擎（detached）并等待 /health 就绪。
+
+    cfg 为 config.yaml 加载后的 dict（由调用方传入，避免重复读盘）；
+    返回 True 表示就绪，False 表示失败。
+    """
+    if cfg is None:
+        try:
+            _dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            import yaml
+            with open(os.path.join(_dir, "config.yaml"), "r", encoding="utf-8") as _f:
+                cfg = yaml.safe_load(_f) or {}
+        except Exception:
+            cfg = {}
+
+    if _port_open("127.0.0.1", port, timeout=1):
+        print(f"[STRATA] 端口 {port} 已占用，视为就绪", file=sys.stderr, flush=True)
+        return True
+
+    args = strata_start_command(cfg)
+    if not args:
+        print("[STRATA] config 缺少 strata_dir/strata_config，无法启动", file=sys.stderr, flush=True)
+        return False
+
+    cwd_dir = cfg.get("strata_dir", "")
+    print(f"[STRATA] 启动: {' '.join(args)}", file=sys.stderr, flush=True)
+    try:
+        flags = 0
+        if hasattr(subprocess, "DETACHED_PROCESS"):
+            flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        subprocess.Popen(args, cwd=cwd_dir or None, creationflags=flags,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        print(f"[STRATA] 启动失败: {e}", file=sys.stderr, flush=True)
+        return False
+
+    # 等待 /health 200
+    import urllib.request
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            req = urllib.request.Request(f"http://127.0.0.1:{port}/health", method="GET")
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                if resp.status == 200:
+                    print(f"[STRATA] /health 200 OK，引擎就绪", file=sys.stderr, flush=True)
+                    return True
+        except Exception:
+            pass
+        time.sleep(2)
+    print(f"[STRATA] 等待 {timeout}s 后仍未就绪", file=sys.stderr, flush=True)
+    return False
+
+
 def stop_llama(port=8080, wait_vram_stable=True):
     """
     停止 llama-server（如果正在运行）。

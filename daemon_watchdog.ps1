@@ -4,7 +4,8 @@
 # This script never touches 8080 and never launches llama.cpp (--no-llama),
 # so it cannot evict/over-commit the Strata stack.
 $ErrorActionPreference = "Continue"
-$log = "E:\AI_Girlfriend\daemon_watchdog.log"
+$root = $PSScriptRoot
+$log = Join-Path $root "daemon_watchdog.log"
 function Log($m) { "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $m" | Out-File -FilePath $log -Append -Encoding utf8 }
 
 if (Get-NetTCPConnection -State Listen -LocalPort 19260 -ErrorAction SilentlyContinue) {
@@ -12,9 +13,10 @@ if (Get-NetTCPConnection -State Listen -LocalPort 19260 -ErrorAction SilentlyCon
 }
 
 Log "19260 not listening; launching daemon"
+$daemon = Join-Path $root "shiki_daemon.py"
 Start-Process -FilePath "python" `
-    -ArgumentList '"E:\AI_Girlfriend\shiki_daemon.py"', '--no-llama' `
-    -WorkingDirectory "E:\AI_Girlfriend" -WindowStyle Hidden
+    -ArgumentList "`"$daemon`"", '--no-llama' `
+    -WorkingDirectory $root -WindowStyle Hidden
 
 for ($i = 0; $i -lt 30; $i++) {
     Start-Sleep -Seconds 2

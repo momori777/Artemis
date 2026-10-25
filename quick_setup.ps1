@@ -98,7 +98,8 @@ function Prompt-Path($label, $default, $hint) {
 # 搜索根目录
 # ============================================================
 $desktop = [Environment]::GetFolderPath("Desktop")
-$searchRoots = @("C:\", "D:\", "E:\", $desktop, $env:USERPROFILE, "$env:USERPROFILE\Desktop\vllm")
+$driveRoots = (Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Root }).Root
+$searchRoots = @($driveRoots, $desktop, $env:USERPROFILE, "$env:USERPROFILE\Desktop\vllm") | ForEach-Object { $_ }
 $defaultLlamaLogDir = "$desktop\vllm\restart-logs"
 
 # ============================================================
@@ -106,7 +107,7 @@ $defaultLlamaLogDir = "$desktop\vllm\restart-logs"
 # ============================================================
 Write-Host "--- OpenClaw Workspace ---" -ForegroundColor Green
 Write-Host "  请输入你准备存放所有 AI 文件的「工作区」目录路径。" -ForegroundColor White
-Write-Host "  例如: D:\Artemis_demo\workspace" -ForegroundColor DarkGray
+Write-Host "  例如: <你的盘符>:\Artemis_demo\workspace" -ForegroundColor DarkGray
 Write-Host "  建议选一个单独的目录，不要和其他项目混用。" -ForegroundColor DarkGray
 
 # 默认建议
@@ -134,9 +135,9 @@ Write-Host ""
 Write-Host "--- ComfyUI ---" -ForegroundColor Green
 
 $comfyuiRoot = Find-Dir "ComfyUI" $searchRoots
-$comfyuiPython = Find-Exe "python.exe" @("$comfyuiRoot\..\python", "$comfyuiRoot\python", "E:\comfyui\ComfyUI-aki-v3\python")
+$comfyuiPython = Find-Exe "python.exe" @("$comfyuiRoot\..\python", "$comfyuiRoot\python", (Join-Path $env:SystemDrive "comfyui\ComfyUI-aki-v3\python"))
 $comfyuiCheckpoints = if ($comfyuiRoot) { Join-Path $comfyuiRoot "models\checkpoints" } else { $null }
-$comfyuiConfigure = Find-Exe "A绘世启动器.exe" @("$comfyuiRoot\..", "$comfyuiRoot\..\..", "E:\comfyui\ComfyUI-aki-v3")
+$comfyuiConfigure = Find-Exe "A绘世启动器.exe" @("$comfyuiRoot\..", "$comfyuiRoot\..\..", (Join-Path $env:SystemDrive "comfyui\ComfyUI-aki-v3"))
 
 if (-not $comfyuiRoot) {
     Write-Host "  未自动检测到 ComfyUI，请手动填写：" -ForegroundColor Yellow
