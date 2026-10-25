@@ -1,7 +1,7 @@
-import sqlite3, json
+import sqlite3, json, os
 
 # Check agent main DB for conversation storage
-db = 'C:/Users/TK/.openclaw/agents/main/agent/openclaw-agent.sqlite'
+db = os.path.expanduser('~/.openclaw/agents/main/agent/openclaw-agent.sqlite')
 c = sqlite3.connect(db)
 tables = [r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
 for t in tables:

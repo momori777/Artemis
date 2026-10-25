@@ -42,6 +42,7 @@ if _def not in sys.path:
 from skills.shared.llama_lifecycle import (
     acquire_lock, release_lock,
     stop_llama, start_llama,
+    stop_strata, start_strata,
     TimeoutGuard, register_cleanup_handlers,
 )
 
@@ -75,6 +76,18 @@ LLAMA_EXE_PATH = _cfg['llama_exe']
 LLAMA_MODEL_PATH = _cfg['llama_model']
 RESTART_SCRIPT = _cfg['restart_script']
 LLAMA_PORT = _cfg.get('llama_port', 8080)
+
+# ========== 常驻 LLM 引擎类型：Strata(strata_port) 或 llama.cpp(llama_port) ==========
+STRATA_PORT = _cfg.get('strata_port')
+STRATA_DIR = _cfg.get('strata_dir')
+STOPPED_ENGINE = None  # "strata" / "llama" / None，run 时判定，重启时复用
+
+
+def _strata_running():
+    """Strata 引擎是否正占用 GPU（config 有 strata_dir 且端口开放）。"""
+    from skills.shared.llama_lifecycle import _port_open
+    return bool(STRATA_PORT and STRATA_DIR and
+                _port_open("127.0.0.1", int(STRATA_PORT), timeout=1))
 
 # ========== 硬超时（防止子进程卡死不退出，导致 gateway session 锁死） ==========
 HARD_TIMEOUT = int(_cfg.get('skill_timeout', 9000))  # unified from config.yaml
@@ -142,7 +155,15 @@ def run_txt2img(positive_prompt, negative_prompt, seed, width, height,
     import torch
 
     if manage_llama:
-        stop_llama(port=LLAMA_PORT, wait_vram_stable=True)
+        global STOPPED_ENGINE
+        if _strata_running():
+            STOPPED_ENGINE = "strata"
+            print(f"[STRATA] 检测到常驻引擎 Strata (port {STRATA_PORT})，停 Strata",
+                  file=sys.stderr, flush=True)
+            stop_strata(port=int(STRATA_PORT), wait_vram_stable=True)
+        else:
+            STOPPED_ENGINE = "llama"
+            stop_llama(port=LLAMA_PORT, wait_vram_stable=True)
 
     # 导入 ComfyUI 路径
     sys.path.insert(0, COMFYUI_ROOT)
@@ -311,7 +332,29 @@ def run_txt2img(positive_prompt, negative_prompt, seed, width, height,
               file=sys.stderr, flush=True)
     # ---
 
-    if manage_llama:
+    if manage_llama and STOPPED_ENGINE == "strata":
+        sys.stderr.flush()
+        ok = start_strata(port=int(STRATA_PORT), timeout=300, cfg=_cfg)
+        if not ok:
+            print("[STRATA] 启动失败，激进回收 VRAM 后重试...",
+                  file=sys.stderr, flush=True)
+            torch.cuda.synchronize()
+            torch.cuda.empty_cache()
+            _gc.collect()
+            try:
+                ctypes.windll.psapi.EmptyWorkingSet(ctypes.windll.kernel32.GetCurrentProcess())
+            except Exception:
+                pass
+            time.sleep(15)
+            torch.cuda.empty_cache()
+            ok = start_strata(port=int(STRATA_PORT), timeout=300, cfg=_cfg)
+        if not ok:
+            print(f"[STRATA] 启动失败(VRAM不足或超时)，图像已保存到 {out_path}",
+                  file=sys.stderr, flush=True)
+        else:
+            print("[STRATA] 引擎已就绪，继续输出结果", file=sys.stderr, flush=True)
+
+    if manage_llama and STOPPED_ENGINE != "strata":
         sys.stderr.flush()
         ok = start_llama(
             port=LLAMA_PORT,
@@ -386,10 +429,11 @@ if __name__ == "__main__":
         sys.exit(0)
 
     # 注册清理钩子（使用 shared 模块）——锁清理始终注册；llama 重启保护仅在管理模式下启用
+    _is_strata = _strata_running()
     register_cleanup_handlers(
         lock_file=LOCK_FILE,
-        llama_port=None if no_manage_llama else LLAMA_PORT,
-        restart_script=None if no_manage_llama else RESTART_SCRIPT,
+        llama_port=None if (no_manage_llama or _is_strata) else LLAMA_PORT,
+        restart_script=None if (no_manage_llama or _is_strata) else RESTART_SCRIPT,
     )
 
     out_path = None  # 声明在外层作用域

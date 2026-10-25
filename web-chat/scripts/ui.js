@@ -3196,16 +3196,34 @@ var UI = {
     var s = getSettings() || {};
     var finalCheckpoint = s.paintCheckpoint || checkpoint || 'WAI-Nsfw-Illustrious-17.safetensors';
 
-    var params = {
-      positive: finalPositive,
-      negative: finalNegative,
-      width: width || 768,
-      height: height || 1024,
-      steps: steps || 24,
-      cfg: cfg || 6.0,
-      checkpoint: finalCheckpoint,
-      manage_llama: manage_llama,
-    };
+    // Workflow mode: the imported ComfyUI workflow owns model/sampler/size
+    // defaults. Only LLM-generated (or user-forced) prompts are injected; the
+    // 0 values below tell the bridge/runner "keep the workflow's own values".
+    var wfName = s.paintWorkflow || '';
+    var params;
+    if (wfName) {
+      params = {
+        positive: finalPositive,
+        negative: finalNegative,
+        width: s.paintWidth || 0,
+        height: s.paintHeight || 0,
+        steps: s.paintSteps || 0,
+        cfg: 0,
+        workflow: wfName,
+        manage_llama: manage_llama,
+      };
+    } else {
+      params = {
+        positive: finalPositive,
+        negative: finalNegative,
+        width: width || 768,
+        height: height || 1024,
+        steps: steps || 24,
+        cfg: cfg || 6.0,
+        checkpoint: finalCheckpoint,
+        manage_llama: manage_llama,
+      };
+    }
 
     // Remember the params on the instance so the resulting image message can
     // store them. Without this, an image message has no way to be re-rolled:
@@ -3219,6 +3237,7 @@ var UI = {
       steps: params.steps,
       cfg: params.cfg,
       checkpoint: params.checkpoint,
+      workflow: params.workflow,
     };
 
     var bridgeUrl = getSettings().bridgeUrl || 'http://localhost:19250';
@@ -3511,6 +3530,7 @@ var UI = {
       s.mem0WriteInterval = document.getElementById('setting-mem0-interval') ? parseInt(document.getElementById('setting-mem0-interval').value) || 10 : s.mem0WriteInterval;
       s.treeMode = document.getElementById('setting-tree-mode') ? document.getElementById('setting-tree-mode').value : (s.treeMode || 'auto');
       s.paintCheckpoint = document.getElementById('setting-paint-checkpoint') ? document.getElementById('setting-paint-checkpoint').value || undefined : s.paintCheckpoint;
+      s.paintWorkflow = document.getElementById('setting-paint-workflow') ? document.getElementById('setting-paint-workflow').value || undefined : s.paintWorkflow;
       saveSettings(s);
       ApiClient.init(s.apiBase);
       Studio.bridgeUrl = s.bridgeUrl;
@@ -3669,6 +3689,78 @@ var UI = {
     });
   },
 
+  // ---- ComfyUI workflow picker (settings) ----
+  // Populates #setting-paint-workflow from bridge /api/workflows (presets +
+  // imported). Selecting one makes every paint job go through that workflow:
+  // the LLM still fills positive/negative prompts, everything else (model,
+  // sampler chain, size defaults) comes from the workflow JSON server-side.
+  _populateWorkflowSelect: function(selected) {
+    var select = document.getElementById('setting-paint-workflow');
+    if (!select) return;
+    var bridgeUrl = getSettings().bridgeUrl || 'http://localhost:19250';
+    var noneLabel = window.tr ? window.tr('settings_workflow_none') : '不用工作流（默认管线）';
+    select.innerHTML = '<option value="">' + noneLabel + '</option>';
+    fetch(bridgeUrl + '/api/workflows', { signal: AbortSignal.timeout(4000) })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        (data.workflows || []).forEach(function(wf) {
+          var opt = document.createElement('option');
+          opt.value = wf.name;
+          opt.textContent = wf.name + (wf.preset ? ' ★' : '');
+          select.appendChild(opt);
+        });
+        if (selected) select.value = selected;
+        if (selected && select.value !== selected) {
+          // Saved workflow no longer exists server-side: keep it visible as custom path
+          var opt = document.createElement('option');
+          opt.value = selected; opt.textContent = selected + ' (?)';
+          select.appendChild(opt); select.value = selected;
+        }
+      })
+      .catch(function() {
+        var opt = document.createElement('option');
+        opt.value = selected || ''; opt.textContent = 'bridge offline';
+        if (selected) select.appendChild(opt);
+      });
+  },
+
+  _bindWorkflowImport: function() {
+    var btn = document.getElementById('setting-workflow-import-btn');
+    var input = document.getElementById('setting-workflow-import');
+    if (!btn || !input || btn.dataset.bound) return;
+    btn.dataset.bound = '1';
+    var self = this;
+    btn.addEventListener('click', function() { input.click(); });
+    input.addEventListener('change', function() {
+      var file = input.files && input.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function() {
+        var bridgeUrl = getSettings().bridgeUrl || 'http://localhost:19250';
+        fetch(bridgeUrl + '/api/workflow/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: file.name.replace(/\.json$/i, ''),
+            json: String(reader.result),
+          }),
+          signal: AbortSignal.timeout(15000),
+        })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data.error) { showToast('⚠️ Workflow import failed: ' + data.error); return; }
+            showToast('✅ Imported workflow: ' + data.name);
+            var select = document.getElementById('setting-paint-workflow');
+            self._populateWorkflowSelect(data.name);
+            if (select) select.value = data.name;
+          })
+          .catch(function(err) { showToast('⚠️ Workflow import failed: ' + err.message); });
+        input.value = '';
+      };
+      reader.readAsText(file);
+    });
+  },
+
   // ---- User Profile (optional) ----
   openUserProfile: function() {
     var overlay = document.getElementById('user-profile-overlay');
@@ -3740,6 +3832,9 @@ var UI = {
     // Paint checkpoint
     var paintCkptSelect = document.getElementById('setting-paint-checkpoint');
     if (paintCkptSelect) paintCkptSelect.value = s.paintCheckpoint || '';
+    // Paint workflow: populate list from bridge, then restore selection
+    this._populateWorkflowSelect(s.paintWorkflow || '');
+    this._bindWorkflowImport();
     if (overlay) overlay.classList.add('open');
 
     // Populate model dropdown from Gateway

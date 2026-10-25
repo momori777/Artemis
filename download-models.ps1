@@ -6,7 +6,7 @@
 #
 # 用法:
 #   powershell -File download-models.ps1
-#   powershell -File download-models.ps1 -BaseDir "D:\models"
+#   powershell -File download-models.ps1 -BaseDir ".\models"
 #
 # 首次使用需登录:
 #   huggingface-cli login
@@ -19,6 +19,9 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+# LLM GGUF 存放目录：环境变量 MODEL_DIR 优先，否则 <BaseDir>\llm
+$LlmDir = if ($env:MODEL_DIR) { $env:MODEL_DIR } else { Join-Path $BaseDir "llm" }
 
 # 国内用户通过 hf-mirror.com 加速下载
 $env:HF_ENDPOINT = "https://hf-mirror.com"
@@ -91,12 +94,12 @@ Write-Host ""
 # 模型文件清单 (repo_path, download_dir, local_path, description)
 # LLM 两个模型为本地文件; 若缺失会尝试从 HF llm/ 目录补下载并移动到目标路径
 $Models = @(
-    @{RepoPath="llm/Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf"; DownloadDir="E:\model3"; LocalPath="E:\model3\Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf"; Desc="LLM GGUF — Hermes3.6-35B-A3B Genesis Final MTP APEX (~24.9 GB, 主模型)"},
-    @{RepoPath="llm/Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf"; DownloadDir="C:\model2"; LocalPath="C:\model2\Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf"; Desc="LLM GGUF — Qwen3.8-27B TTURBO Fable C-Fusion MTP Q4_K_M (~15.7 GB, 工具模型)"},
+    @{RepoPath="llm/Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf"; DownloadDir="$LlmDir"; LocalPath="$LlmDir\Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf"; Desc="LLM GGUF — Hermes3.6-35B-A3B Genesis Final MTP APEX (~24.9 GB, 主模型)"},
+    @{RepoPath="llm/Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf"; DownloadDir="$LlmDir"; LocalPath="$LlmDir\Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf"; Desc="LLM GGUF — Qwen3.8-27B TTURBO Fable C-Fusion MTP Q4_K_M (~15.7 GB, 工具模型)"},
     # Ternary-Bonsai PTQ1_0: 自有仓库 llm/ 镜像 (与其它两个模型同目录); 8G 显存可全量装载 (-ngl 99)
     # 原出处: https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf (PTQ1_0 三重量化版: BoldingBuilds)
     # ⚠️ 启动时必须 -ctk q4_0 -ctv q4_0 且 -c <= 75000，否则 8G 显存装不下（调参详见 LLAMA_TUNING.md）
-    @{RepoPath="llm/Ternary-Bonsai-2-27B-PTQ1_0.gguf"; DownloadDir="E:\model3"; LocalPath="E:\model3\Ternary-Bonsai-2-27B-PTQ1_0.gguf"; Desc="LLM GGUF — Ternary-Bonsai-2-27B PTQ1_0 (~5.9 GB, 8G显存可全装)"},
+    @{RepoPath="llm/Ternary-Bonsai-2-27B-PTQ1_0.gguf"; DownloadDir="$LlmDir"; LocalPath="$LlmDir\Ternary-Bonsai-2-27B-PTQ1_0.gguf"; Desc="LLM GGUF — Ternary-Bonsai-2-27B PTQ1_0 (~5.9 GB, 8G显存可全装)"},
     # ComfyUI: 除 WAI (SDXL/Illustrious) 外均为 qwen-image/anima 架构，共用 qwen_image_vae
     @{RepoPath="comfyui/checkpoints/WAI-Nsfw-Illustrious-17.safetensors"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\comfyui\checkpoints\WAI-Nsfw-Illustrious-17.safetensors"; Desc="ComfyUI Checkpoint — WAI SDXL/Illustrious (6.46 GB)"},
     @{RepoPath="comfyui/diffusion_models/miaomiaoHarem_29BBETA10.safetensors"; DownloadDir="$BaseDir"; LocalPath="$BaseDir\comfyui\diffusion_models\miaomiaoHarem_29BBETA10.safetensors"; Desc="ComfyUI Diffusion — Miaomiao Harem 29B anima/qwen (5.44 GB)"},

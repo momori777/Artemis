@@ -15,20 +15,23 @@ if (-not $scriptRoot) { $scriptRoot = (Get-Item $PSCommandPath).DirectoryName }
 # ============================================================
 
 # llama-server 可执行文件路径
-$llamaExe = "D:\AI_Girlfriend\llama-server\llama-server.exe"
+$llamaExe = Join-Path $scriptRoot "llama-server\llama-server.exe"
 
 # 模型文件路径（选择一个，取消注释）
-$model = "C:\model2\Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf"
-# $model = "E:\model3\Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf"
-# $model = "D:\model\Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf"
-# $model = "D:\model\Qwen3.8-27B-Cold-Fusion-IQ4_XS.gguf"
-# $model = "D:\model\Qwen3.8-27B-Cold-Fusion-Q4_K_M.gguf"
-# $model = "D:\model\Qwen3.8-27B-OBLITERATED-Q4_K_M.gguf"
-# $model = "D:\model\Qwen3.8-27B-UD-IQ4_XS.gguf"
-# $model = "D:\model\Qwen3.8-27B-Cold-Fusion-LOW-IQ4_XS.gguf"
+# 模型目录：环境变量 MODEL_DIR 优先，否则默认 <repo root>\models
+$modelDir = if ($env:MODEL_DIR) { $env:MODEL_DIR } else { Join-Path $scriptRoot "models" }
+$model = Join-Path $modelDir "Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf"
+# 候选模型文件名（放入模型目录后替换上面的文件名即可）:
+# Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf
+# Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf
+# Qwen3.8-27B-Cold-Fusion-IQ4_XS.gguf
+# Qwen3.8-27B-Cold-Fusion-Q4_K_M.gguf
+# Qwen3.8-27B-OBLITERATED-Q4_K_M.gguf
+# Qwen3.8-27B-UD-IQ4_XS.gguf
+# Qwen3.8-27B-Cold-Fusion-LOW-IQ4_XS.gguf
 
 # 对话模板文件（可选，Qwen3.x 推荐）
-$chatTemplate = "D:\AI_Girlfriend\chat_template.jinja"
+$chatTemplate = Join-Path $scriptRoot "chat_template.jinja"
 
 # API Key（可选，留空则不设置）
 $apiKey = "123456"

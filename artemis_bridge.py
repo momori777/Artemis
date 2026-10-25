@@ -32,7 +32,17 @@ with open(os.path.join(WORKSPACE_ROOT, "config.yaml"), "r", encoding="utf-8") as
 TTs_SCRIPT = os.path.join(WORKSPACE_ROOT, "skills", "tts", "tts_call.py")
 TTs_PYTHON = CFG["sovits_python"]
 COMFYUI_SCRIPT = os.path.join(WORKSPACE_ROOT, "skills", "comfyui", "comfyui_call.py")
+COMFYUI_WORKFLOW_SCRIPT = os.path.join(WORKSPACE_ROOT, "skills", "comfyui", "comfyui_workflow_run.py")
 COMFYUI_PYTHON = CFG["comfyui_python"]
+
+# Named API-format workflow presets (server mode, custom-node capable)
+WORKFLOW_PRESETS = {
+    "qwen2.1": os.path.join(WORKSPACE_ROOT, "skills", "comfyui", "qwen image2.1", "qwen-image-2.1-api.json"),
+    "qwen-image-2.1": os.path.join(WORKSPACE_ROOT, "skills", "comfyui", "qwen image2.1", "qwen-image-2.1-api.json"),
+}
+# Directory where workflows imported from webchat are stored (UI or API format;
+# comfyui_workflow_run.py converts UI format on the fly).
+WORKFLOW_DIR = os.path.join(WORKSPACE_ROOT, "skills", "comfyui", "workflows")
 MEDIA_AUDIO = CFG.get("media_qqbot_audio", os.path.join(WORKSPACE_ROOT, "media", "qqbot", "audio"))
 MEDIA_IMAGES = CFG.get("media_qqbot_images", os.path.join(WORKSPACE_ROOT, "media", "qqbot", "images"))
 SKILL_TIMEOUT = int(CFG.get("skill_timeout", 9000))  # unified from config.yaml
@@ -122,10 +132,32 @@ LLAMA_EXE = CFG.get("llama_exe", "")
 LLAMA_MODEL = CFG.get("llama_model", "")
 LLAMA_LOG_DIR = CFG.get("llama_log_dir", WORKSPACE_ROOT)
 LLAMA_RESTART_SCRIPT = CFG.get("restart_script", "")
+STRATA_PORT = int(CFG.get("strata_port", 0) or 0)
+STRATA_DIR = CFG.get("strata_dir", "")
+
+
+def _strata_configured():
+    return bool(STRATA_PORT and STRATA_DIR and os.path.isdir(STRATA_DIR))
+
+
+def _is_strata_running():
+    """True if the Strata engine answers /health on strata_port."""
+    if not _strata_configured():
+        return False
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{STRATA_PORT}/health", method="GET")
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
 
 
 def _is_llama_running():
-    """Quick check if llama-server is responsive."""
+    """True if the resident LLM engine (Strata or llama.cpp) is responsive."""
+    if _is_strata_running():
+        return True
     try:
         import urllib.request
         req = urllib.request.Request(
@@ -143,12 +175,32 @@ def _ensure_llama_running():
         print("[Bridge] llama-server: alive \u2713", flush=True)
         return True
 
-    print("[Bridge] llama-server: down after ComfyUI, restarting...", flush=True)
+    print("[Bridge] LLM engine down after ComfyUI, restarting...", flush=True)
 
-    # ===== Step 1: VRAM reclaim first, THEN start llama =====
+    # ===== Step 1: VRAM reclaim first, THEN start the engine =====
     _release_vram_before_llama()
 
-    # ===== Step 2: restart llama =====
+    # ===== Step 2a: Strata is the resident engine on this machine =====
+    if _strata_configured():
+        try:
+            _def = WORKSPACE_ROOT
+            if _def not in sys.path:
+                sys.path.insert(0, _def)
+            from skills.shared.llama_lifecycle import start_strata
+            for attempt in range(3):
+                if attempt > 0:
+                    wait = 10 + attempt * 10
+                    print(f"[Bridge] Strata retry {attempt + 1}/3 after {wait}s...", flush=True)
+                    time.sleep(wait)
+                    _release_vram_before_llama()
+                if start_strata(port=STRATA_PORT, timeout=300, cfg=CFG):
+                    print("[Bridge] Strata: restarted successfully", flush=True)
+                    return True
+            print("[Bridge] Strata: all restart attempts failed", flush=True)
+        except Exception as e:
+            print(f"[Bridge] Strata restart error: {e}", flush=True)
+
+    # ===== Step 2b: fall back to llama.cpp =====
     try:
         _def = WORKSPACE_ROOT
         if _def not in sys.path:
@@ -323,9 +375,19 @@ def api_comfyui():
     steps = int(data.get("steps", 24))                                                
     cfg = float(data.get("cfg", 6.0))
     checkpoint = data.get("checkpoint", "WAI-Nsfw-Illustrious-17.safetensors")
+    workflow = (data.get("workflow") or "").strip()  # named preset or path to API-format json
 
     if not positive:
         return jsonify({"error": "positive prompt is required"}), 400
+
+    if workflow and not os.path.isabs(workflow):
+        workflow = WORKFLOW_PRESETS.get(workflow.lower(), workflow)
+        if not os.path.isabs(workflow):
+            cand = os.path.join(WORKFLOW_DIR, workflow + ("" if workflow.lower().endswith(".json") else ".json"))
+            if os.path.isfile(cand):
+                workflow = cand
+    if workflow and not os.path.isfile(workflow):
+        return jsonify({"error": f"workflow json not found: {workflow}"}), 400
 
     # manage_llama=True → stop llama before ComfyUI (default, safer)
     # manage_llama=False → keep llama alive, risk OOM on low VRAM
@@ -342,10 +404,16 @@ def api_comfyui():
             env["PYTHONIOENCODING"] = "utf-8"
             env["PYTHONUTF8"] = "1"
 
-            cmd = [COMFYUI_PYTHON, COMFYUI_SCRIPT,
-                   positive, negative, str(-1),
-                   str(width), str(height), str(steps), str(cfg),
-                   checkpoint]
+            if workflow:
+                cmd = [COMFYUI_PYTHON, COMFYUI_WORKFLOW_SCRIPT,
+                       positive, negative, str(-1),
+                       str(width), str(height), str(steps), str(cfg),
+                       "--workflow", workflow]
+            else:
+                cmd = [COMFYUI_PYTHON, COMFYUI_SCRIPT,
+                       positive, negative, str(-1),
+                       str(width), str(height), str(steps), str(cfg),
+                       checkpoint]
             if not manage_llama:
                 cmd.append("--no-manage-llama")
 
@@ -417,6 +485,80 @@ def api_job_status(job_id):
     if not job:
         return jsonify({"error": "job not found"}), 404
     return jsonify(dict(job, job_id=job_id))
+
+def _list_workflows():
+    """Presets + imported workflows in WORKFLOW_DIR (UI or API format json)."""
+    items = []
+    seen = set()
+    for name, path in sorted(WORKFLOW_PRESETS.items()):
+        rp = os.path.realpath(path)
+        if rp in seen:
+            continue
+        seen.add(rp)
+        items.append({"name": name, "preset": True,
+                      "file": os.path.basename(path),
+                      "mtime": int(os.path.getmtime(path)) if os.path.isfile(path) else 0})
+    if os.path.isdir(WORKFLOW_DIR):
+        for fn in sorted(os.listdir(WORKFLOW_DIR), key=str.lower):
+            if not fn.lower().endswith(".json"):
+                continue
+            full = os.path.join(WORKFLOW_DIR, fn)
+            rp = os.path.realpath(full)
+            if rp in seen:
+                continue
+            seen.add(rp)
+            items.append({"name": os.path.splitext(fn)[0], "preset": False,
+                          "file": fn, "mtime": int(os.path.getmtime(full))})
+    return items
+
+@app.route("/api/workflows")
+def api_workflows():
+    return jsonify({"workflows": _list_workflows()})
+
+@app.route("/api/workflow/import", methods=["POST"])
+def api_workflow_import():
+    """Import a ComfyUI workflow exported from the webchat side.
+
+    Body: {"name": optional, "json": <UI or API format workflow object or string>}.
+    UI format ({"nodes","links"}) is validated/converted server-side; both
+    formats are stored under WORKFLOW_DIR and the runner converts on use."""
+    data = request.get_json(silent=True) or {}
+    raw = data.get("json")
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except Exception as e:
+            return jsonify({"error": f"invalid json: {e}"}), 400
+    if not isinstance(raw, dict):
+        return jsonify({"error": "json must be a workflow object"}), 400
+    is_ui = "nodes" in raw
+    if not is_ui and not any(isinstance(v, dict) and "class_type" in v for v in raw.values()):
+        return jsonify({"error": "not a ComfyUI workflow (neither UI nor API format)"}), 400
+    if is_ui:
+        import sys as _sys
+        conv_dir = os.path.join(WORKSPACE_ROOT, "skills", "comfyui")
+        if conv_dir not in _sys.path:
+            _sys.path.insert(0, conv_dir)
+        try:
+            from workflow_convert import ui_to_api
+            api_graph, warnings = ui_to_api(raw)
+        except Exception as e:
+            return jsonify({"error": f"UI workflow conversion failed: {e}"}), 400
+        if not any(n["class_type"] in ("KSampler", "KSamplerAdvanced") for n in api_graph.values()):
+            return jsonify({"error": "workflow has no KSampler node"}), 400
+    name = (data.get("name") or "").strip()
+    if not name:
+        name = os.path.splitext(os.path.basename(str(data.get("filename") or "")))[0].strip()
+    name = "".join(c for c in name if c.isalnum() or c in "-_ .")[:60] or \
+        "wf_" + uuid.uuid4().hex[:8]
+    os.makedirs(WORKFLOW_DIR, exist_ok=True)
+    path = os.path.join(WORKFLOW_DIR, name + ".json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(raw, f, ensure_ascii=False)
+    return jsonify({"ok": True, "name": name,
+                    "format": "ui" if is_ui else "api",
+                    "workflows": _list_workflows()})
+
 
 @app.route("/api/media/<path:filepath>")
 def serve_media(filepath):

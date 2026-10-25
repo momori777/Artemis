@@ -171,3 +171,7 @@ deps/
 # GPU handoff run artifacts + per-machine path overrides (absolute paths stay local)
 skills/comfyui/gpu_handoff/logs/
 skills/comfyui/gpu_handoff/gpu_handoff.local.ps1
+
+# Workflow-mode runtime artifacts: imported workflows (per-machine model names) + last job id
+skills/comfyui/workflows/
+.qwen_job_id.txt

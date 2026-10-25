@@ -40,12 +40,10 @@ print(cfg.get("comfyui_python", ""))
 
 # Try 2: Look for Python in common locations
 $comfyuiSearchPaths = @(
-    "C:\comfyui\ComfyUI\python\python.exe",
-    "D:\comfyui\ComfyUI\python\python.exe",
-    "E:\comfyui\ComfyUI\python\python.exe",
-    "C:\Users\$env:USERNAME\AppData\Local\Programs\Python\Python311\python.exe",
-    "D:\Users\$env:USERNAME\AppData\Local\Programs\Python\Python311\python.exe"
-)
+    "${env:ComfyUI_Python}",
+    "$env:SystemDrive\comfyui\ComfyUI\python\python.exe",
+    "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe"
+) | Where-Object { $_ }
 if (-not $pythonPath -or -not (Test-Path $pythonPath)) {
     foreach ($p in $comfyuiSearchPaths) {
         if (Test-Path $p) { $pythonPath = $p; break }

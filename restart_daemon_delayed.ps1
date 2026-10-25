@@ -1,6 +1,7 @@
 param([int]$DelaySeconds = 5)
 $ErrorActionPreference = "Continue"
-$log = "E:\AI_Girlfriend\restart_daemon_delayed.log"
+$root = $PSScriptRoot
+$log = Join-Path $root "restart_daemon_delayed.log"
 function Log($m) { "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $m" | Out-File -FilePath $log -Append -Encoding utf8 }
 Log "restart task started (delay=$DelaySeconds)"
 Start-Sleep -Seconds $DelaySeconds
@@ -19,7 +20,8 @@ for ($i = 0; $i -lt 20; $i++) {
 # relaunch daemon; --no-llama: flash-next GGUF moved to Strata engine (8080),
 # llama.cpp model path in config.yaml no longer exists, and loading both stacks
 # at once would over-commit RAM.
-Start-Process -FilePath "python" -ArgumentList '"E:\AI_Girlfriend\shiki_daemon.py"', '--no-llama' -WorkingDirectory "E:\AI_Girlfriend" -WindowStyle Hidden
+$daemon = Join-Path $root "shiki_daemon.py"
+Start-Process -FilePath "python" -ArgumentList "`"$daemon`"", '--no-llama' -WorkingDirectory $root -WindowStyle Hidden
 Log "daemon launched, waiting for 19260..."
 
 $ok = $false

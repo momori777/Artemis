@@ -611,6 +611,17 @@
     </div>
 
     <div class="settings-group">
+      <div class="settings-label"><span data-i18n="settings_workflow">ComfyUI 工作流</span>
+        <button class="settings-refresh-btn" id="setting-workflow-import-btn" data-i18n-title="settings_workflow_import" title="导入工作流 JSON">⬆</button>
+        <input type="file" id="setting-workflow-import" accept=".json,application/json" style="display:none">
+      </div>
+      <select class="settings-input settings-select" id="setting-paint-workflow">
+        <option value="" data-i18n="settings_workflow_none">不用工作流（默认管线）</option>
+      </select>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px" data-i18n="settings_workflow_hint">导入 ComfyUI 导出的 workflow JSON；正/负 prompt 由 LLM 按上下文填充，其余参数走工作流</div>
+    </div>
+
+    <div class="settings-group">
       <div class="settings-label" data-i18n="settings_tree">对话树模式 (Conversation Tree)</div>
       <select class="settings-input settings-select" id="setting-tree-mode">
         <option value="auto" data-i18n="settings_tree_auto">自动 (Auto)</option>
