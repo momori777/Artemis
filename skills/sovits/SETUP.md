@@ -106,4 +106,20 @@ powershell -ExecutionPolicy Bypass -File skills\sovits\tts_handoff_launch.ps1 -D
 
 - 2026-10-30 实测（RTX 5090 Laptop，`weights/atori-e15.ckpt + atori_e20_s9560.pth`、`weights/xxx-e30.ckpt + xxx_e20_s6240.pth`，seed 622539）：`atori-ja / atori-zh / natsume-ja / natsume-zh` **4/4 通过**；api_v2 6 s 内就绪（权重热切换），单句合成 1.2–22.2 s；引擎停机→回来共 ~60 s。
 - **显存红线**：Strata 常驻 ~23 GB / 24.4 GB，只剩 ~1.3 GB，SoVITS 塞不下 → 聊天发语音也必须走交接。现在 `skills\tts\tts_http_call.py` 只是「9880 没起就顺手起一个」，**不会停 Strata**，容易 OOM 或静默转 CPU。
-- **参考音频差异**：`ref_wavs_atri/` 每句有 `.txt` sidecar（**带 UTF-8 BOM**，`tts_http_call.py` 已改 `utf-8-sig` 读，否则 BOM 会混进 prompt_text）；`ref_wavs_natsume/` **没有 sidecar** → 走 GPT-SoVITS 的 no-prompt-text 模式（v2 允许；v3/v4 会 `NO_PROMPT_ERROR`），音色在但句子容易拉长、韵律更平。补法：给每个 wav 手写同名 `.txt`（必须和录音逐字对应，不能臆造）。
+- **参考音频 = wav + 同名 `.txt` 逐字转录（硬性要求）**：`tts_call.py` / `tts_http_call.py` 现在只用带 sidecar 的
+  wav，没有同名 `.txt` 的直接跳过，整组为空就 `exit 2`，不再从文件名臆造 `prompt_text`；
+  `tts_e2e_test.py` 缺 sidecar 直接报错。原因：GPT-SoVITS v2/v2Pro 空 `prompt_text` 只克隆音色（韵律变平、
+  句子拉长），v3/v4 直接 `NO_PROMPT_ERROR`。sidecar 一律用 `utf-8-sig` 读（atri 那批**带 UTF-8 BOM**，
+  用 `utf-8` 读会把 BOM 混进 `prompt_text`）。
+  补 sidecar 用 `skills\asr\asr_sidecars.py`（faster-whisper large-v3，CPU/int8，不占显存）：
+  ```powershell
+  # ComfyUI 环境里已有被 SAC 放行的 ctranslate2；模型缓存 skills\asr\models\（已 gitignore）
+  F:\comfyui\ComfyUI-aki-v3\python\python.exe skills\asr\asr_sidecars.py `
+    --dir skills\tts\ref_wavs_natsume --dry-run   # 先核对，再去掉 --dry-run 落盘，--force 可重写
+  ```
+  转录必须和录音逐字对应（不能按文件名臆造），落盘前先 `--dry-run` 核对每条是否对得上文件名。
+- **2026-10-30 natsume sidecar 复核**：14/14 齐全，文件名线索与转录全部吻合；两处遗留待人工处理：
+  `ref_09_おやすみ.wav` 与 `ref_08_傲娇_ここでは.wav` 音频**完全相同**（md5 `978cc8e8a7`），
+  sidecar 按真实录音写的是「あと何度も言うけど、ここではしない。」，所以这条例不是おやすみ，
+  想要真正的おやすみ参考音频得重新录；`ref_11_深情_大好き.wav` 转录置信度仅 51.2（「好き…大好き…」），
+  建议复听确认。
