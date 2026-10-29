@@ -175,3 +175,8 @@ skills/comfyui/gpu_handoff/gpu_handoff.local.ps1
 # Workflow-mode runtime artifacts: imported workflows (per-machine model names) + last job id
 skills/comfyui/workflows/
 .qwen_job_id.txt
+
+# 3D 模型（NEXON 二创素材，本地使用，勿入库）
+models3d/*.glb
+models3d/*.pmx
+models3d/*.zip
