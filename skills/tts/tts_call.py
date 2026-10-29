@@ -200,7 +200,7 @@ def _load_ref_waves(ref_dir):
       傲娇/tsundere/困惑 → tsundere
       深情/romantic → romantic
       长句/long → long
-    参考文本从文件名提取（去掉前缀和扩展名）或从同目录对应的.txt文件读取。
+    参考文本只认同目录下同名 .txt（逐字转录）；没有 sidecar 的 wav 直接跳过。
     """
     MOOD_MAP = {
         "日常": "casual", "casual": "casual",
@@ -225,22 +225,17 @@ def _load_ref_waves(ref_dir):
                 break
         if mood is None:
             mood = "casual"  # fallback
-        # 参考文本：同目录下同名 .txt 文件，否则用文件名剩余部分
+        # 参考文本：只认同名 .txt（逐字转录），不再从文件名臆造
         txt_path = os.path.join(ref_dir, stem + ".txt")
+        ref_text = ""
         if os.path.exists(txt_path):
             with open(txt_path, "r", encoding="utf-8-sig") as f:
-                ref_text = f.read().strip()
-        else:
-            # 从文件名提取: ref_01_日常_おはよう → おはよう
-            # 格式: ref_NN_情绪_文本
-            text_parts = []
-            capture = False
-            for p in parts:
-                if capture:
-                    text_parts.append(p)
-                elif p in MOOD_MAP:
-                    capture = True
-            ref_text = " ".join(text_parts) if text_parts else stem
+                ref_text = f.read().strip().lstrip("\ufeff").strip()
+        if not ref_text:
+            # GPT-SoVITS v2/v2Pro 允许空 prompt_text（只克隆音色，韵律变平、句子被拉长），
+            # v3/v4 直接 NO_PROMPT_ERROR。固定为「参考音频 + 逐字转录」样式。
+            print(f"[WARN] skip ref without transcript: {fname}", file=sys.stderr)
+            continue
         ref_waves[mood].append({
             "path": fpath,
             "text": ref_text,
@@ -250,6 +245,16 @@ def _load_ref_waves(ref_dir):
 
 
 REF_WAVES = _load_ref_waves(REF_DIR)
+
+# 固定样式：这个角色目录下必须至少有一个带逐字转录的参考音频
+if not any(REF_WAVES.values()):
+    print(
+        f"[ERROR] no reference audio with a verbatim transcript under {REF_DIR}: "
+        "every <stem>.wav needs a matching <stem>.txt (word-for-word, utf-8-sig). "
+        "Fill them with skills/asr/asr_sidecars.py; refusing to run voice-only mode.",
+        file=sys.stderr,
+    )
+    sys.exit(2)
 
 # 反向查找：文件名 → {path, text, lang}
 REF_INDEX = {}
@@ -337,6 +342,22 @@ if isinstance(ref_wav, dict):
 else:
     ref_path = ref_wav
     ref_prompt_text, ref_prompt_lang = lookup_ref_info(ref_wav)
+    if not ref_prompt_text:
+        # 显式传入的参考音频也回落到同名 sidecar
+        stem = os.path.splitext(os.path.basename(ref_path))[0]
+        side = os.path.join(os.path.dirname(os.path.abspath(ref_path)), stem + ".txt")
+        if os.path.exists(side):
+            with open(side, "r", encoding="utf-8-sig") as f:
+                ref_prompt_text = f.read().strip().lstrip("\ufeff").strip()
+
+if not ref_path or not ref_prompt_text:
+    print(
+        "[ERROR] reference audio without a verbatim transcript: "
+        f"{os.path.basename(ref_path) if ref_path else 'none'} - refusing to run "
+        "voice-only mode. Add the matching <stem>.txt (skills/asr/asr_sidecars.py).",
+        file=sys.stderr,
+    )
+    sys.exit(2)
 
 print(f"Selected ref: {os.path.basename(ref_path)}", file=sys.stderr)
 print(f"Prompt text: {ref_prompt_text}", file=sys.stderr)

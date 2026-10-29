@@ -46,6 +46,7 @@ __pycache__/
 !skills/tts/ref_wavs/*.wav
 !skills/tts/ref_wavs_atri/*.wav
 !skills/tts/ref_wavs_sakura/*.wav
+!skills/tts/ref_wavs_natsume/*.wav
 # 鍘嬬缉 ?
 *.rar
 *.zip
@@ -180,3 +181,29 @@ skills/comfyui/workflows/
 models3d/*.glb
 models3d/*.pmx
 models3d/*.zip
+
+# ---- ASR / TTS runtime artifacts (added 2026-10-30) ----
+# faster-whisper CTranslate2 model cache (~2.9 GB, re-downloadable:
+#   skills/asr/asr_sidecars.py downloads it on first run into skills/asr/models)
+skills/asr/models/
+# GPT-SoVITS runtime caches and generated handoff artifacts
+skills/sovits/nltk_tmp/
+skills/sovits/handoff_logs/
+skills/sovits/e2e_out/
+skills/sovits/__pycache__/
+# MeCab/open_jtalk dictionary unpacked locally (downloadable; see skills/sovits/SETUP.md)
+skills/sovits/open_jtalk_dic_utf_8-1.11/
+skills/sovits/open_jtalk_dic_utf_8-1.11.tar.gz
+# Vendored engine weights/pretrained models live under the engine tree too
+skills/sovits/GPT_SoVITS/pretrained_models/
+skills/sovits/weights/
+# Reference audio is kept via the explicit ! allowlists above; anything else
+# (recordings, temp clips) stays out of the repo.
+skills/tts/tmp/
+# Engine source IS committed (it carries local fixes), but the big phoneme /
+# dictionary blobs are not: they come with the engine copy described in
+# skills/sovits/SETUP.md (方式 A / 方式 B).
+skills/sovits/GPT_SoVITS/text/ja_userdic/
+skills/sovits/GPT_SoVITS/**/*.rep
+skills/sovits/GPT_SoVITS/**/*.md5
+skills/sovits/tools/**/__pycache__/

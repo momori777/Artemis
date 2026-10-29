@@ -178,18 +178,19 @@ def _load_ref_waves(ref_dir):
         if mood is None:
             mood = "casual"
         txt_path = os.path.join(ref_dir, stem + ".txt")
+        ref_text = ""
         if os.path.exists(txt_path):
-            with open(txt_path, "r", encoding="utf-8") as f:
-                ref_text = f.read().strip()
-        else:
-            text_parts = []
-            capture = False
-            for p in parts:
-                if capture:
-                    text_parts.append(p)
-                elif p in MOOD_MAP:
-                    capture = True
-            ref_text = " ".join(text_parts) if text_parts else stem
+            # utf-8-sig: these sidecars are saved with a BOM; a leading U+FEFF
+            # would otherwise be fed to GPT-SoVITS as part of the prompt text.
+            with open(txt_path, "r", encoding="utf-8-sig") as f:
+                ref_text = f.read().strip().lstrip("\ufeff").strip()
+        if not ref_text:
+            # Fixed policy: reference audio must come WITH its verbatim transcript.
+            # GPT-SoVITS tolerates an empty prompt_text on v2/v2Pro (voice only,
+            # flat prosody, stretched sentences) and hard-fails on v3/v4, so a
+            # sidecar-less wav is skipped instead of silently degrading quality.
+            print(f"[WARN] skip ref without transcript: {fname}", file=sys.stderr)
+            continue
         ref_waves[mood].append({
             "path": fpath,
             "text": ref_text,
@@ -530,6 +531,12 @@ ref_prompt_lang = "ja"
 if ref_wav_arg:
     ref_path = ref_wav_arg
     ref_prompt_text, ref_prompt_lang = lookup_ref_info(ref_path)
+    if not ref_prompt_text:
+        stem = os.path.splitext(os.path.basename(ref_path))[0]
+        side = os.path.join(os.path.dirname(os.path.abspath(ref_path)), stem + ".txt")
+        if os.path.exists(side):
+            with open(side, "r", encoding="utf-8-sig") as f:
+                ref_prompt_text = f.read().strip().lstrip("\ufeff").strip()
 else:
     ref_pick = pick_ref(text, mood_hint)
     if ref_pick:
@@ -538,7 +545,7 @@ else:
         ref_prompt_lang = ref_pick["lang"]
 
 if not ref_path:
-    # fallback: 用第一个可用的参考音频
+    # fallback: use the first usable reference (always transcript-backed here)
     all_refs = []
     for group in REF_WAVES.values():
         all_refs.extend(group)
@@ -546,6 +553,16 @@ if not ref_path:
         ref_path = all_refs[0]["path"]
         ref_prompt_text = all_refs[0]["text"]
         ref_prompt_lang = all_refs[0]["lang"]
+
+if not ref_path or not ref_prompt_text:
+    print(
+        "[ERROR] no reference audio with a verbatim transcript under "
+        f"{REF_DIR} - every <stem>.wav needs a matching <stem>.txt "
+        "(word-for-word transcript, utf-8-sig). Refusing to run voice-only "
+        "prompt mode.",
+        file=sys.stderr,
+    )
+    sys.exit(2)
 
 print(f"Selected ref: {os.path.basename(ref_path) if ref_path else 'none'}", file=sys.stderr)
 print(f"Prompt text: {ref_prompt_text}", file=sys.stderr)
