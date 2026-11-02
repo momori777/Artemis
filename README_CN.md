@@ -940,6 +940,8 @@ schtasks /create /tn "cleanup-orphans" `
 | CCR | 每 8 轮提取持久事实 → Qdrant |
 | SmartCrusher | 24 条消息/40K 字符硬上限 |
 | mem0_sync_cron | 每 30min：Qdrant → _mem0_auto.md |
+| mem0_selfcheck.py | 一键检查整链：embedding → Qdrant ANN → 桥接搜/写/删 → SmartCrusher+CCR |
+| qdrant_store_inspect.py | 只读看库：点数、user_id 隔离域、payload 字段 |
 | headroom_routes.json | sidecar：model_id → 真实后端 baseUrl 映射 |
 
 </td>
@@ -962,6 +964,8 @@ OpenClaw Gateway (18789)
          ├─ llama-local → llama-server:9931
          └─ Cloud models    → sidecar finds real baseUrl
 ```
+
+> **记忆自检** — `python skills/shared/mem0_selfcheck.py`（只读跑法加 `--skip-write`）一次跑完：embedding 服务 :9999 → Qdrant ANN → 桥接搜索/添加/删除 → SmartCrusher + CCR 回取。`python skills/shared/qdrant_store_inspect.py --character <角色>` 只读查看库。两个脚本都用 `Path(__file__)` 从仓库布局推路径，任意 clone 都能直接跑。它们会帮你查出三个坑：**user_id 大小写**（mem0 写入 `Sakura`，`mem0_bridge.CHARACTERS` 查 `sakura` → 搜索永远 0 命中）、**Qdrant 本地(文件)模式单写者**（桌宠进程持有 `skills/sakura/data/memory/qdrant`，并行脚本会报 "already accessed by another instance"）、**qdrant_client ≥ 1.20 已删除 `client.search()`**（改用 `query_points`）。
 
 **只加不改原则：** `start.ps1` 启动时自动扫描 `~/.openclaw/openclaw.json`，新增 `local-llama` provider（复制现有云端模型），原始 provider 原封不动。原始 baseUrl 存入 `~/.openclaw/headroom_routes.json` sidecar 文件。clone 后零配置。
 

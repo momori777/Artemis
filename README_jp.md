@@ -940,6 +940,8 @@ schtasks /create /tn "cleanup-orphans" `
 | CCR | 8 ターンごとに事実抽出 → Qdrant |
 | SmartCrusher | 24 msg/40K char ハード上限 |
 | mem0_sync_cron | 30 分ごと: Qdrant → _mem0_auto.md |
+| mem0_selfcheck.py | 一括チェッカー: embedding → Qdrant ANN → 検索/追加/削除 → SmartCrusher+CCR |
+| qdrant_store_inspect.py | 読み取り専用ストア確認: 点数・user_id スコープ・payload キー |
 | headroom_routes.json | sidecar: model_id → real backend baseUrl マッピング |
 
 </td>
@@ -962,6 +964,8 @@ OpenClaw Gateway (18789)
          ├─ llama-local → llama-server:9931
          └─ Cloud models    → sidecar finds real baseUrl
 ```
+
+> **メモリ自己診断** — `python skills/shared/mem0_selfcheck.py`（読み取りのみは `--skip-write`）で、embedding サーバー :9999 → Qdrant ANN → ブリッジ検索/追加/削除 → SmartCrusher + CCR 復元まで一気通底。`python skills/shared/qdrant_store_inspect.py --character <キャラ>` はストアを読み取り専用で表示。両スクリプトとも `Path(__file__)` でリポジトリ構成からパスを解決するので、どの clone でもそのまま動きます。検出する三つの落とし穴: **user_id の大文字小文字**（mem0 は `Sakura` に書き込み、`mem0_bridge.CHARACTERS` は `sakura` を検索 → 検索が常に 0 件）、**Qdrant ローカル（ファイル）モードは単一書き込み**（`skills/sakura/data/memory/qdrant` を卓上ペットプロセスが占有中だと "already accessed by another instance"）、**qdrant_client ≥ 1.20 で `client.search()` が削除済み**（`query_points` を使う）。
 
 **追加のみ・変更なし原則:** `start.ps1` は起動時に `~/.openclaw/openclaw.json` を自動スキャンし、`local-llama` provider を追加（既存クラウドモデルのコピー）、元 provider はそのまま。元の baseUrl は `~/.openclaw/headroom_routes.json` sidecar ファイルに保存。クローン後設定ゼロ。
 
