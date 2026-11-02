@@ -1233,7 +1233,9 @@ def _resolve_base_dir(base_dir: Path | None) -> Path:
 
 def _normalize_scope_id(scope_id: str | None) -> str:
     text = (scope_id or "").strip()
-    return text if text and not any(ch.isspace() for ch in text) else DEFAULT_MEMORY_SCOPE
+    # 小写归一：mem0 user_id / Qdrant 隔离域 / headroom 代理映射 / DEFAULT_MEMORY_SCOPE 统一用小写，
+    # 角色卡 id（如 "Sakura"）不能把同一角色的记忆劈成两个隔离域。
+    return text.lower() if text and not any(ch.isspace() for ch in text) else DEFAULT_MEMORY_SCOPE
 
 
 def _mem0_session_scope(filters: dict[str, str]) -> str:

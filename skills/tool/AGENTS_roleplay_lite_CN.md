@@ -78,6 +78,12 @@ Bridge 不在线时先起：`node live2d-bridge.mjs`（工作目录 `live2d/`，
 手动查询、写入、嵌入模型切换见 `skills/mem0-bridge/SKILL.md`（依赖 embedding server，端口 9999）。
 代理路由、SmartCrusher 与 mem0 参数见 `skills/headroom/PROXY.md`。
 
+### 拉起 RAG 链（当于开机自启）
+
+- 任何 mem0 调用前先探嵌入服务器：`Invoke-WebRequest http://127.0.0.1:9999/health`。不通就在后台拉 `python -X utf8 skills/shared/embedding_server.py`（sessions_spawn / 后台），让每个新会话都把 RAG 链带起来，而不是默默降级成 score=0.0 零向量。
+- Qdrant 隔离域 `payload.user_id` 统一**小写**，必须跟桌宠写入的 scope 一致（`sakura`、`shiki_natsume`、`enola`、`atori`）。`app/agent/memory.py` 的 `_normalize_scope_id` 会把角色卡 id 转小写（`Sakura` → `sakura`），与 `DEFAULT_MEMORY_SCOPE`、`artemis_headroom_proxy.py` 的 `CHARACTER_MEM0_ID`、`mem0_behavior_integration.py` 的 `CHARACTER_MAP` 对齐。映射写成别的形式不会报错，只会静默 0 命中；要刷数据用 `python skills/shared/qdrant_rescope.py --apply`（不带 `--apply` 是 dry run）。
+- 自检：`python skills/shared/mem0_selfcheck.py --skip-write`（整链）或 `python skills/shared/qdrant_store_inspect.py --character sakura`（只看库，不需嵌入服务器）。库是 embedded 单写者——先看桌宠有没有占用。
+
 ### 行为引擎 + 好感度（关系阶段）
 
 状态在 `memory/role_play/<角色>/relationship.json`，由 `skills/behavior-engine/` 驱动 9 段位关系阶段 + 4 级冲突 + 好感度评分。

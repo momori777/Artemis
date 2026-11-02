@@ -89,6 +89,8 @@ OpenClaw Gateway (18789)
 
 角色检测：从 system prompt 关键词匹配 → Qdrant user_id 过滤。
 
+过滤用的 user_id 统一**小写**（`sakura` / `shiki_natsume` / `enola` / `atori`）：`app/agent/memory.py:_normalize_scope_id` 会把角色卡 id 转小写，所以桌宠和代理读写同一个隔离域。库若是以别的形式写进去的，用 `python skills/shared/qdrant_rescope.py --apply` 刷齐；自检用 `python skills/shared/mem0_selfcheck.py --skip-write`（只看库：`python skills/shared/qdrant_store_inspect.py --character sakura`）。调用前需先拉开端口 9999 的嵌入服务器——先探 `http://127.0.0.1:9999/health`，不通就在后台拉 `skills/shared/embedding_server.py`。
+
 ### 角色名映射
 
 | SOUL.md 关键词 | mem0 user_id |
@@ -97,6 +99,8 @@ OpenClaw Gateway (18789)
 | 夜乃桜 / sakura / 夜乃樱 | sakura |
 | Enola / enola | enola |
 | Atori / atori / atri | atori |
+
+表中 `natsume` 是代理侧别名，桌宠按角色卡 id 写在 `shiki_natsume` 域下。`mem0_bridge.py:scope_ids()` 会同时给出两种写法并用 `MatchAny` 过滤，因此不会丢对方的记忆。
 
 ---
 

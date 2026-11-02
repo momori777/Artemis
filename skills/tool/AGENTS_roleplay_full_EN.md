@@ -89,6 +89,8 @@ OpenClaw Gateway (18789)
 
 Character detection: keyword matching from system prompt → Qdrant user_id filtering.
 
+The filter value is the **lowercase** scope (`sakura` / `shiki_natsume` / `enola` / `atori`): `app/agent/memory.py:_normalize_scope_id` lowercases the character-card id, so the pet and this proxy write/read the same domain. A store written under a different spelling is migrated with `python skills/shared/qdrant_rescope.py --apply`; verify with `python skills/shared/mem0_selfcheck.py --skip-write` (store-only: `python skills/shared/qdrant_store_inspect.py --character sakura`). The embedding server on port 9999 must be up first — check `http://127.0.0.1:9999/health` and otherwise start `skills/shared/embedding_server.py` in the background.
+
 ### Character Name Mapping
 
 | SOUL.md Keywords | mem0 user_id |
@@ -97,6 +99,8 @@ Character detection: keyword matching from system prompt → Qdrant user_id filt
 | 夜乃桜 / sakura / 夜乃樱 | sakura |
 | Enola / enola | enola |
 | Atori / atori / atri | atori |
+
+`natsume` is the proxy alias; the pet writes that character under its card id `shiki_natsume`. `mem0_bridge.py:scope_ids()` returns both spellings and filters with `MatchAny`, so neither side loses the other's memories.
 
 ---
 

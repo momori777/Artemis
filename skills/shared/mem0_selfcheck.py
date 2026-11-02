@@ -116,8 +116,8 @@ def check_store() -> tuple[bool, bool]:
         if blind and stored:
             near = [s for s in stored if any(s.lower() == b.lower() for b in blind)]
             if near:
-                print(f"[store] WARN bridge scopes with no data: {blind} — 库里只有不同大小写的域: {near}")
-                print("       (scope 不一致会让桥接的搜索/列表/同步永远 0 命中)")
+                print(f"[store] WARN 库里是不带规范的小写域: {near}（桥接靠 MatchAny 才能捡到）")
+                print("       刷成规范域: python skills/shared/qdrant_rescope.py --apply")
             else:
                 print(f"[store] note: 这些角色还没记忆（新角色正常）: {blind}")
         if not points:
@@ -138,8 +138,9 @@ def check_read(character: str, query: str, store_has_points: bool) -> bool:
     if hits:
         return True
     if store_has_points:
-        # points exist but the configured user_id matches none of them (usually casing)
+        # points exist but no candidate scope matches them (legacy spelling not covered by scope_ids)
         print("       FAIL 0 hits although the store holds points — bridge user_id scope matches nothing")
+        print("       查库: python skills/shared/qdrant_store_inspect.py ；刷齐隔离域: python skills/shared/qdrant_rescope.py --apply")
         return False
     print("       note: 0 hits, store is empty (nothing to retrieve)")
     return True

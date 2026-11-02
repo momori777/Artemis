@@ -61,13 +61,15 @@ MEM0_QDRANT = WORKSPACE / "skills" / "sakura" / "data" / "memory" / "qdrant"
 MEMORY_DIR = WORKSPACE / "memory" / "role_play"
 
 # ── 四角色配置 ────────────────────────────────────────────
-# ⚠ user_id 必须与桌宠 mem0 写入时用的 scope 一致：那个 scope 来自**角色卡 id**
-#   （skills/sakura/characters/<目录>/character.json 的 id 字段，见 app/core/bootstrap.py
-#   与 app/agent/memory.py:_normalize_scope_id——它只去空白，不改大小写）。
-#   所以是 "Sakura" 而不是 "sakura"，"shiki_natsume" 而不是 "natsume"。
-#   写错不会报错，只会让搜索**永远 0 命中**。scope_ids() 会自动从角色卡解析兼容。
+# ⚠ user_id 是 Qdrant 的隔离域，必须与桌宠 mem0 写入时用的 scope 一致：那个 scope 来自
+#   **角色卡 id**（skills/sakura/characters/<目录>/character.json 的 id 字段，见 app/core/bootstrap.py
+#   与 app/agent/memory.py:_normalize_scope_id）。
+#   约定统一用**小写**：DEFAULT_MEMORY_SCOPE、artemis_headroom_proxy.py:CHARACTER_MEM0_ID、
+#   mem0_behavior_integration.py:CHARACTER_MAP 全是小写，卡 id "Sakura" 会在 _normalize_scope_id
+#   里归一化成 "sakura"。natsume 的域是 "shiki_natsume"（卡 id），不是 "natsume"。
+#   写错不会报错，只会让搜索**永远 0 命中**。scope_ids() 会自动从角色卡解析兼容旧数据。
 CHARACTERS = {
-    "sakura": {"user_id": "Sakura", "lang_instruction": "夜乃桜的长期记忆使用简体中文记录。"},
+    "sakura": {"user_id": "sakura", "lang_instruction": "夜乃桜的长期记忆使用简体中文记录。"},
     "natsume": {"user_id": "shiki_natsume", "lang_instruction": "夏目的长期记忆使用简体中文记录，保留日文称呼如「君」。"},
     "enola": {"user_id": "enola", "lang_instruction": "Enola 的长期记忆使用简体中文记录。"},
     "atori": {"user_id": "atori", "lang_instruction": "Atori 的长期记忆使用简体中文记录。"},
@@ -102,25 +104,28 @@ def card_ids() -> list[str]:
 def scope_ids(character: str) -> list[str]:
     """该角色在 Qdrant 中的候选 user_id（按优先级去重）。
 
-    顺序：角色卡 id → 配置值 → 配置值的小写/首字母大写形式。
-    这样旧数据里的大小写/命名差异不会把记忆永久藏起来，新写入则用首选（卡 id）。
+    顺序：规范小写形式 → 其余变体（角色卡 id、配置值、首字母大写）。
+    小写排第一，新写入就落在与桌宠/代理一致的规范域上；卡 id 那种大小写变体仍留在
+    候选里，所以刷成小写之前写下的旧记忆不会静默消失。
     """
     configured = CHARACTERS.get(character, CHARACTERS["sakura"])["user_id"]
     key = (character or "").lower()
-    out: list[str] = []
+    candidates: list[str] = []
     for cid in card_ids():
         low = cid.lower()
         if low == key or key in low.replace("-", "_").split("_"):
-            if cid not in out:
-                out.append(cid)
-    for variant in (configured, configured.lower(), configured.capitalize()):
-        if variant and variant not in out:
-            out.append(variant)
+            candidates.append(cid)
+    candidates.extend((configured, configured.lower(), configured.capitalize()))
+    out: list[str] = []
+    for variant in candidates:
+        canonical = str(variant or "").strip().lower()
+        if canonical and canonical not in out:
+            out.append(canonical)
     return out
 
 
 def write_scope(character: str) -> str:
-    """新记忆写入用的 user_id：首选角色卡 id，跟桌宠保持同一个隔离域。"""
+    """新记忆写入用的 user_id：规范小写域，跟桌宠/代理的 scope 归一化结果一致。"""
     return scope_ids(character)[0]
 
 

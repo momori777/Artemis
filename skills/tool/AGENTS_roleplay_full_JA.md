@@ -89,6 +89,8 @@ OpenClaw Gateway (18789)
 
 キャラクター検出：system prompt キーワードマッチ → Qdrant user_id フィルタ。
 
+フィルタ値は**小文字**のスコープで統一（`sakura` / `shiki_natsume` / `enola` / `atori`）：`app/agent/memory.py:_normalize_scope_id` がキャラカード id を小文字化し、ペットと本プロキシが同じ隔離ドメインを読み書きする。別の綴りで書き込まれたストアは `python skills/shared/qdrant_rescope.py --apply` で揃える。自己点検は `python skills/shared/mem0_selfcheck.py --skip-write`（ストアのみ: `python skills/shared/qdrant_store_inspect.py --character sakura`）。呼び出し前にポート 9999 の埋め込みサーバーを立ち上げておく——まず `http://127.0.0.1:9999/health` を確認し、応答がなければ `skills/shared/embedding_server.py` を裏方で起動。
+
 ### キャラクター名マッピング
 
 | SOUL.md キーワード | mem0 user_id |
@@ -97,6 +99,8 @@ OpenClaw Gateway (18789)
 | 夜乃桜 / sakura / 夜乃樱 | sakura |
 | Enola / enola | enola |
 | Atori / atori / atri | atori |
+
+表中の `natsume` はプロキシ側の別名で、ペットはキャラカード id の `shiki_natsume` に書く。`mem0_bridge.py:scope_ids()` は両方の綴りをまとめて返し `MatchAny` でフィルタするため、相手の記憶を失わない。
 
 ---
 

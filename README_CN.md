@@ -942,6 +942,7 @@ schtasks /create /tn "cleanup-orphans" `
 | mem0_sync_cron | 每 30min：Qdrant → _mem0_auto.md |
 | mem0_selfcheck.py | 一键检查整链：embedding → Qdrant ANN → 桥接搜/写/删 → SmartCrusher+CCR |
 | qdrant_store_inspect.py | 只读看库：点数、user_id 隔离域、payload 字段 |
+| qdrant_rescope.py | 批量把 `payload.user_id` 刷成小写隔离域（默认 dry run，加 `--apply` 才写） |
 | headroom_routes.json | sidecar：model_id → 真实后端 baseUrl 映射 |
 
 </td>
@@ -965,7 +966,7 @@ OpenClaw Gateway (18789)
          └─ Cloud models    → sidecar finds real baseUrl
 ```
 
-> **记忆自检** — `python skills/shared/mem0_selfcheck.py`（只读跑法加 `--skip-write`）一次跑完：embedding 服务 :9999 → Qdrant ANN → 桥接搜索/添加/删除 → SmartCrusher + CCR 回取。`python skills/shared/qdrant_store_inspect.py --character <角色>` 只读查看库。两个脚本都用 `Path(__file__)` 从仓库布局推路径，任意 clone 都能直接跑。它们会帮你查出三个坑：**user_id 隔离域必须等于角色卡 id**——桌宠写 Qdrant 时用的是 `skills/sakura/characters/<目录>/character.json` 里的 `id`（`Sakura`、`shiki_natsume`），不是桥接的小写键名，对不上就会**永远 0 命中**（`mem0_bridge.scope_ids()` 现在会从角色卡自动解析，并用 `MatchAny` 兼容旧的大小写变体——但请保持卡片 id 与桥接配置一致）；**Qdrant 本地(文件)模式单写者**（桌宠进程持有 `skills/sakura/data/memory/qdrant`，并行脚本会报 "already accessed by another instance"）；**qdrant_client ≥ 1.20 已删除 `client.search()`**（改用 `query_points`）。
+> **记忆自检** — `python skills/shared/mem0_selfcheck.py`（只读跑法加 `--skip-write`）一次跑完：embedding 服务 :9999 → Qdrant ANN → 桥接搜索/添加/删除 → SmartCrusher + CCR 回取。`python skills/shared/qdrant_store_inspect.py --character <角色>` 只读查看库。两个脚本都用 `Path(__file__)` 从仓库布局推路径，任意 clone 都能直接跑。它们会帮你查出三个坑：**Qdrant 隔离域 `payload.user_id` 统一小写**（`sakura`、`shiki_natsume`、`enola`、`atori`）——桌宠虽然拿角色卡 id（`skills/sakura/characters/<目录>/character.json` 的 `id`）当 scope，但 `app/agent/memory.py:_normalize_scope_id` 会转小写，跟 `DEFAULT_MEMORY_SCOPE`、代理里的 `CHARACTER_MEM0_ID`、`mem0_behavior_integration.py` 的 `CHARACTER_MAP` 对齐；映射写成别的形式就会**永远 0 命中**（`mem0_bridge.scope_ids()` 仍会用 `MatchAny` 兼容旧写法，旧库用 `python skills/shared/qdrant_rescope.py --apply` 刷齐）；**Qdrant 本地(文件)模式单写者**（桌宠进程持有 `skills/sakura/data/memory/qdrant`，并行脚本会报 "already accessed by another instance"）；**qdrant_client ≥ 1.20 已删除 `client.search()`**（改用 `query_points`）。
 
 **只加不改原则：** `start.ps1` 启动时自动扫描 `~/.openclaw/openclaw.json`，新增 `local-llama` provider（复制现有云端模型），原始 provider 原封不动。原始 baseUrl 存入 `~/.openclaw/headroom_routes.json` sidecar 文件。clone 后零配置。
 
