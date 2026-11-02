@@ -379,6 +379,10 @@ START-HERE.bat
   `Qwen3.8-Flash-Next-GSQ-RCO-abliterated-IQ3_S-00001-of-00002.gguf` → `Qwen3.8-Flash-Next-GSQ-RCO-IQ3_S-00001-of-00002.gguf`.
 - Health check: `http://127.0.0.1:8080/health` → `"service": "strata"`. OpenAI-compatible endpoint: `http://127.0.0.1:8080/v1`.
 - OpenClaw: use the `strata/qwen3.8-flash-next` provider (see `openclaw.example.json`). Full manual: `skills/strata/SKILL.md`.
+- **Measured on this host (2026-10-31 & 11-02 sessions, RTX 5090 Laptop 24 GB, IQ3_S, `--max-context 131072 --kv int8 --spec 4 --mtp`):**
+  decode **p50 ~100–110 tok/s** (p10 77 / p90 127; MTP draft acceptance ~55–58%), prefill **p50 ~2600 tok/s**
+  (cold ~2750–2880 / warm ~2500–2560), prompt-cache reuse 62–71%, context peak 110k.
+  VRAM stays nearly saturated (~0.4–0.6 GiB free) — hand the card over before running ComfyUI etc.
 
 ### Ternary-Bonsai-2-27B PTQ1_0 — fits fully in 8 GB VRAM 🔥
 
