@@ -948,6 +948,8 @@ schtasks /create /tn "cleanup-orphans" `
 | CCR | Extracts facts every 8 turns → Qdrant |
 | SmartCrusher | 24 msg/40K char hard cap |
 | mem0_sync_cron | Every 30min: Qdrant → _mem0_auto.md |
+| mem0_selfcheck.py | One-shot stack check: embedding → Qdrant ANN → write/read → SmartCrusher+CCR |
+| qdrant_store_inspect.py | Read-only store dump: points, user_id scopes, payload keys |
 | headroom_routes.json | sidecar: model_id → real backend baseUrl mapping |
 
 </td>
@@ -970,6 +972,8 @@ OpenClaw Gateway (18789)
          ├─ llama-local → llama-server:9931
          └─ Cloud models    → sidecar finds real baseUrl
 ```
+
+> **Memory self-check** — `python skills/shared/mem0_selfcheck.py` (read-only pass: `--skip-write`) walks the whole chain: embedding server :9999 → Qdrant ANN → bridge search/add/delete → SmartCrusher + CCR round-trip. `python skills/shared/qdrant_store_inspect.py --character <name>` dumps the store without touching it. Both derive their paths from the repo layout (`Path(__file__)`), so they work from any checkout. Three traps they will flag for you: **user_id casing** (mem0 writes `Sakura`, `mem0_bridge.CHARACTERS` asks for `sakura` → every search returns 0 hits), **embedded Qdrant is single-writer** (the pet process holds `skills/sakura/data/memory/qdrant`; concurrent scripts get "already accessed by another instance"), and **qdrant_client ≥ 1.20 dropped `client.search()`** (use `query_points`).
 
 **Add-only, no-change principle:** `start.ps1` auto-scans `~/.openclaw/openclaw.json` on startup, adds `local-llama` provider (copies existing cloud model), original providers left as-is. Original baseUrl stored in `~/.openclaw/headroom_routes.json` sidecar file. Zero-config after clone.
 
