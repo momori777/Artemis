@@ -12,6 +12,8 @@
   - Qdrant 本地(文件)模式是**单写者**：桌宠进程持有该目录时这里会报
     "already accessed by another instance"。等它释放或改用 Qdrant server 模式。
   - Embedded (file) mode is single-writer; close the other client first.
+  - 写入方（桌宠 mem0）的 user_id = 角色卡 id（不改大小写），所以是 "Sakura" 而不是
+    "sakura"。--character 的探测会复用 mem0_bridge.scope_ids() 的候选集合。
   - Only reads. Nothing is written to the store.
 """
 
@@ -100,8 +102,12 @@ def main() -> int:
             probe = _probe_users(client, args.character, Filter, FieldCondition, MatchValue)
             for uid, n in probe.items():
                 print(f"filter user_id='{uid}' -> {n} hits")
-                if args.character.lower() in uid.lower() and n == 0:
-                    print("    WARN: bridge scope matches nothing — check user_id casing against what mem0 wrote")
+            total = sum(probe.values())
+            points_exist = (client.count(COLLECTION, exact=True).count or 0) > 0
+            if points_exist and total == 0:
+                print("    FAIL: none of the candidate scopes match anything — bridge will return 0 hits")
+                print("          真正可用的域见上面 `user_id scopes:` 行（写入方用的是角色卡 id，大小写不改）")
+                rc = 1
     except Exception as exc:  # pragma: no cover - diagnostic surface
         print(f"FAIL: {type(exc).__name__}: {exc}")
         rc = 1
@@ -116,9 +122,23 @@ def main() -> int:
 
 
 def _probe_users(client, character, Filter, FieldCondition, MatchValue) -> dict[str, int]:
-    """Count points for the configured user_id and the capitalised form mem0 may have written."""
-    out = {}
-    for uid in (character, character.capitalize()):
+    """用桥接会用的那批 user_id 候选逐个计数（优先复用 scope_ids，退到大小写变体）。"""
+    candidates: list[str] = []
+    try:
+        import sys
+        if str(REPO_ROOT) not in sys.path:
+            sys.path.insert(0, str(REPO_ROOT))
+        candidates = list(scope_ids := __import__("skills.shared.mem0_bridge", fromlist=["scope_ids"]).scope_ids(character))
+    except Exception:
+        pass
+    for fallback in (character, character.capitalize(), character.lower()):
+        if fallback not in candidates:
+            candidates.append(fallback)
+
+    out: dict[str, int] = {}
+    for uid in candidates:
+        if uid in out:
+            continue
         res = client.scroll(
             COLLECTION,
             scroll_filter=Filter(must=[FieldCondition(key="user_id", match=MatchValue(value=uid))]),

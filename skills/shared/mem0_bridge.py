@@ -30,6 +30,10 @@ from pathlib import Path
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 # ── Headroom SmartCrusher + CCR ──────────────────────────────
+# `from skills.headroom import ...` 需要仓库根在 sys.path 里（直接跑本文件的 CLI 时尤其如此）。
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 HEADROOM_MODULE = Path(__file__).parent.parent / "headroom"
 if str(HEADROOM_MODULE.parent) not in sys.path:
     sys.path.insert(0, str(HEADROOM_MODULE.parent))
@@ -57,12 +61,80 @@ MEM0_QDRANT = WORKSPACE / "skills" / "sakura" / "data" / "memory" / "qdrant"
 MEMORY_DIR = WORKSPACE / "memory" / "role_play"
 
 # ── 四角色配置 ────────────────────────────────────────────
+# ⚠ user_id 必须与桌宠 mem0 写入时用的 scope 一致：那个 scope 来自**角色卡 id**
+#   （skills/sakura/characters/<目录>/character.json 的 id 字段，见 app/core/bootstrap.py
+#   与 app/agent/memory.py:_normalize_scope_id——它只去空白，不改大小写）。
+#   所以是 "Sakura" 而不是 "sakura"，"shiki_natsume" 而不是 "natsume"。
+#   写错不会报错，只会让搜索**永远 0 命中**。scope_ids() 会自动从角色卡解析兼容。
 CHARACTERS = {
-    "sakura": {"user_id": "sakura", "lang_instruction": "夜乃桜的长期记忆使用简体中文记录。"},
-    "natsume": {"user_id": "natsume", "lang_instruction": "夏目的长期记忆使用简体中文记录，保留日文称呼如「君」。"},
+    "sakura": {"user_id": "Sakura", "lang_instruction": "夜乃桜的长期记忆使用简体中文记录。"},
+    "natsume": {"user_id": "shiki_natsume", "lang_instruction": "夏目的长期记忆使用简体中文记录，保留日文称呼如「君」。"},
     "enola": {"user_id": "enola", "lang_instruction": "Enola 的长期记忆使用简体中文记录。"},
     "atori": {"user_id": "atori", "lang_instruction": "Atori 的长期记忆使用简体中文记录。"},
 }
+
+# 角色卡目录：mem0 写入端的 user_id 真实来源（source of truth）
+CHARACTERS_DIR = WORKSPACE / "skills" / "sakura" / "characters"
+_card_ids_cache: list[str] | None = None
+
+
+def card_ids() -> list[str]:
+    """读取本地角色卡 id（桌宠写 Qdrant 时用的就是它）。卡不存在时返回空列表。"""
+    global _card_ids_cache
+    if _card_ids_cache is not None:
+        return _card_ids_cache
+    ids: list[str] = []
+    try:
+        for manifest in sorted(CHARACTERS_DIR.glob("*/character.json")):
+            try:
+                raw = json.loads(manifest.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            cid = str(raw.get("id") or "").strip()
+            if cid and cid not in ids:
+                ids.append(cid)
+    except OSError:
+        pass
+    _card_ids_cache = ids
+    return ids
+
+
+def scope_ids(character: str) -> list[str]:
+    """该角色在 Qdrant 中的候选 user_id（按优先级去重）。
+
+    顺序：角色卡 id → 配置值 → 配置值的小写/首字母大写形式。
+    这样旧数据里的大小写/命名差异不会把记忆永久藏起来，新写入则用首选（卡 id）。
+    """
+    configured = CHARACTERS.get(character, CHARACTERS["sakura"])["user_id"]
+    key = (character or "").lower()
+    out: list[str] = []
+    for cid in card_ids():
+        low = cid.lower()
+        if low == key or key in low.replace("-", "_").split("_"):
+            if cid not in out:
+                out.append(cid)
+    for variant in (configured, configured.lower(), configured.capitalize()):
+        if variant and variant not in out:
+            out.append(variant)
+    return out
+
+
+def write_scope(character: str) -> str:
+    """新记忆写入用的 user_id：首选角色卡 id，跟桌宠保持同一个隔离域。"""
+    return scope_ids(character)[0]
+
+
+def user_id_filter(user_ids: list[str]):
+    """user_id 过滤器：多候选时用 MatchAny，避开大小写/命名差异导致的静默 0 命中。"""
+    from qdrant_client.models import Filter, FieldCondition, MatchValue
+    try:
+        from qdrant_client.models import MatchAny
+        if len(user_ids) > 1:
+            return Filter(must=[FieldCondition(key="user_id", match=MatchAny(any=list(user_ids)))])
+    except ImportError:
+        pass
+    return Filter(must=[FieldCondition(key="user_id", match=MatchValue(value=user_ids[0]))])
+
 
 EMBEDDING_SERVER = "http://127.0.0.1:9999/v1/embeddings"
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
@@ -107,11 +179,8 @@ def _get_qdrant_client():
 
 def search_mem0_qdrant(character: str, query: str, limit: int = 10) -> list[dict]:
     """在 Qdrant 中搜索角色的 mem0 记忆"""
-    from qdrant_client.models import Filter, FieldCondition, MatchValue
-    
     client = _get_qdrant_client()
-    char_cfg = CHARACTERS.get(character, CHARACTERS["sakura"])
-    user_id = char_cfg["user_id"]
+    scopes = scope_ids(character)
     
     try:
         # 获取查询向量
@@ -120,7 +189,7 @@ def search_mem0_qdrant(character: str, query: str, limit: int = 10) -> list[dict
         results = client.query_points(
             collection_name="sakura_memories",
             query=query_vec,
-            query_filter=Filter(must=[FieldCondition(key="user_id", match=MatchValue(value=user_id))]),
+            query_filter=user_id_filter(scopes),
             limit=limit * 2,
             with_payload=True,
         )
@@ -149,16 +218,13 @@ def search_mem0_qdrant(character: str, query: str, limit: int = 10) -> list[dict
 
 def list_mem0(character: str, limit: int = 50) -> list[dict]:
     """列出角色的所有 mem0 记忆"""
-    from qdrant_client.models import Filter, FieldCondition, MatchValue
-    
     client = _get_qdrant_client()
-    char_cfg = CHARACTERS.get(character, CHARACTERS["sakura"])
-    user_id = char_cfg["user_id"]
+    scopes = scope_ids(character)
     
     try:
         points, _ = client.scroll(
             collection_name="sakura_memories",
-            scroll_filter=Filter(must=[FieldCondition(key="user_id", match=MatchValue(value=user_id))]),
+            scroll_filter=user_id_filter(scopes),
             limit=limit,
             with_payload=True,
         )
@@ -187,8 +253,7 @@ def add_memory(character: str, text: str) -> dict:
     from qdrant_client.models import PointStruct
     
     client = _get_qdrant_client()
-    char_cfg = CHARACTERS.get(character, CHARACTERS["sakura"])
-    user_id = char_cfg["user_id"]
+    user_id = write_scope(character)  # 与桌宠 mem0 同一个隔离域（角色卡 id）
     
     vec = _get_embedding(text)
     point_id = hash(f"{user_id}:{text}:{datetime.now().isoformat()}") & 0x7FFFFFFFFFFFFFFF
@@ -237,7 +302,7 @@ def sync_mem0_to_markdown(character: str) -> dict:
             "",
             f"> 最后同步: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             f"> 记忆数: {len(memories)}",
-            f"> 来源: mem0 Qdrant (user_id={CHARACTERS[character]['user_id']})",
+            f"> 来源: mem0 Qdrant (user_id={' | '.join(scope_ids(character))})",
             "",
             "此文件由 mem0_bridge.py 自动生成，每 30 分钟同步一次。",
             "",

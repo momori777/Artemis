@@ -115,9 +115,11 @@ def check_store() -> tuple[bool, bool]:
         blind = sorted(s for s in configured if s not in stored)
         if blind and stored:
             near = [s for s in stored if any(s.lower() == b.lower() for b in blind)]
-            print(f"[store] WARN bridge scopes with no data: {blind}"
-                  + (f" — mem0 wrote differently-cased scopes instead: {near}" if near else ""))
-            print("       (case mismatch alone makes bridge search/list/sync return 0 hits forever)")
+            if near:
+                print(f"[store] WARN bridge scopes with no data: {blind} — 库里只有不同大小写的域: {near}")
+                print("       (scope 不一致会让桥接的搜索/列表/同步永远 0 命中)")
+            else:
+                print(f"[store] note: 这些角色还没记忆（新角色正常）: {blind}")
         if not points:
             print("[store] WARN store empty — nothing to retrieve")
         return True, bool(points)

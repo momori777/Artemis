@@ -965,7 +965,7 @@ OpenClaw Gateway (18789)
          └─ Cloud models    → sidecar finds real baseUrl
 ```
 
-> **记忆自检** — `python skills/shared/mem0_selfcheck.py`（只读跑法加 `--skip-write`）一次跑完：embedding 服务 :9999 → Qdrant ANN → 桥接搜索/添加/删除 → SmartCrusher + CCR 回取。`python skills/shared/qdrant_store_inspect.py --character <角色>` 只读查看库。两个脚本都用 `Path(__file__)` 从仓库布局推路径，任意 clone 都能直接跑。它们会帮你查出三个坑：**user_id 大小写**（mem0 写入 `Sakura`，`mem0_bridge.CHARACTERS` 查 `sakura` → 搜索永远 0 命中）、**Qdrant 本地(文件)模式单写者**（桌宠进程持有 `skills/sakura/data/memory/qdrant`，并行脚本会报 "already accessed by another instance"）、**qdrant_client ≥ 1.20 已删除 `client.search()`**（改用 `query_points`）。
+> **记忆自检** — `python skills/shared/mem0_selfcheck.py`（只读跑法加 `--skip-write`）一次跑完：embedding 服务 :9999 → Qdrant ANN → 桥接搜索/添加/删除 → SmartCrusher + CCR 回取。`python skills/shared/qdrant_store_inspect.py --character <角色>` 只读查看库。两个脚本都用 `Path(__file__)` 从仓库布局推路径，任意 clone 都能直接跑。它们会帮你查出三个坑：**user_id 隔离域必须等于角色卡 id**——桌宠写 Qdrant 时用的是 `skills/sakura/characters/<目录>/character.json` 里的 `id`（`Sakura`、`shiki_natsume`），不是桥接的小写键名，对不上就会**永远 0 命中**（`mem0_bridge.scope_ids()` 现在会从角色卡自动解析，并用 `MatchAny` 兼容旧的大小写变体——但请保持卡片 id 与桥接配置一致）；**Qdrant 本地(文件)模式单写者**（桌宠进程持有 `skills/sakura/data/memory/qdrant`，并行脚本会报 "already accessed by another instance"）；**qdrant_client ≥ 1.20 已删除 `client.search()`**（改用 `query_points`）。
 
 **只加不改原则：** `start.ps1` 启动时自动扫描 `~/.openclaw/openclaw.json`，新增 `local-llama` provider（复制现有云端模型），原始 provider 原封不动。原始 baseUrl 存入 `~/.openclaw/headroom_routes.json` sidecar 文件。clone 后零配置。
 
