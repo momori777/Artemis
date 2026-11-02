@@ -377,6 +377,10 @@ START-HERE.bat
   `Qwen3.8-Flash-Next-GSQ-RCO-abliterated-IQ3_S-00001-of-00002.gguf` → `Qwen3.8-Flash-Next-GSQ-RCO-IQ3_S-00001-of-00002.gguf`。
 - ヘルスチェック：`http://127.0.0.1:8080/health` → `"service": "strata"`。OpenAI 互換エンドポイント：`http://127.0.0.1:8080/v1`。
 - OpenClaw：`strata/qwen3.8-flash-next` provider を使用（`openclaw.example.json` 参照）。完全マニュアル：`skills/strata/SKILL.md`。
+- **実機計測（2026-10-31 と 11-02 の 2 セッション、RTX 5090 Laptop 24 GB、IQ3_S、`--max-context 131072 --kv int8 --spec 4 --mtp`）：**
+  デコード **p50 ~100–110 tok/s**（p10 77 / p90 127；MTP draft 採択率 ~55–58%）、プリフィル **p50 ~2600 tok/s**
+  （cold ~2750–2880 / warm ~2500–2560）、prompt cache 再利用 62–71%、コンテキストピーク 110k トークン。
+  VRAM はほぼ上限（空き ~0.4–0.6 GB）——ComfyUI 等の GPU タスクは先に明示的な譲渡を。
 
 ### Ternary-Bonsai-2-27B PTQ1_0 — 8 GB VRAM に完全収載 🔥
 

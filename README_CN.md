@@ -374,6 +374,10 @@ START-HERE.bat
   `Qwen3.8-Flash-Next-GSQ-RCO-abliterated-IQ3_S-00001-of-00002.gguf` → `Qwen3.8-Flash-Next-GSQ-RCO-IQ3_S-00001-of-00002.gguf`。
 - 健康检查：`http://127.0.0.1:8080/health` → `"service": "strata"`。OpenAI 兼容端点：`http://127.0.0.1:8080/v1`。
 - OpenClaw：使用 `strata/qwen3.8-flash-next` provider（见 `openclaw.example.json`）。完整手册：`skills/strata/SKILL.md`。
+- **本机实测（2026-10-31 与 11-02 两次会话，RTX 5090 Laptop 24 GB，IQ3_S，`--max-context 131072 --kv int8 --spec 4 --mtp`）：**
+  decode **p50 ~100–110 tok/s**（p10 77 / p90 127；MTP draft 接受率 ~55–58%），prefill **p50 ~2600 tok/s**
+  （cold ~2750–2880 / warm ~2500–2560），prompt cache 复用 62–71%，上下文峰值 110k token。
+  显存基本占满（仅剩 ~0.4–0.6 GB）——跑 ComfyUI 等 GPU 任务前先做显存交接。
 
 ### Ternary-Bonsai-2-27B PTQ1_0 —— 8 GB 显存可全量装载 🔥
 
