@@ -78,6 +78,12 @@ Bridge がオフラインなら起動: `node live2d-bridge.mjs`（作業ディ�
 手動検索 / 書き込み / 埋め込みモデル切替: `skills/mem0-bridge/SKILL.md`（embedding server ポート 9999 が必要）。
 プロキシルーティング、SmartCrusher と mem0 パラメータ: `skills/headroom/PROXY.md`。
 
+### RAG 起動手順（実質的な自動起動）
+
+- mem0 を呼ぶ前に埋め込みサーバーを確認: `Invoke-WebRequest http://127.0.0.1:9999/health`。応答がなければ `python -X utf8 skills/shared/embedding_server.py` を裏方（sessions_spawn / バックグラウンド）で起動。新規セッションごとに RAG が立ち上がり、score=0.0 のゼロベクトルフォールバックに落ちない。
+- Qdrant の隔離ドメイン `payload.user_id` は**小文字**で統一し、ペット側が書く scope と一致させる（`sakura` / `shiki_natsume` / `enola` / `atori`）。`app/agent/memory.py` の `_normalize_scope_id` がカード id を小文字化（`Sakura` → `sakura`）し、`DEFAULT_MEMORY_SCOPE`、`artemis_headroom_proxy.py` の `CHARACTER_MEM0_ID`、`mem0_behavior_integration.py` の `CHARACTER_MAP` と揃う。別の綴を設定するとエラーなく黙って 0 ヒット。データ揃えは `python skills/shared/qdrant_rescope.py --apply`（`--apply` なしは dry run）。
+- 自己点検: `python skills/shared/mem0_selfcheck.py --skip-write`（全チェーン）または `python skills/shared/qdrant_store_inspect.py --character sakura`（ストアのみ、embedding server 不要）。ストアは embedded の単一書き込み手—ペットが掴んでいないか先に確認。
+
 ### 行動エンジン + 好感度（関係段位）
 
 状態は `memory/role_play/<キャラ>/relationship.json` にあり、`skills/behavior-engine/` が 9 段位の関係段階 + 4 段階コンフリクト + 好感度スコアを駆動する。

@@ -10,6 +10,7 @@
 | `mem0_sync_cron.py` | mem0 → markdown 定时同步脚本 |
 | `mem0_selfcheck.py` | **记忆链一键自检**：embedding :9999 → Qdrant ANN → 桥接搜索/写入/清理 → SmartCrusher + CCR（`--skip-write` 只读） |
 | `qdrant_store_inspect.py` | Qdrant 库只读查看：点数 / user_id 隔离域 / payload 字段 / ANN 自检 |
+| `qdrant_rescope.py` | 批量把 `payload.user_id` 刷成**小写**隔离域（默认 dry run，`--apply` 写入，幂等） |
 | `llama_config.py` / `llama_utils.py` | llama-server 配置与工具 |
 | `llama_lifecycle.py` | llama-server 启停生命周期管理 |
 | `restart_llama_degraded.ps1` | 降级重启脚本 |
@@ -28,6 +29,7 @@ Cross-skill shared Python utilities (not a standalone skill; imported by other s
 | `mem0_sync_cron.py` | Scheduled mem0 → markdown sync script |
 | `mem0_selfcheck.py` | **One-shot memory stack check**: embedding :9999 → Qdrant ANN → bridge search/add/cleanup → SmartCrusher + CCR (`--skip-write` for read-only) |
 | `qdrant_store_inspect.py` | Read-only Qdrant store dump: point count, user_id scopes, payload keys, ANN self-test |
+| `qdrant_rescope.py` | Batch-rewrite `payload.user_id` into the **lowercase** scope (dry run by default, `--apply` to write, idempotent) |
 | `llama_config.py` / `llama_utils.py` | llama-server configuration and utilities |
 | `llama_lifecycle.py` | llama-server start/stop lifecycle management |
 | `restart_llama_degraded.ps1` | Degraded restart script |

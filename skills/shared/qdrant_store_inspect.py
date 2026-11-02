@@ -12,8 +12,10 @@
   - Qdrant 本地(文件)模式是**单写者**：桌宠进程持有该目录时这里会报
     "already accessed by another instance"。等它释放或改用 Qdrant server 模式。
   - Embedded (file) mode is single-writer; close the other client first.
-  - 写入方（桌宠 mem0）的 user_id = 角色卡 id（不改大小写），所以是 "Sakura" 而不是
-    "sakura"。--character 的探测会复用 mem0_bridge.scope_ids() 的候选集合。
+  - 隔离域 `payload.user_id` 统一**小写**（`sakura` / `shiki_natsume` / ...）：写入端拿角色卡 id
+    当 scope，但 `app/agent/memory.py:_normalize_scope_id` 会转小写。库里残留旧写法时用
+    `python skills/shared/qdrant_rescope.py --apply` 刷齐。--character 的探测复用
+    mem0_bridge.scope_ids() 的候选集合（含旧大小写变体）。
   - Only reads. Nothing is written to the store.
 """
 

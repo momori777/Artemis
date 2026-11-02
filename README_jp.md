@@ -942,6 +942,7 @@ schtasks /create /tn "cleanup-orphans" `
 | mem0_sync_cron | 30 分ごと: Qdrant → _mem0_auto.md |
 | mem0_selfcheck.py | 一括チェッカー: embedding → Qdrant ANN → 検索/追加/削除 → SmartCrusher+CCR |
 | qdrant_store_inspect.py | 読み取り専用ストア確認: 点数・user_id スコープ・payload キー |
+| qdrant_rescope.py | `payload.user_id` を小文字スコープへ一括正規化（既定は dry run、`--apply` で書き込み） |
 | headroom_routes.json | sidecar: model_id → real backend baseUrl マッピング |
 
 </td>
@@ -965,7 +966,7 @@ OpenClaw Gateway (18789)
          └─ Cloud models    → sidecar finds real baseUrl
 ```
 
-> **メモリ自己診断** — `python skills/shared/mem0_selfcheck.py`（読み取りのみは `--skip-write`）で、embedding サーバー :9999 → Qdrant ANN → ブリッジ検索/追加/削除 → SmartCrusher + CCR 復元まで一気通底。`python skills/shared/qdrant_store_inspect.py --character <キャラ>` はストアを読み取り専用で表示。両スクリプトとも `Path(__file__)` でリポジトリ構成からパスを解決するので、どの clone でもそのまま動きます。検出する三つの落とし穴: **user_id スコープはキャラクターカードの id と一致する必要がある** — ペットは `skills/sakura/characters/<dir>/character.json` の `id`（`Sakura`、`shiki_natsume`）で Qdrant に書き込み、ブリッジの小文字キーではない。不一致だと**永遠に 0 件**（`mem0_bridge.scope_ids()` はカードから自動解決し、旧データのバリアントには `MatchAny` で対応するが、カード id とブリッジ設定は一致させておくこと）；**Qdrant ローカル（ファイル）モードは単一書き込み**（`skills/sakura/data/memory/qdrant` を卓上ペットプロセスが占有中だと "already accessed by another instance"）；**qdrant_client ≥ 1.20 で `client.search()` が削除済み**（`query_points` を使う）。
+> **メモリ自己診断** — `python skills/shared/mem0_selfcheck.py`（読み取りのみは `--skip-write`）で、embedding サーバー :9999 → Qdrant ANN → ブリッジ検索/追加/削除 → SmartCrusher + CCR 復元まで一気通底。`python skills/shared/qdrant_store_inspect.py --character <キャラ>` はストアを読み取り専用で表示。両スクリプトとも `Path(__file__)` でリポジトリ構成からパスを解決するので、どの clone でもそのまま動きます。検出する三つの落とし穴: **Qdrant の隔離ドメイン `payload.user_id` は小文字で統一**（`sakura`、`shiki_natsume`、`enola`、`atori`）——ペットはキャラクターカードの `id`（`skills/sakura/characters/<dir>/character.json`）を scope に使うが、`app/agent/memory.py:_normalize_scope_id` が小文字化し、`DEFAULT_MEMORY_SCOPE`・プロキシの `CHARACTER_MEM0_ID`・`mem0_behavior_integration.py` の `CHARACTER_MAP` と揃う。別の綴りだと**永遠に 0 件**（`mem0_bridge.scope_ids()` は `MatchAny` で旧バリアントも拾うが、旧データのストアは `python skills/shared/qdrant_rescope.py --apply` で揃える）；**Qdrant ローカル（ファイル）モードは単一書き込み**（`skills/sakura/data/memory/qdrant` を卓上ペットプロセスが占有中だと "already accessed by another instance"）；**qdrant_client ≥ 1.20 で `client.search()` が削除済み**（`query_points` を使う）。
 
 **追加のみ・変更なし原則:** `start.ps1` は起動時に `~/.openclaw/openclaw.json` を自動スキャンし、`local-llama` provider を追加（既存クラウドモデルのコピー）、元 provider はそのまま。元の baseUrl は `~/.openclaw/headroom_routes.json` sidecar ファイルに保存。クローン後設定ゼロ。
 

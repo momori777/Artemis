@@ -950,6 +950,7 @@ schtasks /create /tn "cleanup-orphans" `
 | mem0_sync_cron | Every 30min: Qdrant → _mem0_auto.md |
 | mem0_selfcheck.py | One-shot stack check: embedding → Qdrant ANN → write/read → SmartCrusher+CCR |
 | qdrant_store_inspect.py | Read-only store dump: points, user_id scopes, payload keys |
+| qdrant_rescope.py | Batch-normalise `payload.user_id` to the lowercase scope (dry run by default, `--apply` to write) |
 | headroom_routes.json | sidecar: model_id → real backend baseUrl mapping |
 
 </td>
@@ -973,7 +974,7 @@ OpenClaw Gateway (18789)
          └─ Cloud models    → sidecar finds real baseUrl
 ```
 
-> **Memory self-check** — `python skills/shared/mem0_selfcheck.py` (read-only pass: `--skip-write`) walks the whole chain: embedding server :9999 → Qdrant ANN → bridge search/add/delete → SmartCrusher + CCR round-trip. `python skills/shared/qdrant_store_inspect.py --character <name>` dumps the store without touching it. Both derive their paths from the repo layout (`Path(__file__)`), so they work from any checkout. Three traps they will flag for you: **user_id scope must equal the character card id** — the pet writes Qdrant points under the `id` from `skills/sakura/characters/<dir>/character.json` (`Sakura`, `shiki_natsume`), not the lower-case bridge key, so a wrong scope silently yields 0 hits forever (`mem0_bridge.scope_ids()` now resolves it from the cards and filters with `MatchAny` over every legacy variant — keep the card id and the bridge config aligned); **embedded Qdrant is single-writer** (the pet process holds `skills/sakura/data/memory/qdrant`; concurrent scripts get "already accessed by another instance"); and **qdrant_client ≥ 1.20 dropped `client.search()`** (use `query_points`).
+> **Memory self-check** — `python skills/shared/mem0_selfcheck.py` (read-only pass: `--skip-write`) walks the whole chain: embedding server :9999 → Qdrant ANN → bridge search/add/delete → SmartCrusher + CCR round-trip. `python skills/shared/qdrant_store_inspect.py --character <name>` dumps the store without touching it. Both derive their paths from the repo layout (`Path(__file__)`), so they work from any checkout. Three traps they will flag for you: **the Qdrant isolation scope `payload.user_id` is lowercase** (`sakura`, `shiki_natsume`, `enola`, `atori`) — the pet derives it from the character card id (`skills/sakura/characters/<dir>/character.json`) but `app/agent/memory.py:_normalize_scope_id` lowercases it, matching `DEFAULT_MEMORY_SCOPE`, `CHARACTER_MEM0_ID` in `artemis_headroom_proxy.py` and `CHARACTER_MAP` in `mem0_behavior_integration.py`, so a mapping spelled any other way silently yields 0 hits forever (`mem0_bridge.scope_ids()` still filters with `MatchAny` over the legacy variants, and `python skills/shared/qdrant_rescope.py --apply` migrates a store written under the old spelling); **embedded Qdrant is single-writer** (the pet process holds `skills/sakura/data/memory/qdrant`; concurrent scripts get "already accessed by another instance"); and **qdrant_client ≥ 1.20 dropped `client.search()`** (use `query_points`).
 
 **Add-only, no-change principle:** `start.ps1` auto-scans `~/.openclaw/openclaw.json` on startup, adds `local-llama` provider (copies existing cloud model), original providers left as-is. Original baseUrl stored in `~/.openclaw/headroom_routes.json` sidecar file. Zero-config after clone.
 

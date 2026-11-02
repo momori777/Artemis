@@ -89,12 +89,14 @@ Every turn, the system automatically runs the following flow:
 
 ### Prerequisites
 
-- The **embedding server** (port 9999) must be running, otherwise all memory score=0.0 (zero-vector fallback)
+- The **embedding server** (port 9999) must be running, otherwise all memory score=0.0 (zero-vector fallback). Autostart it: `Invoke-WebRequest http://127.0.0.1:9999/health` first, and if it does not answer launch `python -X utf8 skills/shared/embedding_server.py` detached.
 - Qdrant database at `skills/sakura/data/memory/qdrant/`
+- The Qdrant isolation scope `payload.user_id` is **lowercase** (`sakura`, `shiki_natsume`, `enola`, `atori`) — `_normalize_scope_id` in `app/agent/memory.py` lowercases the character-card id, matching `DEFAULT_MEMORY_SCOPE`, `CHARACTER_MEM0_ID` (proxy) and `CHARACTER_MAP` (behavior integration). A mapping using another spelling silently returns 0 hits; fix the data with `python skills/shared/qdrant_rescope.py --apply`.
+- Self-check the chain: `python skills/shared/mem0_selfcheck.py --skip-write`; store-only (no embedding server): `python skills/shared/qdrant_store_inspect.py --character sakura`.
 
 ### Manual operations
 
-Manual search, write, sync: see `skills/mem0-bridge/SKILL.md`.
+Manual search, write, sync: see `skills/mem0-bridge/SKILL.md`. Bridge implementation: `skills/shared/mem0_bridge.py` (`scope_ids()` resolves the card id plus case variants, so legacy scopes stay searchable).
 
 ### New file
 

@@ -91,12 +91,14 @@ Bridge 不在线时先起：`node live2d-bridge.mjs`（工作目录 `live2d/`，
 
 ### 前提条件
 
-- **embedding server** (port 9999) 必须运行，否则所有记忆 score=0.0（零向量 fallback）
+- **embedding server** (port 9999) 必须运行，否则所有记忆 score=0.0（零向量 fallback）。当自启用：先 `Invoke-WebRequest http://127.0.0.1:9999/health`，不通就在后台拉 `python -X utf8 skills/shared/embedding_server.py`。
 - Qdrant 数据库在 `skills/sakura/data/memory/qdrant/`
+- Qdrant 隔离域 `payload.user_id` 统一**小写**（`sakura` / `shiki_natsume` / `enola` / `atori`）：`app/agent/memory.py` 的 `_normalize_scope_id` 会把角色卡 id 转小写（`Sakura` → `sakura`），与 `DEFAULT_MEMORY_SCOPE`、代理里的 `CHARACTER_MEM0_ID`、`mem0_behavior_integration.py` 的 `CHARACTER_MAP` 对齐。映射写成别的形式不会报错，只会静默 0 命中；数据用 `python skills/shared/qdrant_rescope.py --apply` 刷齐。
+- 自检整链：`python skills/shared/mem0_selfcheck.py --skip-write`；只看库（不需要嵌入服务器）：`python skills/shared/qdrant_store_inspect.py --character sakura`。
 
 ### 手动操作
 
-手动查询、写入、同步见 `skills/mem0-bridge/SKILL.md`。
+手动查询、写入、同步见 `skills/mem0-bridge/SKILL.md`。桥接实现 `skills/shared/mem0_bridge.py`（`scope_ids()` 会一并解析角色卡 id 和各种大小写变体，旧数据不会被藏起来）。
 
 ### 新文件
 

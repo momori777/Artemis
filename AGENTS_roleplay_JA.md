@@ -89,12 +89,14 @@ Bridge がオフラインなら起動: `node live2d-bridge.mjs`（作業ディ�
 
 ### 前提条件
 
-- **embedding server** (port 9999) が動作必須。そうでなければ全記憶 score=0.0（ゼロベクトルフォールバック）
+- **embedding server** (port 9999) が動作必須。そうでなければ全記憶 score=0.0（ゼロベクトルフォールバック）。自動起動扱いにする: まず `Invoke-WebRequest http://127.0.0.1:9999/health`、応答がなければ `python -X utf8 skills/shared/embedding_server.py` を裏方で起動。
 - Qdrant データベース: `skills/sakura/data/memory/qdrant/`
+- Qdrant の隔離ドメイン `payload.user_id` は**小文字**で統一（`sakura` / `shiki_natsume` / `enola` / `atori`）：`app/agent/memory.py` の `_normalize_scope_id` がキャラカード id を小文字化（`Sakura` → `sakura`）し、`DEFAULT_MEMORY_SCOPE`、プロキシの `CHARACTER_MEM0_ID`、`mem0_behavior_integration.py` の `CHARACTER_MAP` と揃う。別の綴を設定するとエラーなく黙って 0 ヒット。データは `python skills/shared/qdrant_rescope.py --apply` で揃える。
+- 全チェーン自己点検: `python skills/shared/mem0_selfcheck.py --skip-write`。ストアのみ（embedding server 不要）: `python skills/shared/qdrant_store_inspect.py --character sakura`。
 
 ### 手動操作
 
-手動検索、書き込み、同期: `skills/mem0-bridge/SKILL.md` を参照。
+手動検索、書き込み、同期: `skills/mem0-bridge/SKILL.md` を参照。ブリッジ実装 `skills/shared/mem0_bridge.py`（`scope_ids()` がカード id と大小文字の表記揺れをまとめて解決するので、旧データの記憶は隠れない）。
 
 ### 新ファイル
 

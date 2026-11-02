@@ -78,6 +78,12 @@ Use by score: `>0.7` must be reflected in the reply, `>0.5` weave in naturally, 
 Manual search / write / embedding model switch: `skills/mem0-bridge/SKILL.md` (requires embedding server on port 9999).
 Proxy routing, SmartCrusher and mem0 parameters: `skills/headroom/PROXY.md`.
 
+### Bringing the RAG path up (treat this as its autostart)
+
+- Before any mem0 call, check the embedding server: `Invoke-WebRequest http://127.0.0.1:9999/health`. If it does not answer, start it detached — `python -X utf8 skills/shared/embedding_server.py` (sessions_spawn / background) — so every fresh session brings the RAG path online instead of failing with score=0.0.
+- The Qdrant isolation scope `payload.user_id` is **lowercase** and must equal the scope the pet writes (`sakura`, `shiki_natsume`, `enola`, `atori`). `_normalize_scope_id` in `app/agent/memory.py` lowercases the card id (`Sakura` → `sakura`), matching `DEFAULT_MEMORY_SCOPE`, `CHARACTER_MEM0_ID` in `artemis_headroom_proxy.py` and `CHARACTER_MAP` in `mem0_behavior_integration.py`. A mapping pointing at another spelling silently returns 0 hits; migrate data instead: `python skills/shared/qdrant_rescope.py --apply` (dry run without `--apply`).
+- Self-check: `python skills/shared/mem0_selfcheck.py --skip-write` (whole chain) or `python skills/shared/qdrant_store_inspect.py --character sakura` (store only, needs no embedding server). The store is embedded and single-writer — stop the pet first.
+
 ### Behavior Engine + Relationship (Stages)
 
 State lives in `memory/role_play/<char>/relationship.json`, driven by `skills/behavior-engine/` — 9 relationship stages, 4 conflict levels, and an affection score.
