@@ -29,6 +29,11 @@
 - [luckui/dsh-livestream](https://github.com/luckui/dsh-livestream)（*58）— B 站直播间当主播插件
 - 轻量酒馆类：chinosk6/dsh-roleplay、chen731215-dev/dsh-tavern-v2、XCNXNXNX/dsh-portable-tavern、oliblue-evan/dsh-roleplay-preset
 
+## 鲸鱼娘命名（2026-11-07，本项目拍板）
+
+- 社区拟人形象「鲸鱼娘」通称**大肥鱼**；本项目认为诨名太土，正式命名**蓝汐**（蓝鲸＋夜潮）。
+- 对应角色卡已入 harem：`skills/harem/lanxi/`（人设即由本目录 dsh 社区素材拼成：qingxi-whale 卡＋Karen 时钟＋familiar-memory 记忆观＋原味鱼接梗风）；社区旧称保留为出处引用，不主张独占。
+
 ## 结论
 
 - 完整长篇 RP 体验：装 **dsh-nexttavern**（npm）或 **dsh-liketavern**（分支隔离最扎实）。
