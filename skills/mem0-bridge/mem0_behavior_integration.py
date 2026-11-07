@@ -40,6 +40,8 @@ CHARACTER_MAP = {
     "atori": "atori",
     "atori2d": "atori",
     "atri": "atori",
+    "shifty": "shifty",
+    "谢芙蒂": "shifty",
 }
 
 

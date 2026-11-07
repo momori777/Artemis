@@ -77,6 +77,7 @@ CHARACTER_DETECT_KEYWORDS = {
     "sakura": ["夜乃桜", "sakura", "夜乃樱", "yono sakura"],
     "enola": ["Enola", "enola"],
     "atori": ["Atori", "atori", "atri"],
+    "shifty": ["谢芙蒂", "shifty", "Shifty"],
 }
 
 # 角色名 → mem0 user_id 映射 (与 mem0_bridge.py CHARACTERS 对齐)
@@ -85,6 +86,7 @@ CHARACTER_MEM0_ID = {
     "sakura": "sakura",
     "enola": "enola",
     "atori": "atori",
+    "shifty": "shifty",
 }
 
 # ── 本地 model id（这些走 llama-server，不经过云端） ──

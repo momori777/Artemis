@@ -4,7 +4,7 @@
 
 Mem0 Qdrant 向量记忆的读/写桥接器，WebChat、QQBot、TelegramBot 共用。
 
-- **存储**: Qdrant (`skills/sakura/data/memory/qdrant/`)，角色通过 `user_id` 隔离
+- **存储**: Qdrant 嵌入式库（路径随 `OPENCLAW_WORKSPACE` 所在树：`<树>/skills/sakura/data/memory/qdrant/`），角色通过 `user_id` 隔离；仓库侧与 OpenClaw workspace 侧各一份，2026-11-07 两端均全链路跑通
 - **嵌入**: local embedding server (port 9999)，`all-MiniLM-L6-v2`，384 维
 - **读**: 向量搜索 → 返回相关记忆，可注入 system prompt
 - **写**: 关键词提取 + 向量化 → 写入 Qdrant
@@ -32,11 +32,20 @@ add_memory("natsume", "用户偏好: 喜欢被叫'笨蛋'")
 list_mem0("natsume", limit=50)
 ```
 
+### 体检（2026-11-07 两端全绿）
+
+```powershell
+python skills/shared/embedding_server.py            # 先起嵌入服务，:9999/health 回 {"status":"ok"}
+python skills/shared/mem0_selfcheck.py --character sakura                                       # 仓库侧
+python skills/shared/mem0_selfcheck.py --root "$env:USERPROFILE\.openclaw\workspace" --character shifty  # 谢芙蒂那端
+python skills/shared/qdrant_store_inspect.py         # 只读盘库，不需要嵌入服务
+```
+
 ## English
 
 Mem0 Qdrant vector memory read/write bridge, shared by WebChat, QQBot and TelegramBot.
 
-- **Storage**: Qdrant (`skills/sakura/data/memory/qdrant/`), characters isolated by `user_id`
+- **Storage**: Qdrant embedded store (path follows the `OPENCLAW_WORKSPACE` tree: `<tree>/skills/sakura/data/memory/qdrant/`), characters isolated by `user_id`; the repo side and the OpenClaw workspace side (Shifty's runtime) each keep one store — both verified end-to-end on 2026-11-07
 - **Embeddings**: local embedding server (port 9999), `all-MiniLM-L6-v2`, 384-dim
 - **Read**: vector search → relevant memories, injectable into system prompt
 - **Write**: keyword extraction + embedding → write to Qdrant
@@ -62,4 +71,13 @@ from skills.shared.mem0_bridge import search_mem0_qdrant, add_memory, list_mem0
 search_mem0_qdrant("natsume", "how are you feeling today", limit=5)
 add_memory("natsume", "User preference: likes being called 'baka'")
 list_mem0("natsume", limit=50)
+```
+
+### Health check (both stores green, 2026-11-07)
+
+```powershell
+python skills/shared/embedding_server.py            # start embeddings first; :9999/health -> {"status":"ok"}
+python skills/shared/mem0_selfcheck.py --character sakura                                       # repo side
+python skills/shared/mem0_selfcheck.py --root "$env:USERPROFILE\.openclaw\workspace" --character shifty  # Shifty's side
+python skills/shared/qdrant_store_inspect.py         # read-only store dump, no embedding server needed
 ```

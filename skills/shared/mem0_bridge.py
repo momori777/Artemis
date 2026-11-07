@@ -60,7 +60,7 @@ WORKSPACE = Path(os.environ.get(
 MEM0_QDRANT = WORKSPACE / "skills" / "sakura" / "data" / "memory" / "qdrant"
 MEMORY_DIR = WORKSPACE / "memory" / "role_play"
 
-# ── 四角色配置 ────────────────────────────────────────────
+# ── 多角色配置（多租户） ──────────────────────────────────
 # ⚠ user_id 是 Qdrant 的隔离域，必须与桌宠 mem0 写入时用的 scope 一致：那个 scope 来自
 #   **角色卡 id**（skills/sakura/characters/<目录>/character.json 的 id 字段，见 app/core/bootstrap.py
 #   与 app/agent/memory.py:_normalize_scope_id）。
@@ -73,6 +73,14 @@ CHARACTERS = {
     "natsume": {"user_id": "shiki_natsume", "lang_instruction": "夏目的长期记忆使用简体中文记录，保留日文称呼如「君」。"},
     "enola": {"user_id": "enola", "lang_instruction": "Enola 的长期记忆使用简体中文记录。"},
     "atori": {"user_id": "atori", "lang_instruction": "Atori 的长期记忆使用简体中文记录。"},
+    # 谢芙蒂（Shifty，OpenClaw workspace 端角色）：2026-11-07 那端跑通后登记。
+    # 她早期的记忆是在没有独立 scope 时写进默认域 "sakura" 的，所以 legacy_user_ids
+    # 兜住旧数据；新记忆只写规范域 "shifty"（write_scope 永远取 scope_ids 第一个）。
+    "shifty": {
+        "user_id": "shifty",
+        "legacy_user_ids": ["sakura"],
+        "lang_instruction": "谢芙蒂的长期记忆使用简体中文记录，保留群聊黑话、群编号与「指挥官」称呼。",
+    },
 }
 
 # 角色卡目录：mem0 写入端的 user_id 真实来源（source of truth）
@@ -116,6 +124,8 @@ def scope_ids(character: str) -> list[str]:
         if low == key or key in low.replace("-", "_").split("_"):
             candidates.append(cid)
     candidates.extend((configured, configured.lower(), configured.capitalize()))
+    # 历史默认域（没有独立卡时期写入落在的域）：读时兜住，别让旧记忆静默失联；写入不受影响。
+    candidates.extend(str(x) for x in CHARACTERS.get(character, {}).get("legacy_user_ids", ()))
     out: list[str] = []
     for variant in candidates:
         canonical = str(variant or "").strip().lower()
