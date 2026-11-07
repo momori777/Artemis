@@ -733,6 +733,20 @@ Then open **http://127.0.0.1:19280** - create tasks, watch Claude Code pick them
 | `.claude/settings.local.json` | Pre-approved MCP tools |
 | `claude-code.ps1` / `.sh` | Launcher scripts |
 
+## 🐋 DeepSeek Harness (dsh) — Third Agent Runtime (NEW)
+
+Alongside OpenClaw and Claude Code, Artemis now supports **DeepSeek Harness** (`dsh`, community nickname "大肥鱼") as a third agent runtime - an everything-is-a-plugin harness by DeepSeek AI. Roleplay is the hot use case in its community, so the core clone and six RP plugins live under `benchmark_projects/` (git-ignored).
+
+```powershell
+# One-shot setup (Node 24+ required, global npm install + verification + plugin inventory)
+powershell -ExecutionPolicy Bypass -File setup-dsh.ps1
+
+# Launch web UI (or run without installing: npx @deepseek-ai/dsh web)
+dsh web
+```
+
+Point dsh at the same local inference backends (llama.cpp :9931 / Strata :8080, OpenAI-compatible) - no extra model copy. Ecosystem survey: `benchmark_projects/2026-11-07-dsh-roleplay-report.md`.
+
 ## Skills Overview
 
 | Skill | Type | Llama Kill? | Mechanism |
@@ -741,6 +755,7 @@ Then open **http://127.0.0.1:19280** - create tasks, watch Claude Code pick them
 | **Live2D** | HTTP exec | ❌ No | Direct HTTP calls to `localhost:19200` bridge |
 | **Web Chat** | Browser | ❌ No | Local daemon proxy to llama :9931, port 19270, real-time chat |
 | **Claude Code** | Terminal (MCP) | ❌ No | Parallel agent runtime via .claude/artemis_mcp_server.py, uses llama :9931 directly |
+| **DeepSeek Harness (dsh)** | Terminal / Web (plugins) | ❌ No | Third agent runtime (npm `@deepseek-ai/dsh`, see setup-dsh.ps1); reuses llama :9931 / Strata :8080; RP plugins in `benchmark_projects/` |
 | **TTS** | sessions_spawn | 🔶 VRAM-tiered | ≥12GB: no kill; 8GB: stop llama → GPT-SoVITS → restart llama |
 | **ComfyUI** | sessions_spawn | 🔶 VRAM-tiered | ≥12GB: no kill; 8GB: stop llama → image gen → restart llama |
 | **ASR** | sessions_spawn | ❌ No | Faster-Whisper small (~1.5GB VRAM, coexists with llama) |

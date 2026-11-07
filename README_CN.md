@@ -725,6 +725,20 @@ Claude Code 启动后会自动运行任务循环：
 | `.claude/settings.local.json` | 预批准的 MCP 工具 |
 | `claude-code.ps1` / `.sh` | 启动脚本 |
 
+## 🐋 DeepSeek Harness (dsh) — 第三个 Agent 运行时（NEW）
+
+与 OpenClaw、Claude Code 并列，Artemis 现已支持 **DeepSeek Harness**（`dsh`，社区昵称「大肥鱼」）作为第三个 agent 运行时——DeepSeek 官方开源、everything-is-a-plugin 架构。其社区当前最火玩法是角色扮演（roleplay），故核心克隆与六个角色演绎插件一并收入 `benchmark_projects/`（git-ignored）。
+
+```powershell
+# 一键部署（需 Node 24+：全局安装 + 验证 + 插件清点）
+powershell -ExecutionPolicy Bypass -File setup-dsh.ps1
+
+# 启动 Web UI（免安装：npx @deepseek-ai/dsh web）
+dsh web
+```
+
+dsh 直接指向本项目现成的推理后端（llama.cpp :9931 / Strata :8080，OpenAI 兼容），不另拉模型。生态综述：`benchmark_projects/2026-11-07-dsh-roleplay-report.md`。
+
 ## 技能总览
 
 | 技能 | 类型 | 停 Llama? | 机制 |
@@ -733,6 +747,7 @@ Claude Code 启动后会自动运行任务循环：
 | **Live2D** | HTTP exec | ❌ 否 | 直接 HTTP 调 `localhost:19200` 桥 |
 | **Web Chat** | 浏览器 | ❌ 否 | 本地守护进程代理到 llama :9931，端口 19270，实时聊天 |
 | **Claude Code** | 终端（MCP） | ❌ 否 | 并行 Agent 运行时，通过 .claude/artemis_mcp_server.py 工作，直接使用 llama :9931 |
+| **DeepSeek Harness (dsh)** | 终端 / Web（插件） | ❌ 否 | 第三个 Agent 运行时（npm `@deepseek-ai/dsh`，见 setup-dsh.ps1）；复用 llama :9931 / Strata :8080；RP 插件在 `benchmark_projects/` |
 | **TTS** | sessions_spawn | 🔶 VRAM 分档 | ≥12GB 不停；8GB 停 llama → GPT-SoVITS → 重启 llama |
 | **ComfyUI** | sessions_spawn | 🔶 VRAM 分档 | ≥12GB 不停；8GB 停 llama → 画图 → 重启 llama |
 | **ASR** | sessions_spawn | ❌ 否 | Faster-Whisper small（~1.5GB 显存，与 llama 共存） |

@@ -725,6 +725,20 @@ Claude Code は起動時にタスクループを自動実行:
 | `.claude/settings.local.json` | 事前承認済み MCP ツール |
 | `claude-code.ps1` / `.sh` | 起動スクリプト |
 
+## 🐋 DeepSeek Harness (dsh) — 第3のエージェントランタイム（NEW）
+
+OpenClaw・Claude Code に並ぶ第3のエージェントランタイムとして **DeepSeek Harness**（`dsh`、コミュニティ愛称「大肥鱼」）に対応。DeepSeek 公式の everything-is-a-plugin アーキテクチャで、コミュニティでは roleplay（役割演技）が話題の中心。コア clone と RP プラグイン 6 種は `benchmark_projects/`（git-ignored）に収蔵。
+
+```powershell
+# ワンショットセットアップ（Node 24+ 必須：グローバルインストール + 検証 + プラグイン点検）
+powershell -ExecutionPolicy Bypass -File setup-dsh.ps1
+
+# Web UI 起動（インストール不要：npx @deepseek-ai/dsh web）
+dsh web
+```
+
+dsh は既存の推論バックエンド（llama.cpp :9931 / Strata :8080、OpenAI 互換）をそのまま参照 - モデルの複製不要。エコシステム調査:`benchmark_projects/2026-11-07-dsh-roleplay-report.md`。
+
 ## スキル概要
 
 | スキル | 種別 | llama kill? | 機構 |
@@ -733,6 +747,7 @@ Claude Code は起動時にタスクループを自動実行:
 | **Live2D** | HTTP exec | ❌ No | `localhost:19200` ブリッジへの直接 HTTP 呼び出し |
 | **Web Chat** | ブラウザ | ❌ No | llama :9931 へのローカルデーモンプロキシ、ポート 19270、リアルタイムチャット |
 | **Claude Code** | ターミナル（MCP） | ❌ No | .claude/artemis_mcp_server.py 経由の並列エージェントランタイム、llama :9931 を直接使用 |
+| **DeepSeek Harness (dsh)** | ターミナル / Web（プラグイン） | ❌ No | 第3のエージェントランタイム（npm `@deepseek-ai/dsh`、setup-dsh.ps1 参照）；llama :9931 / Strata :8080 を再利用；RP プラグインは `benchmark_projects/` |
 | **TTS** | sessions_spawn | 🔶 VRAM 階層化 | ≥12GB: kill なし。8GB: llama 停止 → GPT-SoVITS → llama 再起動 |
 | **ComfyUI** | sessions_spawn | 🔶 VRAM 階層化 | ≥12GB: kill なし。8GB: llama 停止 → 画像生成 → llama 再起動 |
 | **ASR** | sessions_spawn | ❌ No | Faster-Whisper small（~1.5GB VRAM、llama と共存） |
