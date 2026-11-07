@@ -64,13 +64,19 @@ System prompt 100% 保留。超出 4 轮的历史走 SmartCrusher 5 维评分压
 | `MEM0_SCORE_MEDIUM` | 0.5 | 中等相关，自然融入 |
 | `MEM0_SCORE_LOW` | 0.3 | 低于此忽略 |
 
-角色检测：从 system prompt 关键词匹配，再用 Qdrant `user_id` 过滤。
+角色检测：从 system prompt 关键词匹配，再用 Qdrant `user_id` 过滤。候选隔离域统一由
+`mem0_bridge.py:scope_ids()` 解析（规范小写域排第一=写入域，角色卡 id / 大小写变体 /
+`legacy_user_ids` 留在候选里，搜索用 `MatchAny`，不会静默 0 命中）。
 
 | SOUL.md 关键词 | user_id |
 |---|---|
-| 四季夏目 / natsume / 夏目 | natsume |
+| 四季夏目 / natsume / 夏目 | shiki_natsume（角色卡 id，不是 `natsume`） |
 | 夜乃桜 / sakura / 夜乃樱 | sakura |
 | Enola / enola | enola |
 | Atori / atori / atri | atori |
+| 谢芙蒂 / shifty | shifty（旧记忆在默认域 `sakura`，靠 `legacy_user_ids` 兜住） |
+
+store 路径随 `OPENCLAW_WORKSPACE` 所在树（仓库侧与 OpenClaw workspace 侧各一份）；
+2026-11-07 两端全链路跑通，体检命令见 `skills/mem0-bridge/SKILL.md`。
 
 手动查询记忆见 `skills/mem0-bridge/SKILL.md`。

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""End-to-end self-check for the mem0 + RAG + headroom (SmartCrusher / CCR) memory stack.
+r"""End-to-end self-check for the mem0 + RAG + headroom (SmartCrusher / CCR) memory stack.
 
 Runs the whole read/write path against the project's own embedded Qdrant store:
 
@@ -11,6 +11,8 @@ Runs the whole read/write path against the project's own embedded Qdrant store:
     python skills/shared/mem0_selfcheck.py
     python skills/shared/mem0_selfcheck.py --character sakura --query 提醒我喝水休息
     python skills/shared/mem0_selfcheck.py --skip-write      # read-only pass
+    python skills/shared/mem0_selfcheck.py --root "%USERPROFILE%\.openclaw\workspace" --character shifty
+        # 检查 OpenClaw workspace 端（谢芙蒂那一侧）自己的 store；2026-11-07 两端均已跑通。
 
 前提 / Requires (any Python 3.12+ with these packages — the bundled
 `skills/sakura/runtime` venv only works on the machine that created it):
@@ -30,11 +32,19 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# Resolve everything from the repo layout, then point OPENCLAW_WORKSPACE at the same root so
-# mem0_bridge picks up *this* checkout's store instead of a different workspace copy.
-if not os.environ.get("OPENCLAW_WORKSPACE") or os.environ["OPENCLAW_WORKSPACE"] != str(REPO_ROOT):
-    os.environ["OPENCLAW_WORKSPACE"] = str(REPO_ROOT)
-sys.path.insert(0, str(REPO_ROOT))
+# --root <path> points the check at *another* tree's store (e.g. the OpenClaw workspace
+# side where Shifty runs). Must be resolved BEFORE importing mem0_bridge, because the
+# bridge pins MEM0_QDRANT from OPENCLAW_WORKSPACE at import time. Without --root the
+# check stays on this checkout, as before.
+def _early_root() -> Path:
+    for i, arg in enumerate(sys.argv):
+        if arg == "--root" and i + 1 < len(sys.argv):
+            return Path(sys.argv[i + 1]).expanduser().resolve()
+    return REPO_ROOT
+
+ROOT = _early_root()
+os.environ["OPENCLAW_WORKSPACE"] = str(ROOT)
+sys.path.insert(0, str(ROOT))
 
 from skills.shared.mem0_bridge import (  # noqa: E402
     CHARACTERS,
@@ -47,7 +57,7 @@ from skills.shared.mem0_bridge import (  # noqa: E402
     _get_embedding,
 )
 
-QDRANT_DIR = REPO_ROOT / "skills" / "sakura" / "data" / "memory" / "qdrant"
+QDRANT_DIR = ROOT / "skills" / "sakura" / "data" / "memory" / "qdrant"
 COLLECTION = "sakura_memories"
 DEMO_TEXT = "樱: 主人今天工作到很晚，记得喝温水。" + "（他一直在改 Strata 的启动参数，改完又回头改 README。）" * 14
 
@@ -89,7 +99,7 @@ def check_store() -> tuple[bool, bool]:
     from qdrant_client import QdrantClient
 
     if not QDRANT_DIR.exists():
-        print(f"[store] FAIL missing {QDRANT_DIR.relative_to(REPO_ROOT)}")
+        print(f"[store] FAIL missing {QDRANT_DIR}")
         return False, False
     try:
         client = QdrantClient(path=str(QDRANT_DIR))
@@ -185,9 +195,13 @@ def main() -> int:
     ap.add_argument("--character", default="sakura", choices=sorted(CHARACTERS))
     ap.add_argument("--query", default="提醒我喝水休息")
     ap.add_argument("--skip-write", action="store_true", help="read-only pass (no add/delete)")
+    ap.add_argument("--root", default=str(REPO_ROOT),
+                    help="project/workspace tree whose store to check (default: this repo); "
+                         "also read early, before the bridge import")
     args = ap.parse_args()
 
-    print(f"repo: {REPO_ROOT.relative_to(REPO_ROOT.parent)}  store: {MEM0_QDRANT.relative_to(REPO_ROOT)}")
+    print(f"tree: {ROOT}")
+    print(f"store: {MEM0_QDRANT}")
     env = check_env()
     if env:
         return env

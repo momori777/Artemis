@@ -18,7 +18,7 @@ from skills.mem0_bridge import mem0_behavior_integration as mbi
 
 # 每轮对话调用
 context = mbi.run_integration(
-    character="atori",        # natsume/enola/sakura/atori
+    character="atori",        # natsume/enola/sakura/atori/shifty
     query="用户消息文本",
     messages=[               # 可选，用于状态更新
         {"role": "user", "content": "..." },
