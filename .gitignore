@@ -207,3 +207,6 @@ skills/sovits/GPT_SoVITS/text/ja_userdic/
 skills/sovits/GPT_SoVITS/**/*.rep
 skills/sovits/GPT_SoVITS/**/*.md5
 skills/sovits/tools/**/__pycache__/
+
+# private role_play memories - never push (2026-11-08)
+memory/role_play/natsume/
