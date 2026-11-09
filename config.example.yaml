@@ -153,6 +153,14 @@ ccr_upstream_port: 9931
 # Task board (AgentRQ web UI) port, launched by claude-code-ccr.ps1
 # 任务面板（AgentRQ 可视化网页）端口，由 claude-code-ccr.ps1 拉起
 task_board_port: 19280
+# Other service ports (read by scripts to avoid hardcoding)
+# 其他服务端口（脚本读取，避免硬编码）
+headroom_port: 19251      # Headroom Proxy (mem0 + context compression)
+live2d_port: 19200        # Live2D Bridge
+gateway_port: 18789       # OpenClaw Gateway
+embedding_port: 9999      # Embedding Server (all-MiniLM-L6-v2)
+artemis_bridge_port: 19250    # Artemis Bridge (MCP)
+llama_debugger_port: 8765     # Llama Debugger UI
 
 # ============================================================
 # Strata engine — Qwen3.8-Flash-Next ONLY (not llama.cpp)

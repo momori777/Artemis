@@ -2,33 +2,48 @@
 ====================
 
 
-一、启动 — 两条通道，选一个
+一、启动 — 三条通道，选一个
+
+  📁 三个平台的配置示例都在 Agents/ 文件夹里（README.md 有说明）
 
   【通道 A：OpenClaw — 主通道（QQ/TG/WebChat 聊天用这个）】
     Windows: 双击 shiki-start.cmd
     Linux:    bash start.sh
     启动后用：WebChat → http://127.0.0.1:19270
+    配置示例：Agents/openclaw/openclaw.example.json
 
-  【通道 B：Claude Code — 终端通道（任务看板/开发调试用这个）】
+  【通道 B：Claude Code + CCR — 终端通道（任务看板/开发调试用这个）】
     Windows: .\claude-code-ccr.ps1   （CCR网关版，走本地llama）
              .\claude-code.ps1     （无CCR，直连OpenClaw）
     Linux:   bash claude-code-ccr.sh
     前提：   npm install -g @anthropic-ai/claude-code
     任务看板 → http://127.0.0.1:19280
     停CCR：  .\stop-claude-code-ccr.ps1
+    配置示例：Agents/claude-code-ccr/（CCR profile settings + CLAUDE.md）
+    注意：CCR 把 ~/.claude 隔离到 profile 目录，改配置要改 profile 副本
+
+  【通道 C：DeepSeek Harness (dsh) — RP插件生态（社区爱称"大肥鱼"）】
+    前提：   Node 24+，npm install -g @deepseek-ai/dsh（或跑 setup-dsh.ps1）
+    Web UI: dsh web（npx @deepseek-ai/dsh web，不用安装）
+    CLI:    dsh
+    配置示例：Agents/deepseek-harness/（凭据 + profiles + workspace）
+    架构：   分层 env + YAML 凭据，无单体 system prompt
+             直接引用现有推理后端（Strata :8080 / llama.cpp :9931），不重复下模型
+    配置层级：cordis.yml(空) → package.json bundles → cordis.patch.yml(用户覆盖)
 
   【对比速查】
-    功能               OpenClaw    Claude Code
-    ────────────────   ────────    ───────────
-    QQ/TG 消息收发     ✅          ❌
-    WebChat 浏览器     ✅          ❌
-    终端对话          ❌          ✅
-    TTS/ComfyUI/ASR   ✅          ✅
-    Live2D 桌宠       ✅          ✅
-    角色切换          ✅          ✅
-    mem0 记忆         ✅          ✅
-    定时任务          ✅          ❌
-    AgentRQ 任务看板  ❌          ✅
+    功能               OpenClaw    Claude Code    dsh
+    ────────────────   ────────    ───────────    ───
+    QQ/TG 消息收发     ✅          ❌             ❌
+    WebChat/浏览器     ✅          ❌             Web UI
+    终端对话          ❌          ✅             ✅
+    TTS/ComfyUI/ASR   ✅          ✅             ❌
+    Live2D 桌宠       ✅          ✅             ❌
+    角色切换          ✅          ✅             ✅(插件)
+    mem0 记忆         ✅          ✅             ❌
+    定时任务          ✅          ❌             ❌
+    AgentRQ 任务看板  ❌          ✅             ❌
+    RP 插件生态       ❌          ❌             ✅
 
 二、关闭
 

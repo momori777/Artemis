@@ -1,4 +1,4 @@
-# start.ps1 �� һ����ͣȫ�� Shiki ����
+﻿# start.ps1 �� һ����ͣȫ�� Shiki ����
 # Usage:
 #   .\start.ps1       ����ȫ������
 #   .\start.ps1 -Stop  ֹͣȫ�����񣨵ȼ��� shutdown_all.py��
@@ -110,6 +110,11 @@ $llamaLogDir = Get-YamlValue $configRaw 'llama_log_dir'
 $workspace  = Get-YamlValue $configRaw 'workspace'
 $mem0Bridge  = Get-YamlValue $configRaw 'mem0_bridge'
 $embedScript = Get-YamlValue $configRaw 'embedding_server'
+# Service ports from config.yaml (fallback to defaults if missing)
+$headroomPort = Get-YamlValue $configRaw 'headroom_port'; if (-not $headroomPort) { $headroomPort = 19251 }
+$live2dPort   = Get-YamlValue $configRaw 'live2d_port';   if (-not $live2dPort) { $live2dPort = 19200 }
+$gatewayPort  = Get-YamlValue $configRaw 'gateway_port';  if (-not $gatewayPort) { $gatewayPort = 18789 }
+$embedPort    = Get-YamlValue $configRaw 'embedding_port';if (-not $embedPort) { $embedPort = 9999 }
 
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host "  �ļ���Ŀ �� Shiki Natsume Startup" -ForegroundColor Cyan
@@ -262,9 +267,7 @@ if (Test-Online $llamaPort "llama-server") {
 }
 
 # ========== 2. Embedding Server ==========
-Write-Host "[2/6] Embedding Server" -ForegroundColor Yellow
-
-$embedPort = 9999
+Write-Host "[2/6] Embedding Server (port $embedPort)" -ForegroundColor Yellow
 
 if (-not $embedScript) {
     $embedScript = Join-Path $scriptRoot "skills\shared\embedding_server.py"
@@ -305,9 +308,8 @@ if (Test-Online $embedPort "Embedding Server") {
 }
 
 # ========== 3. Headroom Proxy ==========
-Write-Host "[3/7] Headroom Proxy (19251 �� llama:9931)" -ForegroundColor Yellow
+Write-Host "[3/7] Headroom Proxy (\ �� llama:9931)" -ForegroundColor Yellow
 
-$headroomPort = 19251
 $headroomScript = Join-Path $scriptRoot "artemis_headroom_proxy.py"
 
 if (Test-Online $headroomPort "Headroom Proxy") {
@@ -315,7 +317,7 @@ if (Test-Online $headroomPort "Headroom Proxy") {
 } else {
     if (-not (Test-Path $headroomScript)) {
         Write-Host "  WARNING: artemis_headroom_proxy.py not found at $headroomScript" -ForegroundColor Yellow
-        Write-Host "  OpenClaw local provider (19251/v1) will fail!" -ForegroundColor Red
+        Write-Host "  OpenClaw local provider (\/v1) will fail!" -ForegroundColor Red
     } else {
         Write-Host "  Starting Headroom Proxy..."
         $pyExe = (Get-Command python -ErrorAction SilentlyContinue).Source
@@ -343,14 +345,14 @@ if (Test-Online $headroomPort "Headroom Proxy") {
 # ���� Headroom �������� openclaw.json ���� local-llama provider��ֻ�Ӳ��ģ� ����
 # ���� provider ԭ�ⲻ����local-llama �¹��ر���ģ�� + �ƶ�ģ�͸���
 # ԭʼ baseUrl ���� sidecar �ļ� ~/.openclaw/headroom_routes.json
-if (Test-Online 19251 "Headroom Proxy") {
+if (Test-Online $headroomPort "Headroom Proxy") {
     Write-Host "  Adding local-llama provider to openclaw.json (add-only)..." -ForegroundColor DarkGray
     $ocJson = Join-Path $env:USERPROFILE ".openclaw\openclaw.json"
     $routesJson = Join-Path $env:USERPROFILE ".openclaw\headroom_routes.json"
     if (Test-Path $ocJson) {
         try {
             $ocCfg = Get-Content $ocJson -Raw -Encoding UTF8 | ConvertFrom-Json
-            $headroomBase = "http://127.0.0.1:19251/v1"
+            $headroomBase = "http://127.0.0.1:${headroomPort}/v1"
             $llamaCtx = if ($config.llama.context) { [int]$config.llama.context } else { 150000 }
             $llamaPort = if ($config.llama_port) { $config.llama_port } else { 9931 }
 
@@ -444,7 +446,7 @@ if (Test-Online 19251 "Headroom Proxy") {
 # ========== 4. Live2D Bridge ==========
 Write-Host "[4/7] Live2D Bridge" -ForegroundColor Yellow
 
-if (Test-Online 19200 "Live2D Bridge") {
+if (Test-Online $live2dPort "Live2D Bridge") {
     # already up �� skip
 } else {
     $live2dDir = Join-Path $scriptRoot "live2d"
@@ -459,8 +461,8 @@ if (Test-Online 19200 "Live2D Bridge") {
         $ready2 = $false
         while ($sw2.Elapsed.TotalSeconds -lt 10) {
             try {
-                $null = Invoke-WebRequest -Uri "http://localhost:19200/api/status" -TimeoutSec 2 -UseBasicParsing
-                Write-Host "  Live2D Bridge ready! (port 19200)" -ForegroundColor Green
+                $null = Invoke-WebRequest -Uri "http://localhost:${live2dPort}/api/status" -TimeoutSec 2 -UseBasicParsing
+                Write-Host "  Live2D Bridge ready! (port \)" -ForegroundColor Green
                 $ready2 = $true
                 break
             } catch {}
@@ -549,9 +551,9 @@ Write-Host "============================================" -ForegroundColor Green
 Write-Host "  All services ready!" -ForegroundColor Green
 Write-Host "  llama-server   : http://127.0.0.1:${llamaPort}" -ForegroundColor Green
 Write-Host "  Embedding      : http://127.0.0.1:${embedPort} (hybrid memory search)" -ForegroundColor Green
-Write-Host "  Headroom Proxy : http://127.0.0.1:19251 (mem0 + context compression)" -ForegroundColor Green
-Write-Host "  Live2D Bridge  : http://localhost:19200" -ForegroundColor Green
-Write-Host "  Gateway        : http://127.0.0.1:18789" -ForegroundColor Green
+Write-Host "  Headroom Proxy : http://127.0.0.1:${headroomPort} (mem0 + context compression)" -ForegroundColor Green
+Write-Host "  Live2D Bridge  : http://localhost:${live2dPort}" -ForegroundColor Green
+Write-Host "  Gateway        : http://127.0.0.1:${gatewayPort}" -ForegroundColor Green
 Write-Host "  Mem0 Sync Cron : every 30 min (Qdrant → _mem0_auto.md)" -ForegroundColor Green
 Write-Host "  Watchdog       : enabled (auto-restart if crash)" -ForegroundColor Green
 Write-Host "============================================" -ForegroundColor Green

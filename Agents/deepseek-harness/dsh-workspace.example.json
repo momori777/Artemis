@@ -1,0 +1,36 @@
+{
+  "unit": {
+    "name": "workspace",
+    "version": 2
+  },
+  "global": {
+    "initialized": true,
+    "workspaceIds": [
+      "fced0811-94dd-4a97-ac00-86733066f4a9"
+    ],
+    "archivedSessionIds": [],
+    "pinnedSessionIds": [],
+    "defaultWorkspaceId": "fced0811-94dd-4a97-ac00-86733066f4a9"
+  },
+  "tables": {
+    "workspaces": {
+      "fced0811-94dd-4a97-ac00-86733066f4a9": {
+        "path": "C:\\Users\\momori\\Documents\\deepseek-harness\\default-workspace",
+        "title": "default-workspace",
+        "sessionIds": [
+          "session-39e05b68-2524-4738-b1cd-0c330a12bca9",
+          "session-ea249568-89ef-4748-862f-4633bfa328c2",
+          "session-3e32b2b1-8b25-4aee-a6d2-15ecd1104fce",
+          "session-5937f561-6806-4ca2-98fe-cdf32d287fc3",
+          "session-624f318d-96be-4945-8a3f-2821071cc277",
+          "session-513c55c7-5501-4e88-ada1-da8e341c67a9",
+          "session-42e28bba-4591-411d-b13d-741852e6cc4a",
+          "session-117d7bc3-a3b1-45b1-8c5b-5cbc94cd1b7d",
+          "session-52698231-200f-454f-86f3-ff07ef63d57b"
+        ],
+        "createdAt": "2026-10-29T11:46:10.980Z",
+        "updatedAt": "2026-11-08T11:06:03.140Z"
+      }
+    }
+  }
+}

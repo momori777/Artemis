@@ -1,8 +1,10 @@
 # Artemis — Usage Guide
 
-## Launch Methods — Two Channels
+## Launch Methods — Three Channels
 
-Artemis provides two Agent runtimes, choose as needed:
+Artemis provides three Agent runtimes, choose as needed:
+
+> 📁 **Configuration examples** for all three platforms are in [`Agents/`](Agents/README.md) — copy and adapt to get started.
 
 ### Method A: OpenClaw (Production Main Channel)
 
@@ -19,7 +21,7 @@ Interfaces after startup:
   OpenClaw Gateway → port 18789
 ```
 
-### Method B: Claude Code (Terminal Dev Channel)
+### Method B: Claude Code + CCR (Terminal Dev Channel)
 
 ```
 Usage: Terminal Agent, AgentRQ-style Task Board
@@ -38,25 +40,53 @@ Quick operations:
   .\claude-code-ccr.ps1 -KillBoard    ← Close Task Board
   Stop CCR: .\stop-claude-code-ccr.ps1
 
-CCR Pipeline: Claude Code ─→ CCR Gateway (:3456) ─→ llama-server (:8080)
+CCR Pipeline: Claude Code ─→ CCR Gateway (:3456) ─→ llama-server (:9931) / Strata (:8080)
+Config:       Agents/claude-code-ccr/  (profile settings, .claude.json, CLAUDE.md)
+Note:         CCR isolates ~/.claude into profile dirs; edit profile copies, not global
+```
+
+### Method C: DeepSeek Harness (dsh) — Community RP Focus
+
+```
+Usage: dsh CLI / Web UI, plugin-based roleplay ecosystem
+Covers: LLM chat via existing backends (Strata :8080 / llama.cpp :9931), RP plugins
+Not included: QQ/TG message channels, TTS, ComfyUI (use OpenClaw/Claude Code for those)
+
+Prerequisite: Node 24+, npm install -g @deepseek-ai/dsh (or run setup-dsh.ps1)
+
+Setup:  powershell -ExecutionPolicy Bypass -File setup-dsh.ps1
+Web UI: dsh web  (npx @deepseek-ai/dsh web, no install needed)
+CLI:    dsh
+
+Config:       Agents/deepseek-harness/  (credentials, profiles, workspace)
+Profiles:     ~/.dsh/profiles/<name>/  (cordis.yml + cordis.patch.yml + package.json)
+Bundles:      @deepseek-ai/dsh-base + dsh-web-app (defined in profile package.json)
+Patch layer:  cordis.patch.yml overrides bundle defaults (model, UI, providers)
+
+Architecture: Layered env + YAML credentials, no monolithic system prompt.
+              References existing inference backends directly — no model duplication.
+              Web profile patch includes Strata :8080 as OpenAI-compatible provider.
 ```
 
 ### Feature Coverage Comparison
 
-| Feature               | OpenClaw | Claude Code |
-|-----------------------|----------|-------------|
-| QQ Bot messages       | ✅       | ❌          |
-| Telegram Bot          | ✅       | ❌          |
-| WebChat browser       | ✅       | ❌          |
-| Terminal chat         | ❌       | ✅          |
-| TTS voice             | ✅       | ✅          |
-| ComfyUI image gen     | ✅       | ✅          |
-| ASR speech recognition| ✅       | ✅          |
-| Live2D desktop pet    | ✅       | ✅          |
-| Character switch      | ✅       | ✅          |
-| mem0 memory           | ✅       | ✅          |
-| Scheduled tasks       | ✅       | ❌          |
-| Task board            | ❌       | ✅          |
+| Feature               | OpenClaw | Claude Code+CCR | DeepSeek Harness |
+|-----------------------|----------|-----------------|------------------|
+| QQ Bot messages       | ✅       | ❌              | ❌               |
+| Telegram Bot          | ✅       | ❌              | ❌               |
+| WebChat browser       | ✅       | ❌              | Web UI (dsh web) |
+| Terminal chat         | ❌       | ✅              | ✅ (dsh CLI)     |
+| TTS voice             | ✅       | ✅              | ❌               |
+| ComfyUI image gen     | ✅       | ✅              | ❌               |
+| ASR speech recognition| ✅       | ✅              | ❌               |
+| Live2D desktop pet    | ✅       | ✅              | ❌               |
+| Character switch      | ✅       | ✅              | ✅ (plugins)     |
+| mem0 memory           | ✅       | ✅              | ❌               |
+| Scheduled tasks       | ✅       | ❌              | ❌               |
+| Task board            | ❌       | ✅              | ❌               |
+| RP plugin ecosystem   | ❌       | ❌              | ✅               |
+
+> 💡 **Config reference**: All three platforms' example configs are in [`Agents/`](Agents/README.md).
 
 ## Model Configuration (change config.yaml to swap models)
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Shiki Daemon — AI Girlfriend Service Manager
 =============================================
@@ -54,6 +54,12 @@ LLAMA_BASE_URL = f"http://127.0.0.1:{LLAMA_PORT}/v1"
 
 # ── Strata 引擎（仅 Qwen3.8-Flash-Next）：llama.cpp 不在线时本地路由对接到这里 ──
 STRATA_PORT = int(CFG.get("strata_port", 8080))
+HEADROOM_PORT = int(CFG.get("headroom_port", 19251))
+LIVE2D_PORT = int(CFG.get("live2d_port", 19200))
+GATEWAY_PORT = int(CFG.get("gateway_port", 18789))
+EMBEDDING_PORT = int(CFG.get("embedding_port", 9999))
+ARTEMIS_BRIDGE_PORT = int(CFG.get("artemis_bridge_port", 19250))
+LLAMA_DEBUGGER_PORT = int(CFG.get("llama_debugger_port", 8765))
 STRATA_BASE_URL = f"http://127.0.0.1:{STRATA_PORT}/v1"
 
 # ── 动态解析 llama-server 实际加载的模型 id ──
@@ -119,7 +125,7 @@ def _local_chat_backend():
 # 同样指向 :9931）只有在 llama.cpp 在跑时才有响应。引擎换成 Strata 后，webchat 的
 # 模型下拉里仍然列着这些 id，选中就直接 502，前端表现为“连不上后端”。
 # 这里统一回退到当前活着的本地引擎（Strata），两种引擎下所有本地 id 都能用。
-HEADROOM_PROXY_BASE = f"http://127.0.0.1:{int(CFG.get('headroom_port', 19251))}/v1"
+HEADROOM_PROXY_BASE = f"http://127.0.0.1:{HEADROOM_PORT}/v1"
 
 
 def _llama_only_backend(base_url):
@@ -360,13 +366,13 @@ def _maybe_write_mem0(character_id, messages, write_interval):
 SERVICES = [
     {"name": "llama-server",    "port": LLAMA_PORT,  "enabled": True},
     {"name": "Strata",          "port": STRATA_PORT, "enabled": True,  "note": "Qwen3.8-Flash-Next engine (external install, self-managed)"},
-    {"name": "Embedding",       "port": 9999,         "enabled": True},
-    {"name": "Headroom Proxy",  "port": 19251,        "enabled": True},
-    {"name": "Live2D Bridge",   "port": 19200,        "enabled": True},
-    {"name": "Artemis Bridge",  "port": 19250,        "enabled": True},
-    {"name": "OpenClaw Gateway","port": 18789,        "enabled": True},
+    {"name": "Embedding",       "port": EMBEDDING_PORT,         "enabled": True},
+    {"name": "Headroom Proxy",  "port": HEADROOM_PORT,        "enabled": True},
+    {"name": "Live2D Bridge",   "port": LIVE2D_PORT,        "enabled": True},
+    {"name": "Artemis Bridge",  "port": ARTEMIS_BRIDGE_PORT,        "enabled": True},
+    {"name": "OpenClaw Gateway","port": GATEWAY_PORT,        "enabled": True},
     {"name": "Task Board",      "port": 19280,        "enabled": True,  "note": "AgentRQ-style task queue UI"},
-    {"name": "Llama Debugger",  "port": 8765,         "enabled": True,  "note": "llama-server parameter tuning"},
+    {"name": "Llama Debugger",  "port": LLAMA_DEBUGGER_PORT,         "enabled": True,  "note": "llama-server parameter tuning"},
     {"name": "Claude Code MCP", "port": None,          "enabled": False, "note": "Run claude-code.ps1 manually"},
     {"name": "WebChat",         "port": 19270,        "enabled": True},
 ]
@@ -484,25 +490,25 @@ def start_llama():
     return "timeout"
 
 def start_embedding():
-    if is_port_open(9999):
+    if is_port_open(EMBEDDING_PORT):
         return "already running"
     if not os.path.isfile(EMBED_SCRIPT):
         return "script not found"
     subprocess.Popen(python_with("torch") + [EMBED_SCRIPT], creationflags=subprocess.CREATE_NO_WINDOW)
     for _ in range(20):
-        if is_port_open(9999): return "ready"
+        if is_port_open(EMBEDDING_PORT): return "ready"
         time.sleep(2)
     return "timeout"
 
 def start_live2d():
-    if is_port_open(19200):
+    if is_port_open(LIVE2D_PORT):
         return "already running"
     mjs = os.path.join(LIVE2D_DIR, "live2d-bridge.mjs")
     if not os.path.isfile(mjs):
         return "script not found"
     subprocess.Popen(["node", "live2d-bridge.mjs"], cwd=LIVE2D_DIR, creationflags=subprocess.CREATE_NO_WINDOW)
     for _ in range(5):
-        if is_port_open(19200): return "ready"
+        if is_port_open(LIVE2D_PORT): return "ready"
         time.sleep(2)
     return "timeout"
 
@@ -549,7 +555,7 @@ def ensure_openclaw_headroom_provider():
     幂等：已配置则跳过。
     如果 19251 未开或 openclaw.json 不存在，静默跳过。
     """
-    if not is_port_open(19251):
+    if not is_port_open(HEADROOM_PORT):
         return False
 
     cfg_path = _get_openclaw_json_path()
@@ -566,7 +572,7 @@ def ensure_openclaw_headroom_provider():
     if not providers:
         return False
 
-    HEADROOM_BASE = "http://127.0.0.1:19251/v1"
+    HEADROOM_BASE = f"http://127.0.0.1:{HEADROOM_PORT}/v1"
     routes = _load_headroom_routes()
     changed = False
 
@@ -576,7 +582,7 @@ def ensure_openclaw_headroom_provider():
         if prov_id in ("local-llama", "local"):
             continue
         orig_url = prov_cfg.get("baseUrl", "")
-        if not orig_url or "19251" in orig_url:
+        if not orig_url or str(HEADROOM_PORT) in orig_url:
             continue
         # 保存 provider 的原始 baseUrl 到 sidecar
         routes[prov_id] = orig_url
@@ -612,7 +618,7 @@ def ensure_openclaw_headroom_provider():
 
     # 检查 local-llama provider 是否已存在且配置一致
     existing = providers.get("local-llama")
-    if existing and "19251" in existing.get("baseUrl", ""):
+    if existing and str(HEADROOM_PORT) in existing.get("baseUrl", ""):
         existing_ids = {m.get("id") for m in existing.get("models", [])}
         needed_ids = {m["id"] for m in all_models}
         if existing_ids == needed_ids:
@@ -647,7 +653,7 @@ def ensure_openclaw_headroom_provider():
 
 
 def start_headroom():
-    if is_port_open(19251):
+    if is_port_open(HEADROOM_PORT):
         # 已在运行，仍确保 openclaw 配置同步
         ensure_openclaw_headroom_provider()
         return "already running"
@@ -656,14 +662,14 @@ def start_headroom():
 
     headroom_log = os.path.join(WORKSPACE, "headroom.log")
     proc = subprocess.Popen(
-        [PYTHON, HEADROOM_SCRIPT, "--port", "19251"],
+        [PYTHON, HEADROOM_SCRIPT, "--port", str(HEADROOM_PORT)],
         cwd=WORKSPACE,
         creationflags=subprocess.CREATE_NO_WINDOW,
         stdout=open(headroom_log, "a", encoding="utf-8"),
         stderr=open(headroom_log, "a", encoding="utf-8"),
     )
     for _ in range(15):
-        if is_port_open(19251):
+        if is_port_open(HEADROOM_PORT):
             # headroom proxy 就绪 → 自动配置 openclaw 走 19251
             ensure_openclaw_headroom_provider()
             return "ready"
@@ -672,14 +678,14 @@ def start_headroom():
     return "timeout"
 
 def start_bridge():
-    if is_port_open(19250):
+    if is_port_open(ARTEMIS_BRIDGE_PORT):
         return "already running"
     if not os.path.isfile(BRIDGE_SCRIPT):
         return "script not found"
 
     bridge_log = os.path.join(WORKSPACE, "bridge.log")
     proc = subprocess.Popen(
-        python_with("flask_cors") + [BRIDGE_SCRIPT, "--port", "19250"],
+        python_with("flask_cors") + [BRIDGE_SCRIPT, "--port", str(ARTEMIS_BRIDGE_PORT)],
         cwd=WORKSPACE,
         creationflags=subprocess.CREATE_NO_WINDOW,
         stdout=open(bridge_log, "a", encoding="utf-8"),
@@ -687,27 +693,27 @@ def start_bridge():
     )
     # Flask takes a few seconds to bind
     for _ in range(15):
-        if is_port_open(19250): return "ready"
+        if is_port_open(ARTEMIS_BRIDGE_PORT): return "ready"
         if proc.poll() is not None:
             return f"exited with code {proc.returncode}"
         time.sleep(2)
     return "timeout"
 
 def start_llama_debugger():
-    if is_port_open(8765):
+    if is_port_open(LLAMA_DEBUGGER_PORT):
         return "already running"
     server_path = os.path.join(WORKSPACE, "skills", "llama_debugger", "server.py")
     if not os.path.isfile(server_path):
         return "script not found"
     subprocess.Popen(
-        [PYTHON, server_path, "8765"],
+        [PYTHON, server_path, str(LLAMA_DEBUGGER_PORT)],
         cwd=os.path.join(WORKSPACE, "skills", "llama_debugger"),
         creationflags=subprocess.CREATE_NO_WINDOW,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
     for _ in range(5):
-        if is_port_open(8765):
+        if is_port_open(LLAMA_DEBUGGER_PORT):
             return "ready"
         time.sleep(1)
     return "timeout"
@@ -748,7 +754,7 @@ def start_webchat():
     return "timeout"
 
 def start_gateway():
-    if is_port_open(18789):
+    if is_port_open(GATEWAY_PORT):
         return "already running"
 
     # 确保 headroom proxy 端口配置已注入 openclaw.json（如果 19251 在线）
@@ -792,7 +798,7 @@ def start_gateway():
         gateway_log = os.path.join(WORKSPACE, "gateway.log")
         with open(gateway_log, "a", encoding="utf-8") as log_f:
             subprocess.Popen(
-                [node_exe, gateway_js, "gateway", "--port", "18789"],
+                [node_exe, gateway_js, "gateway", "--port", str(GATEWAY_PORT)],
                 cwd=openclaw_dir,
                 creationflags=subprocess.CREATE_NO_WINDOW,
                 stdout=log_f,
@@ -801,7 +807,7 @@ def start_gateway():
 
     # Gateway 启动慢（编译/迁移），等最多 120 秒
     for _ in range(60):
-        if is_port_open(18789):
+        if is_port_open(GATEWAY_PORT):
             return "ready"
         time.sleep(2)
     return "timeout"
@@ -834,10 +840,10 @@ SERVICE_KILLERS = {
     "Embedding": 9999,
     "Headroom Proxy": 19251,
     "Live2D Bridge": 19200,
-    "Artemis Bridge": 19250,
+    "Artemis Bridge": ARTEMIS_BRIDGE_PORT,
     "OpenClaw Gateway": 18789,
     "Task Board": 19280,
-    "Llama Debugger": 8765,
+    "Llama Debugger": LLAMA_DEBUGGER_PORT,
     "WebChat": None,  # WebChat runs in daemon thread, can't kill separately
 }
 
@@ -1437,7 +1443,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             # Expose Gateway URL and token for webchat (localhost only)
             import json as _json
             cfg_path = os.path.join(os.path.expanduser("~"), ".openclaw", "openclaw.json")
-            gw_config = {"baseUrl": "http://localhost:18789", "token": "", "models": []}
+            gw_config = {"baseUrl": f"http://localhost:{GATEWAY_PORT}", "token": "", "models": []}
             if os.path.isfile(cfg_path):
                 try:
                     with open(cfg_path, "r", encoding="utf-8-sig") as f:

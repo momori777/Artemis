@@ -1,0 +1,15 @@
+{
+  "apiKeyHelper": "\"C:\\Users\\momori\\AppData\\Roaming\\claude-code-router\\bin\\ccr-claude-code-api-key-default-claude-code.cmd\"",
+  "env": {
+    "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:3456",
+    "ANTHROPIC_API_BASE_URL": "http://127.0.0.1:3456",
+    "CLAUDE_AGENT_API_BASE_URL": "http://127.0.0.1:3456",
+    "NO_PROXY": "127.0.0.1,localhost,::1",
+    "no_proxy": "127.0.0.1,localhost,::1",
+    "CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT": "1",
+    "ANTHROPIC_MODEL": "LocalStrata/qwen3.8-flash-next-iq3_s",
+    "CCR_CLAUDE_CODE_MODEL": "LocalStrata/qwen3.8-flash-next-iq3_s",
+    "CODEXL_CLAUDE_CODE_MODEL": "LocalStrata/qwen3.8-flash-next-iq3_s"
+  }
+}

@@ -1,4 +1,4 @@
-# 璁板繂鏂囦欢 - 閫夋嫨鎬ф彁 ?
+﻿# 璁板繂鏂囦欢 - 閫夋嫨鎬ф彁 ?
 
 # memory/ 涓嶇敤閫氶厤 ?ignore锛屾敼涓虹簿 ?ignore 杩愯鏃剁敓鎴愮殑涓存椂鏂囦欢
 # (瀵煎叆鏂拌鑹插悗濡傞渶鎻愪氦锛屾墜鍔ㄥ姞 !memory/role_play/<瑙掕壊 ?/ 鍒版鏂囦欢)
@@ -210,3 +210,9 @@ skills/sovits/tools/**/__pycache__/
 
 # private role_play memories - never push (2026-11-08)
 memory/role_play/natsume/
+
+# Agent platform configs (Agents/) - ignore analysis reports, keep config examples
+Agents/**/*token-analysis*.md
+Agents/**/*分析*.md
+Agents/**/*autocompact*.md
+Agents/**/*速查*.md

@@ -1,0 +1,44 @@
+# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries (id-targeted config
+# overrides, disables, and insert lists; `!!js` expressions allowed).
+- id: ui-settings-general
+  name: "@deepseek-ai/dsh-client-ui-settings-general"
+  config:
+    welcomeNoticeVersion: 2026-09-28.1
+
+# --- local model: Strata engine on :8080 (OpenAI-compatible), added 2026-11-07
+# strata-iq3_s.json now carries "api_key": "***", so every request must present key 123.
+# pi-ai's OpenAI client also refuses to send a request when it holds no key at all:
+#   no credential at all          -> "No API key for provider" (PI_AI_ERROR)
+#   apiKeyEnv: NAME, var unset    -> "no credential for provider route"
+# The header must literally begin with "Bearer ": serve/server.py's _authorized() strips
+# only that prefix and otherwise falls back to the x-api-key header, so a bare "123" here
+# counts as "no key given" and every request is answered 401 authentication_error.
+# Measured against the running server:
+#   curl -H "Authorization: ***           -> 401
+#   curl -H "Authorization: *** -> 200
+#   curl -H "x-api-key: ***                  -> 200
+- id: llm-pi-ai
+  config:
+    providers:
+      strata:
+        api: openai-completions
+        baseURL: http://127.0.0.1:8080/v1
+        headers:
+          Authorization: "Bearer 123"
+        compat:
+          supportsDeveloperRole: false
+          maxTokensField: max_tokens
+          supportsStore: false
+        models:
+          - id: qwen3.8-flash-next-iq3_s
+            name: Qwen3.8-Flash-Next IQ3_S (Strata local)
+            contextWindow: 131072
+            maxTokens: 8192
+            input:
+              - text
+- id: agent-default-model
+  name: "@deepseek-ai/dsh-agent-default-model"
+  config:
+    provider: strata
+    model: qwen3.8-flash-next-iq3_s
