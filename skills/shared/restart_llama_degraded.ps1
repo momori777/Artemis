@@ -187,7 +187,7 @@ if (-not $baseArgs) {
     '--jinja',
     '--parallel', '1',
     '--kv-unified',
-    '--no-mmap',
+    '--load-mode', 'none',
     '--no-warmup',
     '--port', $port
   )
