@@ -31,7 +31,7 @@
         api: openai-completions
         baseURL: http://127.0.0.1:8080/v1
         headers:
-          Authorization: "Bearer ***"
+          Authorization: "Bearer 123"
         compat:
           supportsDeveloperRole: false
           maxTokensField: max_tokens
@@ -47,13 +47,13 @@
         api: openai-completions
         baseURL: http://127.0.0.1:9931/v1
         headers:
-          Authorization: "***"
+          Authorization: "123"
         compat:
           supportsDeveloperRole: false
           maxTokensField: max_tokens
           supportsStore: false
         models:
-          - id: "C:\Users\momori\Downloads\Qwen3.8-27B-Ultimate-Heretic-Uncn-Turbo-Brilli-50x-AGI-NEO-MTP-Q4_K_M.gguf"
+          - id: "C:\\Users\\momori\\Downloads\\Qwen3.8-27B-Ultimate-Heretic-Uncn-Turbo-Brilli-50x-AGI-NEO-MTP-Q4_K_M.gguf"
             name: Qwen3.8-27B Ultimate-Heretic (llama.cpp local)
             contextWindow: 150000
             maxTokens: 32000
