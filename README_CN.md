@@ -739,6 +739,24 @@ dsh web
 
 dsh 直接指向本项目现成的推理后端（llama.cpp :9931 / Strata :8080，OpenAI 兼容），不另拉模型。生态综述：`benchmark_projects/2026-11-07-dsh-roleplay-report.md`。
 
+### 📊 Agent 平台启动 Token 预算（2026-11-08 实测）
+
+三个运行时共用同一本地推理后端（Strata :8080，`qwen3.8-flash-next-iq3_s`，131K ctx）。各平台冷启动 prompt 注入量：
+
+| 客户端 | 启动 token | 主要开销来源 | 相对倍数 |
+|---|---|---|---|
+| **OpenClaw**（子代理） | **9,506**（实测） | 基底系统提示 + ~30 工具 schema + 技能目录（8K 字符上限） | 1.0× |
+| **OpenClaw**（webchat） | **~12,900**（估算） | + 通道/UI 指令 | ~1.4× |
+| **Claude Code + CCR** | **35,578**（实测） | 巨型基底提示（~29K 字符）+ 28 工具 schema + 技能目录（无截断） | **3.7×** |
+
+关键结论：
+- **CCR 本身注入 0 token** —— 纯协议转换（Anthropic → OpenAI）、模型名折叠、header 改写
+- Claude Code 贵的原因：基底系统提示是 OpenClaw 的 3–4 倍长；工具 schema 更大；技能描述无截断全发
+- DSH 架构不同（分层 env + YAML 凭据，无单体系统提示）——详见 `docs/agent-platform-token-budget.md`
+- 131K max context 下：OpenClaw 剩 ~118K 给对话；Claude Code 剩 ~95K
+
+完整拆解、优化杠杆与复现方法：[`docs/agent-platform-token-budget.md`](docs/agent-platform-token-budget.md)
+
 ## 技能总览
 
 | 技能 | 类型 | 停 Llama? | 机制 |

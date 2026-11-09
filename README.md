@@ -747,6 +747,24 @@ dsh web
 
 Point dsh at the same local inference backends (llama.cpp :9931 / Strata :8080, OpenAI-compatible) - no extra model copy. Ecosystem survey: `benchmark_projects/2026-11-07-dsh-roleplay-report.md`.
 
+### 📊 Agent Platform Startup Token Budget (measured 2026-11-08)
+
+All three runtimes share the same local inference backend (Strata :8080, `qwen3.8-flash-next-iq3_s`, 131K ctx). Cold-start prompt injection per platform:
+
+| Client | Startup tokens | Main cost drivers | Multiplier |
+|---|---|---|---|
+| **OpenClaw** (sub-agent) | **9,506** (measured) | Base system prompt + ~30 tool schemas + skill dir (8K char cap) | 1.0× |
+| **OpenClaw** (webchat) | **~12,900** (est.) | + channel/UI instructions | ~1.4× |
+| **Claude Code + CCR** | **35,578** (measured) | Massive base prompt (~29K chars) + 28 tool schemas + skills (no cap) | **3.7×** |
+
+Key facts:
+- **CCR injects 0 tokens** — pure protocol conversion (Anthropic → OpenAI), model name folding, header rewriting
+- Claude Code's cost: base system prompt is 3–4× longer than OpenClaw's; tool schemas larger; skill descriptions sent in full (no truncation)
+- DSH uses a different architecture (layered env + YAML credentials, no monolithic system prompt) — see `docs/agent-platform-token-budget.md`
+- With 131K max context: OpenClaw leaves ~118K for conversation; Claude Code leaves ~95K
+
+Full breakdown, optimization levers, and reproduction method: [`docs/agent-platform-token-budget.md`](docs/agent-platform-token-budget.md)
+
 ## Skills Overview
 
 | Skill | Type | Llama Kill? | Mechanism |

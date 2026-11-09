@@ -739,6 +739,24 @@ dsh web
 
 dsh は既存の推論バックエンド（llama.cpp :9931 / Strata :8080、OpenAI 互換）をそのまま参照 - モデルの複製不要。エコシステム調査:`benchmark_projects/2026-11-07-dsh-roleplay-report.md`。
 
+### 📊 エージェントプラットフォーム 起動 Token 予算（2026-11-08 実測）
+
+3 つのランタイムは同一のローカル推論バックエンド（Strata :8080、`qwen3.8-flash-next-iq3_s`、131K ctx）を共有。各プラットフォームの冷起動 prompt 注入量：
+
+| クライアント | 起動 token | 主なコスト要因 | 倍率 |
+|---|---|---|---|
+| **OpenClaw**（サブエージェント） | **9,506**（実測） | ベースシステムプロンプト + 約 30 ツールスキーマ + スキルディレクトリ（8K 文字上限） | 1.0× |
+| **OpenClaw**（webchat） | **~12,900**（推定） | + チャンネル/UI 指示 | ~1.4× |
+| **Claude Code + CCR** | **35,578**（実測） | 巨大ベースプロンプト（約 29K 文字）+ 28 ツールスキーマ + スキル（截断なし） | **3.7×** |
+
+主な結論：
+- **CCR 自体の注入は 0 token** —— 純粋なプロトコル変換（Anthropic → OpenAI）、モデル名折りたたみ、ヘッダー書き換えのみ
+- Claude Code が高い理由：ベースシステムプロンプトが OpenClaw の 3–4 倍、ツールスキーマが大きい、スキル説明が截断なしで全量送信
+- DSH はアーキテクチャが異なる（階層型 env + YAML 認証情報、単一システムプロンプトなし）—— 詳細は `docs/agent-platform-token-budget.md`
+- 131K max context 下：OpenClaw は会話に ~118K 残る；Claude Code は ~95K
+
+完全な分解、最適化レバー、再現方法：[`docs/agent-platform-token-budget.md`](docs/agent-platform-token-budget.md)
+
 ## スキル概要
 
 | スキル | 種別 | llama kill? | 機構 |
