@@ -2570,22 +2570,37 @@ def make_icon():
     return img
 
 class ThreadingDashboardServer(ThreadingMixIn, HTTPServer):
-    """Multi-threaded HTTP server so chat proxy doesn't block status checks."""
+    """Multi-threaded dual-stack HTTP server (IPv4 + IPv6) so chat proxy doesn't block status checks.
+    Binds to ::1 (IPv6 loopback) with V6ONLY=0 so both localhost (→ ::1 or 127.0.0.1) and
+    explicit 127.0.0.1 connections succeed — fixes browser 'Failed to fetch' when DNS
+    returns ::1 first and the server only listened on IPv4."""
     daemon_threads = True
-    # Default listen backlog is 5 -> connection refusals ('Failed to fetch')
-    # under page-load bursts. Same fix as start_webchat.py.
     request_queue_size = 128
+    address_family = socket.AF_INET6
+    def server_bind(self):
+        try:
+            self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        except (AttributeError, OSError):
+            pass  # Fallback: IPv6-only (rare on Windows)
+        super().server_bind()
     
 class ThreadingWebChatServer(ThreadingMixIn, http.server.HTTPServer):
-    """Multi-threaded HTTP server for web-chat static files."""
+    """Multi-threaded dual-stack HTTP server for web-chat static files."""
     daemon_threads = True
     request_queue_size = 128
+    address_family = socket.AF_INET6
+    def server_bind(self):
+        try:
+            self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        except (AttributeError, OSError):
+            pass
+        super().server_bind()
 
 def run_dashboard_server(daemon):
     global daemon_instance
     daemon_instance = daemon
-    server = ThreadingDashboardServer(("127.0.0.1", DASHBOARD_PORT), DashboardHandler)
-    print(f"[dashboard] http://127.0.0.1:{DASHBOARD_PORT}")
+    server = ThreadingDashboardServer(("::1", DASHBOARD_PORT), DashboardHandler)
+    print(f"[dashboard] http://127.0.0.1:{DASHBOARD_PORT} (dual-stack)")
     server.serve_forever()
 
 def run_webchat_server():
@@ -2600,8 +2615,8 @@ def run_webchat_server():
             self.send_header('Expires', '0')
             super().end_headers()
 
-    server = ThreadingWebChatServer(("127.0.0.1", WEBCHAT_PORT), NoCacheHandler)
-    print(f"[webchat] http://127.0.0.1:{WEBCHAT_PORT}")
+    server = ThreadingWebChatServer(("::1", WEBCHAT_PORT), NoCacheHandler)
+    print(f"[webchat] http://127.0.0.1:{WEBCHAT_PORT} (dual-stack)")
     server.serve_forever()
 
 def main():

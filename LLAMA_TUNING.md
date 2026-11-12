@@ -19,6 +19,8 @@ fear. The GPU layers read from fast VRAM; the rest read from RAM. Net effect:
 Pick `N` by what fits in VRAM *after* reserving space for KV cache + MTP
 draft + flash attention:
 
+
+
 - **VRAM > model size + 6 GB** → `-ngl 99` (all layers on GPU).
   VRAM cooks (prefill) and eats (decode) by itself, no RAM in the loop.
 - **VRAM < model size** (dense model doesn't fully fit) → use a **partial**
@@ -47,6 +49,7 @@ draft + flash attention:
  and N-gram（A O(1) list search so it do not need high bandwith）
 
 MTP does **not** reduce quality — it only affects speed.
+NOTE:do not use n-gram for dense 27B,cause dead lock
 
 ```
 "--spec-draft-n-max", "x",       # predicted (draft) tokens per step
@@ -93,6 +96,7 @@ eg，
   preserves reasoning blocks → 100% prefix KV cache hit rate.
 - `--cache-ram N` gives llama N MB of cache RAM (e.g. 2000). Tune to your
   situation — if VRAM is very large, offloading the KV cache to VRAM is better.
+  the second,cache ram will set at your RAM,waiting for another slot reuse
 - Rule of thumb: a 100k context window needs **> 6 GB of KV cache**.
 
 ## 5. `--parallel n`
@@ -173,8 +177,45 @@ mmproj is vision tool startup code:
 
 if you want use bigger or smaller sister models,go https://huggingface.co/LuffyTheFox/Qwen3.6-35B-A3B-Uncensored-Genesis-Hermes-Final-GGUF or https://huggingface.co/DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-L-Uncensored-NM-DAU-NEO-MTP-GGUF for search
 
-my start code settings:
+VRAM = 24GB,like RTX PRO 4000,5090 DV2,4090,3090ti,5090laptop,use this:
+
+$model = "Qwen3.8-27B-Ultimate-Heretic-Uncn-Turbo-Brilli-50x-AGI-NEO-MTP-Q4_K_M.gguf"
+Start-Process -FilePath $exe -ArgumentList @(
+"-m", $model,
+"-c", "130000",
+"--flash-attn", "on",
+"--temp", "0.9",
+"--top-p", "0.95",
+"--top-k", "40",
+"--min-p", "0.01",
+"--repeat-penalty", "1.02",
+"--presence-penalty", "0.0"
+"-ctk", "q8_0", "-ctv", "q8_0",
+"--batch-size", "2000",
+"--ubatch-size", "1000",
+"--threads", "16",
+"--threads-batch", "16",
+"-rea", "on",
+"--jinja",
+"--api-key", "123",
+"--cache-ram", "10000"
+"--parallel", "1",
+"--no-warmup",
+"--kv-unified",
+"--chat-template-file", $tpl,
+"--reasoning-preserve",
+"--spec-type", "draft-mtp",
+"--spec-draft-n-max", "4",
+"--spec-draft-p-min", "0.75",
+"--spec-draft-type-k", "q4_0", 
+"--spec-draft-type-v", "q4_0"
+)
+
+decode at my 5090laptop GPU, 35t/s,prefill 1300t/s
+
+my start code settings at 5070laptop:
 $model = "C:\model2\Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf"
+
 
 Start-Process -FilePath $exe -ArgumentList @(
 "-m", $model,
@@ -197,11 +238,9 @@ Start-Process -FilePath $exe -ArgumentList @(
 "--parallel", "1",
 "--kv-unified",
 "--no-warmup",
-"--spec-type", "draft-mtp,ngram-mod",
+"--spec-type", "draft-mtp",
 "--spec-draft-n-max", "3",
 "--spec-draft-p-min", "0.84",
-"--spec-draft-type-k", "q4_0", 
-"--spec-draft-type-v", "q4_0", 
 "--chat-template-file", $tpl,
 "--load-mode", "none",
 "--reasoning-preserve",
@@ -236,7 +275,7 @@ Start-Process -FilePath $exe -ArgumentList @(
 "--parallel", "1",
 "--kv-unified",
 "--no-warmup",
-"--spec-type", "draft-mtp,ngram-mod",
+"--spec-type", "draft-mtp",
 "--spec-draft-n-max", "3",
 "--spec-draft-p-min", "0.84",
 "--spec-draft-type-k", "q4_0", 
@@ -271,15 +310,13 @@ Start-Process -FilePath $exe -ArgumentList @(
 "--parallel", "1",
 "--kv-unified",
 "--no-warmup",
-"--spec-type", "ngram-mod",
+"--spec-type", 
 "--chat-template-file", $tpl,
 "--load-mode", "none",
 "--reasoning-preserve",
 "--reasoning-format", "deepseek",
 "-ngl", "99",
 "--reasoning-effort",  "medium",
-"--spec-ngram-mod-n-min", "16",
-"--spec-ngram-mod-n-max", "36"
 )
 
 decode 35T+/s, prefill 300t/s
