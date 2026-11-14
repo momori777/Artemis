@@ -3,7 +3,7 @@
 > **Date:** 2026-11-08 ~ 2026-11-09 (measured)
 > **Model:** `qwen3.8-flash-next-iq3_s` (IQ3_S quantization, max_context 131072) via Strata llama.cpp `:8080`
 > **Method:** Differential token probing (`/v1/chat/completions`, `max_tokens=1`, read `usage.prompt_tokens`) + cold-start isolated session measurement + platform logs/source code
-> **Original reports:** `C:\Users\momori\Desktop\Agents\` (kept as source of truth; this file is the project-integrated summary)
+> **Original reports:** `C:\Users\YOUR_USER_NAME\Desktop\Agents\` (kept as source of truth; this file is the project-integrated summary)
 
 ---
 
@@ -156,16 +156,16 @@ To reproduce these measurements:
 3. **Differential:** Toggle individual files (AGENTS.md, SOUL.md, skills) and measure the delta.
 
 Scripts used (reusable):
-- `C:\Users\momori\.openclaw\tmp\tok_probe.mjs` — baseline probe
-- `C:\Users\momori\.openclaw\tmp\tok_split.mjs` — component splitting
-- `C:\Users\momori\.openclaw\tmp\tok_skills.mjs` — skill directory measurement
+- `C:\Users\YOUR_USER_NAME\.openclaw\tmp\tok_probe.mjs` — baseline probe
+- `C:\Users\YOUR_USER_NAME\.openclaw\tmp\tok_split.mjs` — component splitting
+- `C:\Users\YOUR_USER_NAME\.openclaw\tmp\tok_skills.mjs` — skill directory measurement
 
 API key: `~\.openclaw\openclaw.json → models.providers.strata.apiKey`
 
 ---
 
 *Original detailed reports (with line-by-line evidence):*
-- OpenClaw: `C:\Users\momori\Desktop\Agents\openclaw\startup-token-analysis-2026-11-08.md`
-- Claude Code + CCR: `C:\Users\momori\Desktop\Agents\claude code\claude-code-ccr-启动注入token分析.md`
-- DSH: `C:\Users\momori\Desktop\Agents\deepseek harness\dsh-启动注入token分析.md`
-- Editable files reference: `C:\Users\momori\Desktop\Agents\claude code\三平台-skill-memory-可编辑注入文件速查.md`
+- OpenClaw: `C:\Users\YOUR_USER_NAME\Desktop\Agents\openclaw\startup-token-analysis-2026-11-08.md`
+- Claude Code + CCR: `C:\Users\YOUR_USER_NAME\Desktop\Agents\claude code\claude-code-ccr-启动注入token分析.md`
+- DSH: `C:\Users\YOUR_USER_NAME\Desktop\Agents\deepseek harness\dsh-启动注入token分析.md`
+- Editable files reference: `C:\Users\YOUR_USER_NAME\Desktop\Agents\claude code\三平台-skill-memory-可编辑注入文件速查.md`

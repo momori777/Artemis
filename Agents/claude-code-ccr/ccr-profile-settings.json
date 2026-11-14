@@ -1,5 +1,5 @@
 {
-  "apiKeyHelper": "\"C:\\Users\\momori\\AppData\\Roaming\\claude-code-router\\bin\\ccr-claude-code-api-key-default-claude-code.cmd\"",
+  "apiKeyHelper": "\"C:\Users\YOUR_USER_NAME\\AppData\\Roaming\\claude-code-router\\bin\\ccr-claude-code-api-key-default-claude-code.cmd\"",
   "env": {
     "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
     "ANTHROPIC_BASE_URL": "http://127.0.0.1:3456",

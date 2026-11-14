@@ -53,7 +53,7 @@
           maxTokensField: max_tokens
           supportsStore: false
         models:
-          - id: "C:\\Users\\momori\\Downloads\\Qwen3.8-27B-Ultimate-Heretic-Uncn-Turbo-Brilli-50x-AGI-NEO-MTP-Q4_K_M.gguf"
+          - id: "C:\Users\YOUR_USER_NAME\\Downloads\\Qwen3.8-27B-Ultimate-Heretic-Uncn-Turbo-Brilli-50x-AGI-NEO-MTP-Q4_K_M.gguf"
             name: Qwen3.8-27B Ultimate-Heretic (llama.cpp local)
             contextWindow: 150000
             maxTokens: 32000

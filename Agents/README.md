@@ -91,7 +91,7 @@ For the full cross-platform comparison (token budgets, editable files, architect
 
 ## Notes
 
-- Desktop source of truth: `C:\Users\momori\Desktop\Agents\` (original analysis reports)
+- Desktop source of truth: `C:\Users\YOUR_USER_NAME\Desktop\Agents\` (original analysis reports)
 - This directory contains project-integrated copies + actual config examples
 - CCR profile directory isolation means `~/.claude` edits don't affect Claude Code; edit the profile copy instead
 - dsh references existing inference backends (llama.cpp :9931 / Strata :8080) directly — no model duplication
