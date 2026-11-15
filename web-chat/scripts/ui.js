@@ -630,7 +630,7 @@ var UI = {
   openCardSim: function() {
     this._wireCardSim();
     var frame = document.getElementById('cardsim-frame');
-    if (frame && !frame.getAttribute('src')) frame.setAttribute('src', 'cards/precure-sim-v1.html');
+    if (frame && !frame.getAttribute('src')) frame.setAttribute('src', 'cards/precure-sim-v1.html?v=1');
     var modal = document.getElementById('cardsim-modal');
     if (modal) modal.classList.add('open');
   },

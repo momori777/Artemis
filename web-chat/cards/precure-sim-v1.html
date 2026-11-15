@@ -696,18 +696,72 @@ color: #FF69B4;
 footer a:hover::after {
 transform: scaleX(1);
 }
+/* ===== v2 优化：吸顶导航 / 搜索 / 阵营卡片 / 移动端 / 细节 ===== */
+html { scroll-behavior: smooth; }
+.tab-nav { position: sticky; top: 0; z-index: 300; background: rgba(255, 255, 255, 0.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 10px 10px 15px; margin: 0 -15px 25px; border-radius: 0 0 18px 18px; }
+.tab-button:focus-visible, .mini-btn:focus-visible, .faction-card:focus-within { outline: 3px solid rgba(255, 20, 147, 0.55); outline-offset: 2px; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: rgba(255, 182, 193, 0.25); }
+::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #FF69B4, #FFD700); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(135deg, #FF1493, #FFA500); }
+::selection { background: #FF69B4; color: #fff; }
+/* 图鉴搜索 */
+.gallery-search { display: flex; gap: 10px; align-items: center; margin: 8px 0 12px; flex-wrap: wrap; }
+.gallery-search input { flex: 1 1 220px; padding: 10px 16px; border: 2px solid #FFB6C1; border-radius: 24px; background: rgba(255,255,255,.92); font-family: 'Noto Sans SC', sans-serif; font-size: .95em; color: #4a2c4a; transition: all .3s; }
+.gallery-search input:focus { outline: none; border-color: #FF69B4; box-shadow: 0 0 10px rgba(255,105,180,.4); background: #fff; }
+.gallery-count { font-size: .85em; color: #8a6d8a; white-space: nowrap; background: rgba(255,255,255,.7); padding: 4px 10px; border-radius: 12px; }
+.gallery-empty { display: none; padding: 20px; text-align: center; color: #8a6d8a; background: rgba(255,255,255,.75); border-radius: 12px; margin-top: 12px; }
+/* 角色勾选筛选 */
+.char-filter-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.char-filter-row input { flex: 1 1 150px; padding: 8px 14px; border: 2px solid #FFB6C1; border-radius: 10px; font-size: .9em; font-family: 'Noto Sans SC', sans-serif; background: rgba(255,255,255,.92); color: #4a2c4a; }
+.char-filter-row input:focus { outline: none; border-color: #FF69B4; box-shadow: 0 0 8px rgba(255,105,180,.4); }
+.mini-btn { padding: 7px 14px; border: none; border-radius: 10px; background: linear-gradient(135deg, #FF69B4, #FF1493); color: #fff; cursor: pointer; font-size: .85em; font-family: 'Noto Sans SC', sans-serif; transition: all .3s; }
+.mini-btn.alt { background: linear-gradient(135deg, #b19cd9, #9370DB); }
+.mini-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255,20,147,.4); }
+/* 阵营选择卡片 */
+.faction-options { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-group label.faction-card { display: block; cursor: pointer; border-radius: 14px; padding: 14px 16px; border: 2px solid #FFB6C1; background: rgba(255,255,255,.88); transition: all .3s; margin-bottom: 0; }
+.form-group label.faction-card::before { content: none; }
+.faction-card input[type="radio"] { display: none; }
+.faction-card .fc-title { display: block; font-weight: 700; font-size: 1.08em; }
+.faction-card .fc-sub { display: block; font-size: .8em; color: #8a6d8a; margin-top: 3px; font-weight: normal; }
+.faction-card.good .fc-title { color: #FF1493; }
+.faction-card.evil { border-color: #B0A8D8; }
+.faction-card.evil .fc-title { color: #5B2C9D; }
+.form-group label.faction-card:hover { transform: translateY(-3px); box-shadow: 0 8px 18px rgba(255,105,180,.35); }
+.faction-card.evil:hover { box-shadow: 0 8px 18px rgba(91,44,157,.35); }
+.faction-card:has(input:checked) { background: #fff; }
+.faction-card.good:has(input:checked) { border-color: #FF1493; box-shadow: 0 0 0 3px rgba(255,20,147,.22), 0 8px 22px rgba(255,20,147,.45); }
+.faction-card.evil:has(input:checked) { border-color: #4B0082; box-shadow: 0 0 0 3px rgba(75,0,130,.22), 0 8px 22px rgba(75,0,130,.45); }
+/* 移动端适配 */
+@media (max-width: 640px) {
+body { padding: 8px; }
+.tab-nav { gap: 8px; margin: 0 -8px 18px; padding: 8px 6px 12px; }
+.main-title { font-size: 1.6em; margin-bottom: 14px; }
+.tab-button { padding: 8px 12px; font-size: .85em; }
+.precure-gallery { grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 10px; padding: 10px; }
+.modal-content { width: 94%; margin: 8% auto; padding: 18px; }
+.modal-img { width: 110px; height: 110px; }
+.modal-name { font-size: 1.4em; }
+.faction-options { grid-template-columns: 1fr; }
+.character-selection { max-height: 240px; }
+}
+@media (prefers-reduced-motion: reduce) {
+*, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
 </style>
 </head>
 <body>
 <div class="container">
-  <img src="https://cdn.imgos.cn/vip/2026/02/04/69821eac12ff8.jpg" alt="大图片" style="width: 100%; height: 100%; object-fit: cover; border-radius: 15px;">
+  <img loading="lazy" src="https://cdn.imgos.cn/vip/2026/02/04/69821eac12ff8.jpg" alt="大图片" style="width: 100%; height: 100%; object-fit: cover; border-radius: 15px;">
 <h1 class="main-title">光之美少女自定义模拟器V1版本</h1>
 <nav class="tab-nav">
-<button class="tab-button active" onclick="showTab(event, 'worldview')">游玩指导</button>
-<button class="tab-button" onclick="showTab(event, 'gallery')">光之美少女图鉴</button>
-<button class="tab-button" onclick="showTab(event, 'settings')">角色创建</button>
+<button class="tab-button active" onclick="showTab(event, 'settings')">① 角色创建</button>
+<button class="tab-button" onclick="showTab(event, 'gallery')">② 正派人设图鉴（光美）</button>
+<button class="tab-button" onclick="showTab(event, 'villain')">③ 反派人设图鉴</button>
+<button class="tab-button" onclick="showTab(event, 'worldview')">④ 游玩指导</button>
 </nav>
-<div id="worldview" class="tab-content active">
+<div id="worldview" class="tab-content">
 <h2>基础介绍</h2>
 <p>本卡的预期目标是能创建出一个自由构建的光美故事生成器，包括自选/自定义登场光美、反派组织、城市地点、文风等设置，可自搭建的大世界。</p>
 <div class="music-player-container">
@@ -771,106 +825,138 @@ transform: scaleX(1);
 <p><strong>前置词和提示词的选择：</strong>两者其实效果差不多，但是前置词更容易生效一些，为了确保游玩时生效，都可以在前面加上自定义世界规则。</p>
 </div>
 <div id="gallery" class="tab-content">
-<h2>光之美少女图鉴（补全中）</h2>
-<p>点击头像查看历代光美介绍。</p>
+<h2>正派光美人设图鉴（补全中）</h2>
+<p>点击头像查看历代光美（正派）人设介绍。</p>
+<div style="margin:6px 0 12px;">
+<button type="button" class="tab-button" onclick="goTab('settings')">← 上一步：填写我的角色信息</button>
+<button type="button" class="tab-button" onclick="goTab('villain')">反派人设图鉴 →</button>
+</div>
+<div class="gallery-search">
+<input type="search" placeholder="🔍 搜索光美：角色名 / Cure XX / 作品名…" oninput="filterGallery(this)">
+<span class="gallery-count">共 96 位正派</span>
+</div>
 <div class="precure-gallery">
-<div class="precure-item" onclick="showModal('Cure Black', 'https://www.toei-anim.co.jp/tv/precure_MH/image/ch_nagisa_icon.gif', '美墨渚 - 登场作品：《光之美少女》，《光之美少女Max Heart》、介绍：非常男孩子气，是女生们憧憬的对象。正义感很强，但性格鲁莽，梦想着谈一场美丽的恋爱和憧憬成为新娘，但似乎没什么男人缘，长曲棍球部的王牌球员、推荐关联身份：弟弟、憧憬的前辈')"><img src="https://www.toei-anim.co.jp/tv/precure_MH/image/ch_nagisa_icon.gif" alt="Cure Black"></div>
-<div class="precure-item" onclick="showModal('Cure White', 'https://www.toei-anim.co.jp/tv/precure_MH/image/ch_honoka_icon.gif', '雪城穗乃香 - 登场作品：《光之美少女》，《光之美少女Max Heart》、介绍：学问知识十分渊博，但对某些事有点天然呆，在班里成绩永远是第一名的班长，大家都称她为博学女王、推荐关联身份：科学部前辈')"><img src="https://www.toei-anim.co.jp/tv/precure_MH/image/ch_honoka_icon.gif" alt="Cure White"></div>
-<div class="precure-item" onclick="showModal('Shiny Luminous', 'https://www.toei-anim.co.jp/tv/precure_MH/image/ch_hikari_icon.gif', '九条光 - 登场作品：《光之美少女Max Heart》、介绍：突然在渚和穗乃香面前出现的不可思议少女，真实身份是女王的三元素之一的生命，纯战斗能力较弱、推荐关联身份：收养小光的伪亲戚')"><img src="https://www.toei-anim.co.jp/tv/precure_MH/image/ch_hikari_icon.gif" alt="Shiny Luminous"></div>
-<div class="precure-item" onclick="showModal('Cure Bloom', 'https://cdn.imgos.cn/vip/2026/02/05/69836e80232bc.jpeg', '日向咲 - 第二代（东映不爱）光之美少女，在学校是垒球队的队员，守备位置是投手。家里经营名叫「香喷喷面包屋」的面包店')"><img src="https://cdn.imgos.cn/vip/2026/02/05/69836e80232bc.jpeg" alt="Cure Bloom"></div>
-<div class="precure-item" onclick="showModal('Cure Egret', 'https://cdn.imgos.cn/vip/2026/02/05/69836f462cd6d.jpg', '美翔舞 - 第二代（东映不爱）光之美少女，学校美术社社员，非常热衷绘画，当她专注于画上时，常常察觉不到身边发生的事，文静型的美少女（长大后惨遭东映迫害）')"><img src="https://cdn.imgos.cn/vip/2026/02/05/69836f462cd6d.jpg" alt="Cure Egret"></div>
-<div class="precure-item" onclick="showModal('Cure Dream', 'https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara01/chara_dream.jpg', '梦原望 - 第三代（里程碑的一代）光之美少女，充满喜怒哀乐，活泼开朗的女孩子，好奇心旺盛的她对任何事都义不容辞，但亦是因为这个原因一直令她找不到想做的事，虽然学习一般，但是能通过努力弥补')"><img src="https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara01/chara_dream.jpg" alt="Cure Dream"></div>
-<div class="precure-item" onclick="showModal('Cure Rouge', 'https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara02/chara_rouge.jpg', '夏木玲 - 三代光之美少女之一，自小就和望青梅竹马，拥有男性向的性格，而且运动万能，但她没有参加学校内的任何一个运动学会，只是间中为校队出赛')"><img src="https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara02/chara_rouge.jpg" alt="Cure Rouge"></div>
-<div class="precure-item" onclick="showModal('Cure Aqua', 'https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara05/chara_aqua.jpg', '水无月香恋 - 三代光之美少女之一，知性冷静，是学生会会长')"><img src="https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara05/chara_aqua.jpg" alt="Cure Aqua"></div>
-<div class="precure-item" onclick="showModal('Cure Mint', 'https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara04/chara_mint.jpg', '秋元小町 - 三代光之美少女之一，香恋的青梅竹马，由于她是图书馆委员而喜欢读书，比较博学，性格温柔，但愤怒时也会令人害怕')"><img src="https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara04/chara_mint.jpg" alt="Cure Mint"></div>
-<div class="precure-item" onclick="showModal('Cure Lemonade', 'https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara03/chara_lemon.jpg', '春日野丽 - 三代光之美少女之一，新人偶像，思想方面都比起同年纪的人较为成熟，但亦因此令她在学校里没有朋友，长大后成功实现了梦想')"><img src="https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara03/chara_lemon.jpg" alt="Cure Lemonade"></div>
-<div class="precure-item" onclick="showModal('Milky Rose', 'https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara06/chara_milky.jpg', '美美野来未 - 三代二期的光之美少女，来自帕鲁米埃王国的精灵（熊孩子），培养蓝玫瑰后获得了化作人类和变身的力量')"><img src="https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara06/chara_milky.jpg" alt="Milky Rose"></div>
-<div class="precure-item" onclick="showModal('Cure Peach', 'https://www.toei-anim.co.jp/tv/fresh_precure/character/img/main/curepeach_l.jpg', '桃园爱 - 四代光之美少女，初中二年级学生，性格天真烂漫，活力十足，是一个比起自己更在意别人的女孩。舞团&quot;Trinity&quot;的忠实粉丝，喜欢跳舞，厨艺不俗，但学习、运动都不擅长，身材发育比某些高中生（紫头发的）和大学生（蝴蝶的）都强')"><img src="https://www.toei-anim.co.jp/tv/fresh_precure/character/img/main/curepeach_l.jpg" alt="Cure Peach"></div>
-<div class="precure-item" onclick="showModal('Cure Berry', 'https://www.toei-anim.co.jp/tv/fresh_precure/character/img/main/cureberry_l.jpg', '苍乃美希 - 第四代光之美少女之一，初中二年级学生，体育万能，对潮流十分敏感，常刻意表露自己的美丽。梦想是成为时装模特，为此严格进行着自我管理，容易发出暴言和引发家长炎上')"><img src="https://www.toei-anim.co.jp/tv/fresh_precure/character/img/main/cureberry_l.jpg" alt="Cure Berry"></div>
-<div class="precure-item" onclick="showModal('Cure Pine', 'https://www.toei-anim.co.jp/tv/fresh_precure/character/img/main/curepain_l.jpg', '山吹祈里 - 四代光之美少女之一，初中二年级生，学习虽好，但社会常识不足，为人大方，温柔，因此缺乏自信，为改变自己而和小爱一起组成舞团。由于家中经营动物医院，所以很喜欢动物，并很了解动物，梦想是继承家业并成为一名出色的兽医，唯一不喜欢的是白貂')"><img src="https://www.toei-anim.co.jp/tv/fresh_precure/character/img/main/curepain_l.jpg" alt="Cure Pine"></div>
-<div class="precure-item" onclick="showModal('Cure Passion', 'https://www.toei-anim.co.jp/tv/fresh_precure/character/img/main/curepassion_l.jpg', '东刹那 - 四代光之美少女之一，原本是梅比乌斯的部下伊斯，被指派以东刹那的身份接近桃园爱等人（名为东刹那的人，从一开始就不存在！）')"><img src="https://www.toei-anim.co.jp/tv/fresh_precure/character/img/main/curepassion_l.jpg" alt="Cure Passion"></div>
-<div class="precure-item" onclick="showModal('Cure Blossom', 'https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_01.jpg', '花咲蕾 - 抓心光之美少女之一，温柔善良，喜欢植物，虽然弱气但有着为他人挺身而出的勇气，本身也是相当可爱的美少女（东映这什么烂官图）')"><img src="https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_01.jpg" alt="Cure Blossom"></div>
-<div class="precure-item" onclick="showModal('Cure Marine', 'https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_02.jpg', '来海绘里香 - 抓心光之美少女之一，学校的爆破者，时尚衣品的未来引领者，虽然不正经，但是相当聪明可靠')"><img src="https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_02.jpg" alt="Cure Marine"></div>
-<div class="precure-item" onclick="showModal('Cure Sunshine', 'https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_14.jpg', '明堂院树 - 抓心光之美少女之一，明堂院家的千金，代替病弱的哥哥（一定是达鲁伊森干的！）守护道场，为此放弃了作为女性的少女心，成为了经常腐乳少女爱情的男装丽人')"><img src="https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_14.jpg" alt="Cure Sunshine"></div>
-<div class="precure-item" onclick="showModal('Cure Moonlight', 'https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_05.jpg', '月影百合 - 抓心光之美少女之一，强大的前辈战士，拥有谁都会为之哭泣的命运，但满月的光辉不会被遮挡')"><img src="https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_05.jpg" alt="Cure Moonlight"></div>
-<div class="precure-item" onclick="showModal('Dark Precure', 'https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_07.jpg', '暗之美少女 - 抓心光之美少女反派，通过月影百合基因制造出来的存在，与百合是互为光影的宿敌')"><img src="https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_07.jpg" alt="Dark Precure"></div>
-<div class="precure-item" onclick="showModal('Cure Flower', 'https://cdn.imgos.cn/vip/2026/03/11/69b0db70ea329.png', '花咲薰子 - 花朵天使，最年轻的全国空手道冠军，总是锻炼自己，有着一人抵抗黑暗势力的能力')"><img src="https://cdn.imgos.cn/vip/2026/03/11/69b0db7144fab.png" alt="Cure Flower"></div>
-<div class="precure-item" onclick="showModal('Cure Melody', 'https://www.toei-anim.co.jp/tv/suite_precure/character/00_01/icon.gif', '北条响 - 组曲光之美少女之一，擅长运动的开朗女生，出生音乐世家，父亲是音乐老师，母亲是小提琴家，独子家庭外加双亲长时间不在家，养成其自小独立的性格，并在父亲的严厉指责下深信自己没有音乐才能，但依旧爱着音乐，羡慕着奏有弟弟')"><img src="https://www.toei-anim.co.jp/tv/suite_precure/character/00_01/icon.gif" alt="Cure Melody"></div>
-<div class="precure-item" onclick="showModal('Cure Rhythm', 'https://www.toei-anim.co.jp/tv/suite_precure/character/00_02/icon.gif', '南野奏 - 组曲光之美少女之一，响的青梅竹马及同班同学，甜点部成员。擅长学习和制作点心的女生，在学校受到师长的尊敬与同学的欢迎，虽然经常和响吵架，但这也是友情的证明')"><img src="https://www.toei-anim.co.jp/tv/suite_precure/character/00_02/icon.gif" alt="Cure Rhythm"></div>
-<div class="precure-item" onclick="showModal('Cure Beat', 'https://www.toei-anim.co.jp/tv/suite_precure/character/18_01/icon.gif', '黑川爱莲 - 组曲光之美少女之一，大调岛的前歌姬精灵，本体是只黑猫，被噪音染黑心灵后，成为小调岛的歌姬，开始了对朋友哈气的半部剧情')"><img src="https://www.toei-anim.co.jp/tv/suite_precure/character/18_01/icon.gif" alt="Cure Beat"></div>
-<div class="precure-item" onclick="showModal('Cure Muse', 'https://www.toei-anim.co.jp/tv/suite_precure/character/35_01/icon.gif', '调边亚子 -组曲光之美少女之一，9岁，大调岛的公主，年龄虽小但成熟可靠，即使会训斥人也不会给人讨厌的感觉')"><img src="https://www.toei-anim.co.jp/tv/suite_precure/character/35_01/icon.gif" alt="Cure Muse"></div>
-<div class="precure-item" onclick="showModal('Cure Happy', 'https://cdn.imgos.cn/vip/2026/02/05/6983703b10769.jpg', '星空美幸 - 微笑光之美少女队长，性格积极开朗、正面、勇于尝试，但偶尔有些冒失，但是不会一味低落、会勇敢并微笑地往前行，在紧要关头总能拉人一把（但是个学渣）')"><img src="https://cdn.imgos.cn/vip/2026/02/05/6983703b10769.jpg" alt="Cure Happy"></div>
-<div class="precure-item" onclick="showModal('Cure Sunny', 'https://cdn.imgos.cn/vip/2026/02/05/698370aecf6e6.jpg', '日野茜 - 微笑光之美少女之一，排球部成员，来自大阪，比他人更热心的女孩子，经常给予他人帮助，很喜欢以及擅长搞笑，班上的欢乐制造者，最喜欢的就是让他人露出笑容，另类风味的假小子')"><img src="https://cdn.imgos.cn/vip/2026/02/05/698370aecf6e6.jpg" alt="Cure Sunny"></div>
-<div class="precure-item" onclick="showModal('Cure Peace', 'https://cdn.imgos.cn/vip/2026/02/05/6983711b7d402.jpeg', '黄濑弥生 - 微笑光之美少女之一，个性稍微有点软弱爱哭，但是内心却非常坚强，幼年丧父，喜欢并擅长画画，也很喜欢超级机器人（该入机战了）')"><img src="https://cdn.imgos.cn/vip/2026/02/05/6983711b7d402.jpeg" alt="Cure Peace"></div>
-<div class="precure-item" onclick="showModal('Cure March', 'https://cdn.imgos.cn/vip/2026/02/05/69837192587bc.jpg', '绿川直 - 微笑光之美少女之一，足球部成员，与丽华从小相识，个性非常耿直、果断豪爽、有气魄、自信，有时也很要强，在班上被称为&quot;女老大&quot;，要照顾家中多个弟妹，家务能力很强（桃屋猫经典迫害角色）')"><img src="https://cdn.imgos.cn/vip/2026/02/05/69837192587bc.jpg" alt="Cure March"></div>
-<div class="precure-item" onclick="showModal('Cure Beauty', 'https://cdn.imgos.cn/vip/2026/02/05/6983725644e3d.jpeg', '青木丽华 - 微笑光之美少女之一，负责温柔，清凉美丽，出身古风世家，多才多艺，善于赋诗，学业成绩一直保持在学年首位，完全配得上美丽天使之名的队内优秀者')"><img src="https://cdn.imgos.cn/vip/2026/02/05/6983725644e3d.jpeg" alt="Cure Beauty"></div>
-<div class="precure-item" onclick="showModal('Cure Heart', 'https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure01.png', '相田爱 - 心跳光之美少女之一，学生会会长，成绩优秀、运动万能，是个充满活力的初中二年级女孩，处理纠纷、解决恋爱烦恼等问题都不在话下，有着大家都信任的处事能力，凡事都会拼尽全力去完成，宛如王子一般（多情），梦想是成为首相（比某个女的靠谱）')"><img src="https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure01.png" alt="Cure Heart"></div>
-<div class="precure-item" onclick="showModal('Cure Diamond', 'https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure02.png', '菱川六花 - 心跳光之美少女之一，爱的同学以及青梅竹马，她性格文静谨慎，在外行动或学习时有时需要佩戴眼镜。本人希望能有安静的校园生活，但是总是被小爱所麻烦，因为表情而被大家铭记')"><img src="https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure02.png" alt="Cure Diamond"></div>
-<div class="precure-item" onclick="showModal('Cure Rosetta', 'https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure03.png', '四叶有栖 - 心跳光之美少女之一，四叶财团的千金大小姐，性格如沐浴在春天阳光下的花草般温柔随和，自幼学习多种技能，芭蕾舞、小提琴、钢琴、料理、游泳、骑马、合气道全是达人级的水平，无法忍受朋友被说坏话，经常动用财力协助大家（唉，自本）')"><img src="https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure03.png" alt="Cure Rosetta"></div>
-<div class="precure-item" onclick="showModal('Cure Sword', 'https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure04.png', '剑崎真琴 - 心跳光之美少女之一，守护&quot;扑克牌王国&quot;的战士，由于没有抵御住&quot;自私组织&quot;的侵略（无伤之刃），后与公主逃出却不慎走散，因未能保护国家和公主懊悔，性格比较孤僻，但作为偶像时会比较亲和，和剑崎一真应该不是无能兄妹')"><img src="https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure04.png" alt="Cure Sword"></div>
-<div class="precure-item" onclick="showModal('Cure Ace', 'https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure05.png', '圆亚久里 - 心跳光之美少女之一，神秘的小学四年级少女，故事前一年从天而降，被经营茶房的圆茉里所收养，讨厌胡萝卜（口红杀手，亚子定位的反向案例）')"><img src="https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure05.png" alt="Cure Ace"></div>
-<div class="precure-item" onclick="showModal('Cure Lovely', 'https://www.toei-anim.co.jp/tv/happinesscharge_precure/images/character/precure_curelovely/costume01.png', '爱乃惠 - 茶几光之美少女之一，学年成绩为全年级倒数第一。充满元气和笑容的女孩。时常向外散发快乐能量，协助遇到困难的人。虽然助人总是功败垂成，惟其善心仍为不少人所欣赏。交友甚广，小学时有交到一百位朋友的传说。喜欢哼歌，对可爱的时尚造型十分感兴趣，但是潮流品味似乎不怎么样（战斗风格残暴，感情经历残酷）')"><img src="https://www.toei-anim.co.jp/tv/happinesscharge_precure/images/character/precure_curelovely/costume01.png" alt="Cure Lovely"></div>
-<div class="precure-item" onclick="showModal('Cure Princess', 'https://www.toei-anim.co.jp/tv/happinesscharge_precure/images/character/precure_cureprincess/costume01.png', '白雪姬 - 茶几光之美少女之一，社恐的公主，因为释放了反派而导致自己的国家覆灭（蓝神这盒子一没看守二没上锁），因为缺少勇气和友情的激励，战斗能力非常弱，但是成长潜力巨大')"><img src="https://www.toei-anim.co.jp/tv/happinesscharge_precure/images/character/precure_cureprincess/costume01.png" alt="Cure Princess"></div>
-<div class="precure-item" onclick="showModal('Cure Honey', 'https://www.toei-anim.co.jp/tv/happinesscharge_precure/images/character/precure_curehoney/costume01.png', '大森悠子 - 茶几光之美少女之一，惠的好友兼同班同学，充满治愈气息的女孩。由于家里开便当屋，所以很喜欢吃和做便当，也习惯在闲暇时慢跑以维持食欲。总是喜欢给遇到困难的人送自己特制的蜂蜜糖果，以此来鼓舞对方')"><img src="https://www.toei-anim.co.jp/tv/happinesscharge_precure/images/character/precure_curehoney/costume01.png" alt="Cure Honey"></div>
-<div class="precure-item" onclick="showModal('Cure Fortune', 'https://www.toei-anim.co.jp/tv/happinesscharge_precure/images/character/precure_curefortune/costume01.png', '冰川伊绪奈 - 茶几光之美少女之一，文武双全，是校内知名的才女，空手道黑带，冰川流空手道场师范中导师的孙女，有着痛苦的过往，具备给人占卜的能力')"><img src="https://www.toei-anim.co.jp/tv/happinesscharge_precure/images/character/precure_curefortune/costume01.png" alt="Cure Fortune"></div>
-<div class="precure-item" onclick="showModal('Cure Tender', 'https://cdn.imgos.cn/vip/2026/05/13/6a042a9d31a47.jpg', '冰川麻理亚 - 光之美少女之一，温柔天使，伊绪奈的姐姐，空手道黑带，冰川流空手道场师范中导师的孙女')"><img src="https://cdn.imgos.cn/vip/2026/05/13/6a042a9e47db5.jpg" alt="Cure Tender"></div>
-<div class="precure-item" onclick="showModal('Cure Flora', 'https://www.toei-anim.co.jp/tv/princess_precure/images/character/precure/navi01_d.png', '春野遥 - 公主光之美少女之一，平凡的少女拥有最真挚的公主梦想，遇到困难不会轻言放弃，总会拿出封面印有公主的图画书去鼓励自己，将努力和成长贯穿始终')"><img src="https://www.toei-anim.co.jp/tv/princess_precure/images/character/precure/navi01_d.png" alt="Cure Flora"></div>
-<div class="precure-item" onclick="showModal('Cure Mermaid', 'https://www.toei-anim.co.jp/tv/princess_precure/images/character/precure/navi02_d.png', '海藤南 - 公主光之美少女之一，学园的学生会会长，亦被称为学园的公主。家里是大型企业&quot;海藤集团&quot;，有一哥哥。文武两道并强，擅长芭蕾舞、马术和射箭。富有责任感，做事十分细心，扮演着一名温柔可靠的姐姐型角色，自身亦盼望对外竖立有体面的形象，成为像哥哥和爸爸那样有助于别人的人')"><img src="https://www.toei-anim.co.jp/tv/princess_precure/images/character/precure/navi02_d.png" alt="Cure Mermaid"></div>
-<div class="precure-item" onclick="showModal('Cure Twinkle', 'https://www.toei-anim.co.jp/tv/princess_precure/images/character/precure/navi03_d.png', '天之川绮罗 - 公主光之美少女之一，人气模特儿。每日兼顾两边工作显得十分忙碌，思想成熟，服务心强。自幼受母亲史黛拉影响而梦想成为世界级最顶尖的模特，拥有为自己的梦想勇往直前的坚强，称呼友人时会使用叠词称呼')"><img src="https://www.toei-anim.co.jp/tv/princess_precure/images/character/precure/navi03_d.png" alt="Cure Twinkle"></div>
-<div class="precure-item" onclick="showModal('Cure Scarlet', 'https://www.toei-anim.co.jp/tv/princess_precure/images/character/precure/navi04_d.png', '红城永久 - 公主光之美少女之一，希望王国的公主、彼方王子的妹妹。小时候因无意闯入绝望森林，被绝望的魔女迪丝比娅抓住后，作为黛维莱德的模样生活着，微妙的缺少正常人常识')"><img src="https://www.toei-anim.co.jp/tv/princess_precure/images/character/precure/navi04_d.png" alt="Cure Scarlet"></div>
-<div class="precure-item" onclick="showModal('Cure Miracle', 'https://www.toei-anim.co.jp/tv/mahotsukai_precure/images/character/precure/navi01_d.png', '朝日奈未来 - 魔法使光之美少女之一，从小就希望可以和真正的魔法使见面，经常携带着珍贵的熊玩偶毛芙伦，热爱不可思议和有趣的事物，充满活力地发掘各种喜好（长大后有酒驾扫帚的情况）')"><img src="https://www.toei-anim.co.jp/tv/mahotsukai_precure/images/character/precure/navi01_d.png" alt="Cure Miracle"></div>
-<div class="precure-item" onclick="showModal('Cure Magical', 'https://www.toei-anim.co.jp/tv/mahotsukai_precure/images/character/precure/navi02_d.png', '十六夜理子 - 魔法使光之美少女之一，性格认真，虽然是优等生的模样，但意外的不擅长实际操作，学习非常用功，是个努力家，有些傲娇')"><img src="https://www.toei-anim.co.jp/tv/mahotsukai_precure/images/character/precure/navi02_d.png" alt="Cure Magical"></div>
-<div class="precure-item" onclick="showModal('Cure Felice', 'https://www.toei-anim.co.jp/tv/mahotsukai_precure/images/character/precure/navi04_d.png', '花海言叶 - 魔法使光之美少女之一，从波纹智慧书中诞生的花的妖精，母神拉帕帕的力量继承者，性格受未来和理子影响')"><img src="https://www.toei-anim.co.jp/tv/mahotsukai_precure/images/character/precure/navi04_d.png" alt="Cure Felice"></div>
-<div class="precure-item" onclick="showModal('Cure Whip', 'https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara01_d.png', '宇佐美一花 - 甜点光之美少女，活泼开朗而十分喜欢甜点的初中二年级的学生，14岁。感情丰富，有着惊人的想象力，在高兴的时候喜欢像兔子一样蹦蹦跳跳，反应意外的迟钝')"><img src="https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara01_d.png" alt="Cure Whip"></div>
-<div class="precure-item" onclick="showModal('Cure Custard', 'https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara02_d.png', '有栖川阳莉 - 甜点光之美少女之一，一花的同班同学，14岁。努力而头脑灵活的初中二年级的学生，个子矮小但跑得速度和松鼠一样快，不过性格比较怯懦，经常独来独往')"><img src="https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara02_d.png" alt="Cure Custard"></div>
-<div class="precure-item" onclick="showModal('Cure Gelato', 'https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara03_d.png', '立神葵 - 甜点光之美少女之一，性格勇敢强气有如狮子一般，很会为了自己的朋友着想，非常重视朋友的一切。怪力惊人，非常喜欢唱歌，是摇滚乐队&quot;狂野天蓝色&quot;的主唱，与一花就读于同一所学校。真实身份是&quot;立神财阀&quot;的大小姐，在校的成绩保持在年级前五名的优等生。制作甜点的时候擅长利用臂力来支撑形状，最喜欢吃的甜点是冰淇淋。')"><img src="https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara03_d.png" alt="Cure Gelato"></div>
-<div class="precure-item" onclick="showModal('Cure Macaron', 'https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara04_d.png', '琴爪缘 - 甜点光之美少女之一，高贵优雅犹如小猫一般，性格有点以自我为中心，自由随性，是一个带有傲娇属性的姐姐。富有心计，对反常事物十分敏感，似乎因反复无常和没有挑战性的生活而感到郁闷')"><img src="https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara04_d.png" alt="Cure Macaron"></div>
-<div class="precure-item" onclick="showModal('Cure Chocolat', 'https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara05_d.png', '剑城晶 - 甜点光之美少女之一，17岁，总是打扮成男孩子的样子，性格温柔善良犹如小狗一般，方向感极佳所以非常靠谱，是个不轻易发火的人，喜欢助人为乐，因此曾被说照顾起别人来会不顾前后。家里有一个常年体弱多病的妹妹美久，经常向其赠送巧克力，非常疼爱自己的妹妹')"><img src="https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara05_d.png" alt="Cure Chocolat"></div>
-<div class="precure-item" onclick="showModal('Cure Parfait', 'https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara10_d.png', '绮罗星夏尔 - 甜点光之美少女之一，草莓山的妖精，有着&quot;天才甜品师&quot;之称的在法国修行的13岁的少女，对甜品能带给大家幸福梦想的这一追求犹如翱翔天际的飞马一般（不知道为什么百科说她是主人公）')"><img src="https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara10_d.png" alt="Cure Parfait"></div>
-<div class="precure-item" onclick="showModal('Cure Yell', 'https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0101.png', '野乃花 - 拥抱光之美少女，活力旺盛，对于未来的事情充满好奇。身高和性格与同龄的同学们相比像个小孩子，为了摆脱不成熟的自己，故以成为能干的成熟大姐姐为目标。拥有能够面对任何挑战的勇气，但却时常以失败收场（夏亚：我能感受到母性的光辉）')"><img src="https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0101.png" alt="Cure Yell"></div>
-<div class="precure-item" onclick="showModal('Cure Ange', 'https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0102.png', '药师寺纱绫 - 拥抱光之美少女之一，对任何人都很温柔，内心细腻，很会体贴人，是有如天使般的少女，被周围认识的人称她为&quot;学园天使&quot;（如果有光美叫cure angel该怎么翻译）。成绩极为优秀。母亲是知名女演员，曾经也是童星，以&quot;蔬菜少女&quot;的身份唱的蔬菜之歌而家喻户晓，但她经常因为不懂自己真正想要做什么而感到烦恼')"><img src="https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0102.png" alt="Cure Ange"></div>
-<div class="precure-item" onclick="showModal('Cure Etoile', 'https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0103.png', '辉木誉 - 拥抱光之美少女之一，曾经是花式溜冰选手中的明星，但经历失败后远离了花式溜冰的活动，处事冷静、优雅成熟')"><img src="https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0103.png" alt="Cure Etoile"></div>
-<div class="precure-item" onclick="showModal('Cure Macherie', 'https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0104.png', '爱崎惠美瑠 - 拥抱光之美少女之一，六年级学生，12岁。与同龄人相比知道很多知识，但因为爱瞎操心常做出极夸张的举动，很不喜欢被人照顾。擅长唱歌及弹奏电吉他，有着超乎常人的绝对音感，并在音乐方面有很高的天赋，但因为出身古典音乐世家和企业而不受家人认同')"><img src="https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0104.png" alt="Cure Macherie"></div>
-<div class="precure-item" onclick="showModal('Cure Amour', 'https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0105.png', '露露·艾莫尔 - 拥抱光之美少女之一，原本是黑暗明日社当工读生的机器人少女，拥有强大的分析力和计算力，但实际上和人类似乎没什么区别（我是不会流泪的，因为我是机器人）')"><img src="https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0105.png" alt="Cure Amour"></div>
-<div class="precure-item" onclick="showModal('Cure Star', 'https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_curestar_off.png', '星奈光 - 星闪光之美少女之一，仰望星空的少女，喜欢星座和宇宙，想象力丰富，好奇心旺盛，能把自己观察星空的想象事物所描绘出来。自来熟，遇事遇人都有&quot;喜欢自己喜欢的东西&quot;的思想，也擅长训狗（著名低帧战士）')"><img src="https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_curestar_off.png" alt="Cure Star"></div>
-<div class="precure-item" onclick="showModal('Cure Milky', 'https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_curemilky_off.png', '羽衣拉拉 - 星闪光之美少女之一，出生于星空界沙曼星的外星人少女，在老家是成年人和&quot;体育生&quot;，头上的传感器是沙曼星人的魅力点，可随意伸缩，能发出修理和按摩程度的微弱电击')"><img src="https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_curemilky_off.png" alt="Cure Milky"></div>
-<div class="precure-item" onclick="showModal('Cure Soleil', 'https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_curesoleil_off.png', '天宫爱莲娜 - 星闪光之美少女之一，混血儿，运动万能，像太阳一样明亮，笑容非常棒，学校的高人气者之一，被称为&quot;观星中学的太阳&quot;。家中经营着名为&quot;SONRISA&quot;的花店，是家中长女，父亲是墨西哥人，母亲任职翻译，有五个弟妹（现实中会累死吧）')"><img src="https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_curesoleil_off.png" alt="Cure Soleil"></div>
-<div class="precure-item" onclick="showModal('Cure Selene', 'https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_cureselene_off.png', '香久矢圆香 - 星闪光之美少女之一，端庄优雅、非常努力的女生。父亲是日本内阁府&quot;宇宙开发特别搜查局&quot;局长（鹰派），母亲是著名钢琴家。喜欢花道、茶道、弓道、钢琴。才华横溢，不论钢琴还是弓道都是全国的顶尖佼佼者，被称为&quot;观星中学的月亮&quot;')"><img src="https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_cureselene_off.png" alt="Cure Selene"></div>
-<div class="precure-item" onclick="showModal('Cure Cosmo', 'https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_curecosmo_off.png', '尤妮 - 星闪光之美少女之一，星空界彩虹星的外星人少女，女王诺利亚的女儿，也是公主，有模仿他人身形和声音的能力，但不够熟练，无法隐藏自己的猫耳和猫尾。故乡被艾旺毁灭，仅自己存活，有着多个身份，包括怪盗和宇宙偶像（被剧情压制的优秀人设）')"><img src="https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_curecosmo_off.png" alt="Cure Cosmo"></div>
-<div class="precure-item" onclick="showModal('Cure Grace', 'https://www.toei-anim.co.jp/tv/healingood_precure/images/character/character_01_btn.png', '花寺和佳 - 治愈光之美少女之一，少时体弱多病（但是力量好像并不小），长大后恢复健康才得以体验各种事物，也因病情原因，受到周围许多人的照顾，长大后希望把这份温柔返还给大家，是一个心地善良的人，拥有比任何人都要强烈的温柔之心和乐于助人之心，原则性极强')"><img src="https://www.toei-anim.co.jp/tv/healingood_precure/images/character/character_01_btn.png" alt="Cure Grace"></div>
-<div class="precure-item" onclick="showModal('Cure Fontaine', 'https://www.toei-anim.co.jp/tv/healingood_precure/images/character/character_02_btn.png', '泽泉知优 - 治愈光之美少女之一，在校不仅是个头脑聪明的理科优等生，还是校内田径部跳高的王牌，运动细胞相当优秀。家里经营有温泉旅馆，一直在家承担着掌柜的角色，但遇到跳高这个自己喜欢的事情上有所纠结，二者都不想放弃，最终以&quot;掌柜运动员两不误&quot;为目标，向梦想冲刺。平日看上去有些严肃，但对冷笑话防御力为&quot;0&quot;，笑点很低（好，就是我或人！）')"><img src="https://www.toei-anim.co.jp/tv/healingood_precure/images/character/character_02_btn.png" alt="Cure Fontaine"></div>
-<div class="precure-item" onclick="showModal('Cure Sparkle', 'https://www.toei-anim.co.jp/tv/healingood_precure/images/character/character_03_btn.png', '平光日向 - 治愈光之美少女之一，活泼开朗、擅于配合气氛、元气友善的中学二年级的女生，不论遇到大小事，想到的东西都直接说出来的类型。很难坚持一件事，所以不擅长学习，却非常喜欢时装和化妆，家中开兽医院和咖啡馆（有时像个莽汉）')"><img src="https://www.toei-anim.co.jp/tv/healingood_precure/images/character/character_03_btn.png" alt="Cure Sparkle"></div>
-<div class="precure-item" onclick="showModal('Cure Earth', 'https://www.toei-anim.co.jp/tv/healingood_precure/images/character/character_09_btn.png', '风铃艾苏米 - 治愈光之美少女之一，温柔稳重，实力强大，充满神秘感的少女，伴随着风的出现，从地球的能量中诞生的特别存在，容貌与先代光之美少女风极为相似，非法成年人')"><img src="https://www.toei-anim.co.jp/tv/healingood_precure/images/character/character_09_btn.png" alt="Cure Earth"></div>
-<div class="precure-item" onclick="showModal('Cure Summer', 'https://precure-web.com/tropical-rouge/assets/img/character/character_01_btn.png', '夏海真夏 - 热带光之美少女之一，初中一年级生。在南乃岛生活的少女，如同常夏的太阳般明亮，做各种事都干劲满满的，任何时候都考虑先做当下最重要的事，行动快于思考，是个典型的行动派，非常珍惜母亲送给的口红')"><img src="https://precure-web.com/tropical-rouge/assets/img/character/character_01_btn.png" alt="Cure Summer"></div>
-<div class="precure-item" onclick="showModal('Cure Coral', 'https://precure-web.com/tropical-rouge/assets/img/character/character_02_btn.png', '凉村珊瑚 - 热带光之美少女之一，非常喜欢可爱的东西，很有时尚感的少女。像春天的太阳那般温柔，对周围人非常友善，能很快和大家打成一片，给人一种治愈的感觉。家里开化妆品店&quot;Pretty Holic&quot;，关于化妆的知识非常熟悉')"><img src="https://precure-web.com/tropical-rouge/assets/img/character/character_02_btn.png" alt="Cure Coral"></div>
-<div class="precure-item" onclick="showModal('Cure Papaya', 'https://precure-web.com/tropical-rouge/assets/img/character/character_03_btn.png', '一之濑实 - 热带光之美少女之一，成绩顶尖的优等生，校文学部前成员。喜欢读书，知识渊博。总是一副扑克脸，喜怒不形于色，坚持己见。小时候相当喜欢人鱼公主的故事，非常熟知所有关于人鱼的传说和故事，甚至也会自己创作。变身后性格会发生变化')"><img src="https://precure-web.com/tropical-rouge/assets/img/character/character_03_btn.png" alt="Cure Papaya"></div>
-<div class="precure-item" onclick="showModal('Cure Flamingo', 'https://precure-web.com/tropical-rouge/assets/img/character/character_04_btn.png', '泷泽飞鸟 - 热带光之美少女之一，初中三年级生，运动神经拔群，正义感十足。外表帅气，会给人一种冷酷且难以接近的感觉，实际上是位关心后辈的姐姐型人物。平时独来独往，和学生会长白鸟百合子是曾经的网球部好搭档。与帅气的外表相反，有着喜欢玩有可爱动物游戏的另一面，擅长料理')"><img src="https://precure-web.com/tropical-rouge/assets/img/character/character_04_btn.png" alt="Cure Flamingo"></div>
-<div class="precure-item" onclick="showModal('Laura', 'https://precure-web.com/tropical-rouge/assets/img/character/character_05_btn.png', '萝拉 - 热带光之美少女之一，从人鱼王国来的人鱼女孩。在故乡遭到侵略后，为了拯救故乡，同时想要实现成为人鱼王国下一任女王的梦想，来寻找传说的战士光之美少女。是个爱开玩笑的自信女生，对所想的事情直率说出来的性格，也有腹黑的一面，公主病严重')"><img src="https://precure-web.com/tropical-rouge/assets/img/character/character_05_btn.png" alt="Laura"></div>
-<div class="precure-item" onclick="showModal('Cure Precious', 'https://precure-web.com/delicious-party/assets/img/character/character_01_01_btn.png', '和实由依 - 派对光之美少女队长，初中二年级生，家里经营小吃店&quot;和实亭&quot;，是家中的独生女。是一名活泼、正直、有活力的女生。运动神经超群（力量超群），也是学校足球部的帮手，吃货一个，感情迟钝（和结实，不是我东映害了你的人设，是这个紧凑的时间安排害了你啊！）')"><img src="https://precure-web.com/delicious-party/assets/img/character/character_01_01_btn.png" alt="Cure Precious"></div>
-<div class="precure-item" onclick="showModal('Cure Spicy', 'https://precure-web.com/delicious-party/assets/img/character/character_01_02_btn.png', '芙羽心音 - 派对光之美少女之一，初中二年级生。家里经营高级餐厅&quot;湖畔&quot;，是家中的独生女。清凉美丽，拥有时尚感的女生。话少，喜欢独处，是同学眼里的&quot;高岭之花&quot;（其实只是自然的容貌给人的感觉），被同学称为&quot;芙羽小姐&quot;。但非常喜欢化妆和可爱的物件，也喜欢可爱的动物')"><img src="https://precure-web.com/delicious-party/assets/img/character/character_01_02_btn.png" alt="Cure Spicy"></div>
-<div class="precure-item" onclick="showModal('Cure Yum-Yum', 'https://precure-web.com/delicious-party/assets/img/character/character_01_03_btn.png', '华满兰 - 派对光之美少女之一，初中二年级生。家里经营拉面店&quot;熊猫轩&quot;，是家中长女，有年幼的弟弟妹妹。全家人都很有个性。充满热情，是个很健谈的可爱女生，兴奋时会说个不停。对食物的好奇心旺盛。会在&quot;Cure Sta&quot;投稿关于美食的事（非常可爱，但学习也一般）')"><img src="https://precure-web.com/delicious-party/assets/img/character/character_01_03_btn.png" alt="Cure Yum-Yum"></div>
-<div class="precure-item" onclick="showModal('Cure Finale', 'https://precure-web.com/delicious-party/assets/img/character/character_01_04_btn.png', '果彩天音 - 派对光之美少女之一，初中三年级生，学校学生会会长。家里经营水果店兼咖啡店&quot;水果冰室果彩&quot;，有两个年龄相差较大的双胞胎哥哥，变成光之美少女之前的真实身份是怪盗捆绑团之一的珍柔，被强行黑化夺取了对美食的尊敬之心')"><img src="https://precure-web.com/delicious-party/assets/img/character/character_01_04_btn.png" alt="Cure Finale"></div>
-<div class="precure-item" onclick="showModal('Cure Sky', 'https://precure-web.com/hirogaru-sky/assets/img/character/character_01_btn.png', '索拉·哈雷瓦塔尔 - 天空光之美少女之一，因为小时候被救而憧憬成为英雄，为此经历了许多训练，具备强大的身体素质，能轻松飞檐走壁或者空手击碎大石，但也因此没交到过什么朋友')"><img src="https://precure-web.com/hirogaru-sky/assets/img/character/character_01_btn.png" alt="Cure Sky"></div>
-<div class="precure-item" onclick="showModal('Cure Prism', 'https://precure-web.com/hirogaru-sky/assets/img/character/character_02_btn.png', '虹之丘真白 - 天空光之美少女之一，温柔体贴的女孩子。了解料理和自然知识。因父母在海外赴任，所以和奶奶一起生活。喜爱绘画，目前并不清楚自己的梦想，具备强大广阔的包容心（也因此在后期被强行绑定了反派干部的洗白剧情）')"><img src="https://precure-web.com/hirogaru-sky/assets/img/character/character_02_btn.png" alt="Cure Prism"></div>
-<div class="precure-item" onclick="showModal('Cure Wing', 'https://precure-web.com/hirogaru-sky/assets/img/character/character_04_btn.png', '夕凪翼 - 天空光之美少女（男）之一，是个男的，本体是鸟（东映拧巴的具象化，既想要又担心）')"><img src="https://precure-web.com/hirogaru-sky/assets/img/character/character_04_btn.png" alt="Cure Wing"></div>
-<div class="precure-item" onclick="showModal('Cure Butterfly', 'https://precure-web.com/hirogaru-sky/assets/img/character/character_03_btn.png', '圣扬羽 - 天空光之美少女之一，真白的青梅竹马，和谁都能成为好朋友，非常喜欢时尚快乐的事情的开朗的大姐姐。总是全力以赴，以成为最强的保育员为目标的成年人（实际贫瘠重点！）')"><img src="https://precure-web.com/hirogaru-sky/assets/img/character/character_03_btn.png" alt="Cure Butterfly"></div>
-<div class="precure-item" onclick="showModal('Cure Majesty', 'https://precure-web.com/hirogaru-sky/assets/img/character/character_05_btn.png', '艾尔公主 - 天空光之美少女之一，还年幼的天空王国的公主，由过去公主送下的生命，具备强大的能力')"><img src="https://precure-web.com/hirogaru-sky/assets/img/character/character_05_btn.png" alt="Cure Majesty"></div>
-<div class="precure-item" onclick="showModal('Cure Wonderful', 'https://www.toei-anim.co.jp/tv/wonderful_precure/assets/images/common/p_tumb_curewonderful.webp', '犬饲小麦 - 美妙宠物光之美少女，彩羽养的蝴蝶犬，精力和好奇心旺盛，贪吃，非常喜欢散步（麦狗）')"><img src="https://www.toei-anim.co.jp/tv/wonderful_precure/assets/images/common/p_tumb_curewonderful.webp" alt="Cure Wonderful"></div>
-<div class="precure-item" onclick="showModal('Cure Friendly', 'https://www.toei-anim.co.jp/tv/wonderful_precure/assets/images/common/p_tumb_curefriendly.webp', '犬饲彩羽 - 美妙宠物光之美少女，非常爱动物的初二女生，14岁。目标是与全世界的动物交朋友。每天早上必做的事是和小麦一起散步。 朋友很多， 也很受动物们喜爱。爱照顾人，也很会照顾人。性格坦率，不擅长说谎。也很擅长运动。家中经营名叫&quot;Friendly&quot;的动物医院&沙龙的店铺')"><img src="https://www.toei-anim.co.jp/tv/wonderful_precure/assets/images/common/p_tumb_curefriendly.webp" alt="Cure Friendly"></div>
-<div class="precure-item" onclick="showModal('Cure Nyammy', 'https://www.toei-anim.co.jp/tv/wonderful_precure/assets/images/common/p_tumb_curenyami.webp', '猫屋敷雪 - 美妙宠物光之美少女，真由养的白猫，随真由一同搬到动物镇生活。变成人类后年龄为14岁。高冷又我行我素，性格高傲。很喜欢真由为她做的充满魅力的项圈。是真由的母亲经营的店&quot;Pretty Holic&quot;的看板猫，最喜欢午睡（哈基雪）')"><img src="https://www.toei-anim.co.jp/tv/wonderful_precure/assets/images/common/p_tumb_curenyami.webp" alt="Cure Nyammy"></div>
-<div class="precure-item" onclick="showModal('Cure Lillian', 'https://www.toei-anim.co.jp/tv/wonderful_precure/assets/images/common/p_tumb_curelillian.webp', '猫屋敷真由 - 美妙宠物光之美少女，新学年搬到动物镇生活的初二女生，14岁。最喜欢宠物猫小雪。虽然很想交朋友但是畏缩不前，没有勇气。心灵手巧，爱好做手工。如果有谁喜欢自己做的东西就会很高兴。作为动物系&quot;CureTuber&quot;会在网上投稿自己爱猫小雪的视频')"><img src="https://www.toei-anim.co.jp/tv/wonderful_precure/assets/images/common/p_tumb_curelillian.webp" alt="Cure Lillian"></div>
-<div class="precure-item" onclick="showModal('Cure Idol', 'https://storage.moegirl.org.cn/moegirl/commons/6/6c/CureIdol_icon.png!/fw/85?v=20250105110602', '咲良歌 - Idol光之美少女你与我♪，喜欢唱歌的初中二年级学生，入学刚满13岁。家中有一个妹妹，家里经营着名叫&quot;闪耀咖啡馆&quot;的店面。是个开朗活泼的女生，会经常当场唱出自己的心情。喜欢闪闪发光、充满活力、能让人微笑的&quot;闪闪发光&quot;的东西')"><img src="https://storage.moegirl.org.cn/moegirl/commons/6/6c/CureIdol_icon.png!/fw/85?v=20250105110602" alt="Cure Idol"></div>
-<div class="precure-item" onclick="showModal('Cure Wink', 'https://storage.moegirl.org.cn/moegirl/commons/6/6d/Curewink_icon.png!/fw/85?v=20250105110601', '苍风奈奈 - Idol光之美少女你与我♪，性格温柔聪慧，擅长弹钢琴，甚至在初一时拿过全国大奖，现阶段的梦想是成为钢琴家')"><img src="https://storage.moegirl.org.cn/moegirl/commons/6/6d/Curewink_icon.png!/fw/85?v=20250105110601" alt="Cure Wink"></div>
-<div class="precure-item" onclick="showModal('Cure Kyunkyun', 'https://storage.moegirl.org.cn/moegirl/commons/7/7c/CureKyunKyun_icon.png!/fw/85?v=20250105110601', '紫雨心 - Idol光之美少女你与我♪，擅长跳舞，把热情藏在心里的可靠女生，因自幼丧父而什么事都强压于心里，又刻意表现成熟，有着追求爱好的求道心态')"><img src="https://storage.moegirl.org.cn/moegirl/commons/7/7c/CureKyunKyun_icon.png!/fw/85?v=20250105110601" alt="Cure Kyunkyun"></div>
-<div class="precure-item" onclick="showModal('Cure Zukyun', 'https://storage.moegirl.org.cn/moegirl/commons/a/a5/CureZukyun_icon.png!/fw/85?v=20250601014309', '普利伦 - Idol光之美少女你与我♪，从闪亮大陆前来寻找&quot;偶像光之美少女&quot;的妖精，悠闲、我行我素的性格。眨巴眼睛能看到闪闪发光的东西，贪吃，经常闯祸')"><img src="https://storage.moegirl.org.cn/moegirl/commons/a/a5/CureZukyun_icon.png!/fw/85?v=20250601014309" alt="Cure Zukyun"></div>
-<div class="precure-item" onclick="showModal('Cure Kiss', 'https://storage.moegirl.org.cn/moegirl/commons/a/ab/CureKiss_icon.png!/fw/85?v=20250601014309', '梅洛伦 - Idol光之美少女你与我♪，来自闪亮大陆的妖精，性格倔强又调皮，最喜欢义姐普莉伦和读书，有时会很善妒')"><img src="https://storage.moegirl.org.cn/moegirl/commons/a/ab/CureKiss_icon.png!/fw/85?v=20250601014309" alt="Cure Kiss"></div>
-<div class="precure-item" onclick="showModal('Cure Echo', 'https://cdn.imgos.cn/vip/2026/02/27/69a123d5ea888.png', '坂上步美 - 光之美少女AllStars NewStage：未来的朋友，转学到横滨的中学生。是光之美少女的狂热支持者。由于她的个性害羞内向，导致自己没有勇气跟自己的同学说话，常常独自一个人发呆，身边也没有朋友')"><img src="https://cdn.imgos.cn/vip/2026/02/27/69a123d6d77d5.jpg" alt="Cure Echo"></div>
-<div class="precure-item" onclick="showModal('Cure Puca', 'https://2023allstars-f.precure-movie.com/wordpress/wp-content/themes/2023allstars-f.precure-movie_v3.1/assets/img/character/prism/05.png', '普卡 - 光之美少女F：至高天使普利姆分离出的存在，虽然有着强大的力量，但是却很胆小，因而被抛弃')"><img src="https://2023allstars-f.precure-movie.com/wordpress/wp-content/themes/2023allstars-f.precure-movie_v3.1/assets/img/character/prism/05.png" alt="Cure Puca"></div>
-<div class="precure-item" onclick="showModal('Cure Yell', 'https://cdn.imgos.cn/vip/2026/04/23/69ea0ea530d15.jpg', '野乃花（剑）：挥动旋律圣剑，即使没有同伴，也不断与邪恶作战的坚强战士')"><img src="https://cdn.imgos.cn/vip/2026/04/23/69ea0ea530d15.jpg" alt="Cure Yell"></div>
+<div class="precure-item" onclick="showModal('Cure Black', 'https://www.toei-anim.co.jp/tv/precure_MH/image/ch_nagisa_icon.gif', '美墨渚 - 登场作品：《光之美少女》，《光之美少女Max Heart》、介绍：非常男孩子气，是女生们憧憬的对象。正义感很强，但性格鲁莽，梦想着谈一场美丽的恋爱和憧憬成为新娘，但似乎没什么男人缘，长曲棍球部的王牌球员、推荐关联身份：弟弟、憧憬的前辈')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/precure_MH/image/ch_nagisa_icon.gif" alt="Cure Black"></div>
+<div class="precure-item" onclick="showModal('Cure White', 'https://www.toei-anim.co.jp/tv/precure_MH/image/ch_honoka_icon.gif', '雪城穗乃香 - 登场作品：《光之美少女》，《光之美少女Max Heart》、介绍：学问知识十分渊博，但对某些事有点天然呆，在班里成绩永远是第一名的班长，大家都称她为博学女王、推荐关联身份：科学部前辈')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/precure_MH/image/ch_honoka_icon.gif" alt="Cure White"></div>
+<div class="precure-item" onclick="showModal('Shiny Luminous', 'https://www.toei-anim.co.jp/tv/precure_MH/image/ch_hikari_icon.gif', '九条光 - 登场作品：《光之美少女Max Heart》、介绍：突然在渚和穗乃香面前出现的不可思议少女，真实身份是女王的三元素之一的生命，纯战斗能力较弱、推荐关联身份：收养小光的伪亲戚')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/precure_MH/image/ch_hikari_icon.gif" alt="Shiny Luminous"></div>
+<div class="precure-item" onclick="showModal('Cure Bloom', 'https://cdn.imgos.cn/vip/2026/02/05/69836e80232bc.jpeg', '日向咲 - 第二代（东映不爱）光之美少女，在学校是垒球队的队员，守备位置是投手。家里经营名叫「香喷喷面包屋」的面包店')"><img loading="lazy" src="https://cdn.imgos.cn/vip/2026/02/05/69836e80232bc.jpeg" alt="Cure Bloom"></div>
+<div class="precure-item" onclick="showModal('Cure Egret', 'https://cdn.imgos.cn/vip/2026/02/05/69836f462cd6d.jpg', '美翔舞 - 第二代（东映不爱）光之美少女，学校美术社社员，非常热衷绘画，当她专注于画上时，常常察觉不到身边发生的事，文静型的美少女（长大后惨遭东映迫害）')"><img loading="lazy" src="https://cdn.imgos.cn/vip/2026/02/05/69836f462cd6d.jpg" alt="Cure Egret"></div>
+<div class="precure-item" onclick="showModal('Cure Dream', 'https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara01/chara_dream.jpg', '梦原望 - 第三代（里程碑的一代）光之美少女，充满喜怒哀乐，活泼开朗的女孩子，好奇心旺盛的她对任何事都义不容辞，但亦是因为这个原因一直令她找不到想做的事，虽然学习一般，但是能通过努力弥补')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara01/chara_dream.jpg" alt="Cure Dream"></div>
+<div class="precure-item" onclick="showModal('Cure Rouge', 'https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara02/chara_rouge.jpg', '夏木玲 - 三代光之美少女之一，自小就和望青梅竹马，拥有男性向的性格，而且运动万能，但她没有参加学校内的任何一个运动学会，只是间中为校队出赛')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara02/chara_rouge.jpg" alt="Cure Rouge"></div>
+<div class="precure-item" onclick="showModal('Cure Aqua', 'https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara05/chara_aqua.jpg', '水无月香恋 - 三代光之美少女之一，知性冷静，是学生会会长')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara05/chara_aqua.jpg" alt="Cure Aqua"></div>
+<div class="precure-item" onclick="showModal('Cure Mint', 'https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara04/chara_mint.jpg', '秋元小町 - 三代光之美少女之一，香恋的青梅竹马，由于她是图书馆委员而喜欢读书，比较博学，性格温柔，但愤怒时也会令人害怕')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara04/chara_mint.jpg" alt="Cure Mint"></div>
+<div class="precure-item" onclick="showModal('Cure Lemonade', 'https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara03/chara_lemon.jpg', '春日野丽 - 三代光之美少女之一，新人偶像，思想方面都比起同年纪的人较为成熟，但亦因此令她在学校里没有朋友，长大后成功实现了梦想')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara03/chara_lemon.jpg" alt="Cure Lemonade"></div>
+<div class="precure-item" onclick="showModal('Milky Rose', 'https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara06/chara_milky.jpg', '美美野来未 - 三代二期的光之美少女，来自帕鲁米埃王国的精灵（熊孩子），培养蓝玫瑰后获得了化作人类和变身的力量')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/precure5_gogo/character/main_chara/chara/chara06/chara_milky.jpg" alt="Milky Rose"></div>
+<div class="precure-item" onclick="showModal('Cure Peach', 'https://www.toei-anim.co.jp/tv/fresh_precure/character/img/main/curepeach_l.jpg', '桃园爱 - 四代光之美少女，初中二年级学生，性格天真烂漫，活力十足，是一个比起自己更在意别人的女孩。舞团&quot;Trinity&quot;的忠实粉丝，喜欢跳舞，厨艺不俗，但学习、运动都不擅长，身材发育比某些高中生（紫头发的）和大学生（蝴蝶的）都强')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/fresh_precure/character/img/main/curepeach_l.jpg" alt="Cure Peach"></div>
+<div class="precure-item" onclick="showModal('Cure Berry', 'https://www.toei-anim.co.jp/tv/fresh_precure/character/img/main/cureberry_l.jpg', '苍乃美希 - 第四代光之美少女之一，初中二年级学生，体育万能，对潮流十分敏感，常刻意表露自己的美丽。梦想是成为时装模特，为此严格进行着自我管理，容易发出暴言和引发家长炎上')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/fresh_precure/character/img/main/cureberry_l.jpg" alt="Cure Berry"></div>
+<div class="precure-item" onclick="showModal('Cure Pine', 'https://www.toei-anim.co.jp/tv/fresh_precure/character/img/main/curepain_l.jpg', '山吹祈里 - 四代光之美少女之一，初中二年级生，学习虽好，但社会常识不足，为人大方，温柔，因此缺乏自信，为改变自己而和小爱一起组成舞团。由于家中经营动物医院，所以很喜欢动物，并很了解动物，梦想是继承家业并成为一名出色的兽医，唯一不喜欢的是白貂')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/fresh_precure/character/img/main/curepain_l.jpg" alt="Cure Pine"></div>
+<div class="precure-item" onclick="showModal('Cure Passion', 'https://www.toei-anim.co.jp/tv/fresh_precure/character/img/main/curepassion_l.jpg', '东刹那 - 四代光之美少女之一，原本是梅比乌斯的部下伊斯，被指派以东刹那的身份接近桃园爱等人（名为东刹那的人，从一开始就不存在！）')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/fresh_precure/character/img/main/curepassion_l.jpg" alt="Cure Passion"></div>
+<div class="precure-item" onclick="showModal('Cure Blossom', 'https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_01.jpg', '花咲蕾 - 抓心光之美少女之一，温柔善良，喜欢植物，虽然弱气但有着为他人挺身而出的勇气，本身也是相当可爱的美少女（东映这什么烂官图）')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_01.jpg" alt="Cure Blossom"></div>
+<div class="precure-item" onclick="showModal('Cure Marine', 'https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_02.jpg', '来海绘里香 - 抓心光之美少女之一，学校的爆破者，时尚衣品的未来引领者，虽然不正经，但是相当聪明可靠')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_02.jpg" alt="Cure Marine"></div>
+<div class="precure-item" onclick="showModal('Cure Sunshine', 'https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_14.jpg', '明堂院树 - 抓心光之美少女之一，明堂院家的千金，代替病弱的哥哥（一定是达鲁伊森干的！）守护道场，为此放弃了作为女性的少女心，成为了经常腐乳少女爱情的男装丽人')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_14.jpg" alt="Cure Sunshine"></div>
+<div class="precure-item" onclick="showModal('Cure Moonlight', 'https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_05.jpg', '月影百合 - 抓心光之美少女之一，强大的前辈战士，拥有谁都会为之哭泣的命运，但满月的光辉不会被遮挡')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_05.jpg" alt="Cure Moonlight"></div>
+<div class="precure-item" onclick="showModal('Cure Flower', 'https://cdn.imgos.cn/vip/2026/03/11/69b0db70ea329.png', '花咲薰子 - 花朵天使，最年轻的全国空手道冠军，总是锻炼自己，有着一人抵抗黑暗势力的能力')"><img loading="lazy" src="https://cdn.imgos.cn/vip/2026/03/11/69b0db7144fab.png" alt="Cure Flower"></div>
+<div class="precure-item" onclick="showModal('Cure Melody', 'https://www.toei-anim.co.jp/tv/suite_precure/character/00_01/icon.gif', '北条响 - 组曲光之美少女之一，擅长运动的开朗女生，出生音乐世家，父亲是音乐老师，母亲是小提琴家，独子家庭外加双亲长时间不在家，养成其自小独立的性格，并在父亲的严厉指责下深信自己没有音乐才能，但依旧爱着音乐，羡慕着奏有弟弟')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/suite_precure/character/00_01/icon.gif" alt="Cure Melody"></div>
+<div class="precure-item" onclick="showModal('Cure Rhythm', 'https://www.toei-anim.co.jp/tv/suite_precure/character/00_02/icon.gif', '南野奏 - 组曲光之美少女之一，响的青梅竹马及同班同学，甜点部成员。擅长学习和制作点心的女生，在学校受到师长的尊敬与同学的欢迎，虽然经常和响吵架，但这也是友情的证明')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/suite_precure/character/00_02/icon.gif" alt="Cure Rhythm"></div>
+<div class="precure-item" onclick="showModal('Cure Beat', 'https://www.toei-anim.co.jp/tv/suite_precure/character/18_01/icon.gif', '黑川爱莲 - 组曲光之美少女之一，大调岛的前歌姬精灵，本体是只黑猫，被噪音染黑心灵后，成为小调岛的歌姬，开始了对朋友哈气的半部剧情')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/suite_precure/character/18_01/icon.gif" alt="Cure Beat"></div>
+<div class="precure-item" onclick="showModal('Cure Muse', 'https://www.toei-anim.co.jp/tv/suite_precure/character/35_01/icon.gif', '调边亚子 -组曲光之美少女之一，9岁，大调岛的公主，年龄虽小但成熟可靠，即使会训斥人也不会给人讨厌的感觉')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/suite_precure/character/35_01/icon.gif" alt="Cure Muse"></div>
+<div class="precure-item" onclick="showModal('Cure Happy', 'https://cdn.imgos.cn/vip/2026/02/05/6983703b10769.jpg', '星空美幸 - 微笑光之美少女队长，性格积极开朗、正面、勇于尝试，但偶尔有些冒失，但是不会一味低落、会勇敢并微笑地往前行，在紧要关头总能拉人一把（但是个学渣）')"><img loading="lazy" src="https://cdn.imgos.cn/vip/2026/02/05/6983703b10769.jpg" alt="Cure Happy"></div>
+<div class="precure-item" onclick="showModal('Cure Sunny', 'https://cdn.imgos.cn/vip/2026/02/05/698370aecf6e6.jpg', '日野茜 - 微笑光之美少女之一，排球部成员，来自大阪，比他人更热心的女孩子，经常给予他人帮助，很喜欢以及擅长搞笑，班上的欢乐制造者，最喜欢的就是让他人露出笑容，另类风味的假小子')"><img loading="lazy" src="https://cdn.imgos.cn/vip/2026/02/05/698370aecf6e6.jpg" alt="Cure Sunny"></div>
+<div class="precure-item" onclick="showModal('Cure Peace', 'https://cdn.imgos.cn/vip/2026/02/05/6983711b7d402.jpeg', '黄濑弥生 - 微笑光之美少女之一，个性稍微有点软弱爱哭，但是内心却非常坚强，幼年丧父，喜欢并擅长画画，也很喜欢超级机器人（该入机战了）')"><img loading="lazy" src="https://cdn.imgos.cn/vip/2026/02/05/6983711b7d402.jpeg" alt="Cure Peace"></div>
+<div class="precure-item" onclick="showModal('Cure March', 'https://cdn.imgos.cn/vip/2026/02/05/69837192587bc.jpg', '绿川直 - 微笑光之美少女之一，足球部成员，与丽华从小相识，个性非常耿直、果断豪爽、有气魄、自信，有时也很要强，在班上被称为&quot;女老大&quot;，要照顾家中多个弟妹，家务能力很强（桃屋猫经典迫害角色）')"><img loading="lazy" src="https://cdn.imgos.cn/vip/2026/02/05/69837192587bc.jpg" alt="Cure March"></div>
+<div class="precure-item" onclick="showModal('Cure Beauty', 'https://cdn.imgos.cn/vip/2026/02/05/6983725644e3d.jpeg', '青木丽华 - 微笑光之美少女之一，负责温柔，清凉美丽，出身古风世家，多才多艺，善于赋诗，学业成绩一直保持在学年首位，完全配得上美丽天使之名的队内优秀者')"><img loading="lazy" src="https://cdn.imgos.cn/vip/2026/02/05/6983725644e3d.jpeg" alt="Cure Beauty"></div>
+<div class="precure-item" onclick="showModal('Cure Heart', 'https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure01.png', '相田爱 - 心跳光之美少女之一，学生会会长，成绩优秀、运动万能，是个充满活力的初中二年级女孩，处理纠纷、解决恋爱烦恼等问题都不在话下，有着大家都信任的处事能力，凡事都会拼尽全力去完成，宛如王子一般（多情），梦想是成为首相（比某个女的靠谱）')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure01.png" alt="Cure Heart"></div>
+<div class="precure-item" onclick="showModal('Cure Diamond', 'https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure02.png', '菱川六花 - 心跳光之美少女之一，爱的同学以及青梅竹马，她性格文静谨慎，在外行动或学习时有时需要佩戴眼镜。本人希望能有安静的校园生活，但是总是被小爱所麻烦，因为表情而被大家铭记')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure02.png" alt="Cure Diamond"></div>
+<div class="precure-item" onclick="showModal('Cure Rosetta', 'https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure03.png', '四叶有栖 - 心跳光之美少女之一，四叶财团的千金大小姐，性格如沐浴在春天阳光下的花草般温柔随和，自幼学习多种技能，芭蕾舞、小提琴、钢琴、料理、游泳、骑马、合气道全是达人级的水平，无法忍受朋友被说坏话，经常动用财力协助大家（唉，自本）')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure03.png" alt="Cure Rosetta"></div>
+<div class="precure-item" onclick="showModal('Cure Sword', 'https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure04.png', '剑崎真琴 - 心跳光之美少女之一，守护&quot;扑克牌王国&quot;的战士，由于没有抵御住&quot;自私组织&quot;的侵略（无伤之刃），后与公主逃出却不慎走散，因未能保护国家和公主懊悔，性格比较孤僻，但作为偶像时会比较亲和，和剑崎一真应该不是无能兄妹')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure04.png" alt="Cure Sword"></div>
+<div class="precure-item" onclick="showModal('Cure Ace', 'https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure05.png', '圆亚久里 - 心跳光之美少女之一，神秘的小学四年级少女，故事前一年从天而降，被经营茶房的圆茉里所收养，讨厌胡萝卜（口红杀手，亚子定位的反向案例）')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/dokidoki_precure/character/img/cure/image_cure05.png" alt="Cure Ace"></div>
+<div class="precure-item" onclick="showModal('Cure Lovely', 'https://www.toei-anim.co.jp/tv/happinesscharge_precure/images/character/precure_curelovely/costume01.png', '爱乃惠 - 茶几光之美少女之一，学年成绩为全年级倒数第一。充满元气和笑容的女孩。时常向外散发快乐能量，协助遇到困难的人。虽然助人总是功败垂成，惟其善心仍为不少人所欣赏。交友甚广，小学时有交到一百位朋友的传说。喜欢哼歌，对可爱的时尚造型十分感兴趣，但是潮流品味似乎不怎么样（战斗风格残暴，感情经历残酷）')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/happinesscharge_precure/images/character/precure_curelovely/costume01.png" alt="Cure Lovely"></div>
+<div class="precure-item" onclick="showModal('Cure Princess', 'https://www.toei-anim.co.jp/tv/happinesscharge_precure/images/character/precure_cureprincess/costume01.png', '白雪姬 - 茶几光之美少女之一，社恐的公主，因为释放了反派而导致自己的国家覆灭（蓝神这盒子一没看守二没上锁），因为缺少勇气和友情的激励，战斗能力非常弱，但是成长潜力巨大')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/happinesscharge_precure/images/character/precure_cureprincess/costume01.png" alt="Cure Princess"></div>
+<div class="precure-item" onclick="showModal('Cure Honey', 'https://www.toei-anim.co.jp/tv/happinesscharge_precure/images/character/precure_curehoney/costume01.png', '大森悠子 - 茶几光之美少女之一，惠的好友兼同班同学，充满治愈气息的女孩。由于家里开便当屋，所以很喜欢吃和做便当，也习惯在闲暇时慢跑以维持食欲。总是喜欢给遇到困难的人送自己特制的蜂蜜糖果，以此来鼓舞对方')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/happinesscharge_precure/images/character/precure_curehoney/costume01.png" alt="Cure Honey"></div>
+<div class="precure-item" onclick="showModal('Cure Fortune', 'https://www.toei-anim.co.jp/tv/happinesscharge_precure/images/character/precure_curefortune/costume01.png', '冰川伊绪奈 - 茶几光之美少女之一，文武双全，是校内知名的才女，空手道黑带，冰川流空手道场师范中导师的孙女，有着痛苦的过往，具备给人占卜的能力')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/happinesscharge_precure/images/character/precure_curefortune/costume01.png" alt="Cure Fortune"></div>
+<div class="precure-item" onclick="showModal('Cure Tender', 'https://cdn.imgos.cn/vip/2026/05/13/6a042a9d31a47.jpg', '冰川麻理亚 - 光之美少女之一，温柔天使，伊绪奈的姐姐，空手道黑带，冰川流空手道场师范中导师的孙女')"><img loading="lazy" src="https://cdn.imgos.cn/vip/2026/05/13/6a042a9e47db5.jpg" alt="Cure Tender"></div>
+<div class="precure-item" onclick="showModal('Cure Flora', 'https://www.toei-anim.co.jp/tv/princess_precure/images/character/precure/navi01_d.png', '春野遥 - 公主光之美少女之一，平凡的少女拥有最真挚的公主梦想，遇到困难不会轻言放弃，总会拿出封面印有公主的图画书去鼓励自己，将努力和成长贯穿始终')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/princess_precure/images/character/precure/navi01_d.png" alt="Cure Flora"></div>
+<div class="precure-item" onclick="showModal('Cure Mermaid', 'https://www.toei-anim.co.jp/tv/princess_precure/images/character/precure/navi02_d.png', '海藤南 - 公主光之美少女之一，学园的学生会会长，亦被称为学园的公主。家里是大型企业&quot;海藤集团&quot;，有一哥哥。文武两道并强，擅长芭蕾舞、马术和射箭。富有责任感，做事十分细心，扮演着一名温柔可靠的姐姐型角色，自身亦盼望对外竖立有体面的形象，成为像哥哥和爸爸那样有助于别人的人')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/princess_precure/images/character/precure/navi02_d.png" alt="Cure Mermaid"></div>
+<div class="precure-item" onclick="showModal('Cure Twinkle', 'https://www.toei-anim.co.jp/tv/princess_precure/images/character/precure/navi03_d.png', '天之川绮罗 - 公主光之美少女之一，人气模特儿。每日兼顾两边工作显得十分忙碌，思想成熟，服务心强。自幼受母亲史黛拉影响而梦想成为世界级最顶尖的模特，拥有为自己的梦想勇往直前的坚强，称呼友人时会使用叠词称呼')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/princess_precure/images/character/precure/navi03_d.png" alt="Cure Twinkle"></div>
+<div class="precure-item" onclick="showModal('Cure Scarlet', 'https://www.toei-anim.co.jp/tv/princess_precure/images/character/precure/navi04_d.png', '红城永久 - 公主光之美少女之一，希望王国的公主、彼方王子的妹妹。小时候因无意闯入绝望森林，被绝望的魔女迪丝比娅抓住后，作为黛维莱德的模样生活着，微妙的缺少正常人常识')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/princess_precure/images/character/precure/navi04_d.png" alt="Cure Scarlet"></div>
+<div class="precure-item" onclick="showModal('Cure Miracle', 'https://www.toei-anim.co.jp/tv/mahotsukai_precure/images/character/precure/navi01_d.png', '朝日奈未来 - 魔法使光之美少女之一，从小就希望可以和真正的魔法使见面，经常携带着珍贵的熊玩偶毛芙伦，热爱不可思议和有趣的事物，充满活力地发掘各种喜好（长大后有酒驾扫帚的情况）')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/mahotsukai_precure/images/character/precure/navi01_d.png" alt="Cure Miracle"></div>
+<div class="precure-item" onclick="showModal('Cure Magical', 'https://www.toei-anim.co.jp/tv/mahotsukai_precure/images/character/precure/navi02_d.png', '十六夜理子 - 魔法使光之美少女之一，性格认真，虽然是优等生的模样，但意外的不擅长实际操作，学习非常用功，是个努力家，有些傲娇')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/mahotsukai_precure/images/character/precure/navi02_d.png" alt="Cure Magical"></div>
+<div class="precure-item" onclick="showModal('Cure Felice', 'https://www.toei-anim.co.jp/tv/mahotsukai_precure/images/character/precure/navi04_d.png', '花海言叶 - 魔法使光之美少女之一，从波纹智慧书中诞生的花的妖精，母神拉帕帕的力量继承者，性格受未来和理子影响')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/mahotsukai_precure/images/character/precure/navi04_d.png" alt="Cure Felice"></div>
+<div class="precure-item" onclick="showModal('Cure Whip', 'https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara01_d.png', '宇佐美一花 - 甜点光之美少女，活泼开朗而十分喜欢甜点的初中二年级的学生，14岁。感情丰富，有着惊人的想象力，在高兴的时候喜欢像兔子一样蹦蹦跳跳，反应意外的迟钝')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara01_d.png" alt="Cure Whip"></div>
+<div class="precure-item" onclick="showModal('Cure Custard', 'https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara02_d.png', '有栖川阳莉 - 甜点光之美少女之一，一花的同班同学，14岁。努力而头脑灵活的初中二年级的学生，个子矮小但跑得速度和松鼠一样快，不过性格比较怯懦，经常独来独往')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara02_d.png" alt="Cure Custard"></div>
+<div class="precure-item" onclick="showModal('Cure Gelato', 'https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara03_d.png', '立神葵 - 甜点光之美少女之一，性格勇敢强气有如狮子一般，很会为了自己的朋友着想，非常重视朋友的一切。怪力惊人，非常喜欢唱歌，是摇滚乐队&quot;狂野天蓝色&quot;的主唱，与一花就读于同一所学校。真实身份是&quot;立神财阀&quot;的大小姐，在校的成绩保持在年级前五名的优等生。制作甜点的时候擅长利用臂力来支撑形状，最喜欢吃的甜点是冰淇淋。')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara03_d.png" alt="Cure Gelato"></div>
+<div class="precure-item" onclick="showModal('Cure Macaron', 'https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara04_d.png', '琴爪缘 - 甜点光之美少女之一，高贵优雅犹如小猫一般，性格有点以自我为中心，自由随性，是一个带有傲娇属性的姐姐。富有心计，对反常事物十分敏感，似乎因反复无常和没有挑战性的生活而感到郁闷')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara04_d.png" alt="Cure Macaron"></div>
+<div class="precure-item" onclick="showModal('Cure Chocolat', 'https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara05_d.png', '剑城晶 - 甜点光之美少女之一，17岁，总是打扮成男孩子的样子，性格温柔善良犹如小狗一般，方向感极佳所以非常靠谱，是个不轻易发火的人，喜欢助人为乐，因此曾被说照顾起别人来会不顾前后。家里有一个常年体弱多病的妹妹美久，经常向其赠送巧克力，非常疼爱自己的妹妹')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara05_d.png" alt="Cure Chocolat"></div>
+<div class="precure-item" onclick="showModal('Cure Parfait', 'https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara10_d.png', '绮罗星夏尔 - 甜点光之美少女之一，草莓山的妖精，有着&quot;天才甜品师&quot;之称的在法国修行的13岁的少女，对甜品能带给大家幸福梦想的这一追求犹如翱翔天际的飞马一般（不知道为什么百科说她是主人公）')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/precure_alamode/images/character/snavi_chara10_d.png" alt="Cure Parfait"></div>
+<div class="precure-item" onclick="showModal('Cure Yell', 'https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0101.png', '野乃花 - 拥抱光之美少女，活力旺盛，对于未来的事情充满好奇。身高和性格与同龄的同学们相比像个小孩子，为了摆脱不成熟的自己，故以成为能干的成熟大姐姐为目标。拥有能够面对任何挑战的勇气，但却时常以失败收场（夏亚：我能感受到母性的光辉）')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0101.png" alt="Cure Yell"></div>
+<div class="precure-item" onclick="showModal('Cure Ange', 'https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0102.png', '药师寺纱绫 - 拥抱光之美少女之一，对任何人都很温柔，内心细腻，很会体贴人，是有如天使般的少女，被周围认识的人称她为&quot;学园天使&quot;（如果有光美叫cure angel该怎么翻译）。成绩极为优秀。母亲是知名女演员，曾经也是童星，以&quot;蔬菜少女&quot;的身份唱的蔬菜之歌而家喻户晓，但她经常因为不懂自己真正想要做什么而感到烦恼')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0102.png" alt="Cure Ange"></div>
+<div class="precure-item" onclick="showModal('Cure Etoile', 'https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0103.png', '辉木誉 - 拥抱光之美少女之一，曾经是花式溜冰选手中的明星，但经历失败后远离了花式溜冰的活动，处事冷静、优雅成熟')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0103.png" alt="Cure Etoile"></div>
+<div class="precure-item" onclick="showModal('Cure Macherie', 'https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0104.png', '爱崎惠美瑠 - 拥抱光之美少女之一，六年级学生，12岁。与同龄人相比知道很多知识，但因为爱瞎操心常做出极夸张的举动，很不喜欢被人照顾。擅长唱歌及弹奏电吉他，有着超乎常人的绝对音感，并在音乐方面有很高的天赋，但因为出身古典音乐世家和企业而不受家人认同')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0104.png" alt="Cure Macherie"></div>
+<div class="precure-item" onclick="showModal('Cure Amour', 'https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0105.png', '露露·艾莫尔 - 拥抱光之美少女之一，原本是黑暗明日社当工读生的机器人少女，拥有强大的分析力和计算力，但实际上和人类似乎没什么区别（我是不会流泪的，因为我是机器人）')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/hugtto_precure/images/character/thumbnail_0105.png" alt="Cure Amour"></div>
+<div class="precure-item" onclick="showModal('Cure Star', 'https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_curestar_off.png', '星奈光 - 星闪光之美少女之一，仰望星空的少女，喜欢星座和宇宙，想象力丰富，好奇心旺盛，能把自己观察星空的想象事物所描绘出来。自来熟，遇事遇人都有&quot;喜欢自己喜欢的东西&quot;的思想，也擅长训狗（著名低帧战士）')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_curestar_off.png" alt="Cure Star"></div>
+<div class="precure-item" onclick="showModal('Cure Milky', 'https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_curemilky_off.png', '羽衣拉拉 - 星闪光之美少女之一，出生于星空界沙曼星的外星人少女，在老家是成年人和&quot;体育生&quot;，头上的传感器是沙曼星人的魅力点，可随意伸缩，能发出修理和按摩程度的微弱电击')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_curemilky_off.png" alt="Cure Milky"></div>
+<div class="precure-item" onclick="showModal('Cure Soleil', 'https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_curesoleil_off.png', '天宫爱莲娜 - 星闪光之美少女之一，混血儿，运动万能，像太阳一样明亮，笑容非常棒，学校的高人气者之一，被称为&quot;观星中学的太阳&quot;。家中经营着名为&quot;SONRISA&quot;的花店，是家中长女，父亲是墨西哥人，母亲任职翻译，有五个弟妹（现实中会累死吧）')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_curesoleil_off.png" alt="Cure Soleil"></div>
+<div class="precure-item" onclick="showModal('Cure Selene', 'https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_cureselene_off.png', '香久矢圆香 - 星闪光之美少女之一，端庄优雅、非常努力的女生。父亲是日本内阁府&quot;宇宙开发特别搜查局&quot;局长（鹰派），母亲是著名钢琴家。喜欢花道、茶道、弓道、钢琴。才华横溢，不论钢琴还是弓道都是全国的顶尖佼佼者，被称为&quot;观星中学的月亮&quot;')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_cureselene_off.png" alt="Cure Selene"></div>
+<div class="precure-item" onclick="showModal('Cure Cosmo', 'https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_curecosmo_off.png', '尤妮 - 星闪光之美少女之一，星空界彩虹星的外星人少女，女王诺利亚的女儿，也是公主，有模仿他人身形和声音的能力，但不够熟练，无法隐藏自己的猫耳和猫尾。故乡被艾旺毁灭，仅自己存活，有着多个身份，包括怪盗和宇宙偶像（被剧情压制的优秀人设）')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/startwinkle_precure/images/b_slider_curecosmo_off.png" alt="Cure Cosmo"></div>
+<div class="precure-item" onclick="showModal('Cure Grace', 'https://www.toei-anim.co.jp/tv/healingood_precure/images/character/character_01_btn.png', '花寺和佳 - 治愈光之美少女之一，少时体弱多病（但是力量好像并不小），长大后恢复健康才得以体验各种事物，也因病情原因，受到周围许多人的照顾，长大后希望把这份温柔返还给大家，是一个心地善良的人，拥有比任何人都要强烈的温柔之心和乐于助人之心，原则性极强')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/healingood_precure/images/character/character_01_btn.png" alt="Cure Grace"></div>
+<div class="precure-item" onclick="showModal('Cure Fontaine', 'https://www.toei-anim.co.jp/tv/healingood_precure/images/character/character_02_btn.png', '泽泉知优 - 治愈光之美少女之一，在校不仅是个头脑聪明的理科优等生，还是校内田径部跳高的王牌，运动细胞相当优秀。家里经营有温泉旅馆，一直在家承担着掌柜的角色，但遇到跳高这个自己喜欢的事情上有所纠结，二者都不想放弃，最终以&quot;掌柜运动员两不误&quot;为目标，向梦想冲刺。平日看上去有些严肃，但对冷笑话防御力为&quot;0&quot;，笑点很低（好，就是我或人！）')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/healingood_precure/images/character/character_02_btn.png" alt="Cure Fontaine"></div>
+<div class="precure-item" onclick="showModal('Cure Sparkle', 'https://www.toei-anim.co.jp/tv/healingood_precure/images/character/character_03_btn.png', '平光日向 - 治愈光之美少女之一，活泼开朗、擅于配合气氛、元气友善的中学二年级的女生，不论遇到大小事，想到的东西都直接说出来的类型。很难坚持一件事，所以不擅长学习，却非常喜欢时装和化妆，家中开兽医院和咖啡馆（有时像个莽汉）')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/healingood_precure/images/character/character_03_btn.png" alt="Cure Sparkle"></div>
+<div class="precure-item" onclick="showModal('Cure Earth', 'https://www.toei-anim.co.jp/tv/healingood_precure/images/character/character_09_btn.png', '风铃艾苏米 - 治愈光之美少女之一，温柔稳重，实力强大，充满神秘感的少女，伴随着风的出现，从地球的能量中诞生的特别存在，容貌与先代光之美少女风极为相似，非法成年人')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/healingood_precure/images/character/character_09_btn.png" alt="Cure Earth"></div>
+<div class="precure-item" onclick="showModal('Cure Summer', 'https://precure-web.com/tropical-rouge/assets/img/character/character_01_btn.png', '夏海真夏 - 热带光之美少女之一，初中一年级生。在南乃岛生活的少女，如同常夏的太阳般明亮，做各种事都干劲满满的，任何时候都考虑先做当下最重要的事，行动快于思考，是个典型的行动派，非常珍惜母亲送给的口红')"><img loading="lazy" src="https://precure-web.com/tropical-rouge/assets/img/character/character_01_btn.png" alt="Cure Summer"></div>
+<div class="precure-item" onclick="showModal('Cure Coral', 'https://precure-web.com/tropical-rouge/assets/img/character/character_02_btn.png', '凉村珊瑚 - 热带光之美少女之一，非常喜欢可爱的东西，很有时尚感的少女。像春天的太阳那般温柔，对周围人非常友善，能很快和大家打成一片，给人一种治愈的感觉。家里开化妆品店&quot;Pretty Holic&quot;，关于化妆的知识非常熟悉')"><img loading="lazy" src="https://precure-web.com/tropical-rouge/assets/img/character/character_02_btn.png" alt="Cure Coral"></div>
+<div class="precure-item" onclick="showModal('Cure Papaya', 'https://precure-web.com/tropical-rouge/assets/img/character/character_03_btn.png', '一之濑实 - 热带光之美少女之一，成绩顶尖的优等生，校文学部前成员。喜欢读书，知识渊博。总是一副扑克脸，喜怒不形于色，坚持己见。小时候相当喜欢人鱼公主的故事，非常熟知所有关于人鱼的传说和故事，甚至也会自己创作。变身后性格会发生变化')"><img loading="lazy" src="https://precure-web.com/tropical-rouge/assets/img/character/character_03_btn.png" alt="Cure Papaya"></div>
+<div class="precure-item" onclick="showModal('Cure Flamingo', 'https://precure-web.com/tropical-rouge/assets/img/character/character_04_btn.png', '泷泽飞鸟 - 热带光之美少女之一，初中三年级生，运动神经拔群，正义感十足。外表帅气，会给人一种冷酷且难以接近的感觉，实际上是位关心后辈的姐姐型人物。平时独来独往，和学生会长白鸟百合子是曾经的网球部好搭档。与帅气的外表相反，有着喜欢玩有可爱动物游戏的另一面，擅长料理')"><img loading="lazy" src="https://precure-web.com/tropical-rouge/assets/img/character/character_04_btn.png" alt="Cure Flamingo"></div>
+<div class="precure-item" onclick="showModal('Laura', 'https://precure-web.com/tropical-rouge/assets/img/character/character_05_btn.png', '萝拉 - 热带光之美少女之一，从人鱼王国来的人鱼女孩。在故乡遭到侵略后，为了拯救故乡，同时想要实现成为人鱼王国下一任女王的梦想，来寻找传说的战士光之美少女。是个爱开玩笑的自信女生，对所想的事情直率说出来的性格，也有腹黑的一面，公主病严重')"><img loading="lazy" src="https://precure-web.com/tropical-rouge/assets/img/character/character_05_btn.png" alt="Laura"></div>
+<div class="precure-item" onclick="showModal('Cure Precious', 'https://precure-web.com/delicious-party/assets/img/character/character_01_01_btn.png', '和实由依 - 派对光之美少女队长，初中二年级生，家里经营小吃店&quot;和实亭&quot;，是家中的独生女。是一名活泼、正直、有活力的女生。运动神经超群（力量超群），也是学校足球部的帮手，吃货一个，感情迟钝（和结实，不是我东映害了你的人设，是这个紧凑的时间安排害了你啊！）')"><img loading="lazy" src="https://precure-web.com/delicious-party/assets/img/character/character_01_01_btn.png" alt="Cure Precious"></div>
+<div class="precure-item" onclick="showModal('Cure Spicy', 'https://precure-web.com/delicious-party/assets/img/character/character_01_02_btn.png', '芙羽心音 - 派对光之美少女之一，初中二年级生。家里经营高级餐厅&quot;湖畔&quot;，是家中的独生女。清凉美丽，拥有时尚感的女生。话少，喜欢独处，是同学眼里的&quot;高岭之花&quot;（其实只是自然的容貌给人的感觉），被同学称为&quot;芙羽小姐&quot;。但非常喜欢化妆和可爱的物件，也喜欢可爱的动物')"><img loading="lazy" src="https://precure-web.com/delicious-party/assets/img/character/character_01_02_btn.png" alt="Cure Spicy"></div>
+<div class="precure-item" onclick="showModal('Cure Yum-Yum', 'https://precure-web.com/delicious-party/assets/img/character/character_01_03_btn.png', '华满兰 - 派对光之美少女之一，初中二年级生。家里经营拉面店&quot;熊猫轩&quot;，是家中长女，有年幼的弟弟妹妹。全家人都很有个性。充满热情，是个很健谈的可爱女生，兴奋时会说个不停。对食物的好奇心旺盛。会在&quot;Cure Sta&quot;投稿关于美食的事（非常可爱，但学习也一般）')"><img loading="lazy" src="https://precure-web.com/delicious-party/assets/img/character/character_01_03_btn.png" alt="Cure Yum-Yum"></div>
+<div class="precure-item" onclick="showModal('Cure Finale', 'https://precure-web.com/delicious-party/assets/img/character/character_01_04_btn.png', '果彩天音 - 派对光之美少女之一，初中三年级生，学校学生会会长。家里经营水果店兼咖啡店&quot;水果冰室果彩&quot;，有两个年龄相差较大的双胞胎哥哥，变成光之美少女之前的真实身份是怪盗捆绑团之一的珍柔，被强行黑化夺取了对美食的尊敬之心')"><img loading="lazy" src="https://precure-web.com/delicious-party/assets/img/character/character_01_04_btn.png" alt="Cure Finale"></div>
+<div class="precure-item" onclick="showModal('Cure Sky', 'https://precure-web.com/hirogaru-sky/assets/img/character/character_01_btn.png', '索拉·哈雷瓦塔尔 - 天空光之美少女之一，因为小时候被救而憧憬成为英雄，为此经历了许多训练，具备强大的身体素质，能轻松飞檐走壁或者空手击碎大石，但也因此没交到过什么朋友')"><img loading="lazy" src="https://precure-web.com/hirogaru-sky/assets/img/character/character_01_btn.png" alt="Cure Sky"></div>
+<div class="precure-item" onclick="showModal('Cure Prism', 'https://precure-web.com/hirogaru-sky/assets/img/character/character_02_btn.png', '虹之丘真白 - 天空光之美少女之一，温柔体贴的女孩子。了解料理和自然知识。因父母在海外赴任，所以和奶奶一起生活。喜爱绘画，目前并不清楚自己的梦想，具备强大广阔的包容心（也因此在后期被强行绑定了反派干部的洗白剧情）')"><img loading="lazy" src="https://precure-web.com/hirogaru-sky/assets/img/character/character_02_btn.png" alt="Cure Prism"></div>
+<div class="precure-item" onclick="showModal('Cure Wing', 'https://precure-web.com/hirogaru-sky/assets/img/character/character_04_btn.png', '夕凪翼 - 天空光之美少女（男）之一，是个男的，本体是鸟（东映拧巴的具象化，既想要又担心）')"><img loading="lazy" src="https://precure-web.com/hirogaru-sky/assets/img/character/character_04_btn.png" alt="Cure Wing"></div>
+<div class="precure-item" onclick="showModal('Cure Butterfly', 'https://precure-web.com/hirogaru-sky/assets/img/character/character_03_btn.png', '圣扬羽 - 天空光之美少女之一，真白的青梅竹马，和谁都能成为好朋友，非常喜欢时尚快乐的事情的开朗的大姐姐。总是全力以赴，以成为最强的保育员为目标的成年人（实际贫瘠重点！）')"><img loading="lazy" src="https://precure-web.com/hirogaru-sky/assets/img/character/character_03_btn.png" alt="Cure Butterfly"></div>
+<div class="precure-item" onclick="showModal('Cure Majesty', 'https://precure-web.com/hirogaru-sky/assets/img/character/character_05_btn.png', '艾尔公主 - 天空光之美少女之一，还年幼的天空王国的公主，由过去公主送下的生命，具备强大的能力')"><img loading="lazy" src="https://precure-web.com/hirogaru-sky/assets/img/character/character_05_btn.png" alt="Cure Majesty"></div>
+<div class="precure-item" onclick="showModal('Cure Wonderful', 'https://www.toei-anim.co.jp/tv/wonderful_precure/assets/images/common/p_tumb_curewonderful.webp', '犬饲小麦 - 美妙宠物光之美少女，彩羽养的蝴蝶犬，精力和好奇心旺盛，贪吃，非常喜欢散步（麦狗）')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/wonderful_precure/assets/images/common/p_tumb_curewonderful.webp" alt="Cure Wonderful"></div>
+<div class="precure-item" onclick="showModal('Cure Friendly', 'https://www.toei-anim.co.jp/tv/wonderful_precure/assets/images/common/p_tumb_curefriendly.webp', '犬饲彩羽 - 美妙宠物光之美少女，非常爱动物的初二女生，14岁。目标是与全世界的动物交朋友。每天早上必做的事是和小麦一起散步。 朋友很多， 也很受动物们喜爱。爱照顾人，也很会照顾人。性格坦率，不擅长说谎。也很擅长运动。家中经营名叫&quot;Friendly&quot;的动物医院&沙龙的店铺')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/wonderful_precure/assets/images/common/p_tumb_curefriendly.webp" alt="Cure Friendly"></div>
+<div class="precure-item" onclick="showModal('Cure Nyammy', 'https://www.toei-anim.co.jp/tv/wonderful_precure/assets/images/common/p_tumb_curenyami.webp', '猫屋敷雪 - 美妙宠物光之美少女，真由养的白猫，随真由一同搬到动物镇生活。变成人类后年龄为14岁。高冷又我行我素，性格高傲。很喜欢真由为她做的充满魅力的项圈。是真由的母亲经营的店&quot;Pretty Holic&quot;的看板猫，最喜欢午睡（哈基雪）')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/wonderful_precure/assets/images/common/p_tumb_curenyami.webp" alt="Cure Nyammy"></div>
+<div class="precure-item" onclick="showModal('Cure Lillian', 'https://www.toei-anim.co.jp/tv/wonderful_precure/assets/images/common/p_tumb_curelillian.webp', '猫屋敷真由 - 美妙宠物光之美少女，新学年搬到动物镇生活的初二女生，14岁。最喜欢宠物猫小雪。虽然很想交朋友但是畏缩不前，没有勇气。心灵手巧，爱好做手工。如果有谁喜欢自己做的东西就会很高兴。作为动物系&quot;CureTuber&quot;会在网上投稿自己爱猫小雪的视频')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/wonderful_precure/assets/images/common/p_tumb_curelillian.webp" alt="Cure Lillian"></div>
+<div class="precure-item" onclick="showModal('Cure Idol', 'https://storage.moegirl.org.cn/moegirl/commons/6/6c/CureIdol_icon.png!/fw/85?v=20250105110602', '咲良歌 - Idol光之美少女你与我♪，喜欢唱歌的初中二年级学生，入学刚满13岁。家中有一个妹妹，家里经营着名叫&quot;闪耀咖啡馆&quot;的店面。是个开朗活泼的女生，会经常当场唱出自己的心情。喜欢闪闪发光、充满活力、能让人微笑的&quot;闪闪发光&quot;的东西')"><img loading="lazy" src="https://storage.moegirl.org.cn/moegirl/commons/6/6c/CureIdol_icon.png!/fw/85?v=20250105110602" alt="Cure Idol"></div>
+<div class="precure-item" onclick="showModal('Cure Wink', 'https://storage.moegirl.org.cn/moegirl/commons/6/6d/Curewink_icon.png!/fw/85?v=20250105110601', '苍风奈奈 - Idol光之美少女你与我♪，性格温柔聪慧，擅长弹钢琴，甚至在初一时拿过全国大奖，现阶段的梦想是成为钢琴家')"><img loading="lazy" src="https://storage.moegirl.org.cn/moegirl/commons/6/6d/Curewink_icon.png!/fw/85?v=20250105110601" alt="Cure Wink"></div>
+<div class="precure-item" onclick="showModal('Cure Kyunkyun', 'https://storage.moegirl.org.cn/moegirl/commons/7/7c/CureKyunKyun_icon.png!/fw/85?v=20250105110601', '紫雨心 - Idol光之美少女你与我♪，擅长跳舞，把热情藏在心里的可靠女生，因自幼丧父而什么事都强压于心里，又刻意表现成熟，有着追求爱好的求道心态')"><img loading="lazy" src="https://storage.moegirl.org.cn/moegirl/commons/7/7c/CureKyunKyun_icon.png!/fw/85?v=20250105110601" alt="Cure Kyunkyun"></div>
+<div class="precure-item" onclick="showModal('Cure Zukyun', 'https://storage.moegirl.org.cn/moegirl/commons/a/a5/CureZukyun_icon.png!/fw/85?v=20250601014309', '普利伦 - Idol光之美少女你与我♪，从闪亮大陆前来寻找&quot;偶像光之美少女&quot;的妖精，悠闲、我行我素的性格。眨巴眼睛能看到闪闪发光的东西，贪吃，经常闯祸')"><img loading="lazy" src="https://storage.moegirl.org.cn/moegirl/commons/a/a5/CureZukyun_icon.png!/fw/85?v=20250601014309" alt="Cure Zukyun"></div>
+<div class="precure-item" onclick="showModal('Cure Kiss', 'https://storage.moegirl.org.cn/moegirl/commons/a/ab/CureKiss_icon.png!/fw/85?v=20250601014309', '梅洛伦 - Idol光之美少女你与我♪，来自闪亮大陆的妖精，性格倔强又调皮，最喜欢义姐普莉伦和读书，有时会很善妒')"><img loading="lazy" src="https://storage.moegirl.org.cn/moegirl/commons/a/ab/CureKiss_icon.png!/fw/85?v=20250601014309" alt="Cure Kiss"></div>
+<div class="precure-item" onclick="showModal('Cure Echo', 'https://cdn.imgos.cn/vip/2026/02/27/69a123d5ea888.png', '坂上步美 - 光之美少女AllStars NewStage：未来的朋友，转学到横滨的中学生。是光之美少女的狂热支持者。由于她的个性害羞内向，导致自己没有勇气跟自己的同学说话，常常独自一个人发呆，身边也没有朋友')"><img loading="lazy" src="https://cdn.imgos.cn/vip/2026/02/27/69a123d6d77d5.jpg" alt="Cure Echo"></div>
+<div class="precure-item" onclick="showModal('Cure Puca', 'https://2023allstars-f.precure-movie.com/wordpress/wp-content/themes/2023allstars-f.precure-movie_v3.1/assets/img/character/prism/05.png', '普卡 - 光之美少女F：至高天使普利姆分离出的存在，虽然有着强大的力量，但是却很胆小，因而被抛弃')"><img loading="lazy" src="https://2023allstars-f.precure-movie.com/wordpress/wp-content/themes/2023allstars-f.precure-movie_v3.1/assets/img/character/prism/05.png" alt="Cure Puca"></div>
+<div class="precure-item" onclick="showModal('Cure Yell', 'https://cdn.imgos.cn/vip/2026/04/23/69ea0ea530d15.jpg', '野乃花（剑）：挥动旋律圣剑，即使没有同伴，也不断与邪恶作战的坚强战士')"><img loading="lazy" src="https://cdn.imgos.cn/vip/2026/04/23/69ea0ea530d15.jpg" alt="Cure Yell"></div>
+<!-- 名探偵プリキュア！(2026 第21代) 头像已上：克蕾亚(Cure Eclair)仍为占位图 -->
+<div class="precure-item" onclick="showModal('Cure Answer', 'cure_answer.webp', '明智安娜 - 登场作品：《名侦探光之美少女！》（2026年新光美/第21代），形象色：紫色。本作主角，从2027年意外穿越时空回到1999年的初二少女，个性坦率正直、温柔体贴、从不撒谎，无法对有困难的人置之不管；比起思考更偏向用直觉得出答案，口头禅是「完美！」，与未来一起住在天使侦探事务所、推荐关联身份：班里突然转来的神秘少女')"><img loading="lazy" src="cure_answer.webp" alt="Cure Answer"></div>
+<div class="precure-item" onclick="showModal('Cure Mystic', 'cure_mystic.webp', '小林未来 - 登场作品：《名侦探光之美少女！》（2026年新光美/第21代），形象色：粉色。1999年的初二少女，为了成为名侦探而来到真心未来市，是安娜穿越后第一个遇到的人；个性笨拙但直率，拥有庞大的侦探知识，比任何人都努力，比起直觉更倾向通过思考得出答案，非常喜欢可爱的东西、推荐关联身份：有点天然呆的侦探搭档')"><img loading="lazy" src="cure_mystic.webp" alt="Cure Mystic"></div>
+<div class="precure-item" onclick="showModal('Cure Arcana', 'cure_arcana.png', '森亚露露卡 - 登场作品：《名侦探光之美少女！》（2026年新光美/第21代），形象色：白色。16岁少女，个性随性不受拘束、话不多但内心充满热情，最喜欢吃冰淇淋；曾是「幻影怪盗团」干部，意识到自己真正的愿望后以名侦探身份回归光之侦探社；推理能力极强，单凭推理就能识破怪盗团成员的伪装、推荐关联身份：嘴上嫌弃心里忠诚的酷系青梅竹马')"><img loading="lazy" src="cure_arcana.png" alt="Cure Arcana"></div>
+<div class="precure-item" onclick="showModal('Cure Eclair', 'avatar_placeholder.svg', '帆羽克蕾亚 - 登场作品：《名侦探光之美少女！》（2026年新光美/第21代），形象色：蓝色。在啾啾蛋糕店担任糕点师的16岁少女，会依据客人的话语制作让客人开心的蛋糕；外表温柔内心坚定，拥有敏锐的观察力，十分重视自己的「光芒」；露露卡的助手，曾为保护真心宝石与黑色谎言战斗并一度失去记忆、推荐关联身份：会读心的温柔甜点师')"><img loading="lazy" src="avatar_placeholder.svg" alt="Cure Eclair"></div>
+</div>
+<div class="gallery-empty">没有匹配的角色，换个关键词试试（支持中文名与 Cure XX）</div>
 </div>
 </div>
+<div id="villain" class="tab-content">
+<h2>反派人设图鉴（补全中）</h2>
+<p>创建角色时选了「反派」阵营的玩家，点击头像查看反派/暗黑系人设并挑选。</p>
+<div style="margin:6px 0 12px;">
+<button type="button" class="tab-button" onclick="goTab('settings')">← 上一步：填写我的角色信息</button>
+<button type="button" class="tab-button" onclick="goTab('worldview')">游玩指导 →</button>
 </div>
-<div id="settings" class="tab-content">
+<div class="gallery-search">
+<input type="search" placeholder="🔍 搜索反派 / 暗黑系角色…" oninput="filterGallery(this)">
+<span class="gallery-count">共 4 位反派</span>
+</div>
+<div class="precure-gallery">
+<div class="precure-item" onclick="showModal('Cure Arcana Shadow', 'cure_arcana.png', '森亚露露卡（暗影形态）- 登场作品：《名侦探光之美少女！》，形象色：黑色。虽为光之美少女却以「幻影怪盗团」干部身份活动的形态，为打败闪耀天使拯救世界而接受暗影力量化为「蚀光暗影天使」，手持大镰刀；最终倒戈安娜与未来一边，摧毁暗影能量后正式回归、推荐关联身份：亦正亦邪的哥特风怪盗小姐')"><img loading="lazy" src="cure_arcana.png" alt="Cure Arcana Shadow"></div>
+<div class="precure-item" onclick="showModal('Dark Precure', 'https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_07.jpg', '暗之美少女 - 抓心光之美少女反派，通过月影百合基因制造出来的存在，与百合是互为光影的宿敌')"><img loading="lazy" src="https://www.toei-anim.co.jp/tv/hc_precure/images/chara/chara_07.jpg" alt="Dark Precure"></div>
+<div class="precure-item" onclick="showModal('Nightmare', 'avatar_placeholder.svg', '梦魇 - 《Yes! 光之美少女5》剧场版DX的幕后黑手，将五人内心的情感抽取出来制造出暗影光美（Dark Dream、Dark Rouge、Dark Lemonade、Dark Mint、Dark Aqua），以嫉妒与仇恨为食、推荐关联身份：操纵人心的幕后棋手')"><img loading="lazy" src="avatar_placeholder.svg" alt="Nightmare"></div>
+<div class="precure-item" onclick="showModal('Eternal', 'avatar_placeholder.svg', '永恒 - 剧场版《光之美少女AllStars：永远的朋友》中的敌方存在，孤独而执拗的少女，因对「永恒的友谊」的扭曲渴望而将众人封入虹之塔，与全体光之美少女为敌、推荐关联身份：想要把你永远留下来的病娇')"><img loading="lazy" src="avatar_placeholder.svg" alt="Eternal"></div>
+</div>
+<div class="gallery-empty">没有匹配的角色，换个关键词试试</div>
+</div>
+<div id="settings" class="tab-content active">
 <form id="char-form">
 <h2>User角色设定</h2>
 <div class="form-grid">
@@ -884,6 +970,21 @@ transform: scaleX(1);
 <label><input type="radio" name="gender" value="女" checked><span class="radio-custom"></span>女</label>
 <label><input type="radio" name="gender" value="男"><span class="radio-custom"></span>男</label>
 <label><input type="radio" name="gender" value="其他"><span class="radio-custom"></span>其他</label>
+</div>
+</div>
+<div class="form-group">
+<label>阵营（必选：决定去正派还是反派人设图鉴）</label>
+<div class="faction-options">
+<label class="faction-card good">
+<input type="radio" name="faction" value="正派" onchange="goTab('gallery')">
+<span class="fc-title">🌸 正派 · 光之美少女</span>
+<span class="fc-sub">与光美并肩作战 → 自动跳转正派人设图鉴挑角色</span>
+</label>
+<label class="faction-card evil">
+<input type="radio" name="faction" value="反派" onchange="goTab('villain')">
+<span class="fc-title">🌙 反派 · 黑暗势力</span>
+<span class="fc-sub">站在黑暗的一方 → 自动跳转反派人设图鉴挑角色</span>
+</label>
 </div>
 </div>
 </div>
@@ -906,8 +1007,13 @@ transform: scaleX(1);
 <h2>游玩设置</h2>
 <div class="form-grid">
 <div class="form-group">
-<label for="play-chars">选择登场角色（全光美最下方）</label>
+<label for="play-chars">选择登场角色（可输入筛选；「全光美」在最下方）</label>
 <div class="character-selection">
+<div class="char-filter-row">
+<input type="search" placeholder="筛选：如 香恋 / Cure Aqua / 心跳" oninput="filterChars(this)">
+<button type="button" class="mini-btn" onclick="checkVisibleChars(true)">全选可见</button>
+<button type="button" class="mini-btn alt" onclick="checkVisibleChars(false)">清空可见</button>
+</div>
 <div class="character-selection-grid">
 <div class="character-option"><input type="checkbox" id="char1" name="characters" value="美墨渚(Cure Black)"><label for="char1">美墨渚(Cure Black)</label></div>
 <div class="character-option"><input type="checkbox" id="char2" name="characters" value="雪城穗乃香(Cure White)"><label for="char2">雪城穗乃香(Cure White)</label></div>
@@ -1075,6 +1181,10 @@ transform: scaleX(1);
 </form>
 <div class="preview-box" id="preview-output"></div>
 <button id="copy-button">复制设定</button>
+<div style="text-align:center;margin-top:14px;">
+<button type="button" class="tab-button" onclick="goTab('gallery')">正派人设图鉴 →</button>
+<button type="button" class="tab-button" onclick="goTab('villain')">反派人设图鉴 →</button>
+</div>
 </div>
 </div>
 <div id="precureModal" class="modal">
@@ -1139,6 +1249,11 @@ function showTab(event, tabId) {
     tabButtons.forEach(button => button.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
     event.currentTarget.classList.add('active');
+    window.scrollTo(0, 0);
+}
+function goTab(tabId) {
+    const btn = Array.prototype.slice.call(document.querySelectorAll('.tab-button')).find(b => (b.getAttribute('onclick') || '').indexOf("'" + tabId + "'") !== -1);
+    if (btn) showTab({ currentTarget: btn }, tabId);
 }
 const modal = document.getElementById('precureModal');
 function showModal(name, imgSrc, desc) {
@@ -1155,6 +1270,57 @@ window.onclick = function(event) {
         closeModal();
     }
 }
+// ===== v2 优化脚本：图鉴搜索 / 角色筛选 / ESC 关闭 / 图片容错 =====
+function filterGallery(input) {
+    var wrap = input.closest('.tab-content');
+    var gallery = wrap ? wrap.querySelector('.precure-gallery') : null;
+    if (!gallery) return;
+    var q = input.value.trim().toLowerCase();
+    var visible = 0;
+    gallery.querySelectorAll('.precure-item').forEach(function (item) {
+        var hay = ((item.getAttribute('onclick') || '') + ' ' + (item.textContent || '')).toLowerCase();
+        var hit = !q || hay.indexOf(q) !== -1;
+        item.style.display = hit ? '' : 'none';
+        if (hit) visible++;
+    });
+    var empty = wrap.querySelector('.gallery-empty');
+    if (empty) empty.style.display = (visible === 0 && q) ? 'block' : 'none';
+}
+function filterChars(input) {
+    var q = input.value.trim().toLowerCase();
+    document.querySelectorAll('.character-option').forEach(function (opt) {
+        opt.style.display = (!q || (opt.textContent || '').toLowerCase().indexOf(q) !== -1) ? '' : 'none';
+    });
+}
+function checkVisibleChars(state) {
+    document.querySelectorAll('.character-option').forEach(function (opt) {
+        if (opt.style.display === 'none') return;
+        var cb = opt.querySelector('input[type="checkbox"]');
+        if (cb) cb.checked = state;
+    });
+    updateSelectedCharacters();
+}
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+        closeModal();
+        var csm = document.getElementById('copySuccessModal');
+        if (csm) csm.style.display = 'none';
+    }
+});
+document.addEventListener('error', function (e) {
+    var t = e.target;
+    if (t && t.tagName === 'IMG' && !t.dataset.fallback) {
+        t.dataset.fallback = '1';
+        t.src = 'avatar_placeholder.svg';
+    }
+}, true);
+// URL hash 直达：如 precure-sim-v1.html#gallery / #villain 直接打开对应标签页
+(function () {
+    try {
+        var h = (location.hash || '').replace(/^#/, '');
+        if (['gallery', 'villain', 'worldview'].indexOf(h) !== -1) { goTab(h); }
+    } catch (e) {}
+})();
 const audio = document.getElementById('main-audio');
 const playBtn = document.querySelector('.play-btn');
 const timeDisplay = document.getElementById('time-display');
@@ -1243,6 +1409,7 @@ function updatePreview() {
     let output = "【User角色设定】\n";
     output += `姓名：${formData.get('name') || '未填写'}\n`;
     output += `性别：${formData.get('gender') || '未填写'}\n`;
+    output += `阵营：${formData.get('faction') || '未选择'}\n`;
     output += `性格：${formData.get('personality') || '未填写'}\n`;
     output += `外貌：${formData.get('appearance') || '未填写'}\n`;
     output += `背景：${formData.get('background') || '未填写'}\n`;
@@ -1279,6 +1446,7 @@ document.addEventListener('DOMContentLoaded', function() {
 const copyButton = document.getElementById('copy-button');
 const copySuccessModal = document.getElementById('copySuccessModal');
 copyButton.addEventListener('click', () => {
+    if (!form.querySelector('input[name="faction"]:checked')) { alert('请先选择阵营：正派或反派，再去对应图鉴挑人设！'); return; }
     const textToCopy = previewOutput.textContent;
     navigator.clipboard.writeText(textToCopy).then(() => {
         copySuccessModal.style.display = 'block';
