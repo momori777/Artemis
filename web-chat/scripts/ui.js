@@ -381,7 +381,7 @@ var UI = {
         ? '<div class="char-option-avatar"><img class="char-option-avatar-img" src="' + avatarHtml.replace(/^<img[^>]*src="|">$/g, '') + '"></div>'
         : '<div class="char-option-avatar">' + avatarHtml + '</div>';
       return '<div class="char-option' + activeClass + '" data-char-id="' + c.id + '">' + avatarTag + '<span>' + c.name + '</span>' + deleteBtn + '</div>';
-    }).join('') + '<div class="char-option char-import-option" id="char-import-option"><div class="char-option-avatar" style="background:var(--accent);color:#fff"><i class="ph ph-plus"></i></div><span>Import character...</span></div>';
+    }).join('') + '<div class="char-option char-import-option" id="char-import-option"><div class="char-option-avatar" style="background:var(--accent);color:#fff"><i class="ph ph-plus"></i></div><span>Import character...</span></div>' + '<div class="char-option char-cardsim-option" id="char-cardsim-option"><div class="char-option-avatar" style="background:linear-gradient(135deg,#ff69b4,#ffd700);color:#fff"><i class="ph ph-sparkle"></i></div><span>光美自定义模拟器</span></div>';
 
     // Click delegation — handle char selection and delete
     list.onclick = function(e) {
@@ -409,6 +409,11 @@ var UI = {
       if (opt.id === 'char-import-option' || opt.classList.contains('char-import-option')) {
         var fileInput = document.getElementById('import-char-file');
         if (fileInput) fileInput.click();
+        return;
+      }
+
+      if (opt.classList.contains('char-cardsim-option')) {
+        self.openCardSim();
         return;
       }
 
@@ -535,7 +540,7 @@ var UI = {
         ? '<div class="char-option-avatar"><img class="char-option-avatar-img" src="' + avatarHtml.replace(/^<img[^>]*src="|">$/g, '') + '"></div>'
         : '<div class="char-option-avatar">' + avatarHtml + '</div>';
       return '<div class="char-option" data-char-id="' + c.id + '">' + avatarTag + '<span>' + c.name + '</span>' + deleteBtn + '</div>';
-    }).join('') + '<div class="char-option char-import-option" id="char-import-option"><div class="char-option-avatar" style="background:var(--accent);color:#fff"><i class="ph ph-plus"></i></div><span>Import character...</span></div>';
+    }).join('') + '<div class="char-option char-import-option" id="char-import-option"><div class="char-option-avatar" style="background:var(--accent);color:#fff"><i class="ph ph-plus"></i></div><span>Import character...</span></div>' + '<div class="char-option char-cardsim-option" id="char-cardsim-option"><div class="char-option-avatar" style="background:linear-gradient(135deg,#ff69b4,#ffd700);color:#fff"><i class="ph ph-sparkle"></i></div><span>光美自定义模拟器</span></div>';
 
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
@@ -576,6 +581,15 @@ var UI = {
         return;
       }
 
+      // Embedded card simulator (光美自定义模拟器)
+      if (opt.classList.contains('char-cardsim-option')) {
+        e.stopPropagation();
+        dropdown.classList.remove('open');
+        btn.classList.remove('open');
+        self.openCardSim();
+        return;
+      }
+
       var charId = opt.dataset.charId;
       if (charId && charId !== self.state.currentCharId) {
         self.switchChar(charId);
@@ -596,6 +610,34 @@ var UI = {
     this.loadSessionsList();
     this.loadHistory();
     showToast('Switched to ' + getChar(charId).name);
+  },
+
+  // ---- Card Simulator Modal (光美自定义模拟器, embedded via iframe) ----
+  _wireCardSim: function() {
+    if (this._cardsimWired) return;
+    this._cardsimWired = true;
+    var self = this;
+    var modal = document.getElementById('cardsim-modal');
+    if (!modal) return;
+    var closeBtn = document.getElementById('cardsim-close');
+    if (closeBtn) closeBtn.addEventListener('click', function() { self.closeCardSim(); });
+    modal.addEventListener('click', function(e) { if (e.target === modal) self.closeCardSim(); });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && modal.classList.contains('open')) self.closeCardSim();
+    });
+  },
+
+  openCardSim: function() {
+    this._wireCardSim();
+    var frame = document.getElementById('cardsim-frame');
+    if (frame && !frame.getAttribute('src')) frame.setAttribute('src', 'cards/precure-sim-v1.html');
+    var modal = document.getElementById('cardsim-modal');
+    if (modal) modal.classList.add('open');
+  },
+
+  closeCardSim: function() {
+    var modal = document.getElementById('cardsim-modal');
+    if (modal) modal.classList.remove('open');
   },
 
   // ---- Avatar Modal ----

@@ -51,6 +51,9 @@
     btn_plugins:             { zh: '增强功能 (Mem0等)',     ja: '拡張機能 (Mem0等)',      en: 'Plugins (Mem0 etc.)' },
     stop_llama_label:        { zh: '停LLM',                ja: 'LLM停止',             en: 'Stop LLM' },
 
+    // Card simulator (光美自定义模拟器)
+    cardsim_title:           { zh: '光美自定义模拟器',      ja: 'プリキュア カスタムシミュレーター', en: 'Precure Custom Simulator' },
+
     // Thinking mode
     thinking_default:        { zh: '默认',                 ja: 'デフォルト',           en: 'Default' },
     thinking_immersive:      { zh: '沉浸',                 ja: '没入',                 en: 'Immersive' },
