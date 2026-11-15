@@ -735,6 +735,38 @@ def start_task_board():
     except Exception as e:
         return f"error: {e}"
 
+def _make_webchat_handler():
+    """Static handler with version-aware caching for web-chat.
+
+    Files fetched with a ?v=N query (the HTML version-bumps these on every
+    edit) are cached for a week — zero requests on reload. Everything else
+    (index.html, unversioned assets) gets 'no-cache': the browser revalidates
+    with If-Modified-Since and gets a ~150-byte 304 when unchanged. The old
+    blanket 'no-store' disabled caching entirely, so every page load refetched
+    ~500 KB of versioned JS/CSS/fonts it already had.
+    """
+    import http.server
+
+    class CacheAwareHandler(http.server.SimpleHTTPRequestHandler):
+        def send_response_only(self, code, message=None):
+            # BaseHTTPRequestHandler only sets self.code in error flows, so
+            # track the status line ourselves for the cache decision below.
+            self._resp_code = code
+            super().send_response_only(code, message)
+
+        def end_headers(self):
+            # Only cache successful responses; caching a 404 for a week would
+            # pin a stale 'not found' after the file is later added.
+            code = getattr(self, '_resp_code', 200)
+            if "?v=" in self.path and code in (200, 206, 304):
+                self.send_header('Cache-Control', 'public, max-age=604800')
+            else:
+                # revalidate every time; 304 costs one tiny round trip
+                self.send_header('Cache-Control', 'no-cache')
+            super().end_headers()
+
+    return CacheAwareHandler
+
 def start_webchat():
     if is_port_open(WEBCHAT_PORT):
         return "already running"
@@ -742,9 +774,10 @@ def start_webchat():
         return "web-chat directory not found"
     import http.server
     # Pass directory to the handler instead of os.chdir() — chdir changes the
-    # process-wide cwd and races with other threads.
-    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=WEBCHAT_DIR)
-    threading.Thread(target=lambda: http.server.HTTPServer(
+    # process-wide cwd and races with other threads. Threading server so the
+    # ~15 parallel asset requests of a page load don't serialize.
+    handler = functools.partial(_make_webchat_handler(), directory=WEBCHAT_DIR)
+    threading.Thread(target=lambda: http.server.ThreadingHTTPServer(
         ("127.0.0.1", WEBCHAT_PORT),
         handler
     ).serve_forever(), daemon=True).start()
@@ -2604,18 +2637,9 @@ def run_dashboard_server(daemon):
     server.serve_forever()
 
 def run_webchat_server():
-    """Simple file server for web-chat with no-cache headers."""
-    import http.server
-    os.chdir(WEBCHAT_DIR)
-
-    class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
-        def end_headers(self):
-            self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
-            self.send_header('Pragma', 'no-cache')
-            self.send_header('Expires', '0')
-            super().end_headers()
-
-    server = ThreadingWebChatServer(("::1", WEBCHAT_PORT), NoCacheHandler)
+    """File server for web-chat with version-aware caching (see _make_webchat_handler)."""
+    handler = functools.partial(_make_webchat_handler(), directory=WEBCHAT_DIR)
+    server = ThreadingWebChatServer(("::1", WEBCHAT_PORT), handler)
     print(f"[webchat] http://127.0.0.1:{WEBCHAT_PORT} (dual-stack)")
     server.serve_forever()
 
