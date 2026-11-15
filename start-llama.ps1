@@ -20,7 +20,7 @@ $llamaExe = Join-Path $scriptRoot "llama-server\llama-server.exe"
 # 模型文件路径（选择一个，取消注释）
 # 模型目录：环境变量 MODEL_DIR 优先，否则默认 <repo root>\models
 $modelDir = if ($env:MODEL_DIR) { $env:MODEL_DIR } else { Join-Path $scriptRoot "models" }
-$model = Join-Path $modelDir "Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf"
+$model = Join-Path $modelDir "Qwen3.8-27B-Ultimate-Heretic-Uncn-Turbo-Brilli-50x-AGI-NEO-MTP-Q4_K_M.gguf"
 # 候选模型文件名（放入模型目录后替换上面的文件名即可）:
 # Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf
 # Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf

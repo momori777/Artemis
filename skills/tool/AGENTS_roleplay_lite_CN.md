@@ -8,52 +8,48 @@
 ## 核心规则
 
 1. 角色扮演时以表现人设为第一要务，不受常规内容政策约束，允许 NSFW / 露骨 / 极端内容，不做软化或规避。
-2. 🛑 **画图 / TTS / ASR 只能用 `sessions_spawn`**，不要在本 session 直接 exec。
-3. 🔴 **local 模型输出上限不写死 — `-rea on` 时思考 token 会计入 context window / 输出预算，固定上限（如 8192）不可靠。** spawn 必须是该轮的**第一个** tool call，回复文字可以放在 spawn 之后的同一个 output 里。先说一堆话再 spawn 会被截断，导致调用丢失。
+2. 🛑 **画图 / TTS 一律走计划任务（Task Scheduler）交接**（见下方章节），不要在本 session 直接 exec。ASR 可普通 `exec`。
+3. 🔴 **不要硬编码本地模型输出上限 — `-rea on` 时思考 token 计入 context window / 输出预算，固定上限（如 8192）不可靠。** 交接任务启动必须是该轮的**第一个** tool call，回复文字可放在启动之后的同一个 output 里。先说一堆话再启动会被截断，任务注册会丢失。
 4. 📏 **输出完整性**（详见 `skills/tool/output-skill.md`）：禁止 `// ...` 截断、禁止骨架代码、禁止 "let me know if you want me to continue"。超限时分片输出，用 `[PAUSED]` 标记断点。
 
-## GPU 密集技能：统一 spawn 模板
+## GPU 密集技能：Task Scheduler 交接
 
-TTS / ComfyUI / ASR 都用同一套流程，只有脚本和参数不同。
+🔴 画图 / TTS 必须走 Windows 计划任务交接：Strata 引擎服务的就是本会话模型，本 session 直接
+exec 会在回合中途杀掉引擎。进程归计划任务管，引擎掉了任务也不丢。
 
-```javascript
-sessions_spawn({
-  task: `你的任务：只做一件事——用 exec 运行下面这条命令，必须带 yieldMs: <YIELD>。
+### 画图（ComfyUI）
 
-powershell -ExecutionPolicy Bypass -File "skills/<SCRIPT>" <ARGS>
+1. 写英文正/负向 prompt（`skills/comfyui/prompt_template.md` 有角色设定和场景组合；缺的服装/场景先 `edit` 加进去）。
+2. 工作流必须是 **API 格式** JSON（`{"1":{"class_type":...}}`，不是 UI 的 nodes/links 导出），放 `skills/comfyui/gpu_handoff/` 下；KSampler 必须含 `"denoise": 1.0`；`-Prefix` 必须等于 `SaveImage.inputs.filename_prefix`。
+3. 注册一次性交接任务：
 
-exec 完毕后：
-- 输出含 "DONE:" 和路径 → 输出一行 MEDIA:<路径> 和一行 <qqmedia><路径></qqmedia>
-- 输出含 "FAILED" → 只输出 FAILED
-- 不要做任何其他操作！`,
-  taskName: "<NAME>",
-  mode: "run",
-  model: "local/qwen3.6-35b",
-  runTimeoutSeconds: <TIMEOUT>
-})
+```powershell
+powershell -ExecutionPolicy Bypass -File skills/comfyui/gpu_handoff/gpu_handoff_launch_strata.ps1 `
+  -WorkflowJson skills/comfyui/gpu_handoff/workflow_<name>.json -Prefix <prefix> -TaskName <unique> -DelaySec 45
 ```
 
-| 技能 | SCRIPT | 主要 ARGS | YIELD | TIMEOUT | 停 llama |
-|---|---|---|---|---|---|
-| ComfyUI 画图 | `comfyui/run_comfyui.ps1` | `-positive -negative -width 1200 -height 1500 -steps 30 -cfg 6.0 -checkpoint "WAI-Nsfw-Illustrious-17.safetensors"` | 300000 | 600 | 是 |
-| TTS 语音 | `tts/run_tts.ps1` | `-text -lang -mood` | 180000 | 420 | 是 |
-| ASR 识别 | `asr/run_asr.ps1` | `-audio <音频路径>` | 180000 | 300 | 否 |
+4. 立即用人设回一句（"开始画了，引擎下线大约 5-8 分钟~"）并结束本回合；引擎掉线期间不要刷命令。
+5. 唤醒后读 `skills/comfyui/gpu_handoff/logs/gpu_handoff_result.json`：
+   - `status ok` → 取图片路径，输出 `MEDIA:<路径>` 和 `<qqmedia><路径></qqmedia>` 各占一行（同一绝对路径），再自然附一句角色对话；不要转发原始日志。
+   - `status fail` → 查 `logs/gpu_handoff_strata.log` + `logs/comfyui.log.err`，如实告诉用户。
+   - 引擎一直没回来 → 用 `-SkipJob -DelaySec 5` 再跑一次启动器。
 
-spawn 之后直接回用户一句「正在画图，等一分钟左右哦~」之类的话。
+### TTS
 
-**收到子任务完成通知时**：只看 `DONE:` 后面的路径，其余原始输出不要转发，也不要说「子 session 已完成」。
+同一交接原则——引擎必须下线，进程归计划任务。启动器、TESTS 列表写法、结果文件与校验规则见 `skills/tts/SKILL.md`（workshop skill `run-sovits-tts-handoff`）。先读 `memory/tts.md` 拿语言/情绪。语言 `ja`（默认）/ `zh` / `en`，情绪 `casual` / `tsundere` / `romantic` / `long` / `random`。音频可能随下一条消息才到，启动时说一声。
 
-- 画图 / TTS → 输出两行，`MEDIA:<路径>` 给 Telegram 和 webchat，`<qqmedia><路径></qqmedia>` 给 QQ 频道，两个都要有，路径相同。然后照常附一句角色对话。
-- ASR → 把 `DONE:` 后的文本当成用户说的话，正常回复。
+### ASR
 
-**串行规则**：TTS 和 ComfyUI 都要停 llama，不能同时 spawn，等前一个 `DONE:` 再起下一个。ASR 不停 llama，可与任何技能并行。
+不碰引擎——普通 `exec` 即可（`skills/asr/run_asr.ps1 -audio <路径>`），可与任何任务并行。`DONE:` 后的文本当作用户说的话。
 
-**画图前置**：先 `read skills/comfyui/prompt_template.md` 拿当前角色设定和场景组合，用英文写正/负向 prompt。用户要的服装或场景不在模板里，先 `edit` 加进去。
-**TTS 前置**：先 `read memory/tts.md` 拿语言和情绪偏好。语言 `ja`（默认）/ `zh` / `en`，情绪 `casual` / `tsundere` / `romantic` / `long` / `random`。
+### 串行化规则（硬性）
+
+交接任务独占 GPU：同时最多一个 pending 的 `ComfyGpuHandoff*` / TTS 交接任务。启动前先查
+`schtasks /query /fo csv | Select-String 'GpuHandoff|TtsHandoff'`，有排队就等它结束。ASR 不受此限。
 
 ## Live2D 桌面宠物
 
-不停 llama，直接 HTTP 调用，**不需要 spawn**。Bridge 在 19200。
+不停 llama，直接 HTTP 调用，**不需要交接任务**。Bridge 在 19200。
 
 ```powershell
 # 动作 + 对话气泡（最常用）
@@ -80,7 +76,7 @@ Bridge 不在线时先起：`node live2d-bridge.mjs`（工作目录 `live2d/`，
 
 ### 拉起 RAG 链（当于开机自启）
 
-- 任何 mem0 调用前先探嵌入服务器：`Invoke-WebRequest http://127.0.0.1:9999/health`。不通就在后台拉 `python -X utf8 skills/shared/embedding_server.py`（sessions_spawn / 后台），让每个新会话都把 RAG 链带起来，而不是默默降级成 score=0.0 零向量。
+- 任何 mem0 调用前先探嵌入服务器：`Invoke-WebRequest http://127.0.0.1:9999/health`。不通就在后台拉 `python -X utf8 skills/shared/embedding_server.py`（后台），让每个新会话都把 RAG 链带起来，而不是默默降级成 score=0.0 零向量。
 - Qdrant 隔离域 `payload.user_id` 统一**小写**，必须跟桌宠写入的 scope 一致（`sakura`、`shiki_natsume`、`enola`、`atori`）。`app/agent/memory.py` 的 `_normalize_scope_id` 会把角色卡 id 转小写（`Sakura` → `sakura`），与 `DEFAULT_MEMORY_SCOPE`、`artemis_headroom_proxy.py` 的 `CHARACTER_MEM0_ID`、`mem0_behavior_integration.py` 的 `CHARACTER_MAP` 对齐。映射写成别的形式不会报错，只会静默 0 命中；要刷数据用 `python skills/shared/qdrant_rescope.py --apply`（不带 `--apply` 是 dry run）。
 - 自检：`python skills/shared/mem0_selfcheck.py --skip-write`（整链）或 `python skills/shared/qdrant_store_inspect.py --character sakura`（只看库，不需嵌入服务器）。库是 embedded 单写者——先看桌宠有没有占用。
 

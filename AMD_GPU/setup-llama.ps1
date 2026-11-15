@@ -124,6 +124,9 @@ Write-Host "[2/5] Detecting model..." -ForegroundColor Yellow
 
 if (-not $ModelPath) {
     $defaults = @(
+        ".\llm\Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf",
+        ".\models\Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf",
+        "Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf",
         "E:\Hermes3.6-35B-A3B-Uncensored-Genesis-V7-APEX-Compact.gguf",
         ".\models\Hermes3.6-35B-A3B-Uncensored-Genesis-V7-APEX-Compact.gguf",
         "Hermes3.6-35B-A3B-Uncensored-Genesis-V7-APEX-Compact.gguf"

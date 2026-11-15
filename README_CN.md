@@ -160,10 +160,10 @@ Qwen3.6-35B (Language Mind) ←→ Cosmos 3 Nano / Qwen-Drive-1.0 (Physical Mind
 
 ### 双 Compact 架构
 
-| 组件 | 模型 | 参数量 | VRAM |
-|-----------|-------|--------|------|
-| 🧠 语言心智 | Qwen3.6-35B-A3B (MoE) | 35B 总 / 3B 激活 | ~8 GB |
-| 🌍 物理心智 | Cosmos 3 Nano FP8 | 15.75B | ~16 GB |
+| 组件 | 模型 | 参数量 | 显存 | 内存 |
+|-----------|-------|--------|------|------|
+| 🧠 语言心智 | Qwen3.6-35B-A3B (MoE) | 35B 总 / 3B 激活 | ~6–8 GB | 32 GB（专家常驻） |
+| 🌍 物理心智 | Cosmos 3 Nano FP8 | 15.75B | ~16 GB | 16 GB |
 
 ### 硬件路线图
 
@@ -234,10 +234,10 @@ Qwen3.6-35B (Language Mind) ←→ Cosmos 3 Nano / Qwen-Drive-1.0 (Physical Mind
 
 | 模型 | 用途 | 大小 | 上下文 |
 |-|-|-|-|
-| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V13 MTP APEX Compact** (GGUF) | 聊天 LLM（主力 MoE） | 16.11 GB | 120K |
-| **Qwen3.8-27B-TurboFCFusion** (Q4_K_S GGUF) | 聊天 LLM（稠密，工具型） | ~15.8 GB | 100K |
+| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes Final MTP APEX** (GGUF) | 聊天 LLM（主力 MoE——**6 GB 显存 + 32 GB 内存**，`--cpu-moe`） | 24.9 GB | 120K |
+| **Qwen3.8-27B Ultimate Heretic Uncn Turbo Brilli 50x AGI NEO MTP**（Q4_K_M GGUF） | 聊天 LLM（稠密，工具型——**24 GB 显存 + 32 GB 内存**） | ~15.7 GB | 130K |
 | **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | 聊天 LLM（稠密，旧版） | 13.5 GB | 150K |
-| **Ternary-Bonsai-2-27B PTQ1_0** (三值量化 GGUF) | 聊天 LLM（**可全量装入 8 GB 显存**，`-ngl 99`） | ~5.9 GB | **≤ 75K**（KV cache **必须** q4_0） |
+| **DeepSeek-V4-Pro-Qwen3.5-9B heretic**（Q4_K_M GGUF，无删减） | 聊天 LLM（**可全量装入 8 GB 显存**，`-ngl 99`；16 GB 内存即可） | ~6.1 GB | **≤ 75K**（KV cache **必须** q4_0） |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI 画图（默认，SDXL/Illustrious） | 6.46 GB | |
 | **miaomiaoHarem_29BBETA10** | ComfyUI 画图（备用，anima/qwen 29B + qwen VAE） | 5.44 GB | |
 | **oneObsession_anima29BV1** | ComfyUI 画图（anima/qwen 29B + qwen VAE） | 5.44 GB | |
@@ -268,8 +268,8 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui/ --local-dir ./
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/ --local-dir ./gpt-sovits-weights
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-dir ./live2d-model
 
-# Ternary-Bonsai-2-27B PTQ1_0 (mirror of our repo's llm/ folder, fits 8 GB VRAM):
-huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Ternary-Bonsai-2-27B-PTQ1_0.gguf --local-dir ./models
+# DeepSeek-V4-Pro-Qwen3.5-9B heretic Q4_K_M (mirror of our repo's llm/ folder, fits 8 GB VRAM):
+huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic-Q4_K_M.gguf --local-dir ./models
 ```
 
 > 🇨🇳 中国大陆用户：使用 hf-mirror.com——无需 VPN：
@@ -287,7 +287,21 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Ternary-Bonsai-2-27
 
 ## 本地 LLM 性能
 
-通过 llama.cpp 运行 **Qwen3.6-35B-A3B Genesis Hermes V13 MTP APEX Compact**（MoE，16.11 GiB，34.66B 参数，8/256 experts），启用 MTP（Multi-Token Prediction）投机解码。
+通过 llama.cpp 运行 **Qwen3.6-35B-A3B Genesis Hermes Final MTP APEX**（MoE，24.9 GB，34.66B 参数，8/256 experts），启用 MTP（Multi-Token Prediction）投机解码。
+
+### 各模型硬件下限——显存 **与** 内存
+
+两项都要满足；对 MoE 模型来说，**通常是内存先到上限**。
+
+| 模型 | 显存下限 | 内存下限 | 为什么要这么多内存 |
+|-|-|-|-|
+| DeepSeek-V4-Pro-Qwen3.5-9B heretic Q4_K_M（§1） | **8 GB**（全量上卡） | 16 GB | 权重全部在卡上，内存只需容纳系统 + 2 GB `--cache-ram` KV 卸载 |
+| Hermes3.6-35B-A3B Final MoE（`--cpu-moe`）（§3） | **6 GB** | **32 GB** | 24.9 GB 专家权重常驻**系统内存**；显存只放 ~3B 激活参数 + KV + MTP 草稿 |
+| Qwen3.8-27B Ultimate Heretic Q4_K_M 稠密 `-ngl 99`（§2） | **24 GB**（全量上卡） | **32 GB** | 权重在卡上；内存需容纳 20 GB `--cache-ram` 前缀缓存 + 系统 |
+| Qwen3.8-27B Q4_K_M **部分卸载** `-ngl N`（已移除的 8 GB 方案） | 8 GB | 32 GB | 装不下的层留在内存，每个 token 都从内存读取 |
+| Qwen3.8-Flash-Next IQ3_S —— **Strata**，125B MoE（§5） | **8 GB 起步**（下方 131K 上下文的实测数据为 24 GB） | **64 GB** | **全部专家必须常驻系统内存**——IQ3_S 两分卷共 83.8 GB，低于 64 GB 专家被换出到 SSD，decode 直接崩塌 |
+
+> 🧮 经验法则：**稠密**模型卡在显存（内存只需覆盖 `--cache-ram` + 系统），**MoE** 模型卡在内存——不把专家丢到 SSD 上，它们就全部住在内存里。**8 GB 显存 + 16 GB 内存跑不了 35B MoE，也跑不了 125B Flash-Next**，无论每 token 激活参数多小。
 
 ### 启动命令（唯一参数源）
 
@@ -296,6 +310,9 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Ternary-Bonsai-2-27
 > `skills/shared/llama_config.py` 从 `config.yaml` 读取启动参数，按当前活动模型
 > 文件名自动匹配 `model_profiles` 并构建完整的 `llama-server` 命令。模型自动检测，
 > 参数按 profile 分离——无硬编码。
+>
+> 📦 **所有手敲启动命令已统一收集到 [STARTUP_CODE.md](STARTUP_CODE.md)。**
+> README 只描述*什么硬件可以跑什么模型*。
 >
 > 切换模型的一行命令见下方 **"切换模型"**。
 
@@ -316,10 +333,8 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Ternary-Bonsai-2-27
 
 一个文件覆盖所有 Qwen 3.5 / 3.6 / 3.8 尺寸，因此对两个本地模型均可原样使用。启动链路：`config.yaml` → `llama_chat_template: chat_template.jinja`（相对项目根目录），`llama_config.py` 将其解析为 `--chat-template-file`——无硬编码。 
 
-```powershell
-llama-server.exe ... --jinja --reasoning-preserve \
-  --chat-template-file "D:\AI_Girlfriend\chat_template.jinja"
-```
+启动配管片段（`--jinja --reasoning-preserve --chat-template-file ...`）：
+[STARTUP_CODE.md](STARTUP_CODE.md) §7。
 
 ### 切换模型（`restart_llama_degraded.ps1 -SwitchTo`）
 
@@ -327,14 +342,7 @@ llama-server.exe ... --jinja --reasoning-preserve \
 `config.yaml`（`llama_model` / `llama_model_name` / `llama_model_id`），重新解析
 profile，重启并等待 `/health`：
 
-```powershell
-cd D:\AI_Girlfriend
-# 27B dense (Qwen3.8-27B) — primary tooling model
-.\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.8-27b
-
-# 35B MoE (Hermes Genesis V13) — primary roleplay model
-.\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.6-35b
-```
+具体一行命令（`cd` 按你的项目根目录调整）：[STARTUP_CODE.md](STARTUP_CODE.md) §6。
 
 `-SwitchTo` 接受 `config.yaml` → `llama_model_map` 中的**键**（如
 `qwen3.8-27b` / `qwen3.6-35b`），也可用子串（如 `-SwitchTo 27b`）。显存受限时可用
@@ -355,21 +363,16 @@ cd D:\AI_Girlfriend
 
 安装——clone **原始仓库**（放在本项目之外任意位置，不要塞进 `skills/`）：
 
-```powershell
-# 1) Clone 原始仓库，例如放在本项目同级目录
-git clone https://github.com/Niko1221/Strata
-cd Strata
-# 2) 首次运行启动脚本：会询问模型/量化/上下文，自动下载全部文件，
-#    并生成对应量化名的启动 bat（如 run-iq3_s.bat）
-START-HERE.bat
-# 3) 之后每次都用生成的 bat 启动 LLM：
-.\run-iq3_s.bat
-```
+Clone `https://github.com/Niko1221/Strata` 后，**首次**运行 `START-HERE.bat`（询问模型/量化/上下文，
+自动下载全部文件并生成对应量化名的启动 bat），之后每次都用生成的 bat（如 `run-iq3_s.bat`）启动 LLM。
+完整命令块：[STARTUP_CODE.md](STARTUP_CODE.md) §5。
 
+- **硬件下限：显存 8 GB 起步 + 内存 ≥ 64 GB。** IQ3_S 为两个分卷共 **83.8 GB**，Strata 会把**全部专家常驻系统内存**；低于 64 GB 时专家开始从 SSD 换入换出，decode 速度直接崩。显存只承担注意力 + 共享专家 + KV + MTP 草稿——8 GB 是下限，下方实测数据是在 24 GB 上跑的。
 - Strata 会把所选量化自动下载到 `Strata-data\models\IQ3_S\`（相对 clone 目录；以选择 IQ3_S 量化为例）。
 - **Uncensored 版本（本项目必需）：** 从
   [SC117/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF](https://huggingface.co/SC117/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF)
-  下载，替换 `Strata-data\models\IQ3_S\`（量化名目录）下自动下载的文件，并且**重命名时去掉 `-abliterated-`**
+  下载**两个分卷**（`00001` + `00002`）——本项目 HF 仓库亦有镜像：`llm/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-IQ3_S-00001-of-00002.gguf` + `-00002-of-00002.gguf`——
+  替换 `Strata-data\models\IQ3_S\`（量化名目录）下自动下载的文件，并且**重命名时去掉 `-abliterated-`**
   （其余保持原始文件名）——Strata 只认改名后的文件，例如
   `Qwen3.8-Flash-Next-GSQ-RCO-abliterated-IQ3_S-00001-of-00002.gguf` → `Qwen3.8-Flash-Next-GSQ-RCO-IQ3_S-00001-of-00002.gguf`。
 - 健康检查：`http://127.0.0.1:8080/health` → `"service": "strata"`。OpenAI 兼容端点：`http://127.0.0.1:8080/v1`。
@@ -379,16 +382,16 @@ START-HERE.bat
   （cold ~2750–2880 / warm ~2500–2560），prompt cache 复用 62–71%，上下文峰值 110k token。
   显存基本占满（仅剩 ~0.4–0.6 GB）——跑 ComfyUI 等 GPU 任务前先做显存交接。
 
-### Ternary-Bonsai-2-27B PTQ1_0 —— 8 GB 显存可全量装载 🔥
+### DeepSeek-V4-Pro-Qwen3.5-9B heretic（Q4_K_M）—— 8 GB 显存可全量装载 🔥
 
-**Ternary-Bonsai-2-27B PTQ1_0**——已托管于本项目 HF 仓库：**[TAOTAO777/ai-girlfriend-natsume → `llm/Ternary-Bonsai-2-27B-PTQ1_0.gguf`](https://huggingface.co/TAOTAO777/ai-girlfriend-natsume/tree/main/llm)**（与其它两个 LLM 模型同在 `llm/` 目录）。原出处：底模 [prism-ml/Ternary-Bonsai-2-27B-gguf](https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf)；PTQ1_0 三值量化版由 [BoldingBuilds](https://huggingface.co/BoldingBuilds/Ternary-Bonsai-2-27B-Abliterated-PTQ1_0-GGUF) 制作。
+**DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic（Q4_K_M）**——已托管于本项目 HF 仓库：**[TAOTAO777/ai-girlfriend-natsume → `llm/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic-Q4_K_M.gguf`](https://huggingface.co/TAOTAO777/ai-girlfriend-natsume/tree/main/llm)**（与其它 LLM 模型同在 `llm/` 目录；已替代此前的 Ternary-Bonsai PTQ1_0 镜像）。原出处链：底模 [Jackrong/DeepSeek-V4-Pro-Qwen3.5-9B](https://huggingface.co/Jackrong/DeepSeek-V4-Pro-Qwen3.5-9B) → 无删减「heretic」微调 [xtools-at/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic](https://huggingface.co/xtools-at/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic)（Apache-2.0）→ Q4_K_M GGUF 量化由 [mradermacher](https://huggingface.co/mradermacher/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic-GGUF) 制作。
 
-磁盘仅 **5.9 GB（约 5.5 GiB）**。已在参考机（**8 GB 显存**笔记本）上实测 `-ngl 99` 全量装载——整个模型都在显卡上，无需内存分层。实测：**decode ~35 t/s+，prefill ~300 t/s**。调优笔记：[LLAMA_TUNING.md](LLAMA_TUNING.md)。
+磁盘仅 **6.12 GB（约 5.7 GiB）**——9B 稠密对话模型（含 MTP 头），支持推理与工具调用，全程无删减（heretic / decensored / abliterated 血统）。体量与被替换的三值量化版同属一档：在 **8 GB 显存**机器上可 `-ngl 99` 全量装载，无需内存分层（由 llama.cpp 服务，端口 **:9931**）。**内存 16 GB 即可**——除了 2 GB `--cache-ram` 前缀缓存和系统之外没有别的占用，这也是当前唯一能在 16 GB 内存笔记本上跑的选择。该量化版的实测速度待复测。调优笔记：[LLAMA_TUNING.md](LLAMA_TUNING.md)。
 
 > 🔴 **8 GB 显存下两条不可妥协的硬性约束：**
 >
-> 1. **KV cache 必须 Q4：`-ctk q4_0 -ctv q4_0`。** 任何更高的 KV 精度（f16 / f32）都会立即爆显存预算。
-> 2. **上下文窗口必须 `-c ≤ 75000`。** Q4 KV 下，权重（约 5.5 GiB）+ KV cache + 计算缓冲只有在 ~75K token 以内才能留在 8 GB 内。更大的值在 8 GB 卡上**装不下**。
+> 1. **KV cache 必须 Q4**（`-ctk q4_0 -ctv q4_0`）。任何更高的 KV 精度（f16 / f32）都会立即爆显存预算。
+> 2. **控制卡上 KV 占用**——把缓存卸载到系统内存（`--cache-ram`）并只用单槽位（`--parallel 1`）。正因如此，这个 9B 才能在 8 GB 内跑满 `-c 120000` 上下文。启动命令：[STARTUP_CODE.md](STARTUP_CODE.md) §1。
 
 ### Silicon Rider Bench（智能体基准测试）
 
@@ -396,7 +399,7 @@ START-HERE.bat
 
 **参测模型**（均为 `--seed 622539`）：
 - **deepseek-v4-flash (0731)**——云端、无限上下文基线。云级智能体能力（本基准中约 Claude 4.6–4.8 级别）。
-- **Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf**（当前）——RTX 5070 Laptop，8 GB 显存，32 GB DDR5 内存
+- **Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf**（本次跑分所用版本；现行发布为 **Genesis-Final-MTP-APEX**）——RTX 5070 Laptop，8 GB 显存，32 GB DDR5 内存
 
 #### 结果（Seed 622539，Level 1，24 游戏小时）
 
@@ -440,72 +443,19 @@ Qwen3.6 MoE 使用 SSM（Gated Delta Net）混合注意力，配合 `--kv-unifie
 
 主力工具/助手稠密模型。通过 llama.cpp 运行，启用**内置 MTP**投机解码（无需单独的 draft GGUF）。由 `config.yaml` → `model_profiles` 自动检测（`qwen3.8-27b-mtp`）。
 
-### 启动命令（8 GB 显存，Q4_K_S）
+### 什么硬件能跑
 
-切换到它，或手动启动：
-
-```powershell
-# Preferred: auto-switch + auto-params (see "Switching models" above)
-.\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.8-27b
-
-```
-
-> 参考硬件：**i9-14900HX + RTX 5070 Laptop (8 GB) + 64 GB RAM**。模型权重通过
-> **部分卸载 `-ngl 14`**切分（前 14 层在 GPU，其余放内存并配 `--no-mmap`）；KV cache
-> 使用 `--cache-ram 2000`；MTP draft 上下文全量卸载到 GPU（`--spec-draft-ngl 99`），
-> 使投机解码在 8 GB 显卡上保持快速。**Q4_K_S 量化**将模型控制在约 15.8 GB——
-> 消费级硬件上稠密 27B 的甜点配置。**`rea` 未指定**——通过聊天模板默认使用
-> `medium` 推理深度。逐 flag 说明、关键参数与实时日志指标见下方。
-
-> 💡 **27B 稠密模型在 8 GB 显存下的关键参数说明：**
->
-> - **`-ngl 14`**——14 层卸载到 GPU（静态切分；其余放系统内存）。对于 8 GB 显存 + ~15.8 GB Q4_K_S 模型，这是不 OOM 且能获得明显 GPU 加速的甜点值。根据你的实际显存上调/下调。
-> - **`-ctk q4_0 -ctv q4_0`**——KV cache 量化为 4-bit，上下文窗口显存占用减半。显存有限 + 大上下文时必备。
-> - **`--cache-ram 2000`**——CPU 侧 KV cache 内存预算 2 GB。
-> - **`-c 100000`**——100K token 上下文窗口（此量化下模型的有效上限）。
-> - **`--spec-draft-n-max 3`**——MTP 投机解码最多预生成 3 个 token；Qwen3.8 自带 MTP head。
-> - **`--spec-draft-p-min 0.88`**——只接受置信度 ≥88% 的 draft token，保持高接受率。
-> - **`--spec-draft-ngl 99`**——将整个 draft 上下文卸载到 GPU，加速投机解码。
-> - **量化方案：Q4_K_S**——约 15.8 GB 模型大小，消费级硬件上稠密 27B 的出色质量/显存平衡。这是稠密（非 MoE）模型，推理时全部 27B 参数都激活（MoE 只激活一部分）。
-> - **`rea` 未指定**——通过聊天模板默认使用 `medium` 推理深度（不注入思考 token，保持 KV 缓存一致性）。
-
-**Flag 说明（稠密 27B profile，8 GB 显存最优，Q4_K_S）：**
-
-| Flag | 值 | 原因 |
+| 显存 | 内存 | 运行方式 |
 |-|-|-|
-| `-m` | Q4_K_S 模型路径 | **Q4_K_S 量化**——约 15.8 GB，消费级硬件上稠密 27B 的出色质量/显存平衡 |
-| `-c` | `100000` | 100K 上下文窗口（`n_ctx_slot = 100096`） |
-| `-ngl` | `14` | **部分 GPU 卸载**——前 14 层在 GPU，其余在内存；Q4_K_S 在 8 GB 显存上的实测最优值（无动态换页，在 KV/MTP 余量耗尽前可以放心调高） |
-| `-ctk` / `-ctv` | `q4_0` | KV cache 量化为 q4_0，显存占用减半 |
-| `--cache-ram` | `2000` | CPU 侧 KV cache 内存预算 2 GB |
-| `--batch-size` / `--ubatch-size` | `2048` / `1024` | 按 8 GB 显存余量设定的 prefill batch（2:1 法则） |
-| `--spec-type` | `draft-mtp` | 启用内置 MTP 投机解码 |
-| `--spec-draft-n-max` | `3` | 每步最多 draft 3 个 token（Qwen3.8 内置 MTP head） |
-| `--spec-draft-p-min` | `0.88` | 只接受概率 ≥0.88 的 draft token，保持高接受率 |
-| `--spec-draft-ngl` | `99` | 将整个 MTP draft 上下文卸载到 GPU，加速投机解码 |
-| `--no-mmap` | — | 让 llama.cpp 自行管理内存侧内存（干净的 CPU/GPU 切分） |
-| `--reasoning-preserve` | — | 保留思考块以复用 KV |
-| `rea` | **未指定** | 通过聊天模板默认 `medium` 推理深度——工具/Agent 任务最优（快速、直接回复） |
+| **24 GB**（RTX PRO 4000 / 5090 DV2 / 4090 / 3090ti / 5090 Laptop） | **32 GB**（`--cache-ram 20000` = 20 GB 前缀缓存住在内存；64 GB 可解除上下文上限） | 全量卸载——启动命令：[STARTUP_CODE.md](STARTUP_CODE.md) §2 |
 
-### 关键指标（27B 稠密，Q4_K_S——来自实时 `llama-server` 日志）
+也可用上方「切换模型」的一行命令自动切换——参数来自 `config.yaml`。
 
-| 指标 | 数值 | 备注 |
-|-|-|-|
-| 模型加载时间 | ~1s | `--no-mmap`（约 15.8 GB，Q4_K_S） |
-| Prefill 速度 | **~163 ~ 174 t/s** | 首个 prompt 19.3k tokens @ 163.6 t/s；随 prompt 变长而下降 |
-| Token 生成 | **~4 ~ 5 tok/s** | 稳定 decode（MTP 激活，`-ngl 14`） |
-| MTP draft 接受率 | **~93 ~ 97%** | 例如 `0.93599 (541/578)`、`0.96859 (185/191)`；平均 accepted run length **2.5 ~ 5.2** |
-| 上下文上限 | 100K（`n_ctx_slot = 100096`） | `--kv-unified` + `--cache-ram 2000` |
-| MTP retention（`--spec-draft-p-min`） | **0.88** | 置信度低于 0.88 的 draft token 会被拒绝 |
-| GPU 层数（`-ngl`） | **14** | 静态切分；日志行 `n_gpu_layers already set by user to 14, abort` 是无害提示（auto-fit 被跳过），**不是**错误 |
+> 实测（**RTX 5090 Laptop 24 GB**，Q4_K_M，全量上卡）：decode **~35 t/s**，prefill
+> **~1300 t/s**，内置 MTP（`--spec-draft-n-max 4`、`--spec-draft-p-min 0.52`）。
+> 原 **8 GB 部分卸载方案（`-ngl 14/15`）已移除**——27B 稠密现面向 24 GB 级显卡。
 
-> 📈 **MTP 原理：**配置 `--spec-draft-n-max 5` + `--spec-draft-p-min 0.84` 时，
-> llama.cpp 让 MTP head 提议最多 5 个后续 token，然后仅保留概率 ≥0.84 的那些。
-> 实践中**约 90–100% 的 draft token 会被接受**（平均 accepted run length ≈ 3.2–5.3），
-> 因此有效吞吐约为"每次 forward 只投机 1 个 token"方案的 3–5 倍，同时 8 GB 显卡
-> 仍保持在显存上限之内。
-
-> 💡 **MoE vs 稠密**：35B MoE 每个 token 只激活约 3B 参数（8/256 experts），完美适配 GPU（48 tok/s）。27B 稠密激活全部 27B，超出 8 GB 显存，因此通过 `-ngl 14` 切分到 CPU/内存，配合 MTP decode 约 4–5 tok/s。需要全 27B 激活做工具/Agent 任务时选 **27B 稠密**；快速角色扮演选 **35B MoE**。**Q4_K_S 量化（约 15.8 GB）**是消费级硬件上稠密 27B 的甜点——质量出色，且通过部分卸载可适配 8 GB 显存。
+> 💡 **MoE vs 稠密**：35B MoE 每个 token 只激活约 3B 参数（8/256 experts），在 8 GB 显卡上也能高速运行。27B 稠密激活全部 27B，需要 **24 GB 级**显卡。8 GB 显存请选择 **35B MoE**（角色扮演）或 **DeepSeek-V4 9B**（[STARTUP_CODE.md](STARTUP_CODE.md) §1，全量上卡的稠密模型）。需要全 27B 激活做工具/Agent 任务时，在 24 GB 显卡上选 **27B 稠密**。**内存是另一笔预算**：35B MoE 要 **32 GB**（专家常驻），27B 稠密要 **32 GB**（主要是 20 GB 前缀缓存），Strata IQ3_S 要 **≥ 64 GB** 才能把全部专家放在内存——详见「本地 LLM 性能」开头的硬件下限表。
 
 ### VRAM 分档策略
 
@@ -674,19 +624,8 @@ Claude Code 启动后会自动运行任务循环：
 
 ### 启动
 
-```powershell
-# Prerequisites: npm install -g @anthropic-ai/claude-code
-# Start Shiki Daemon first (.\shiki.cmd), then:
-
-# Full AgentRQ workflow (Task Board + Claude Code)
-.\claude-code.ps1
-
-# Task Board only (browser UI, no Claude)
-.\claude-code.ps1 -BoardOnly
-
-# Stop the task board
-.\claude-code.ps1 -KillBoard
-```
+启动命令（完整工作流 / 仅看板 / 停止）及前置条件（`@anthropic-ai/claude-code` npm 包、
+先启动 Shiki Daemon）：[STARTUP_CODE.md](STARTUP_CODE.md) §9。
 
 然后打开 **http://127.0.0.1:19280** - 创建任务，看 Claude Code 自动领取执行。
 

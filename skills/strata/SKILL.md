@@ -1,7 +1,7 @@
 # Strata 引擎 — Qwen3.8-Flash-Next 专用后端
 
 > 🔴 **仅 Qwen3.8-Flash-Next 这一个模型用 Strata 后端，不走 llama.cpp。**
-> 其余本地模型（Hermes 3.6-35B / Qwen3.8-27B / Ternary-Bonsai）仍由 llama.cpp 服务，
+> 其余本地模型（Hermes 3.6-35B / Qwen3.8-27B / DeepSeek-V4-Pro-9B）仍由 llama.cpp 服务，
 > llama.cpp 端口已从 8080 迁至 **9931**；**8080 现在是 Strata 的端口**。
 
 ## Original path（原始路径，勿整仓 clone）
@@ -39,7 +39,7 @@ OpenClaw provider 写法见根目录 `openclaw.example.json` 的 `strata` 段（
 # 启动（后台窗口方式）
 cmd /c "C:\Users\19214\.openclaw\workspace\Strata\run-iq3_s.bat"
 
-# 等就绪（首次加载 35–55 GB 进 RAM，可能 1–3 分钟无响应，属正常）
+# 等就绪（首次会把全部专家加载进系统内存——IQ3_S 两分卷 83.8 GB，需 ≥ 64 GB 内存，可能 1–3 分钟无响应，属正常）
 Invoke-RestMethod http://127.0.0.1:8080/health -TimeoutSec 5   # status=ok 且 loaded=true
 
 # 停止：关闭其控制台窗口，或：
@@ -51,11 +51,11 @@ Invoke-RestMethod http://127.0.0.1:8080/shutdown -Method Post -ErrorAction Silen
 | 项目 | llama.cpp | Strata |
 |------|-----------|--------|
 | 端口 | **9931**（config.yaml `llama_port`） | **8080** |
-| 模型 | Hermes3.6-35B / Qwen3.8-27B / Ternary-Bonsai | Qwen3.8-Flash-Next（仅此一个） |
+| 模型 | Hermes3.6-35B / Qwen3.8-27B / DeepSeek-V4-Pro-9B | Qwen3.8-Flash-Next（仅此一个） |
 | 启动入口 | `start-llama.ps1` / shiki_daemon | `run-iq3_s.bat`（安装目录内） |
 | OpenClaw provider | `llama/*` | `strata/*` |
 
-⚠️ 两者都吃大量内存：**不要同时加载 llama.cpp 大模型和 Strata flash-next**（flash-next IQ3_S 需 ~50 GB RAM + 12 GB+ VRAM）。切换模型前先停另一边。
+⚠️ 两者都吃大量内存：**不要同时加载 llama.cpp 大模型和 Strata flash-next**（flash-next IQ3_S 需要 **≥ 64 GB 系统内存** 才能把全部专家常驻——两个分卷共 83.8 GB；显存 **8 GB 起步**，下面的实测数据是在 24 GB 上跑的）。切换模型前先停另一边。
 
 ## 故障排查
 

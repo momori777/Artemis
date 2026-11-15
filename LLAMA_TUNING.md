@@ -5,6 +5,10 @@ Handwritten field notes from running a lot of local LLMs — how to configure
 commands (profiles in `config.yaml` / `llama_config.py`) are a starting point;
 **tune them against this guide and your own hardware before trusting them.**
 
+> 📦 **All full launch commands have been collected in
+> [STARTUP_CODE.md](STARTUP_CODE.md).** This file keeps only the tuning notes;
+> §N below refers to the matching section there.
+
 ---
 
 ## 1. GPU offload: choosing `-ngl`
@@ -25,11 +29,11 @@ draft + flash attention:
   VRAM cooks (prefill) and eats (decode) by itself, no RAM in the loop.
 - **VRAM < model size** (dense model doesn't fully fit) → use a **partial**
   `-ngl N`: the largest `N` that still leaves headroom for KV + MTP draft.
-  Reference: **`-ngl 12`** on an RTX 5070 Laptop (8 GB) with Qwen3.8-27B
-  Q4_K_M (~17.2 GB) runs clean — the log line
-  `n_gpu_layers already set by user to 12, abort` is just llama.cpp skipping
-  auto-fit because you set it; it is **not** an error. Decode holds ~4 tok/s
-  with MTP, prefill ~185–205 t/s.
+  The log line `n_gpu_layers already set by user to N, abort` is just
+  llama.cpp skipping auto-fit because you set it; it is **not** an error.
+  (This project no longer ships an 8 GB dense-27B profile — 27B Q4_K_M now
+  targets 24 GB-class cards with `-ngl 99`, see
+  [STARTUP_CODE.md](STARTUP_CODE.md) §2.)
 - Keep `--load-mode none` (no-mmap) so llama.cpp manages the RAM-side layers.
 - VRAM is still fully usable for KV cache, MTP draft model, flash attention,
   `--kv-unified`, prefill, etc.
@@ -39,11 +43,37 @@ draft + flash attention:
 - Condition: `activated params < VRAM + 4 GB` and `RAM > model size`
   → use `--cpu-moe`. Every *activated* expert runs on GPU; the GPU can cook
   and eat by itself again — but only for the activated slice.
+- The `RAM > model size` half of that condition is the real gate: the whole
+  expert table must stay resident. Hermes3.6-35B-A3B Genesis **Final MTP APEX**
+  (24.9 GB on disk) wants **32 GB of system RAM** even though it only needs
+  **6 GB of VRAM** — see §2.
 - "Activated params" = the `A` in e.g. Qwen **3**5**B A(activated)**3**B**:
   Qwen 3.6 35B A3B has 3B activated params.
 - There is still some RAM↔VRAM swap cost (the inactive experts still live in
   RAM), but far less than for dense spilling.
 
+
+## 2. System RAM sizing — the other budget
+
+VRAM is only half the question. **System RAM is a separate, independent budget**, and
+for MoE models it is usually the binding constraint.
+
+| Model class | What has to live in RAM | Floor |
+|---|---|---|
+| Dense, fully offloaded (`-ngl 99`) | OS + `--cache-ram` prefix cache only (weights are on the card) | `--cache-ram` value + ~8 GB |
+| Dense, partial (`-ngl N`) | OS + every layer that didn't fit (re-read from RAM every token) + `--cache-ram` | model size − VRAM-side layers + `--cache-ram` + ~8 GB |
+| MoE with `--cpu-moe` | OS + **all expert weights** + `--cache-ram` | **model file size + `--cache-ram` + ~4 GB** |
+| Strata (expert-resident MoE) | OS + **all experts**; only attention / shared experts / KV / MTP draft go on the GPU | **≥ 64 GB** for Flash-Next IQ3_S (2 shards = 83.8 GB on disk) |
+
+This project's floors (matching the launch commands in
+[STARTUP_CODE.md](STARTUP_CODE.md)): **16 GB** for DeepSeek-V4 9B (§1 — the only pick
+that runs on a 16 GB laptop), **32 GB** for the 35B MoE with `--cpu-moe` (§3) and for the
+27B dense with `--cache-ram 20000` (§2), **≥ 64 GB** for Strata IQ3_S (§5) — below that,
+experts come off the SSD and decode collapses regardless of how fast your GPU is.
+
+> 🧮 `--cache-ram` is a RAM cost, not a VRAM trick. Raising it buys prefill reuse
+> (prompt-cache hits) and it is the first number to cut when RAM is short — and the first
+> to raise when you want long-context reuse (§4).
 
 ## 3. MTP (speculative Multi-Token Prediction) parameters
  and N-gram（A O(1) list search so it do not need high bandwith）
@@ -58,9 +88,8 @@ NOTE:do not use n-gram for dense 27B,cause dead lock
 
 - You don't have to specify a separate MTP draft model — llama.cpp builds the
   draft context from the target model's embedded MTP head in RAM/VRAM.
-- Reference values that matched well in practice (Qwen3.8-27B Q4_K_M, 8 GB
-  VRAM, `-ngl 12`): **`x=5, p-min=0.84`**
-  → `draft acceptance ≈ 0.86 ~ 1.00`, `mean len ≈ 3.2 ~ 5.3`.
+- Values currently used in this project (Qwen3.8-27B Q4_K_M, 24 GB VRAM,
+  `-ngl 99`, [STARTUP_CODE.md](STARTUP_CODE.md) §2): **`x=4, p-min=0.52`**.
   (accepted tokens replace decoded ones; MTP can be higher than raw decoded!）.
 - **Speed ≈ x × acceptance.** Since MTP efficiency depends on the model,
   the machine, and (if used) the MTP draft model — **tune x and 0.ab on your
@@ -175,159 +204,32 @@ vision
 mmproj is vision tool startup code:
 --mmproj mmproj-(model-id).gguf \
 
-if you want use bigger or smaller sister models,go https://huggingface.co/LuffyTheFox/Qwen3.6-35B-A3B-Uncensored-Genesis-Hermes-Final-GGUF or https://huggingface.co/DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-L-Uncensored-NM-DAU-NEO-MTP-GGUF for search
+if you want use bigger or smaller sister models,go https://huggingface.co/LuffyTheFox/Qwen3.6-35B-A3B-Uncensored-Genesis-Hermes-Final-GGUF or https://huggingface.co/DavidAU for search
 
 VRAM = 24GB,like RTX PRO 4000,5090 DV2,4090,3090ti,5090laptop,use this:
 
-$model = "Qwen3.8-27B-Ultimate-Heretic-Uncn-Turbo-Brilli-50x-AGI-NEO-MTP-Q4_K_M.gguf"
-Start-Process -FilePath $exe -ArgumentList @(
-"-m", $model,
-"-c", "130000",
-"--flash-attn", "on",
-"--temp", "0.9",
-"--top-p", "0.95",
-"--top-k", "40",
-"--min-p", "0.01",
-"--repeat-penalty", "1.02",
-"--presence-penalty", "0.0"
-"-ctk", "q8_0", "-ctv", "q8_0",
-"--batch-size", "2000",
-"--ubatch-size", "1000",
-"--threads", "16",
-"--threads-batch", "16",
-"-rea", "on",
-"--jinja",
-"--api-key", "123",
-"--cache-ram", "10000"
-"--parallel", "1",
-"--no-warmup",
-"--kv-unified",
-"--chat-template-file", $tpl,
-"--reasoning-preserve",
-"--spec-type", "draft-mtp",
-"--spec-draft-n-max", "4",
-"--spec-draft-p-min", "0.75",
-"--spec-draft-type-k", "q4_0", 
-"--spec-draft-type-v", "q4_0"
-)
+→ Full command: [STARTUP_CODE.md](STARTUP_CODE.md) **§2** (24 GB VRAM Q4_K_M).
 
 decode at my 5090laptop GPU, 35t/s,prefill 1300t/s
 
-my start code settings at 5070laptop:
-$model = "C:\model2\Qwen3.8-27B-TTURBO-Fable-C-Fusion-709-L-Uncen-NM-DAU-NEO-MTP-Q4_K_M.gguf"
-
-
-Start-Process -FilePath $exe -ArgumentList @(
-"-m", $model,
-"-c", "100000",
-"--flash-attn", "on",
-"--temp", "0.6",
-"--top-p", "0.95",
-"--top-k", "40",
-"--min-p", "0.01",
-"--repeat-penalty", "1.02",
-"--presence-penalty", "0.0"
-"-ctk", "q4_0", "-ctv", "q4_0",
-"--batch-size", "400",
-"--ubatch-size", "200",
-"--threads", "24",
-"--api-key", "123456",
-"-rea", "on",
-"--jinja",
-"--cache-ram", "4000",
-"--parallel", "1",
-"--kv-unified",
-"--no-warmup",
-"--spec-type", "draft-mtp",
-"--spec-draft-n-max", "3",
-"--spec-draft-p-min", "0.84",
-"--chat-template-file", $tpl,
-"--load-mode", "none",
-"--reasoning-preserve",
-"--reasoning-format", "deepseek",
-"-ngl", "15",
-"--reasoning-effort",  "medium",
-"--spec-ngram-mod-n-min", "16",
-"--spec-ngram-mod-n-max", "48",
-"--mmproj", "E:\model3\mmproj-BF16.gguf"
-)
-prefill 150t/s,decode 8t/s
-
-$model = "E:\model3\Hermes3.6-35B-A3B-Uncensored-Genesis-Final-APEX.gguf"
-Start-Process -FilePath $exe -ArgumentList @(
-"-m", $model,
-"-c", "120000",
-"--cpu-moe"
-"--flash-attn", "on",
-"--temp", "0.6",
-"--top-k", "40",
-"--min-p", "0.01",
-"--repeat-penalty", "1.02",
-"--presence-penalty", "0.0"
-"-ctk", "q4_0", "-ctv", "q4_0",
-"--batch-size", "400",
-"--ubatch-size", "200",
-"--threads", "24",
-"--api-key", "123456",
-"-rea", "on",
-"--jinja",
-"--cache-ram", "5000",
-"--parallel", "1",
-"--kv-unified",
-"--no-warmup",
-"--spec-type", "draft-mtp",
-"--spec-draft-n-max", "3",
-"--spec-draft-p-min", "0.84",
-"--spec-draft-type-k", "q4_0", 
-"--spec-draft-type-v", "q4_0", 
-"--chat-template-file", $tpl,
-"--load-mode", "none",
-"--reasoning-preserve",
-"--reasoning-format", "deepseek"
-)
+→ Full command: [STARTUP_CODE.md](STARTUP_CODE.md) **§3** (Hermes3.6-35B MoE, `--cpu-moe`, 8 GB VRAM).
 prefill 250t/s,decode 34.88t/s
 
-Ternary-Bonsai-2-27B-PTQ1_0.gguf
-
-Start-Process -FilePath $exe -ArgumentList @(
-"-m", $model,
-"-c", "75000",
-"--flash-attn", "on",
-"--temp", "0.6",
-"--top-p", "0.95",
-"--top-k", "40",
-"--min-p", "0.01",
-"--repeat-penalty", "1.02",
-"--presence-penalty", "0.0"
-"-ctk", "q4_0", "-ctv", "q4_0",
-"--batch-size", "400",
-"--ubatch-size", "200",
-"--threads", "24",
-"--api-key", "123456",
-"-rea", "on",
-"--jinja",
-"--cache-ram", "10000",
-"--parallel", "1",
-"--kv-unified",
-"--no-warmup",
-"--spec-type", 
-"--chat-template-file", $tpl,
-"--load-mode", "none",
-"--reasoning-preserve",
-"--reasoning-format", "deepseek",
-"-ngl", "99",
-"--reasoning-effort",  "medium",
-)
+Ternary-Bonsai-2-27B-PTQ1_0.gguf (legacy — replaced in HF `llm/` by the DeepSeek-V4 9B)
+→ Full command: [STARTUP_CODE.md](STARTUP_CODE.md) **§4**.
 
 decode 35T+/s, prefill 300t/s
+
+DeepSeek-V4-Pro-Qwen3.5-9B heretic Q4_K_M (current 8 GB pick)
+→ Full command: [STARTUP_CODE.md](STARTUP_CODE.md) **§1** (`-c 120000` + q4_0 KV + `--cache-ram 2000` fits 8 GB fully).
 
 ## Quick decision table
 
 | Your situation | Key params |
 |---|---|
-| Model fits in VRAM (+6 GB headroom) | `-ngl 99` |
-| Dense, doesn't fully fit in VRAM | partial `-ngl N` + `--load-mode none` (N = max that leaves KV/MTP headroom; ref `-ngl 12` on 8 GB) |
-| MoE, activated params fit in VRAM (+4 GB) | `--cpu-moe` |
+| Model fits in VRAM (+6 GB headroom) | `-ngl 99` (RAM: `--cache-ram` + ~8 GB) |
+| Dense, doesn't fully fit in VRAM | partial `-ngl N` + `--load-mode none` (N = max that leaves KV/MTP headroom; RAM must hold the CPU-side layers) |
+| MoE, activated params fit in VRAM (+4 GB) | `--cpu-moe` (**RAM ≥ model size + `--cache-ram` + ~4 GB** — e.g. 32 GB for the 35B A3B) |
 | Fast KV + prefix caching | `--ctk q4_0 --ctv q4_0 --kv-unified --reasoning-preserve` |
 | Speculative decoding | tune `--spec-draft-n-max` × `--spec-draft-p-min` on your machine |
 | Personal single user | `--parallel 1` |

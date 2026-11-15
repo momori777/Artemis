@@ -160,10 +160,10 @@ Qwen3.6-35B (Language Mind) ←→ Cosmos 3 Nano / Qwen-Drive-1.0 (Physical Mind
 
 ### Dual Compact Architecture
 
-| Component | Model | Params | VRAM |
-|-----------|-------|--------|------|
-| 🧠 Language Mind | Qwen3.6-35B-A3B (MoE) | 35B total / 3B active | ~8 GB |
-| 🌍 Physical Mind | Cosmos 3 Nano FP8 | 15.75B | ~16 GB |
+| Component | Model | Params | VRAM | System RAM |
+|-----------|-------|--------|------|------------|
+| 🧠 Language Mind | Qwen3.6-35B-A3B (MoE) | 35B total / 3B active | ~6–8 GB | 32 GB (experts resident) |
+| 🌍 Physical Mind | Cosmos 3 Nano FP8 | 15.75B | ~16 GB | 16 GB |
 
 ### Hardware Roadmap
 
@@ -234,10 +234,10 @@ See [`models.yaml`](models.yaml) for full details.
 
 | Model | Purpose | Size | Context |
 |-|-|-|-|
-| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V13 MTP APEX Compact** (GGUF) | Chat LLM (primary MoE) | 16.11 GB | 120K |
-| **Qwen3.8-27B-TurboFCFusion** (Q4_K_S GGUF) | Chat LLM (dense, tooling) | ~15.8 GB | 100K |
+| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes Final MTP APEX** (GGUF) | Chat LLM (primary MoE — **6 GB VRAM + 32 GB RAM**, `--cpu-moe`) | 24.9 GB | 120K |
+| **Qwen3.8-27B Ultimate Heretic Uncn Turbo Brilli 50x AGI NEO MTP** (Q4_K_M GGUF) | Chat LLM (dense, tooling — **24 GB VRAM + 32 GB RAM**) | ~15.7 GB | 130K |
 | **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | Chat LLM (dense, legacy) | 13.5 GB | 150K |
-| **Ternary-Bonsai-2-27B PTQ1_0** (ternary GGUF) | Chat LLM (**fits fully in 8 GB VRAM**, `-ngl 99`) | ~5.9 GB | **≤ 75K** (KV cache **must** be q4_0) |
+| **DeepSeek-V4-Pro-Qwen3.5-9B heretic** (Q4_K_M GGUF, uncensored) | Chat LLM (**fits fully in 8 GB VRAM**, `-ngl 99`; 16 GB RAM enough) | ~6.1 GB | **≤ 75K** (KV cache **must** be q4_0) |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI generation (default, SDXL/Illustrious) | 6.46 GB | |
 | **miaomiaoHarem_29BBETA10** | ComfyUI generation (backup, anima/qwen 29B + qwen VAE) | 5.44 GB | |
 | **oneObsession_anima29BV1** | ComfyUI generation (anima/qwen 29B + qwen VAE) | 5.44 GB | |
@@ -268,8 +268,8 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui/ --local-dir ./
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/ --local-dir ./gpt-sovits-weights
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-dir ./live2d-model
 
-# Ternary-Bonsai-2-27B PTQ1_0 (mirror of our repo's llm/ folder, fits 8 GB VRAM):
-huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Ternary-Bonsai-2-27B-PTQ1_0.gguf --local-dir ./models
+# DeepSeek-V4-Pro-Qwen3.5-9B heretic Q4_K_M (mirror of our repo's llm/ folder, fits 8 GB VRAM):
+huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic-Q4_K_M.gguf --local-dir ./models
 ```
 
 > 🇨🇳 Users in China: use hf-mirror.com - no VPN needed:
@@ -287,7 +287,24 @@ All Python/PS scripts read paths from `config.yaml` - no hardcoded paths to edit
 
 ## Local LLM Performance
 
-Running **Qwen3.6-35B-A3B Genesis Hermes V13 MTP APEX Compact** (MoE, 16.11 GiB, 34.66B params, 8/256 experts) via llama.cpp with speculative MTP (Multi-Token Prediction) decoding.
+Running **Qwen3.6-35B-A3B Genesis Hermes Final MTP APEX** (MoE, 24.9 GB, 34.66B params, 8/256 experts) via llama.cpp with speculative MTP (Multi-Token Prediction) decoding.
+
+### Minimum hardware per model — VRAM **and** system RAM
+
+Both budgets are listed; for MoE models the **RAM** number is usually the binding one.
+
+| Model | Min VRAM | Min system RAM | Why that much RAM |
+|-|-|-|-|
+| DeepSeek-V4-Pro-Qwen3.5-9B heretic Q4_K_M (§1) | **8 GB** — whole model on-GPU | 16 GB | weights all live on the card; RAM only carries the OS + the 2 GB `--cache-ram` KV spill |
+| Hermes3.6-35B-A3B Final MoE (`--cpu-moe`) (§3) | **6 GB** | **32 GB** | 24.9 GB of expert weights live in **system RAM**; only the ~3B active params + KV + MTP draft need VRAM |
+| Qwen3.8-27B Ultimate Heretic Q4_K_M, dense `-ngl 99` (§2) | **24 GB** — whole model on-GPU | **32 GB** | the card holds the weights; RAM must hold the 20 GB `--cache-ram` prefix cache + the OS |
+| Qwen3.8-27B Q4_K_M, **partial** `-ngl N` (retired 8 GB route) | 8 GB | 32 GB | the layers that don't fit stay in RAM and are re-read from RAM on every token |
+| Qwen3.8-Flash-Next IQ3_S — **Strata**, 125B MoE (§5) | **8 GB floor** (24 GB for the 131K-context figures below) | **64 GB** | **all experts must be resident in system RAM** — the IQ3_S shards are 83.8 GB on disk; under 64 GB the experts spill and decode speed collapses |
+
+> 🧮 Rule of thumb: a **dense** model is VRAM-limited (RAM only has to cover `--cache-ram`
+> + OS), an **MoE** model is RAM-limited — every expert you refuse to put on the SSD lives
+> in system memory. **8 GB VRAM + 16 GB RAM will not run the 35B MoE or the 125B
+> Flash-Next**, however few parameters are active per token.
 
 ### Launch Command (one source of truth)
 
@@ -297,6 +314,10 @@ Running **Qwen3.6-35B-A3B Genesis Hermes V13 MTP APEX Compact** (MoE, 16.11 GiB,
 > auto-matches the active model filename against `model_profiles` and builds the
 > full `llama-server` command. Models are auto-detected and parameters separate
 > by profile — nothing is hardcoded.
+>
+> 📦 **Hand-typed launch commands for every model / hardware combo are collected
+> in [STARTUP_CODE.md](STARTUP_CODE.md).** The READMEs only describe *which
+> hardware can run which model*.
 >
 > See **"Switching models"** below for the one-liner.
 
@@ -320,10 +341,8 @@ The project root ships a **fixed Jinja chat template** ([froggeric/Qwen-Fixed-Ch
 
 One file covers all Qwen 3.5 / 3.6 / 3.8 sizes, so it works unchanged for both local models. Launch plumbing: `config.yaml` → `llama_chat_template: chat_template.jinja` (relative to the project root), and `llama_config.py` resolves it to `--chat-template-file` — nothing hardcoded. 
 
-```powershell
-llama-server.exe ... --jinja --reasoning-preserve \
-  --chat-template-file "D:\AI_Girlfriend\chat_template.jinja"
-```
+Launch snippet (`--jinja --reasoning-preserve --chat-template-file ...`):
+[STARTUP_CODE.md](STARTUP_CODE.md) §7.
 
 ### Switching models (`restart_llama_degraded.ps1 -SwitchTo`)
 
@@ -331,14 +350,7 @@ Switch between the two active models with a **one-liner** — the script kills t
 current llama-server, rewrites `config.yaml` (`llama_model` / `llama_model_name` /
 `llama_model_id`), re-resolves the profile, restarts, and waits for `/health`:
 
-```powershell
-cd D:\AI_Girlfriend
-# 27B dense (Qwen3.8-27B) — primary tooling model
-.\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.8-27b
-
-# 35B MoE (Hermes Genesis V13) — primary roleplay model
-.\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.6-35b
-```
+Exact one-liners (adjust `cd` to your project root): [STARTUP_CODE.md](STARTUP_CODE.md) §6.
 
 `-SwitchTo` accepts the **key** in `config.yaml` → `llama_model_map` (e.g.
 `qwen3.8-27b` / `qwen3.6-35b`), or a substring (e.g. `-SwitchTo 27b`). Use
@@ -360,20 +372,16 @@ Port layout since 2026-10: **llama.cpp = 9931**, **Strata = 8080**. Never load f
 
 Setup — clone the **original repo** (anywhere outside this project; do not vendor it into `skills/`):
 
-```powershell
-# 1) Clone the original repo, e.g. next to the project
-git clone https://github.com/Niko1221/Strata
-cd Strata
-# 2) Run the start script once: it asks model/quant/context questions,
-#    downloads everything, and generates a per-quant launcher bat (e.g. run-iq3_s.bat)
-START-HERE.bat
-# 3) From now on, start the LLM with the generated bat:
-.\run-iq3_s.bat
-```
+Clone `https://github.com/Niko1221/Strata`, run `START-HERE.bat` **once** (it asks
+model/quant/context questions, downloads everything, and generates a per-quant
+launcher bat), then start the LLM with the generated bat (e.g. `run-iq3_s.bat`).
+Full command block: [STARTUP_CODE.md](STARTUP_CODE.md) §5.
 
+- **Minimum hardware: 8 GB VRAM floor + ≥ 64 GB system RAM.** IQ3_S ships as two shards totalling **83.8 GB**; Strata keeps **all experts resident in system RAM**, and below 64 GB the experts start coming off the SSD, which collapses decode speed. VRAM only carries attention + shared experts + KV + MTP draft — 8 GB is the floor, 24 GB is what the numbers below were measured on.
 - Strata auto-downloads the chosen quant to `Strata-data\models\IQ3_S\` (relative to the clone, when IQ3_S was selected).
-- **Uncensored build (required here):** download from
-  [SC117/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF](https://huggingface.co/SC117/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF),
+- **Uncensored build (required here):** download **both shards** (`00001` + `00002`) from
+  [SC117/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF](https://huggingface.co/SC117/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF)
+  — also mirrored in this project's HF repo: `llm/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-IQ3_S-00001-of-00002.gguf` + `-00002-of-00002.gguf` —
   replace the auto-downloaded files in `Strata-data\models\IQ3_S\`, and **rename them removing `-abliterated-`**
   (keep the rest of the original filename) — Strata only recognizes the renamed files, e.g.
   `Qwen3.8-Flash-Next-GSQ-RCO-abliterated-IQ3_S-00001-of-00002.gguf` → `Qwen3.8-Flash-Next-GSQ-RCO-IQ3_S-00001-of-00002.gguf`.
@@ -384,16 +392,16 @@ START-HERE.bat
   (cold ~2750–2880 / warm ~2500–2560), prompt-cache reuse 62–71%, context peak 110k.
   VRAM stays nearly saturated (~0.4–0.6 GiB free) — hand the card over before running ComfyUI etc.
 
-### Ternary-Bonsai-2-27B PTQ1_0 — fits fully in 8 GB VRAM 🔥
+### DeepSeek-V4-Pro-Qwen3.5-9B heretic (Q4_K_M) — fits fully in 8 GB VRAM 🔥
 
-**Ternary-Bonsai-2-27B PTQ1_0** — hosted in this project's HF repo: **[TAOTAO777/ai-girlfriend-natsume → `llm/Ternary-Bonsai-2-27B-PTQ1_0.gguf`](https://huggingface.co/TAOTAO777/ai-girlfriend-natsume/tree/main/llm)** (same `llm/` folder as the other two LLM models). Original source: base model [prism-ml/Ternary-Bonsai-2-27B-gguf](https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf); PTQ1_0 ternary quant build by [BoldingBuilds](https://huggingface.co/BoldingBuilds/Ternary-Bonsai-2-27B-Abliterated-PTQ1_0-GGUF).
+**DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic (Q4_K_M)** — hosted in this project's HF repo: **[TAOTAO777/ai-girlfriend-natsume → `llm/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic-Q4_K_M.gguf`](https://huggingface.co/TAOTAO777/ai-girlfriend-natsume/tree/main/llm)** (same `llm/` folder as the other LLM models; it replaces the old Ternary-Bonsai PTQ1_0 mirror). Upstream chain: base model [Jackrong/DeepSeek-V4-Pro-Qwen3.5-9B](https://huggingface.co/Jackrong/DeepSeek-V4-Pro-Qwen3.5-9B) → uncensored/decensored "heretic" fine-tune [xtools-at/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic](https://huggingface.co/xtools-at/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic) (Apache-2.0) → Q4_K_M GGUF quant by [mradermacher](https://huggingface.co/mradermacher/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic-GGUF).
 
-**5.9 GB on disk (~5.5 GiB)**. Verified running on the reference **8 GB VRAM** laptop with `-ngl 99`: the whole model fits on the card — no RAM layer split needed. Measured: **decode ~35 t/s+, prefill ~300 t/s**. Tuning notes: [LLAMA_TUNING.md](LLAMA_TUNING.md).
+**6.12 GB on disk (~5.7 GiB)** — 9B dense chat model with MTP head, reasoning + tool-calling, fully uncensored (heretic / decensored / abliterated lineage). Same VRAM class as the ternary build it replaced: the whole model loads with `-ngl 99` on an **8 GB VRAM** card (served by llama.cpp on port **:9931**). **System RAM: 16 GB is enough** — nothing but the 2 GB `--cache-ram` prefix cache and the OS sits there, which is why this is the only current pick that runs on a 16 GB laptop. Speed figures for this specific quant are pending re-measurement. Tuning notes: [LLAMA_TUNING.md](LLAMA_TUNING.md).
 
 > 🔴 **Two NON-NEGOTIABLE constraints for 8 GB VRAM:**
 >
-> 1. **KV cache MUST be Q4: `-ctk q4_0 -ctv q4_0`.** Anything higher (f16 / f32 KV) will blow the VRAM budget immediately.
-> 2. **Context window MUST be `-c ≤ 75000`.** With Q4 KV, weights (~5.5 GiB) + KV cache + compute buffers stay inside 8 GB only up to ~75K tokens. Anything larger does **not** fit on an 8 GB card.
+> 1. **KV cache MUST be Q4** (`-ctk q4_0 -ctv q4_0`). Anything higher (f16 / f32 KV) blows the VRAM budget immediately.
+> 2. **Keep on-card KV small** — offload cache to system RAM (`--cache-ram`) with a single slot (`--parallel 1`). That is what lets this 9B run the full `-c 120000` context inside 8 GB. Launch command: [STARTUP_CODE.md](STARTUP_CODE.md) §1.
 
 ### Silicon Rider Bench (Agent Benchmark)
 
@@ -401,7 +409,7 @@ START-HERE.bat
 
 **Models under test** (all `--seed 622539`):
 - **deepseek-v4-flash (0731)** — remote, unlimited-context baseline. Cloud-class agent ability (~Claude 4.6–4.8 tier in this benchmark).
-- **Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf** (current) — RTX 5070 Laptop, 8 GB VRAM, 32 GB DDR5 RAM
+- **Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf** (build this bench was run on; the current lineup ships **Genesis-Final-MTP-APEX**) — RTX 5070 Laptop, 8 GB VRAM, 32 GB DDR5 RAM
 
 #### Results (Seed 622539, Level 1, 24 game-hours)
 
@@ -445,75 +453,20 @@ Qwen3.6 MoE uses SSM (Gated Delta Net) hybrid attention with `--kv-unified`.
 
 Primary tooling/assistant dense model. Runs via llama.cpp with **built-in MTP** speculative decoding (no separate draft GGUF needed). Auto-detected via `config.yaml` → `model_profiles` (`qwen3.8-27b-mtp`).
 
-### Launch Command (8 GB VRAM, Q4_K_S)
+### Which Hardware Runs It
 
-Switch to it, or launch manually:
-
-```powershell
-# Preferred: auto-switch + auto-params (see "Switching models" above)
-.\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.8-27b
-
-```
-
-> Reference hardware: **i9-14900HX + RTX 5070 Laptop (8 GB) + 64 GB RAM**. The
-> model weights are split via a **partial offload `-ngl 14`** (first 14 layers on
-> GPU, rest in RAM with `--no-mmap`); KV cache uses `--cache-ram 2000`; the
-> MTP draft context is offloaded fully to the GPU (`--spec-draft-ngl 99`) so
-> speculative decoding stays fast on an 8 GB card. **Q4_K_S quantization** keeps
-> the model at ~15.8 GB — the sweet spot for dense 27B on consumer hardware.
-> **`rea` not specified** — defaults to `medium` reasoning depth via the chat
-> template. Flag-by-flag notes, key parameters, and live-log metrics follow below.
-
-> 💡 **27B dense on 8 GB VRAM — key parameters explained:**
->
-> - **`-ngl 14`** — 14 layers offloaded to GPU (static split; rest in system RAM). For an 8 GB card with a ~15.8 GB Q4_K_S model, this is the sweet spot that fits without OOM while still getting meaningful GPU acceleration. Adjust up/down based on your actual VRAM.
-> - **`-ctk q4_0 -ctv q4_0`** — KV cache quantized to 4-bit, halving VRAM usage for the context window. Essential for large context with limited VRAM.
-> - **`--cache-ram 2000`** — 2 GB RAM budget for the KV cache on the CPU side.
-> - **`-c 100000`** — 100K token context window (the model's effective limit at this quantization).
-> - **`--spec-draft-n-max 3`** — MTP speculative decoding drafts up to 3 tokens ahead; Qwen3.8 ships its own MTP head.
-> - **`--spec-draft-p-min 0.88`** — Only accept draft tokens with ≥88% confidence, keeping the acceptance rate high.
-> - **`--spec-draft-ngl 99`** — Offload the entire draft context to GPU for faster speculative decoding.
-> - **Quantization: Q4_K_S** — ~15.8 GB model size, excellent quality/VRAM balance for dense 27B on consumer hardware. This is a dense (non-MoE) model, so all 27B parameters are active at inference (vs MoE which activates a subset).
-> - **`rea` not specified** — defaults to `medium` reasoning depth via the chat template (no injected thinking tokens, preserving KV-cache parity).
-
-**Flag notes (dense 27B profile, 8 GB VRAM optimum, Q4_K_S):**
-
-| Flag | Value | Why |
+| VRAM | System RAM | How it runs |
 |-|-|-|
-| `-m` | Q4_K_S model path | **Q4_K_S quantization** — ~15.8 GB, excellent quality/VRAM balance for dense 27B on consumer hardware |
-| `-c` | `100000` | 100K context window (`n_ctx_slot = 100096`) |
-| `-ngl` | `14` | **Partial GPU offload** — first 14 layers on GPU, rest in RAM; measured optimum for Q4_K_S on 8 GB VRAM (no dynamic swapping, safe to raise until KV/MTP headroom disappears) |
-| `-ctk` / `-ctv` | `q4_0` | KV cache quantized to q4_0 to halve VRAM |
-| `--cache-ram` | `2000` | 2 GB RAM budget for KV cache on CPU side |
-| `--batch-size` / `--ubatch-size` | `2048` / `1024` | Prefill batch sized for 8 GB VRAM headroom (2:1 rule) |
-| `--spec-type` | `draft-mtp` | Enable built-in MTP speculative decoding |
-| `--spec-draft-n-max` | `3` | Draft up to 3 tokens per step (Qwen3.8's built-in MTP head) |
-| `--spec-draft-p-min` | `0.88` | Only accept drafts ≥0.88 token probability for high acceptance rate |
-| `--spec-draft-ngl` | `99` | Offload the whole MTP draft context to GPU for fast speculative decoding |
-| `--no-mmap` | — | Let llama.cpp manage RAM-side memory (clean CPU/GPU split) |
-| `--reasoning-preserve` | — | Preserve thinking blocks for KV reuse |
-| `rea` | **not specified** | Defaults to `medium` reasoning depth via chat template — optimal for tooling/agent tasks (fast, direct responses) |
+| **24 GB** (RTX PRO 4000 / 5090 DV2 / 4090 / 3090ti / 5090 Laptop) | **32 GB** (`--cache-ram 20000` = 20 GB prefix cache lives in RAM; 64 GB removes the context ceiling) | full-GPU offload — launch command: [STARTUP_CODE.md](STARTUP_CODE.md) §2 |
 
-### Key Metrics (27B Dense, Q4_K_S — from live `llama-server` log)
+Or use the auto-switch one-liner ("Switching models" above) — parameters come from `config.yaml`.
 
-| Metric | Value | Notes |
-|-|-|-|
-| Model Load Time | ~1s | `--no-mmap` (~15.8 GB, Q4_K_S) |
-| Prefill Speed | **~163 ~ 174 t/s** | First prompt 19.3k tokens @ 163.6 t/s; scales down with prompt length |
-| Token Generation | **~4 ~ 5 tok/s** | Steady decode (MTP active, `-ngl 14`) |
-| MTP draft acceptance | **~93 ~ 97%** | e.g. `0.93599 (541/578)`, `0.96859 (185/191)`; mean accepted run length **2.5 ~ 5.2** |
-| Context Limit | 100K (`n_ctx_slot = 100096`) | `--kv-unified` + `--cache-ram 2000` |
-| MTP retention (`--spec-draft-p-min`) | **0.88** | Draft tokens below 0.88 confidence are rejected |
-| GPU layers (`-ngl`) | **14** | Static split; log line `n_gpu_layers already set by user to 14, abort` is a harmless notice (auto-fit skipped), **not** an error |
+> Measured (**RTX 5090 Laptop 24 GB**, Q4_K_M, full-GPU): decode **~35 t/s**,
+> prefill **~1300 t/s**, with built-in MTP (`--spec-draft-n-max 4`,
+> `--spec-draft-p-min 0.52`). The former **8 GB partial-offload setup
+> (`-ngl 14/15`)** has been retired — 27B dense now targets 24 GB-class cards.
 
-> 📈 **MTP explained:** with `--spec-draft-n-max 5` + `--spec-draft-p-min 0.84`,
-> llama.cpp asks the MTP head to propose up to 5 next tokens, then keeps each only if
-> its probability is ≥0.84. In practice **~90–100% of drafted tokens are accepted**
-> (mean accepted run length ≈ 3.2–5.3), so effective throughput is roughly 3–5× a
-> single speculative token per forward pass while the 8 GB card stays within its
-> VRAM cap.
-
-> 💡 **MoE vs Dense**: The 35B MoE activates only ~3B parameters per token (8/256 experts) and fits GPU well (48 tok/s). The 27B dense activates all 27B, exceeding 8 GB VRAM, so it splits to CPU/RAM via `-ngl 14` and decodes ~4–5 tok/s with MTP. Use the **27B dense** when you want full 27B activation for tooling / agent tasks; use the **35B MoE** for fast roleplay. The **Q4_K_S quant (~15.8 GB)** is the sweet spot for dense 27B on consumer hardware — excellent quality while fitting on 8 GB VRAM with partial offload.
+> 💡 **MoE vs Dense**: The 35B MoE activates only ~3B parameters per token (8/256 experts) and runs fast even on an 8 GB card. The 27B dense activates all 27B, so it needs a **24 GB-class** card. On 8 GB VRAM, prefer the **35B MoE** for roleplay or the **DeepSeek-V4 9B** (§1 of [STARTUP_CODE.md](STARTUP_CODE.md)) for a fully-on-GPU dense model. Use the **27B dense** when you want full 27B activation for tooling / agent tasks. **System RAM is a separate budget**: the 35B MoE wants **32 GB** (experts resident), the 27B dense wants **32 GB** (mostly the 20 GB prefix cache), and the Strata IQ3_S build wants **≥ 64 GB** to keep every expert in RAM — see the minimum-hardware table at the top of **Local LLM Performance**.
 
 ### VRAM Tiering Strategy
 
@@ -682,19 +635,9 @@ Claude Code automatically runs a task loop on startup:
 
 ### Launch
 
-```powershell
-# Prerequisites: npm install -g @anthropic-ai/claude-code
-# Start Shiki Daemon first (.\shiki.cmd), then:
-
-# Full AgentRQ workflow (Task Board + Claude Code)
-.\claude-code.ps1
-
-# Task Board only (browser UI, no Claude)
-.\claude-code.ps1 -BoardOnly
-
-# Stop the task board
-.\claude-code.ps1 -KillBoard
-```
+Launch commands (full workflow / board-only / kill) and their prerequisites
+(`@anthropic-ai/claude-code` npm package, Shiki Daemon started first):
+[STARTUP_CODE.md](STARTUP_CODE.md) §9.
 
 Then open **http://127.0.0.1:19280** - create tasks, watch Claude Code pick them up.
 

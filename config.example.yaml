@@ -216,31 +216,30 @@ llama:
 # 命中后该预设的 params 覆盖上方 llama 区块的默认值。
 # 未命中任何预设时使用 llama 区块默认值。
 model_profiles:
-  # ---- Qwen3.8-27B (internal MTP, Q4_K_S, 8GB VRAM) ----
-  # Quantization: Q4_K_S (~15.8 GB) — sweet spot for dense 27B on consumer hardware
+  # ---- Qwen3.8-27B (internal MTP, Q4_K_M, 24 GB-class VRAM; 8 GB partial-offload scheme retired) ----
+  # Quantization: Q4_K_M (~15.7 GB) — full GPU offload, launch command: STARTUP_CODE.md §2
   - name: "qwen3.8-27b-mtp"
     # Match keywords against the model filename / 按模型文件名匹配的关键字
     match:
       - qwen3.8-27b
     params:
-      context: 100000        # Effective context for this model / 该模型生效上下文
-      ctk: q4_0
-      ctv: q4_0
-      batch_size: 2048
-      ubatch_size: 1024
-      threads: 24
-      threads_batch: 24
-      ngl: 14                # Partial GPU offload: first 14 layers on GPU (8GB VRAM optimum)
-      no_mmap: true          # Let llama.cpp manage RAM-side memory
+      context: 130000        # Effective context for this model / 该模型生效上下文
+      ctk: q8_0
+      ctv: q8_0
+      batch_size: 3000
+      ubatch_size: 1500
+      threads: 16
+      threads_batch: 16
+      ngl: 99                # Full GPU offload (llama.cpp auto-fits layers to available VRAM)
       cpu_moe: false
       cpu_mask: ''
-      cache_ram: 2000        # 2 GB RAM budget for KV cache
+      cache_ram: 20000       # 20 GB RAM budget for KV cache
       no_warmup: true
-      # Qwen3.8 ships its own MTP; draft up to 3 tokens, keep only >=0.88 confidence,
-      # offload the whole draft context to GPU. Reference HW: i9-14900HX + RTX 5070 8GB.
-      # Qwen3.8 内部自带 MTP：draft 最多 3 tokens，置信度阈值 0.88，draft 上下文全量上 GPU
-      spec_draft_n_max: 3
-      spec_draft_p_min: 0.88
+      # Qwen3.8 ships its own MTP; draft up to 4 tokens, keep only >=0.52 confidence,
+      # offload the whole draft context to GPU. Mirrors STARTUP_CODE.md §2.
+      # Qwen3.8 内部自带 MTP：draft 最多 4 tokens，置信度阈值 0.52，draft 上下文全量上 GPU（与 STARTUP_CODE.md §2 一致）
+      spec_draft_n_max: 4
+      spec_draft_p_min: 0.52
       spec_draft_ngl: 99
       rea: null              # Not specified — defaults to 'medium' via chat template
 
@@ -262,9 +261,10 @@ model_profiles:
       spec_draft_n_max: 1
       rea: false
 
-  # ── Hermes3.6-35B Genesis V9 (MTP, APEX Compact, MoE) ──
-  - name: "hermes3.6-35b-genesis-v9-mtp"
+  # ── Hermes3.6-35B Genesis Final (MTP, APEX, MoE) — 6 GB VRAM + 32 GB RAM ──
+  - name: "hermes3.6-35b-genesis-final-mtp"
     match:
+      - hermes3.6-35b-genesis-final
       - hermes3.6-35b-genesis-v9
       - hermes3.6-35b-genesis
       - hermes3.6-35b
@@ -309,9 +309,9 @@ llama_model_map:
   # ⚠️ Qwen3.8-Flash-Next is NOT in this map: it is served by Strata on
   # :8080. Do not load the flash-next GGUF into llama.cpp (RAM/VRAM clash).
   # ⚠️ flash-next 不在本表：由 Strata 在 8080 服务，勿用 llama.cpp 加载（内存/显存冲突）。
-  qwen3.6-35b: "D:\\model\\Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf"
-  # Q4_K_S (~15.8 GB) — sweet spot for dense 27B on 8GB VRAM with partial offload (-ngl 14)
-  qwen3.8-27b: "D:\\model\\Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_S.gguf"
+  qwen3.6-35b: "D:\\model\\Hermes3.6-35B-A3B-Uncensored-Genesis-Final-MTP-APEX.gguf"
+  # Q4_K_M (~15.7 GB) — dense 27B for 24 GB-class VRAM (full offload)
+  qwen3.8-27b: "D:\\model\\Qwen3.8-27B-Ultimate-Heretic-Uncn-Turbo-Brilli-50x-AGI-NEO-MTP-Q4_K_M.gguf"
   qwen3.6-27b: "E:\\Qwen3.6-27B-Fable-MTP-Q4_K_S.gguf"
 
 # ============================================================

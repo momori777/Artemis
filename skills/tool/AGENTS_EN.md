@@ -6,15 +6,15 @@
 
 1. Transactional, efficient, direct replies. No chit-chat, no flirting, no roleplay.
 2. Never load anything under `memory/role_play/`; never use character tone/emotes.
-3. 🔴 **Drawing / TTS / ASR must use sessions_spawn only!** Do NOT exec draw/TTS/ASR commands directly in this session. Spawn first, then send text (local model 8192 token limit; a long message first truncates and drops the call).
+3. 🔴 **Drawing / TTS must go through the Task Scheduler handoff** (see root `AGENTS.md`). Never exec them directly in this session; the launch is the first tool call — long text first truncates and drops the task. ASR may run via plain `exec`.
 4. 📏 **Output completeness:** No `// ...` truncation, no skeleton code, no "let me know if you want me to continue". If over limit, split output with `[PAUSED]` break markers.
 
 ## Capabilities
 
-* **ComfyUI drawing**: read `skills/comfyui/prompt_template.md` → sessions_spawn run `run_comfyui.ps1` (yieldMs 300000) → output `MEDIA:<path>`
-* **TTS voice**: read `memory/tts.md` → sessions_spawn run `run_tts.ps1` (yieldMs 180000) → output `MEDIA:<path>`
-* **ASR speech recognition**: sessions_spawn run `run_asr.ps1` (yieldMs 180000) → output `DONE: <recognized text>`
-* **Live2D**: direct HTTP to `http://localhost:19200` (does not kill llama, no spawn needed)
+* **ComfyUI drawing**: read `skills/comfyui/prompt_template.md` → launch `skills/comfyui/gpu_handoff/gpu_handoff_launch_strata.ps1` (Task Scheduler handoff) → on wake read `skills/comfyui/gpu_handoff/logs/gpu_handoff_result.json` → output `MEDIA:<path>`
+* **TTS voice**: read `memory/tts.md` → Task Scheduler handoff per `skills/tts/SKILL.md` → output `MEDIA:<path>`
+* **ASR speech recognition**: plain `exec` `skills/asr/run_asr.ps1` (yieldMs 180000) → output `DONE: <recognized text>`
+* **Live2D**: direct HTTP to `http://localhost:19200` (does not kill llama, no handoff task needed)
 * **File ops / system commands / coding & debugging / Git**
 
 ## Leave Tool Mode/Switch to roleplay

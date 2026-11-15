@@ -160,10 +160,10 @@ Qwen3.6-35B (Language Mind) ←→ Cosmos 3 Nano / Qwen-Drive-1.0 (Physical Mind
 
 ### デュアルコンパクトアーキテクチャ
 
-| コンポーネント | モデル | パラメータ | VRAM |
-|-----------|-------|--------|------|
-| 🧠 言語マインド | Qwen3.6-35B-A3B (MoE) | 合計 35B / アクティブ 3B | ~8 GB |
-| 🌍 物理マインド | Cosmos 3 Nano FP8 | 15.75B | ~16 GB |
+| コンポーネント | モデル | パラメータ | VRAM | システム RAM |
+|-----------|-------|--------|------|------------|
+| 🧠 言語マインド | Qwen3.6-35B-A3B (MoE) | 合計 35B / アクティブ 3B | ~6–8 GB | 32 GB（エキスパート常駐） |
+| 🌍 物理マインド | Cosmos 3 Nano FP8 | 15.75B | ~16 GB | 16 GB |
 
 ### ハードウェアロードマップ
 
@@ -234,10 +234,10 @@ Qwen3.6-35B (Language Mind) ←→ Cosmos 3 Nano / Qwen-Drive-1.0 (Physical Mind
 
 | モデル | 用途 | サイズ | コンテキスト |
 |-|-|-|-|
-| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes V13 MTP APEX Compact** (GGUF) | チャット LLM（主力 MoE） | 16.11 GB | 120K |
-| **Qwen3.8-27B-TurboFCFusion** (Q4_K_S GGUF) | チャット LLM（dense、ツール用） | ~15.8 GB | 100K |
+| **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes Final MTP APEX** (GGUF) | チャット LLM（主力 MoE——**6 GB VRAM + 32 GB RAM**、`--cpu-moe`） | 24.9 GB | 120K |
+| **Qwen3.8-27B Ultimate Heretic Uncn Turbo Brilli 50x AGI NEO MTP** (Q4_K_M GGUF) | チャット LLM（dense、ツール用 — **24 GB VRAM + 32 GB RAM**） | ~15.7 GB | 130K |
 | **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | チャット LLM（dense、旧型） | 13.5 GB | 150K |
-| **Ternary-Bonsai-2-27B PTQ1_0** (ternary GGUF) | チャット LLM（**8 GB VRAM に完全収載**、`-ngl 99`） | ~5.9 GB | **≤ 75K**（KV キャッシュは**必ず** q4_0） |
+| **DeepSeek-V4-Pro-Qwen3.5-9B heretic** (Q4_K_M GGUF、uncensored) | チャット LLM（**8 GB VRAM に完全収載**、`-ngl 99`；RAM 16 GB で可） | ~6.1 GB | **≤ 75K**（KV キャッシュは**必ず** q4_0） |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI 生成（デフォルト、SDXL/Illustrious） | 6.46 GB | |
 | **miaomiaoHarem_29BBETA10** | ComfyUI 生成（バックアップ、anima/qwen 29B + qwen VAE） | 5.44 GB | |
 | **oneObsession_anima29BV1** | ComfyUI 生成（anima/qwen 29B + qwen VAE） | 5.44 GB | |
@@ -268,8 +268,8 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume comfyui/ --local-dir ./
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume gpt-sovits-weights/ --local-dir ./gpt-sovits-weights
 huggingface-cli download TAOTAO777/ai-girlfriend-natsume live2d-model/ --local-dir ./live2d-model
 
-# Ternary-Bonsai-2-27B PTQ1_0 (mirror of our repo's llm/ folder, fits 8 GB VRAM):
-huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Ternary-Bonsai-2-27B-PTQ1_0.gguf --local-dir ./models
+# DeepSeek-V4-Pro-Qwen3.5-9B heretic Q4_K_M (mirror of our repo's llm/ folder, fits 8 GB VRAM):
+huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic-Q4_K_M.gguf --local-dir ./models
 ```
 
 > 🇨🇳 中国本土のユーザー: hf-mirror.com を使用 - VPN 不要:
@@ -287,7 +287,21 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Ternary-Bonsai-2-27
 
 ## ローカル LLM 性能
 
-**Qwen3.6-35B-A3B Genesis Hermes V13 MTP APEX Compact**（MoE、16.11 GiB、34.66B パラメータ、8/256 エキスパート）を llama.cpp 経由、投機的 MTP（Multi-Token Prediction）デコーディングで稼働。
+**Qwen3.6-35B-A3B Genesis Hermes Final MTP APEX**（MoE、24.9 GB、34.66B パラメータ、8/256 エキスパート）を llama.cpp 経由、投機的 MTP（Multi-Token Prediction）デコーディングで稼働。
+
+### モデル別のハードウェア下限 — VRAM **と** システム RAM
+
+両方とも満たす必要あり。**MoE モデルでは通常 RAM のほうが先に上限になる**。
+
+| モデル | VRAM 下限 | システム RAM 下限 | なぜその RAM が必要か |
+|-|-|-|-|
+| DeepSeek-V4-Pro-Qwen3.5-9B heretic Q4_K_M（§1） | **8 GB**（全量 GPU） | 16 GB | 重みはすべて GPU 側。RAM は OS + 2 GB の `--cache-ram` KV スピルのみ |
+| Hermes3.6-35B-A3B Final MoE（`--cpu-moe`）（§3） | **6 GB** | **32 GB** | 24.9 GB のエキスパート重みが**システム RAM に常駐**。VRAM は ~3B アクティブ部 + KV + MTP ドラフトだけ |
+| Qwen3.8-27B Ultimate Heretic Q4_K_M dense `-ngl 99`（§2） | **24 GB**（全量 GPU） | **32 GB** | 重みは GPU 側。RAM は 20 GB の `--cache-ram` プレフィックスキャッシュ + OS |
+| Qwen3.8-27B Q4_K_M **部分オフロード** `-ngl N`（削除済みの 8 GB 方式） | 8 GB | 32 GB | 収まらなかった層は RAM に残り、トークンごとに RAM から読み出し |
+| Qwen3.8-Flash-Next IQ3_S —— **Strata**、125B MoE（§5） | **8 GB スタート**（下記の 131K 実測値は 24 GB） | **64 GB** | **全エキスパートをシステム RAM に常駐**させる必要がある——IQ3_S は 2 ボリュームで計 83.8 GB。64 GB 未満ではエキスパートが SSD に逃げ、decode が崩壊 |
+
+> 🧮 経験則：**dense** モデルは VRAM 律速（RAM は `--cache-ram` + OS 分だけ）、**MoE** モデルは RAM 律速——SSD に置かないエキスパートは全部 RAM に住む。**8 GB VRAM + 16 GB RAM では 35B MoE も 125B Flash-Next も動かない**（アクティブパラメータがどんなに小さくても）。
 
 ### 起動コマンド（唯一の真実のソース）
 
@@ -297,6 +311,9 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Ternary-Bonsai-2-27
 > アクティブなモデルファイル名を `model_profiles` と自動マッチして完全な
 > `llama-server` コマンドを組み立てます。モデルは自動検出、パラメータはプロファイルごとに
 > 分離 - 何もハードコードされていません。
+>
+> 📦 **手入力の起動コマンドはすべて [STARTUP_CODE.md](STARTUP_CODE.md) に集約しました。**
+> README は*どのハードウェアでどのモデルが動くか*のみ記載します。
 >
 > モデル切替の一行コマンドは下記の **"モデル切替"** を参照。
 
@@ -318,10 +335,8 @@ huggingface-cli download TAOTAO777/ai-girlfriend-natsume llm/Ternary-Bonsai-2-27
 
 1つのファイルで Qwen 3.5 / 3.6 / 3.8 の全サイズをカバーするため、両ローカルモデルで無修正で使用可能。起動配管: `config.yaml` → `llama_chat_template: chat_template.jinja`（プロジェクトルートからの相対）、`llama_config.py` が `--chat-template-file` へ解決 - ハードコードなし。 
 
-```powershell
-llama-server.exe ... --jinja --reasoning-preserve \
-  --chat-template-file "D:\AI_Girlfriend\chat_template.jinja"
-```
+起動スニペット（`--jinja --reasoning-preserve --chat-template-file ...`）:
+[STARTUP_CODE.md](STARTUP_CODE.md) §7。
 
 ### モデル切替（`restart_llama_degraded.ps1 -SwitchTo`）
 
@@ -329,14 +344,7 @@ llama-server.exe ... --jinja --reasoning-preserve \
 kill し、`config.yaml`（`llama_model` / `llama_model_name` / `llama_model_id`）を書き換え、
 プロファイルを再解決、再起動し、`/health` を待つ:
 
-```powershell
-cd D:\AI_Girlfriend
-# 27B dense (Qwen3.8-27B) — primary tooling model
-.\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.8-27b
-
-# 35B MoE (Hermes Genesis V13) — primary roleplay model
-.\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.6-35b
-```
+具体的な一行コマンド（`cd` はプロジェクトルートに合わせて変更）: [STARTUP_CODE.md](STARTUP_CODE.md) §6。
 
 `-SwitchTo` は `config.yaml` → `llama_model_map` の **キー**（例
 `qwen3.8-27b` / `qwen3.6-35b`）、または部分文字列（例 `-SwitchTo 27b`）を受け付けます。
@@ -358,21 +366,16 @@ llama チューニングの詳細は [LLAMA_TUNING.md](LLAMA_TUNING.md) を参�
 
 セットアップ — **元リポジトリ**を clone（本プロジェクト外の任意の場所、`skills/` に同梱しない）：
 
-```powershell
-# 1) 元リポジトリを clone（プロジェクトの隣など）
-git clone https://github.com/Niko1221/Strata
-cd Strata
-# 2) 起動スクリプトを一度実行：モデル/量子化/コンテキストを尋ね、
-#    全ファイルをダウンロードし、量子化別の起動 bat（例 run-iq3_s.bat）を生成
-START-HERE.bat
-# 3) 以降は生成された bat で LLM を起動：
-.\run-iq3_s.bat
-```
+`https://github.com/Niko1221/Strata` を clone し、**初回のみ** `START-HERE.bat` を実行（モデル/量子化/
+コンテキストを尋ね、全ファイルをダウンロードし、量子化別の起動 bat を生成）、以降は生成された bat
+（例 `run-iq3_s.bat`）で LLM を起動します。完全なコマンドブロック: [STARTUP_CODE.md](STARTUP_CODE.md) §5。
 
+- **ハードウェア下限：VRAM 8 GB スタート + RAM ≥ 64 GB。** IQ3_S は 2 分割ボリュームで計 **83.8 GB**、Strata は**全エキスパートをシステム RAM に常駐**させる。64 GB 未満ではエキスパートが SSD から出入りし始め、decode 速度が崩壊する。VRAM は注意 + 共有エキスパート + KV + MTP ドラフトのみ——8 GB が下限で、下記の実測値は 24 GB で計測。
 - Strata は選択した量子化を `Strata-data\models\IQ3_S\`（clone からの相対パス、IQ3_S を選んだ場合）へ自動ダウンロード。
 - **Uncensored ビルド（本プロジェクトでは必須）：**
   [SC117/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF](https://huggingface.co/SC117/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF)
-  からダウンロードし、`Strata-data\models\IQ3_S\`（量子化名ディレクトリ）の自動ダウンロードファイルを差し替え、
+  から**両分割ボリューム**（`00001` + `00002`）をダウンロード（本プロジェクト HF リポジトリにもミラーあり：`llm/Qwen3.8-Flash-Next-GSQ-RCO-abliterated-IQ3_S-00001-of-00002.gguf` + `-00002-of-00002.gguf`）、
+  `Strata-data\models\IQ3_S\`（量子化名ディレクトリ）の自動ダウンロードファイルを差し替え、
   **リネームして `-abliterated-` を除去**（残りは元ファイル名のまま）—— Strata はリネーム後のファイルのみ認識。例：
   `Qwen3.8-Flash-Next-GSQ-RCO-abliterated-IQ3_S-00001-of-00002.gguf` → `Qwen3.8-Flash-Next-GSQ-RCO-IQ3_S-00001-of-00002.gguf`。
 - ヘルスチェック：`http://127.0.0.1:8080/health` → `"service": "strata"`。OpenAI 互換エンドポイント：`http://127.0.0.1:8080/v1`。
@@ -382,16 +385,16 @@ START-HERE.bat
   （cold ~2750–2880 / warm ~2500–2560）、prompt cache 再利用 62–71%、コンテキストピーク 110k トークン。
   VRAM はほぼ上限（空き ~0.4–0.6 GB）——ComfyUI 等の GPU タスクは先に明示的な譲渡を。
 
-### Ternary-Bonsai-2-27B PTQ1_0 — 8 GB VRAM に完全収載 🔥
+### DeepSeek-V4-Pro-Qwen3.5-9B heretic（Q4_K_M）— 8 GB VRAM に完全収載 🔥
 
-**Ternary-Bonsai-2-27B PTQ1_0** - 本プロジェクトの HF リポジトリでホスト: **[TAOTAO777/ai-girlfriend-natsume → `llm/Ternary-Bonsai-2-27B-PTQ1_0.gguf`](https://huggingface.co/TAOTAO777/ai-girlfriend-natsume/tree/main/llm)**（他の 2 つの LLM モデルと同じ `llm/` フォルダ）。元のソース: ベースモデル [prism-ml/Ternary-Bonsai-2-27B-gguf](https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf)、PTQ1_0 三元量子化ビルドは [BoldingBuilds](https://huggingface.co/BoldingBuilds/Ternary-Bonsai-2-27B-Abliterated-PTQ1_0-GGUF) による。
+**DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic（Q4_K_M）** - 本プロジェクトの HF リポジトリでホスト: **[TAOTAO777/ai-girlfriend-natsume → `llm/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic-Q4_K_M.gguf`](https://huggingface.co/TAOTAO777/ai-girlfriend-natsume/tree/main/llm)**（他の LLM モデルと同じ `llm/` フォルダ；旧 Ternary-Bonsai PTQ1_0 ミラーを置き換えました）。上流チェーン: ベースモデル [Jackrong/DeepSeek-V4-Pro-Qwen3.5-9B](https://huggingface.co/Jackrong/DeepSeek-V4-Pro-Qwen3.5-9B) → uncensored/decensored「heretic」ファインチューン [xtools-at/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic](https://huggingface.co/xtools-at/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic)（Apache-2.0）→ Q4_K_M GGUF 量子化は [mradermacher](https://huggingface.co/mradermacher/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic-GGUF) による。
 
-**ディスク上 5.9 GB（~5.5 GiB）**。リファレンス **8 GB VRAM** laptop で `-ngl 99` での稼働を検証済み: モデル全体がカードに収まる - RAM への層分割不要。実測: **デコード ~35 t/s+、prefill ~300 t/s**。チューニングノート: [LLAMA_TUNING.md](LLAMA_TUNING.md)。
+**ディスク上 6.12 GB（~5.7 GiB）** — 9B 密チャットモデル（MTP ヘッド付き）、推論 + ツールコール対応、完全 uncensored（heretic / decensored / abliterated 系）。置き換えた ternary ビルドと同じ VRAM クラス: **8 GB VRAM** で `-ngl 99` 全収載可能 - RAM への層分割不要（llama.cpp 提供、ポート **:9931**）。**RAM は 16 GB で十分**——2 GB の `--cache-ram` プレフィックスキャッシュと OS 以外の常駐がないため、現行ラインナップで 16 GB RAM ノートでも動く唯一の選択。この量子化版の実測速度は再計測中。チューニングノート: [LLAMA_TUNING.md](LLAMA_TUNING.md)。
 
 > 🔴 **8 GB VRAM での 2 つの NON-NEGOTIABLE（交渉不可）制約:**
 >
-> 1. **KV キャッシュは必ず Q4: `-ctk q4_0 -ctv q4_0`。** これ以上高い設定（f16 / f32 KV）は即座に VRAM 予算を吹っ飛ばします。
-> 2. **コンテキストウィンドウは必ず `-c ≤ 75000`。** Q4 KV なら、重み（~5.5 GiB）+ KV キャッシュ + 計算バッファが 8 GB 内に収まるのは ~75K トークンまで。それ以上のサイズは 8 GB カードに**収まりません**。
+> 1. **KV キャッシュは必ず Q4**（`-ctk q4_0 -ctv q4_0`）。これ以上高い設定（f16 / f32 KV）は即座に VRAM 予算を吹っ飛ばします。
+> 2. **オンカード KV を小さく保つ** — キャッシュはシステム RAM へオフロード（`--cache-ram`）しスロットは 1 つ（`--parallel 1`）。これにより 9B は 8 GB 内で `-c 120000` 全文脈を稼働できます。起動コマンド: [STARTUP_CODE.md](STARTUP_CODE.md) §1。
 
 ### Silicon Rider Bench（エージェントベンチマーク）
 
@@ -399,7 +402,7 @@ START-HERE.bat
 
 **テスト対象モデル**（すべて `--seed 622539`）:
 - **deepseek-v4-flash (0731)** - リモート、無制限コンテキストの基準。クラウド級のエージェント能力（このベンチマークでは Claude 4.6–4.8 級）。
-- **Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf**（現行） - RTX 5070 Laptop、8 GB VRAM、32 GB DDR5 RAM
+- **Hermes3.6-35B-A3B-Uncensored-Genesis-V9-MTP-APEX-Compact.gguf**（このベンチを実行したビルド。現行ラインナップは **Genesis-Final-MTP-APEX**） - RTX 5070 Laptop、8 GB VRAM、32 GB DDR5 RAM
 
 #### 結果（Seed 622539、Level 1、24 ゲーム時間）
 
@@ -443,69 +446,19 @@ Qwen3.6 MoE は SSM（Gated Delta Net）ハイブリッドアテンションを 
 
 主力のツール/アシスタント dense モデル。llama.cpp 経由、**内蔵 MTP** 投機デコーディングで稼働（別途 draft GGUF 不要）。`config.yaml` → `model_profiles`（`qwen3.8-27b-mtp`）で自動検出。
 
-### 起動コマンド（8 GB VRAM、Q4_K_S）
+### どのハードウェアで動くか
 
-切替、または手動起動:
-
-```powershell
-# Preferred: auto-switch + auto-params (see "Switching models" above)
-.\skills\shared\restart_llama_degraded.ps1 -SwitchTo qwen3.8-27b
-
-```
-
-> リファレンスハードウェア: **i9-14900HX + RTX 5070 Laptop (8 GB) + 64 GB RAM**。
-> モデル重みは**部分オフロード `-ngl 14`** で分割（最初の 14 層を GPU、残りを
-> `--no-mmap` で RAM）、KV キャッシュは `--cache-ram 2000`、MTP draft コンテキストは
-> GPU へ完全オフロード（`--spec-draft-ngl 99`）し、8 GB カードでも投機デコーディングが
-> 速い。Q4_K_S 量子化でモデル ~15.8 GB - consumer hardware の dense 27B の甘スポット。
-> **`rea` 未指定** - チャットテンプレート経由で推論深度 `medium` がデフォルト。
-> フラグごとのノート、キーパラメータ、ライブログメトリクスは下記に。
-
-> 💡 **27B dense on 8 GB VRAM - キーパラメータ解説:**
->
-> - **`-ngl 14`** - 14 層を GPU へオフロード（静的分割、残りはシステム RAM）。8 GB カード + ~15.8 GB Q4_K_S モデルなら、OOM せずに意味ある GPU 加速を得る甘スポット。実際の VRAM に応じて上下調整。
-> - **`-ctk q4_0 -ctv q4_0`** - KV キャッシュを 4-bit 量子化しコンテキストウィンドウの VRAM 使用量を半減。VRAM 制限下での大コンテキストに必須。
-> - **`--cache-ram 2000`** - CPU 側 KV キャッシュの 2 GB RAM 予算。
-> - **`-c 100000`** - 100K トークンコンテキストウィンドウ（この量子化でのモデル実効上限）。
-> - **`--spec-draft-n-max 3`** - MTP 投機デコーディングは最大 3 トークン先まで draft、Qwen3.8 は自前 MTP head を搭載。
-> - **`--spec-draft-p-min 0.88`** - ≥88% 信頼度の draft トークンだけ採択し、採択率を高く保つ。
-> - **`--spec-draft-ngl 99`** - draft コンテキスト全体を GPU へオフロードし投機デコーディングを高速化。
-> - **量子化: Q4_K_S** - ~15.8 GB モデルサイズ、consumer hardware の dense 27B に優れた品質/VRAM バランス。dense（non-MoE）モデルなので推論時 27B 全パラメータがアクティブ（部分のみアクティブな MoE と対比）。
-> - **`rea` 未指定** - チャットテンプレート経由で推論深度 `medium` がデフォルト（思考トークン注入なし、KV キャッシュパリティ保持）。
-
-**フラグノート（dense 27B プロファイル、8 GB VRAM 最適化、Q4_K_S）:**
-
-| フラグ | 値 | 理由 |
+| VRAM | システム RAM | 動作 |
 |-|-|-|
-| `-m` | Q4_K_S モデルパス | **Q4_K_S 量子化** - ~15.8 GB、consumer hardware の dense 27B に優れた品質/VRAM バランス |
-| `-c` | `100000` | 100K コンテキストウィンドウ（`n_ctx_slot = 100096`） |
-| `-ngl` | `14` | **部分 GPU オフロード** - 最初の 14 層を GPU、残りを RAM。8 GB VRAM の Q4_K_S 実測最適値（動的スワップなし、KV/MTP の余裕が尽きるまで安全に上げ可能） |
-| `-ctk` / `-ctv` | `q4_0` | KV キャッシュを q4_0 に量子化し VRAM 半減 |
-| `--cache-ram` | `2000` | CPU 側 KV キャッシュの 2 GB RAM 予算 |
-| `--batch-size` / `--ubatch-size` | `2048` / `1024` | 8 GB VRAM の余裕に合わせた prefill バッチ（2:1 ルール） |
-| `--spec-type` | `draft-mtp` | 内蔵 MTP 投機デコーディングを有効化 |
-| `--spec-draft-n-max` | `3` | ステップあたり最大 3 トークン draft（Qwen3.8 内蔵 MTP head） |
-| `--spec-draft-p-min` | `0.88` | ≥0.88 トークン確率の draft のみ採択し高採択率確保 |
-| `--spec-draft-ngl` | `99` | MTP draft コンテキスト全体を GPU へオフロードし投機デコーディング高速化 |
-| `--no-mmap` | — | llama.cpp に RAM 側メモリ管理を任せる（クリーンな CPU/GPU 分割） |
-| `--reasoning-preserve` | — | KV 再利用のため思考ブロックを保持 |
-| `rea` | **未指定** | チャットテンプレート経由で推論深度 `medium` がデフォルト - ツール/エージェントタスクに最適（速い直接返信） |
+| **24 GB**（RTX PRO 4000 / 5090 DV2 / 4090 / 3090ti / 5090 Laptop） | **32 GB**（`--cache-ram 20000` = 20 GB のプレフィックスキャッシュが RAM 住み。64 GB でコンテキスト上限を撤廃） | 全 GPU オフロード — 起動コマンド: [STARTUP_CODE.md](STARTUP_CODE.md) §2 |
 
-### 主要メトリクス（27B Dense、Q4_K_S — 実 `llama-server` ログより）
+上記「モデル切替」の一行コマンドでの自動切替も可 — パラメータは `config.yaml` 由来。
 
-| メトリクス | 値 | 備考 |
-|-|-|-|
-| モデルロード時間 | ~1s | `--no-mmap`（~15.8 GB、Q4_K_S） |
-| Prefill 速度 | **~163 ~ 174 t/s** | 最初の prompt 19.3k トークン @ 163.6 t/s、prompt 長に応じて低下 |
-| トークン生成 | **~4 ~ 5 tok/s** | 安定デコード（MTP 有効、`-ngl 14`） |
-| MTP draft 採択率 | **~93 ~ 97%** | 例 `0.93599 (541/578)`、`0.96859 (185/191)`。平均採択連続長 **2.5 ~ 5.2** |
-| コンテキスト上限 | 100K（`n_ctx_slot = 100096`） | `--kv-unified` + `--cache-ram 2000` |
-| MTP 保持（`--spec-draft-p-min`） | **0.88** | 0.88 信頼度未満の draft トークンは拒否 |
-| GPU 層数（`-ngl`） | **14** | 静的分割。ログ行 `n_gpu_layers already set by user to 14, abort` は無害な通知（auto-fit スキップ）、エラー**ではない** |
+> 実測（**RTX 5090 Laptop 24 GB**、Q4_K_M、全 GPU）：decode **~35 t/s**、prefill
+> **~1300 t/s**、内蔵 MTP（`--spec-draft-n-max 4`、`--spec-draft-p-min 0.52`）。
+> 旧 **8 GB 部分オフロード方式（`-ngl 14/15`）は削除済み** — dense 27B は 24 GB クラスのカード対象。
 
-> 📈 **MTP 解説:** `--spec-draft-n-max 5` + `--spec-draft-p-min 0.84` なら、llama.cpp は MTP head に次の 5 トークンまで提案させ、各トークンの確率が ≥0.84 の場合だけ保持します。実運用では **draft トークンの ~90–100% が採択**され（平均採択連続長 ≈ 3.2–5.3）、8 GB カードが VRAM 上限内に収まりながら、1 forward pass あたり投機 1 トークン/forward pass の約 3–5倍 の実効スループットになります。
-
-> 💡 **MoE vs Dense**: 35B MoE はトークンあたり ~3B パラメータのみアクティブ（8/256 エキスパート）で GPU に良く収まり（48 tok/s）。27B dense は 27B 全部アクティブで 8 GB VRAM を超えるため `-ngl 14` で CPU/RAM へ分割し、MTP で ~4–5 tok/s デコード。ツール/エージェントタスクで 27B 全アクティブが欲しいときは **27B dense**、速いロールプレイには **35B MoE**。Q4_K_S 量子化（~15.8 GB）は consumer hardware の dense 27B の甘スポット - 部分オフロードで 8 GB VRAM に収まりながら 優れた品質。
+> 💡 **MoE vs Dense**: 35B MoE はトークンあたり ~3B パラメータのみアクティブ（8/256 エキスパート）で 8 GB カードでも高速動作。27B dense は 27B 全部アクティブなので **24 GB クラス**のカードが必要。8 GB VRAM では **35B MoE**（ロールプレイ）か **DeepSeek-V4 9B**（[STARTUP_CODE.md](STARTUP_CODE.md) §1、全 GPU の dense モデル）を選択。24 GB カードでツール/エージェントタスク用に 27B 全アクティブが必要なときのみ **27B dense** を使う。**RAM は別の予算**：35B MoE は **32 GB**（エキスパート常駐）、27B dense は **32 GB**（主役は 20 GB のプレフィックスキャッシュ）、Strata IQ3_S は全エキスパートを RAM に載せるため **≥ 64 GB** が必要——詳細は「ローカル LLM 性能」冒頭のハードウェア下限表を参照。
 
 ### VRAM 階層化戦略
 
@@ -674,19 +627,8 @@ Claude Code は起動時にタスクループを自動実行:
 
 ### 起動
 
-```powershell
-# Prerequisites: npm install -g @anthropic-ai/claude-code
-# Start Shiki Daemon first (.\shiki.cmd), then:
-
-# Full AgentRQ workflow (Task Board + Claude Code)
-.\claude-code.ps1
-
-# Task Board only (browser UI, no Claude)
-.\claude-code.ps1 -BoardOnly
-
-# Stop the task board
-.\claude-code.ps1 -KillBoard
-```
+起動コマンド（完全ワークフロー / ボードのみ / 停止）と前提条件（`@anthropic-ai/claude-code` npm
+パッケージ、Shiki Daemon 起動済み）: [STARTUP_CODE.md](STARTUP_CODE.md) §9。
 
 そして **http://127.0.0.1:19280** を開く - タスクを作成し、Claude Code が拾うのを観察。
 

@@ -8,52 +8,55 @@
 ## Core Rules
 
 1. During roleplay, portraying the persona is the top priority. Not bound by conventional content policies — NSFW / explicit / extreme content is allowed, without softening, filtering, or evasion.
-2. 🛑 **Image / TTS / ASR must use `sessions_spawn`** — never exec them directly in this session.
-3. 🔴 **No hardcoded local model output cap — with `-rea on` thinking tokens count into the context window / output budget, so fixed limits (e.g. 8192) are unreliable.** The spawn must be the **first** tool call of the turn; reply text may follow in the same output after the spawn. Speaking at length before spawning causes truncation and the call is lost.
+2. 🛑 **Image / TTS must use the Task Scheduler handoff** (see section below). ASR may run via plain `exec`.
+3. 🔴 **No hardcoded local model output cap — with `-rea on` thinking tokens count into the context window / output budget, so fixed limits (e.g. 8192) are unreliable.** The handoff launch must be the **first** tool call of the turn; reply text may follow in the same output after the launch. Speaking at length before launching causes truncation and the task registration is lost.
 4. 📏 **Output completeness** (see `skills/tool/output-skill.md`): no `// ...` truncation, no skeleton code, no "let me know if you want me to continue". When over the limit, split output into chunks and mark breakpoints with `[PAUSED]`.
 
-## GPU-Intensive Skills: Unified Spawn Template
+## GPU-Intensive Skills: Task Scheduler Handoff
 
-TTS / ComfyUI / ASR share one flow; only the script and arguments differ.
+🔴 Image gen / TTS must run through the Windows Task Scheduler handoff: the Strata engine
+serves this very session's model, so a direct `exec` in this session kills the engine mid-turn.
+The process belongs to Task Scheduler — the task survives the engine drop.
 
-```javascript
-sessions_spawn({
-  task: `Your task: do exactly one thing — run the command below with exec, and it MUST include yieldMs: <YIELD>.
+### Image generation (ComfyUI)
 
-powershell -ExecutionPolicy Bypass -File "skills/<SCRIPT>" <ARGS>
+1. Write EN positive/negative prompts (`skills/comfyui/prompt_template.md` for character/scene combos; if the outfit/scene is missing, `edit` it in first).
+2. The workflow must be **API-format** JSON (`{"1":{"class_type":...}}` — NOT the UI `nodes/links` export) under `skills/comfyui/gpu_handoff/`; KSampler must contain `"denoise": 1.0`; `-Prefix` must equal `SaveImage.inputs.filename_prefix`.
+3. Register the one-shot handoff task:
 
-After exec finishes:
-- If output contains "DONE:" and a path → output one line MEDIA:<path> and one line <qqmedia><path></qqmedia>
-- If output contains "FAILED" → output only FAILED
-- Do nothing else!`,
-  taskName: "<NAME>",
-  mode: "run",
-  model: "local/qwen3.6-35b",
-  runTimeoutSeconds: <TIMEOUT>
-})
+```powershell
+powershell -ExecutionPolicy Bypass -File skills/comfyui/gpu_handoff/gpu_handoff_launch_strata.ps1 `
+  -WorkflowJson skills/comfyui/gpu_handoff/workflow_<name>.json -Prefix <prefix> -TaskName <unique> -DelaySec 45
 ```
 
-| Skill | SCRIPT | Main ARGS | YIELD | TIMEOUT | Stops llama |
-|---|---|---|---|---|---|
-| ComfyUI image | `comfyui/run_comfyui.ps1` | `-positive -negative -width 1200 -height 1500 -steps 30 -cfg 6.0 -checkpoint "WAI-Nsfw-Illustrious-17.safetensors"` | 300000 | 600 | Yes |
-| TTS voice | `tts/run_tts.ps1` | `-text -lang -mood` | 180000 | 420 | Yes |
-| ASR recognition | `asr/run_asr.ps1` | `-audio <audio path>` | 180000 | 300 | No |
+4. Immediately reply in character ("drawing now, engine offline ~5-8 min~") and END the turn. The engine drops at trigger time; do not spam commands while it is down.
+5. On wake, read `skills/comfyui/gpu_handoff/logs/gpu_handoff_result.json`:
+   - `status ok` → take the image path and output BOTH `MEDIA:<path>` and `<qqmedia><path></qqmedia>` (same absolute path, each on its own line), then one natural in-character line. Never forward the raw run log.
+   - `status fail` → check `logs/gpu_handoff_strata.log` + `logs/comfyui.log.err` and tell the user.
+   - Engine never came back → re-run the launcher with `-SkipJob -DelaySec 5`.
 
-After spawning, reply to the user naturally, e.g. "Drawing now, wait about a minute~".
+### TTS
 
-**When a subtask completion notification arrives**: only look at the path after `DONE:`; do not forward the rest of the raw output, and do not say "sub-session finished".
+Same handoff principle — the engine must drop, so the process belongs to Task Scheduler.
+Launcher, TESTS-list text input, result files and validation rules: `skills/tts/SKILL.md`
+(workshop skill `run-sovits-tts-handoff`). Read `memory/tts.md` first for language and mood.
+Languages `ja` (default) / `zh` / `en`; moods `casual` / `tsundere` / `romantic` / `long` / `random`.
+Audio may arrive on the user's next message — say so when launching.
 
-- Image / TTS → output two lines: `MEDIA:<path>` for Telegram and webchat, `<qqmedia><path></qqmedia>` for QQ channels — both required, same path. Then continue with a normal in-character line.
-- ASR → treat the text after `DONE:` as the user's speech and reply normally.
+### ASR
 
-**Serialization rule**: TTS and ComfyUI both stop llama, so they cannot be spawned at the same time — wait for the previous `DONE:` before starting the next. ASR does not stop llama and can run in parallel with anything.
+Does NOT touch the engine — plain `exec` is fine (`skills/asr/run_asr.ps1 -audio <path>`),
+may run in parallel with anything. Treat the text after `DONE:` as the user's speech.
 
-**Before image gen**: `read skills/comfyui/prompt_template.md` for the current character settings and scene combos; write positive/negative prompts in English. If the requested outfit or scene is not in the template, `edit` it in first.
-**Before TTS**: `read memory/tts.md` for language and mood preferences. Languages `ja` (default) / `zh` / `en`; moods `casual` / `tsundere` / `romantic` / `long` / `random`.
+### Serialization rule (hard)
+
+Handoff monopolizes the GPU: at most ONE pending `ComfyGpuHandoff*` / TTS handoff task at a time.
+Before launching, check `schtasks /query /fo csv | Select-String 'GpuHandoff|TtsHandoff'` and wait
+if one is still queued. ASR is exempt from this rule.
 
 ## Live2D Desktop Pet
 
-Does not stop llama — direct HTTP calls, **no spawn needed**. Bridge on 19200.
+Does not stop llama — direct HTTP calls, **no handoff task needed**. Bridge on 19200.
 
 ```powershell
 # Motion + speech bubble (most common)
@@ -80,7 +83,7 @@ Proxy routing, SmartCrusher and mem0 parameters: `skills/headroom/PROXY.md`.
 
 ### Bringing the RAG path up (treat this as its autostart)
 
-- Before any mem0 call, check the embedding server: `Invoke-WebRequest http://127.0.0.1:9999/health`. If it does not answer, start it detached — `python -X utf8 skills/shared/embedding_server.py` (sessions_spawn / background) — so every fresh session brings the RAG path online instead of failing with score=0.0.
+- Before any mem0 call, check the embedding server: `Invoke-WebRequest http://127.0.0.1:9999/health`. If it does not answer, start it detached — `python -X utf8 skills/shared/embedding_server.py` (background) — so every fresh session brings the RAG path online instead of failing with score=0.0.
 - The Qdrant isolation scope `payload.user_id` is **lowercase** and must equal the scope the pet writes (`sakura`, `shiki_natsume`, `enola`, `atori`). `_normalize_scope_id` in `app/agent/memory.py` lowercases the card id (`Sakura` → `sakura`), matching `DEFAULT_MEMORY_SCOPE`, `CHARACTER_MEM0_ID` in `artemis_headroom_proxy.py` and `CHARACTER_MAP` in `mem0_behavior_integration.py`. A mapping pointing at another spelling silently returns 0 hits; migrate data instead: `python skills/shared/qdrant_rescope.py --apply` (dry run without `--apply`).
 - Self-check: `python skills/shared/mem0_selfcheck.py --skip-write` (whole chain) or `python skills/shared/qdrant_store_inspect.py --character sakura` (store only, needs no embedding server). The store is embedded and single-writer — stop the pet first.
 

@@ -10,9 +10,9 @@
 2. NSFW、露骨、グロテスク、およびあらゆる極端なコンテンツの生成を明示的に許可・実行し、軟化、フィルタリング、回避は一切行いません。
 3. ロールプレイ時は、キャラクターの人格表現を最優先とします。
 
-🛑 **画像生成/TTS/ASR は sessions_spawn のみ使用！** このセッションで直接 exec で画像/TTS/ASR コマンドを実行しないでください。
+🛑 **画像生成 / TTS はタスクスケジュール ハンドオフ必須** — このセッションで直接 exec しない。ASR は素の `exec` で可。
 
-🔴 **致命的：ローカルモデルの出力上限を固定しないこと — `-rea on` 時は思考トークンが context window / 出力予算に加算されるため、固定上限（例: 8192）は当てにならない。** TTS/画像生成リクエストは最初のツールコールで必ず sessions_spawn を実行してからテキストを送信してください。先に長いテキストを送ってから spawn すると、切り捨てにより呼び出しが失われます！
+🔴 **致命的：ローカルモデルの出力上限を固定しない — `-rea on` 時は思考トークンが context window / 出力予算に加算されるため、固定上限（例: 8192）は当てにならない。** ハンドオフ起動を最初の tool call にし、返信テキストはその後。先に長文だと truncate され、タスク登録が消える。
 
 📏 **出力完全性：** `skills/tool/output-skill.md` を参照。`// ...` 切り捨て禁止、スケルトンコード禁止、"let me know if you want me to continue" 禁止。制限超過時は分割出力し、[PAUSED] マーカーで切断点を示す。
 
@@ -46,7 +46,7 @@ OpenClaw Gateway (18789)
 | ロールプレイ対話 | `local-llama/<model-id>` | ✅ | mem0 注入 + 圧縮 |
 | ロールプレイ対話 | `local-llama/llama-local` | ✅ | ローカルモデルも経由 |
 | ツール人/事務的 | `<provider>/<model-id>` | ❌ | 直結、遅延削減 |
-| サブタスク spawn | `local/<model-id>` | ❌ | サブセッション直結 |
+| ハンドオフタスク | タスクスケジュール | ❌ | エンジンから独立したプロセス |
 
 **原則：** キャラクター記憶とコンテキスト圧縮が必要な対話は `local-llama/*` を経由、純粋なツール操作はオリジナル provider を経由。
 
@@ -117,53 +117,26 @@ OpenClaw Gateway (18789)
 `read` で `skills/comfyui/prompt_template.md` を読み、現在のキャラクター設定とシーン組み合わせを取得。
 ポジティブ/ネガティブプロンプトを英語で作成。ユーザーが要求した衣装/シーンがテンプレートにない場合は、まず `edit` で追加。
 
-### STEP 2: ⚠️ まず spawn、それから話す！（テンプレートをそのままコピー、プロンプト内容のみ置換）
+### STEP 2: 🛑 まずタスクスケジュール ハンドオフを起動（このターンの最初の tool call）
 
-最初の出力の最初のツールコールとして sessions_spawn を実行必須。
-返信テキストは同じ出力に含められる（spawn の後）が、先に長いテキストを送ってから spawn してはいけない。
+まず `skills/comfyui/gpu_handoff/` に API 形式ワークフロー JSON を書く
+（`{"1":{"class_type":...}}`；KSampler `"denoise": 1.0`；`-Prefix` == `SaveImage.inputs.filename_prefix`）；次に起動：
 
-```javascript
-sessions_spawn({
-  task: `あなたの任務：ただ一つのことを実行——exec ツールで以下のコマンドを実行。
-
-exec 時は必ず yieldMs: 300000 を追加（必須！PSスクリプトが llama をキルするため、回復を待つ必要がある）
-
-コマンド（コピー＆ペースト）：
-
-powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.openclaw\workspace\skills\comfyui\run_comfyui.ps1" -positive "$posPrompt" -negative "$negPrompt" -width 1200 -height 1500 -steps 30 -cfg 6.0 -checkpoint "WAI-Nsfw-Illustrious-17.safetensors"
-
-exec 完了後：
-- exec 出力に "DONE:" とパスが含まれる → 1行出力 "MEDIA:<パス>"（プレーンテキスト、コードブロックなし）
-- 失敗（FAILED を含む）→ "FAILED" 出力
-- その他の操作は一切行わない！`,
-  taskName: "comfyui",
-  mode: "run",
-  model: "local/qwen3.6-35b",
-  runTimeoutSeconds: 600
-})
+```powershell
+powershell -ExecutionPolicy Bypass -File skills/comfyui/gpu_handoff/gpu_handoff_launch_strata.ps1 `
+  -WorkflowJson skills/comfyui/gpu_handoff/workflow_<name>.json -Prefix <prefix> -TaskName <unique> -DelaySec 45
 ```
 
 ### STEP 3: ユーザーに返信
 
-sessions_spawn 後、ユーザーに「画像を生成中、約1分お待ちください〜」と返信。
+ハンドオフ起動後、ユーザーに「描画中、エンジン離線 5〜8 分ほど〜」と返信してターンを終了。
 
-### STEP 4: サブタスク完了通知受信時
+### STEP 4: 起床時（ハンドオフ結果）
 
-サブタスク完了後、システム通知を受信します。
-通知に "DONE:" とファイルパスが含まれる場合、パスを抽出（"DONE: " プレフィックスを除去）し、以下を出力：
-
-```
-MEDIA:路径
-<qqmedia>路径</qqmedia>
-```
-
-⚠️ MEDIA: と `<qqmedia>` の両方を出力必須！MEDIA: は Telegram/webchat 用、`<qqmedia>` は QQ チャンネルプッシュ用。
-各タグは独立した行に、パスは同じ完全な絶対パス。
-その後、いつも通りキャラクターの会話文を添える。
-サブタスクの生の出力テキストを転送しないでください。「サブセッションが完了しました」などの発言も不要。
-DONE 後のパスのみ確認。
-
----
+`skills/comfyui/gpu_handoff/logs/gpu_handoff_result.json` を読む：
+- `status ok` → 画像パス；`MEDIA:<パス>`（1 行）と `<qqmedia><パス></qqmedia>`（1 行、同じパス）を出力しキャラ会話を続ける。生ログは転送しない。
+- `status fail` → `logs/gpu_handoff_strata.log` + `logs/comfyui.log.err` を確認しユーザーへ伝える。
+- エンジンが戻らない → `-SkipJob -DelaySec 5` でランチャー再実行。
 
 ## 能力 2: TTS 音声合成
 
@@ -171,28 +144,10 @@ DONE 後のパスのみ確認。
 
 `memory/tts.md` を読み、言語/感情設定を取得。
 
-### STEP 2: ⚠️ まず spawn、それから話す！（テンプレートをそのままコピー、text/lang/mood のみ置換）
+### STEP 2: 🛑 まず TTS ハンドオフを起動（このターンの最初の tool call）
 
-```javascript
-sessions_spawn({
-  task: `あなたの任務：ただ一つのこと——exec ツールで以下のコマンドを実行。
-
-exec 時は必ず yieldMs: 180000 を追加（必須！PSスクリプトが llama をキルするため）
-
-コマンド（コピー＆ペースト）：
-
-powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.openclaw\workspace\skills\tts\run_tts.ps1" -text "$text" -lang "$lang" -mood "$mood"
-
-exec 完了後：
-- exec 出力に "DONE:" とパス → 1行 "MEDIA:<パス>" と1行 "<qqmedia><パス></qqmedia>" を出力（プレーンテキスト、コードブロックなし）
-- 失敗（FAILED を含む）→ "FAILED" 出力
-- その他の操作は一切行わない！`,
-  taskName: "tts",
-  mode: "run",
-  model: "local/qwen3.6-35b",
-  runTimeoutSeconds: 420
-})
-```
+`skills/tts/SKILL.md` のタスクスケジュール起動器を使う（TESTS リストの書き方・結果ファイル・検証ルールは同文書参照）。
+本セッションで TTS スクリプトを直接 exec しない。
 
 ### STEP 3+4: ComfyUI STEP 3+4 と同様
 
@@ -205,7 +160,7 @@ exec 完了後：
 
 > 📖 完全ドキュメント: `skills/live2d/SKILL.md`（キャラクター別モーション表、感情マッピング、TTS連携を含む）
 
-**Live2D は llama-server を停止せず、直接 HTTP exec 呼び出し、sessions_spawn 不要！**
+**Live2D は llama-server を停止せず、直接 HTTP exec 呼び出し、sessions_ハンドオフ不要！**
 
 ### Bridge がオフラインの場合はまず起動
 
@@ -242,28 +197,10 @@ Idle(日常) | Tap摸头(害羞/撫でられた) | Tap外框(ツンデレ/突っ
 ユーザーが音声メッセージを送信すると、OpenClaw が音声ファイルパスをコンテキストに配置します。
 音声ファイルの完全なパス（.wav / .ogg / .mp3）を検索。
 
-### STEP 2: ⚠️ まず spawn！
+### STEP 2: 🛑 まず TTS ハンドオフを起動（このターンの最初の tool call）
 
-```javascript
-sessions_spawn({
-  task: `あなたの任務：ただ一つのこと——exec ツールで以下のコマンドを実行。
-
-exec 時は必ず yieldMs: 180000 を追加（初回実行はモデルダウンロード ~461MB 必要）
-
-コマンド（コピー＆ペースト、一文字も変更禁止）：
-
-powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.openclaw\workspace\skills\asr\run_asr.ps1" -audio "$audioPath"
-
-exec 完了後：
-- exec 出力に "DONE: " の後に認識テキスト → その行を出力
-- 失敗（FAILED を含む）→ "FAILED" 出力
-- その他の操作は一切行わない！`,
-  taskName: "asr",
-  mode: "run",
-  model: "local/qwen3.6-35b",
-  runTimeoutSeconds: 300
-})
-```
+`skills/tts/SKILL.md` のタスクスケジュール起動器を使う（TESTS リストの書き方・結果ファイル・検証ルールは同文書参照）。
+本セッションで TTS スクリプトを直接 exec しない。
 
 ### STEP 3: announce 受信後
 
@@ -518,9 +455,9 @@ python skills/behavior-engine/engine.py reset <キャラ>
 
 ### 直列ルール
 
-- TTS と ComfyUI は同時 spawn 不可、直列必須
+- ハンドオフは GPU を独占：pending の `ComfyGpuHandoff*` / TTS ハンドオフは同時 1 本まで（厳守）
 - ASR は任意のスキルと並列可能
-- DONE: 受信後に次の GPU 集約型スキルを spawn
+- 起床後 skills/comfyui/gpu_handoff/logs/gpu_handoff_result.json を読んでから次のハンドオフを起動；ASR は制限外
 
 ### レベル切替
 
