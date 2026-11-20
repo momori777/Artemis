@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Shiki Daemon — AI Girlfriend Service Manager
 =============================================
@@ -378,7 +378,10 @@ SERVICES = [
 ]
 
 AUTO_START = "--no-auto-start" not in sys.argv
-NO_LLAMA = "--no-llama" in sys.argv
+# START-HERE.bat/.sh writes `llm_engine: strata` when the Strata engine is the
+# selected backend; honour it here too so a manual shiki-start.cmd does not load
+# llama.cpp on top of Strata (both would fight for VRAM).
+NO_LLAMA = "--no-llama" in sys.argv or str(CFG.get("llm_engine", "")).lower() == "strata"
 
 # ---- Helpers ----
 
@@ -416,12 +419,53 @@ def python_with(module):
     return [PYTHON]  # fallback: original behavior
 
 def is_port_open(port):
-    try:
-        sock = socket.create_connection(("127.0.0.1", port), timeout=1)
-        sock.close()
-        return True
-    except Exception:
-        return False
+    """True when something accepts connections on `port` on either loopback family.
+
+    The web servers bind 127.0.0.1 and ::1 as two independent listeners (see
+    _make_loopback_servers), and on Windows those are separate stacks: probing
+    only 127.0.0.1 reported an IPv6-only listener as "down" and made the
+    dashboard think its own webchat port was closed.
+    """
+    for host in ("127.0.0.1", "::1"):
+        try:
+            # 0.25 s is plenty on loopback (an open listener accepts instantly);
+            # closed ports sit in the Windows firewall drop path and would
+            # otherwise burn the full timeout on every probe.
+            sock = socket.create_connection((host, port), timeout=0.25)
+            sock.close()
+            return True
+        except Exception:
+            continue
+    return False
+
+def update_config_scalars(updates, cfg_path=None):
+    """Rewrite individual `key: value` lines in config.yaml, nothing else.
+
+    config.yaml is hand-maintained — every tuning value carries a comment — so it
+    must never be round-tripped through yaml.dump(): that drops all comments and
+    reflows the whole file. Only the value text of the given keys is replaced;
+    keys that do not exist yet are appended.
+    """
+    import re as _re
+    cfg_path = cfg_path or os.path.join(WORKSPACE, "config.yaml")
+    with open(cfg_path, "r", encoding="utf-8-sig", newline="") as f:
+        text = f.read()
+    crlf = "\r\n" in text
+    text = text.replace("\r\n", "\n")
+    for key, value in updates.items():
+        val = str(value)
+        if not (_re.match(r"^[A-Za-z]:[\\/]", val) or _re.match(r"^[\w./\\-]+$", val)):
+            val = '"' + val.replace('"', '\\"') + '"'
+        pattern = _re.compile(
+            rf"^{_re.escape(key)}[ \t]*:[ \t]*([^\n#]*?)([ \t]*(?:#[^\n]*)?)$", _re.M
+        )
+        if pattern.search(text):
+            text = pattern.sub(lambda m: f"{key}: {val}" + m.group(2), text, count=1)
+        else:
+            text = text.rstrip("\n") + f"\n{key}: {val}\n"
+    with open(cfg_path, "w", encoding="utf-8", newline="") as f:
+        f.write(text.replace("\n", "\r\n") if crlf else text)
+
 
 def kill_process(name):
     try:
@@ -772,15 +816,14 @@ def start_webchat():
         return "already running"
     if not os.path.isdir(WEBCHAT_DIR):
         return "web-chat directory not found"
-    import http.server
-    # Pass directory to the handler instead of os.chdir() — chdir changes the
-    # process-wide cwd and races with other threads. Threading server so the
-    # ~15 parallel asset requests of a page load don't serialize.
+    # Bind every loopback family (see _make_loopback_servers) instead of just
+    # 127.0.0.1: the browser may open "localhost" (→ ::1) and scripts elsewhere
+    # use the literal 127.0.0.1, so one family alone leaves half the UI refused.
     handler = functools.partial(_make_webchat_handler(), directory=WEBCHAT_DIR)
-    threading.Thread(target=lambda: http.server.ThreadingHTTPServer(
-        ("127.0.0.1", WEBCHAT_PORT),
-        handler
-    ).serve_forever(), daemon=True).start()
+    servers = _make_loopback_servers(ThreadingWebChatServer, handler, WEBCHAT_PORT)
+    if not servers:
+        return "error: cannot bind webchat port"
+    threading.Thread(target=_serve_loopback, args=(servers,), daemon=True).start()
     for _ in range(3):
         if is_port_open(WEBCHAT_PORT): return "ready"
         time.sleep(1)
@@ -951,16 +994,35 @@ class ShikiDaemon:
         return results
 
     def get_status(self):
-        """Return current status of all services"""
-        status = []
-        for svc in SERVICES:
-            online = is_port_open(svc["port"])
-            status.append({
+        """Return current status of all services.
+
+        Probes run in parallel: each closed port costs one connect timeout on
+        both loopback families, so a serial pass took ~16 s and made the chat
+        UI look frozen while /api/status was in flight.
+        """
+        status = [
+            {
                 "name": svc["name"],
                 "port": svc["port"],
-                "online": online,
+                "online": False,  # filled in by the probe thread below
                 "enabled": svc["enabled"],
-            })
+            }
+            for svc in SERVICES
+        ]
+
+        def probe(index, svc):
+            status[index]["online"] = is_port_open(svc["port"])
+
+        threads = [
+            threading.Thread(target=probe, args=(i, svc), daemon=True)
+            for i, svc in enumerate(SERVICES)
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=2)
+        # One entry per service even if a probe overruns its budget — dropping
+        # unfinished rows made the UI silently lose services from /api/status.
         return status
 
     def stop(self):
@@ -1403,14 +1465,8 @@ def _switch_llama_model(short_id, rea_mode="off"):
 
     # 3. 更新 config.yaml
     try:
-        import yaml as _yaml
-        cfg_path = os.path.join(WORKSPACE, "config.yaml")
-        with open(cfg_path, "r", encoding="utf-8-sig") as f:
-            raw_cfg = _yaml.safe_load(f) or {}
-        raw_cfg["llama_model"] = gguf_path
-        raw_cfg["llama_model_name"] = short_id
-        with open(cfg_path, "w", encoding="utf-8") as f:
-            _yaml.dump(raw_cfg, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        # 只改两行标量：整份 yaml.dump 会把所有注释和手写排版一起抹掉。
+        update_config_scalars({"llama_model": gguf_path, "llama_model_name": short_id})
         # 更新内存中的 CFG
         CFG["llama_model"] = gguf_path
         CFG["llama_model_name"] = short_id
@@ -1433,15 +1489,8 @@ def _switch_llama_model(short_id, rea_mode="off"):
         return {"ok": True, "message": f"Switched to {short_id}", "model": short_id}
     else:
         # 恢复全局变量 + config.yaml
-        import yaml as _yaml2
-        _cfg_path2 = os.path.join(WORKSPACE, "config.yaml")
         try:
-            with open(_cfg_path2, "r", encoding="utf-8-sig") as _f:
-                _rc = _yaml2.safe_load(_f) or {}
-            _rc["llama_model"] = _old_model
-            _rc["llama_model_name"] = _old_name
-            with open(_cfg_path2, "w", encoding="utf-8") as _f:
-                _yaml2.dump(_rc, _f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+            update_config_scalars({"llama_model": _old_model, "llama_model_name": _old_name})
         except Exception as _e2:
             print(f"[DAEMON] config rollback failed: {_e2}", flush=True)
         LLAMA_MODEL = _old_model
@@ -2603,45 +2652,68 @@ def make_icon():
     return img
 
 class ThreadingDashboardServer(ThreadingMixIn, HTTPServer):
-    """Multi-threaded dual-stack HTTP server (IPv4 + IPv6) so chat proxy doesn't block status checks.
-    Binds to ::1 (IPv6 loopback) with V6ONLY=0 so both localhost (→ ::1 or 127.0.0.1) and
-    explicit 127.0.0.1 connections succeed — fixes browser 'Failed to fetch' when DNS
-    returns ::1 first and the server only listened on IPv4."""
+    """Multi-threaded HTTP server for the dashboard API (one loopback family).
+
+    The daemon runs one instance per loopback address — see
+    _make_loopback_servers / _serve_loopback. Binding ::1 with V6ONLY=0 does
+    NOT accept 127.0.0.1 (only a wildcard :: bind does), and a wildcard bind
+    would expose this port to the LAN, so both loopback stacks are served by
+    two explicit listeners instead.
+    """
     daemon_threads = True
     request_queue_size = 128
-    address_family = socket.AF_INET6
-    def server_bind(self):
-        try:
-            self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
-        except (AttributeError, OSError):
-            pass  # Fallback: IPv6-only (rare on Windows)
-        super().server_bind()
-    
+
 class ThreadingWebChatServer(ThreadingMixIn, http.server.HTTPServer):
-    """Multi-threaded dual-stack HTTP server for web-chat static files."""
+    """Multi-threaded HTTP server for web-chat static files (one loopback family)."""
     daemon_threads = True
     request_queue_size = 128
-    address_family = socket.AF_INET6
-    def server_bind(self):
+
+# Both loopback stacks. Windows resolves "localhost" to ::1 first, while the
+# daemon and most scripts/browser tabs use the literal 127.0.0.1 — serving only
+# one of them made the other fail with ERR_CONNECTION_REFUSED.
+LOOPBACK_ADDRS = ((socket.AF_INET, "127.0.0.1"), (socket.AF_INET6, "::1"))
+
+def _make_loopback_servers(server_cls, handler, port):
+    """Bind `port` on every loopback address; return the listeners that bound.
+
+    A family that cannot bind (e.g. IPv6 disabled) is skipped so the other one
+    still serves the UI.
+    """
+    servers = []
+    for idx, (family, host) in enumerate(LOOPBACK_ADDRS):
+        bind_cls = type(f"{server_cls.__name__}Family{idx}", (server_cls,), {"address_family": family})
         try:
-            self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
-        except (AttributeError, OSError):
-            pass
-        super().server_bind()
+            servers.append(bind_cls((host, port), handler))
+        except OSError as exc:
+            print(f"[server] cannot bind {host}:{port}: {exc} (continuing with the other family)")
+    return servers
+
+def _serve_loopback(servers):
+    """Serve every bound loopback listener: extras on threads, the first inline."""
+    for extra in servers[1:]:
+        threading.Thread(target=extra.serve_forever, daemon=True).start()
+    if servers:
+        servers[0].serve_forever()
 
 def run_dashboard_server(daemon):
     global daemon_instance
     daemon_instance = daemon
-    server = ThreadingDashboardServer(("::1", DASHBOARD_PORT), DashboardHandler)
-    print(f"[dashboard] http://127.0.0.1:{DASHBOARD_PORT} (dual-stack)")
-    server.serve_forever()
+    servers = _make_loopback_servers(ThreadingDashboardServer, DashboardHandler, DASHBOARD_PORT)
+    if not servers:
+        print(f"[dashboard] failed to bind 127.0.0.1 / ::1 on port {DASHBOARD_PORT}")
+        return
+    print(f"[dashboard] http://127.0.0.1:{DASHBOARD_PORT} (+ http://[::1]:{DASHBOARD_PORT})")
+    _serve_loopback(servers)
 
 def run_webchat_server():
     """File server for web-chat with version-aware caching (see _make_webchat_handler)."""
     handler = functools.partial(_make_webchat_handler(), directory=WEBCHAT_DIR)
-    server = ThreadingWebChatServer(("::1", WEBCHAT_PORT), handler)
-    print(f"[webchat] http://127.0.0.1:{WEBCHAT_PORT} (dual-stack)")
-    server.serve_forever()
+    servers = _make_loopback_servers(ThreadingWebChatServer, handler, WEBCHAT_PORT)
+    if not servers:
+        print(f"[webchat] failed to bind 127.0.0.1 / ::1 on port {WEBCHAT_PORT}")
+        return
+    print(f"[webchat] http://127.0.0.1:{WEBCHAT_PORT} (+ http://[::1]:{WEBCHAT_PORT})")
+    _serve_loopback(servers)
 
 def main():
     daemon = ShikiDaemon()

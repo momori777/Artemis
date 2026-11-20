@@ -29,18 +29,22 @@ if sys.platform == "win32":
 WORKSPACE = os.path.dirname(os.path.abspath(__file__))
 
 
-# llama-server port comes from config.yaml (llama.cpp moved 8080→9931; 8080 is Strata now)
-def _load_llama_port():
+# Ports come from config.yaml (llama.cpp moved 8080→9931; 8080 is Strata now).
+# START-HERE.bat/.sh writes comfyui_port / tts_port there, so a non-default port
+# must still be found and closed.
+def _load_port(key, default):
     try:
         import re
         with open(os.path.join(WORKSPACE, "config.yaml"), "r", encoding="utf-8", errors="replace") as f:
-            m = re.search(r"^llama_port:\s*(\d+)", f.read(), re.M)
-        return int(m.group(1)) if m else 9931
+            m = re.search(rf"^{re.escape(key)}:\s*(\d+)", f.read(), re.M)
+        return int(m.group(1)) if m else default
     except Exception:
-        return 9931
+        return default
 
 
-LLAMA_PORT = _load_llama_port()
+LLAMA_PORT = _load_port("llama_port", 9931)
+COMFYUI_PORT = _load_port("comfyui_port", 8188)
+TTS_PORT = _load_port("tts_port", 9880)
 
 
 # ---- Helpers ----
@@ -161,7 +165,7 @@ def kill_live2d():
 
 
 def kill_comfyui():
-    if not port_open("127.0.0.1", 8188):
+    if not port_open("127.0.0.1", COMFYUI_PORT):
         print("[shutdown] ComfyUI: not running")
         return True
     print("[shutdown] ComfyUI: stopping...")
@@ -177,11 +181,16 @@ def kill_comfyui():
         pass
     for i in range(15):
         time.sleep(0.5)
-        if not port_open("127.0.0.1", 8188):
+        if not port_open("127.0.0.1", COMFYUI_PORT):
             print(f"[shutdown] ComfyUI: stopped ({i*0.5:.0f}s)")
             return True
     print("[shutdown] ComfyUI: STILL RUNNING — manual kill needed")
     return False
+
+
+def kill_sovits():
+    """GPT-SoVITS HTTP API (started by START-HERE / the TTS skill on demand)."""
+    return kill_by_port(TTS_PORT, f"GPT-SoVITS API (:{TTS_PORT})", wait_sec=3)
 
 
 def kill_gateway():
@@ -347,6 +356,7 @@ def main():
     results["embedding"] = kill_embedding_server()
     results["llama"] = kill_llama()
     results["comfyui"] = kill_comfyui()
+    results["sovits"] = kill_sovits()
     results["gateway"] = kill_gateway()
     results["cleanup"] = run_cleanup()
 

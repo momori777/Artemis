@@ -486,25 +486,34 @@ var UI = {
     var avatarEl = document.querySelector('.char-avatar');
     if (!avatarEl) return;
 
-    // Check stored avatar first, then character data, then fallback to icon
-    var avatarData = getCharAvatar(charId) || (c && c.avatar);
-    var iconEl = document.getElementById('char-avatar-icon');
+    // Check stored avatar first, then character data, then fallback to icon.
+    // Only accept strings: a corrupt localStorage entry (e.g. []) must not
+    // shadow the character's own avatar, nor be painted as an <img src>.
+    var storedAvatar = getCharAvatar(charId);
+    var avatarData = (typeof storedAvatar === 'string' && storedAvatar)
+      || (c && typeof c.avatar === 'string' && c.avatar)
+      || '';
+
+    // Scope the lookups to this avatar — the old page-wide getElementById found
+    // the icon inside a *different* container and left a stale <img> behind, so
+    // the image and the fallback initial were rendered on top of each other.
+    var iconEl = avatarEl.querySelector('.char-avatar-icon');
+    var imgEl = avatarEl.querySelector('.char-avatar-img');
 
     if (avatarData) {
-      // Remove icon if exists
-      if (iconEl && iconEl.parentNode) iconEl.remove();
-      // Remove existing img if any
-      var existingImg = avatarEl.querySelector('.char-avatar-img');
-      if (existingImg) existingImg.remove();
-
-      var img = document.createElement('img');
-      img.className = 'char-avatar-img';
-      img.src = avatarData;
-      img.alt = (c && c.name) || '';
-      avatarEl.appendChild(img);
+      if (iconEl) iconEl.remove();
+      if (!imgEl) {
+        imgEl = document.createElement('img');
+        imgEl.className = 'char-avatar-img';
+        avatarEl.appendChild(imgEl);
+      }
+      imgEl.src = avatarData;
+      imgEl.alt = (c && c.name) || '';
       avatarEl.title = 'Click to change avatar';
     } else {
-      // Show icon
+      // Drop a stale <img>, otherwise it stays next to the initial and shifts
+      // both out of the 56px box (the image was clipped at the left edge).
+      if (imgEl) imgEl.remove();
       if (iconEl) iconEl.textContent = (c && c.icon) || '?';
       else {
         var span = document.createElement('span');
@@ -4416,10 +4425,18 @@ function showToast(text) {
   setTimeout(function() { t.remove(); }, 2500);
 }
 
+// Single global HTML escaper for every script on the page (worldbook.js used to
+// define its own copy with different rules, so the effective escaping silently
+// depended on script load order). Escapes quotes too, because this value is
+// interpolated into attributes such as data-char="…" and title="…".
 function escapeHtml(str) {
-  var d = document.createElement('div');
-  d.textContent = str;
-  return d.innerHTML;
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // Lightweight inline markdown for message text: **bold** -> <strong>.

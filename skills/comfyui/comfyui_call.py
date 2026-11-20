@@ -93,7 +93,8 @@ def _strata_running():
 HARD_TIMEOUT = int(_cfg.get('skill_timeout', 9000))  # unified from config.yaml
 
 # ========== 默认参数 ==========
-DEFAULT_CKPT = "WAI-Nsfw-Illustrious-17.safetensors"
+# 默认 checkpoint 可被 config.yaml 覆盖（START-HERE.bat/.sh 写入 comfyui_default_checkpoint）
+DEFAULT_CKPT = _cfg.get('comfyui_default_checkpoint') or "WAI-Nsfw-Illustrious-17.safetensors"
 DEFAULT_WIDTH = 768  # 8GB VRAM safe (RTX 5070 Laptop); 1200x1500 OOMs
 DEFAULT_HEIGHT = 1024
 DEFAULT_STEPS = 24

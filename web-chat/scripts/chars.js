@@ -172,6 +172,12 @@ function mergeAllCharacters(apiData) {
   var seenId = {};
   var seenName = {};
 
+  // Snapshot what is already known before rebuilding the list. The API only
+  // returns id/name/icon and CHAR_FALLBACKS carries no avatar, so re-merging
+  // used to drop the CHARACTERS_JSON avatar art and leave the plain initial.
+  var prevById = {};
+  CHARACTERS.forEach(function (c) { if (c && c.id) prevById[c.id] = c; });
+
   // Load deleted-ids tracker
   var deletedIds = [];
   try {
@@ -214,7 +220,7 @@ function mergeAllCharacters(apiData) {
         name: c.name || fb.name,
         nameEn: c.nameEn || fb.nameEn,
         icon: c.icon || fb.icon,
-        avatar: c.avatar || null,
+        avatar: c.avatar || (prevById[id] && prevById[id].avatar) || null,
         persona: c.persona || fb.persona || '',
         personaNote: c.personaNote || fb.personaNote || '',
         tags: c.tags || fb.tags || [],
@@ -234,7 +240,7 @@ function mergeAllCharacters(apiData) {
     if (fb.name && seenName[fb.name]) return; // name already in result (e.g. yanqiaoer already covered by qiaoer from API)
     seenId[id] = true;
     if (fb.name) seenName[fb.name] = true;
-    result.push(Object.assign({}, fb, {
+    result.push(Object.assign({}, prevById[id] || {}, fb, {
       fallbackReplies: FALLBACK_REPLIES[id] || ['I\'m here.'],
     }));
   });

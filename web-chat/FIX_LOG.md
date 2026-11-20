@@ -140,3 +140,69 @@ if (s.tree) { saveStore(store); return; }  // 直接返回，新消息丢失！
 - `probe_corrupt_ls` 输出的乱码是 PowerShell GBK 控制台显示问题，页面本身 UTF-8 正常
 - ERR_CONNECTION_REFUSED console 噪音 = daemon(19260)/bridge(19250) 未启动时的 fetch，属预期行为（均有 catch）
 - 分析器报的 10 个 "light 主题变量未在 base 定义" 为误报：`--icon-color/--radius-*/--ease-*` 等在 main.css `:root` 已定义
+
+---
+
+# 2026-11-20 批量小 bug 修复轮 ✅
+
+## 修复 12：顶栏显示裸 i18n key `user_profile`
+- `index.html` 的「我的档案」按钮用 `data-i18n="user_profile"`，但 `i18n.js` 里没有这个 key
+- 结果：顶栏和 tooltip 都直接渲染出 `user_profile`（截图可见）
+- 补 `user_profile: { zh: '我的档案', ja: 'マイプロフィール', en: 'My Profile' }`
+
+## 修复 13：`i18n.js` 21 个 `sampler_help_*` key 重复定义
+- 两段 sampler 帮助文案（旧短版 / 新长版）同时存在，同一对象字面量里后写覆盖前写，前一段是死代码
+- 后果：维护时改错段落 → 改动毫无效果
+- 去重：保留新长版，旧段里独有的 8 个参数说明（temp/top_p/top_k/min_p/rep_pen/freq_pen/pres_pen/max_tk）保留并放到参数说明段
+- 校验：i18n key 230 → 209，重复 21 → 0，无 key 丢失
+
+## 修复 14：侧边栏头像图片与首字母同时渲染
+- `_renderCharAvatar()` 用页面级 `getElementById('char-avatar-icon')` 找图标，但 `CHAR_API_PROMISE` 回来后 `loadCharUI()` 会再跑一遍
+- 第二次调用走了 else 分支：找不到已删除的图标 → 新建 `<span>` 追加，于是 `<img>` 和首字母同时存在，56px 头像被两个子元素挤开（图片左偏被裁、首字母跑到名字上，就是截图里那个悬空的 "r"）
+- 修复：查找范围收敛到 `avatarEl.querySelector(...)`；两个分支各自清理另一分支的残留节点；非字符串的 avatar 值（localStorage 坏数据 `[]`）不再当 `img.src`
+
+## 修复 15：`mergeAllCharacters()` 二次合并丢掉角色立绘
+- `CHARACTERS_JSON` 带 SVG 头像，但 API 只返回 id/name/icon，`CHAR_FALLBACKS` 没有 avatar 字段
+- 每次 re-merge（API 成功或失败都会触发）都会重建列表，头像被覆盖成 `null` → 立绘消失只剩首字母
+- 修复：合并前快照 `prevById`，API 条目用 `c.avatar || prevById[id].avatar`，兜底条目 `Object.assign({}, prevById[id] || {}, fb, …)`
+
+## 修复 16：世界书条目列表没有样式
+- `worldbook.js` 渲染 `.wb-entry / -header / -key / -content / -actions / -meta`，但 CSS 里写的是旧结构的 `.wb-item*`
+- 后果：条目列表是无卡片、无间距、按钮和 meta 挤在一起的裸文本
+- 修复：CSS 里把 `.wb-item*` 换成与渲染结构一致的 `.wb-entry*`（卡片/悬停/标题行/内容/操作行/meta 右对齐），保留仍在用的 `.wb-action-btn`，补 `.wb-toggle-on`
+- 顺带删掉 `worldbook.js` 里赋值后从未使用的 `iconClass`
+
+## 修复 17：世界书工具栏 / 记忆查看按钮是系统原生白块
+- `index.html` 用了 `.btn-sm`（New Entry / Enable All / Disable All），CSS 里没有该规则
+- `.memory-view-btn`、`.memory-viz-toggle`（插件面板「查看记忆」、记忆查看器「可视化」）同样没有规则
+- 暗色主题里这三个按钮渲染成白色原生按钮
+- 修复：补 `.btn-sm`、`.memory-view-btn`、`.memory-viz-toggle(.active)` 样式，全部走主题变量
+
+## 修复 18：`escapeHtml` 双份定义，转义规则随脚本加载顺序变
+- `ui.js`（DOM 版，不转义引号）与 `worldbook.js`（正则版，转义引号）各定义一份全局函数，后者覆盖前者
+- 风险：`ui.js` 把 `escapeHtml()` 用在 `data-char="…"` / `data-name="…"` 属性里，一旦加载顺序变化（或 worldbook.js 加载失败）引号就漏转义
+- 修复：只保留 `ui.js` 一份并补 `"` / `'` 转义；`worldbook.js` 改为「不存在时才兜底定义」
+
+## 修复 19：daemon `get_status()` 可能少返回服务
+- 并行探测 + `join(timeout=2)`，超时的线程对应项仍是 `None`，最后被 `if entry is not None` 过滤掉
+- 后果：`/api/status` 静默少一行，前端服务列表缺项
+- 修复：先按 SERVICES 建全量结果（online 默认 False），线程只回填 online，始终返回等长列表
+
+## 修复 20：`mem0_behavior_integration.py` 写死旧机器路径
+- `C:\Users\TK\.openclaw\workspace`、`D:\AI_Girlfriend` 在本机都不存在（仓库在 `E:\AI_Girlfriend`）
+- 修复：仓库根由 `Path(__file__).resolve().parents[2]` 推导，workspace 走 `OPENCLAW_WORKSPACE` 环境变量 / `%USERPROFILE%`，并支持 `GIRLFRIEND_ROOT` 覆盖（与 `skills/shared/mem0_bridge.py` 一致）
+
+## 验证（本轮）
+- `node --check`：ui.js / i18n.js / worldbook.js / chars.js 及全部 scripts/*.js 通过
+- `python -m py_compile`：shiki_daemon.py、mem0_behavior_integration.py 通过
+- daemon 冒烟：`_make_loopback_servers` 同时绑定 127.0.0.1 + ::1，两个族均可连接；`get_status()` 11/11 行
+- 静态审计：i18n 重复 key 0、data-i18n 缺失 0、HTML 重复 id 0、label-for 断链 0、未定义 CSS 变量 0
+- 浏览器实测（Edge + Playwright，1440×900，静态托管 web-chat）：
+  - 顶栏显示「我的档案」，页面可见文本中不再出现 snake_case 的裸 key
+  - 侧边栏头像只剩 1 个子节点（`img`），立绘正常居中，无悬空首字母
+  - 世界书条目渲染为卡片（padding 10/12、圆角、hover 边框），工具栏按钮为暗色样式
+  - 记忆查看器「可视化」为暗色按钮；设置/档案/世界书/记忆/Live2D 弹层均无 pageerror
+
+## 缓存版本号
+- main.css v=49→50、ui.js v=63→64、i18n.js v=7→8、worldbook.js v=1→2、chars.js v=27→28
+

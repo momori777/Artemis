@@ -34,6 +34,7 @@
     // Chat header
     search:                  { zh: '搜索',                 ja: '検索',                 en: 'Search' },
     settings:                { zh: '设置',                 ja: '設定',                 en: 'Settings' },
+    user_profile:            { zh: '我的档案',             ja: 'マイプロフィール',       en: 'My Profile' },
     reset_session:           { zh: '重置会话',             ja: 'セッションリセット',     en: 'Reset session' },
     clear_messages:          { zh: '清空消息',             ja: 'メッセージ消去',         en: 'Clear messages' },
     regen_reply:             { zh: '重置本条回复',         ja: 'この返信を再生成',       en: 'Regenerate this reply' },
@@ -195,9 +196,7 @@
     sampler_preset_toast:    { zh: 'Sampler 预设:',         ja: 'プリセット:',           en: 'Sampler preset: ' },
     sampler_toggle_title:    { zh: 'Sampler + Headroom 参数', ja: 'Sampler + 圧縮 設定', en: 'Sampler + Headroom Parameters' },
 
-    // Sampler help popup — parameter descriptions
-    sampler_help_title:      { zh: 'Sampler & 上下文压缩 — 参数说明', ja: 'Sampler & 圧縮 — パラメータ説明', en: 'Sampler & Headroom — Parameters' },
-    sampler_help_sampler:    { zh: 'Sampler 参数（控制 LLM 输出随机性）', ja: 'Sampler パラメータ（出力ランダム性制御）', en: 'Sampler Parameters (LLM output randomness)' },
+    // Sampler help popup — per-parameter descriptions (used by sampler_panel.js)
     sampler_help_temp:       { zh: '越高越随机/创造性，越低越确定/重复。0.7-0.9适合角色扮演。', ja: '高=ランダム/創造的、低=確定的。0.7-0.9はロールプレイ向け。', en: 'Higher=random/creative, lower=deterministic. 0.7-0.9 for roleplay.' },
     sampler_help_top_p:      { zh: '核采样。只从累积概率达P的候选词中选。0.9=最可能的前90%。', ja: '核サンプリング。累積確率Pまでの候補から選択。0.9=上位90%。', en: 'Nucleus sampling. Only top P probability mass. 0.9=top 90%.' },
     sampler_help_top_k:      { zh: '只从概率最高的K个token中选。40-80常见。越小越保守。', ja: '上位Kトークンから選択。40-80が一般的。小=保守的。', en: 'Sample from top K tokens. 40-80 common. Lower=conservative.' },
@@ -206,27 +205,8 @@
     sampler_help_freq_pen:   { zh: '按出现频率惩罚。正值减少高频词。和Repeat Penalty二选一。', ja: '出現頻度でペナルティ。正=抑制。Repeat Penaltyと二択。', en: 'Penalize by frequency. Positive=reduce common words. Use this OR Repeat Penalty.' },
     sampler_help_pres_pen:   { zh: '类似Freq但看"是否出现过"。新话题引入有用。', ja: 'Freq類似だが"出現有無"のみ。新トピック導入に有効。', en: 'Like Freq but binary. Helps introduce new topics.' },
     sampler_help_max_tk:     { zh: '单次回复最大输出token数。4096足够大多数回复。', ja: '1回の返信の最大出力token。4096で十分。', en: 'Max output tokens per reply. 4096 is enough.' },
-    sampler_help_hr_title:   { zh: 'Headroom 上下文压缩（控制 LLM 输入长度）', ja: 'Headroom 圧縮（入力長制御）', en: 'Headroom Context Compression (LLM input length)' },
-    sampler_help_hr_core:    { zh: '核心问题：',            ja: '核心問題：',              en: 'Core Problem: ' },
-    sampler_help_hr_desc:    { zh: '对话越长，上下文越接近token上限，最早记忆被挤出。Headroom自动压缩旧对话，保留关键信息。', ja: '会話が長くなるとtoken上限に近づき初期記憶が消える。Headroomが自動圧縮で重要情報を保持。', en: 'Long conversations near token limit. Headroom auto-compresses old history, keeping key info.' },
-    sampler_help_smartcrusher: { zh: 'SmartCrusher 5维评分算法', ja: 'SmartCrusher 5次元スコアリング', en: 'SmartCrusher 5-Dimension Scoring' },
-    sampler_help_sc1:        { zh: '首尾保留 — 开头30%和结尾15%优先保留', ja: '先頭末尾保持 — 先頭30%と末尾15%優先', en: 'First-last bias — 30% head + 15% tail kept' },
-    sampler_help_sc2:        { zh: '错误保护 — system/error/warning 消息 100% 保留', ja: 'エラー保護 — system/error/warning 100%保持', en: 'Error protection — system/error/warning kept 100%' },
-    sampler_help_sc3:        { zh: '统计异常 — 异常长/短消息保留', ja: '統計的外れ値 — 異常長/短を保持', en: 'Statistical outliers — unusually long/short kept' },
-    sampler_help_sc4:        { zh: '查询相关 — 语义相关内容优先（BM25匹配）', ja: 'クエリ関連 — 意味的関連を優先（BM25）', en: 'Query relevance — semantic match prioritized (BM25)' },
-    sampler_help_sc5:        { zh: '变化点 — 话题转换节点保留', ja: '変化点 — トピック転換節点を保持', en: 'Change points — topic transitions preserved' },
-    sampler_help_hr_r1:     { zh: '最近N轮完整保留。4=保留最后4轮。', ja: '最近Nターン完全保持。4=最後4ターン。', en: 'Last N rounds kept full. 4=last 4 rounds.' },
-    sampler_help_hr_r2:     { zh: '旧历史压缩后最多保留此数量。10=筛出10条最重要。', ja: '古い履歴圧縮後最大数。10=最重要10件。', en: 'After crushing, keep at most this many. 10=top 10.' },
-    sampler_help_hr_r3:     { zh: '硬截断：消息总数不超过此值。24是安全值。', ja: '硬制限：総メッセージ数上限。24が安全。', en: 'Hard cap: total msgs ≤ this. 24 safe.' },
-    sampler_help_hr_r4:     { zh: '硬截断：总字符数超过强制裁剪。40K≈1万token。', ja: '硬制限：総文字数超で強制切捨。40K≈1万token。', en: 'Hard cap: chars > this trimmed. 40K≈10k tokens.' },
-    sampler_help_tips:       { zh: '调参建议：',           ja: '調整アドバイス：',       en: 'Tuning Tips:' },
-    sampler_help_tip1:       { zh: '角色扮演：Sampler用Roleplay预设，Headroom默认(4/10/24/40k)', ja: 'RP：Sampler RPプリセット、Headroom初期値', en: 'Roleplay: Sampler Roleplay, Headroom default' },
-    sampler_help_tip2:       { zh: '长对话：加大最近保留到6-8，减小压缩保留到6', ja: '長会話：最近保持6-8、圧縮後6', en: 'Long chats: Recent 6-8, Crushed 6' },
-    sampler_help_tip3:       { zh: 'OOM：减小最大字符数到20k', ja: 'OOM：最大文字数20k', en: 'OOM: lower Max Chars to 20k' },
-    sampler_help_tip4:       { zh: '重复：Temperature 0.5-0.6, Top P 0.7', ja: '繰返し：Temp 0.5-0.6, Top P 0.7', en: 'Repetition: Temp 0.5-0.6, Top P 0.7' },
-    sampler_help_footer:     { zh: '参数实时生效。daemon stderr 含 [headroom] 统计。', ja: '即時反映。daemon stderrに [headroom] 統計。', en: 'Takes effect immediately. stderr logs [headroom] stats.' },
 
-    // Sampler help popup
+    // Sampler help popup — headroom / SmartCrusher section
     sampler_help_title:      { zh: 'Sampler & 上下文压缩 — 参数说明', ja: 'Sampler & 圧縮 — パラメータ説明', en: 'Sampler & Headroom — Parameters' },
     sampler_help_sampler:    { zh: 'Sampler 参数（控制 LLM 输出随机性）', ja: 'Sampler パラメータ（出力ランダム性制御）', en: 'Sampler Parameters (LLM output randomness)' },
     sampler_help_hr_title:   { zh: 'Headroom 上下文压缩（控制 LLM 输入长度）', ja: 'Headroom 圧縮（入力長制御）', en: 'Headroom Context Compression (LLM input length)' },

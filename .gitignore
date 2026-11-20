@@ -218,3 +218,9 @@ Agents/**/*autocompact*.md
 Agents/**/*速查*.md
 btest.out
 btest.err
+
+# ---- START-HERE launcher ----
+# last selection (LLM / ComfyUI / SoVITS / ports) is per-machine
+.start-here.json
+# service logs written by start_here.py (*.log is already ignored)
+logs/start-here/

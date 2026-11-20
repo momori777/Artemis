@@ -638,7 +638,6 @@ var WorldBook = {
       var priLabel = this._priorityLabel(e.priority);
       var dateStr = new Date(e.updatedAt).toLocaleString();
       var icon = e.enabled ? 'ph-toggle-left' : 'ph-toggle-right';
-      var iconClass = e.enabled ? '' : 'wb-entry-disabled';
       var disabledStyle = e.enabled ? '' : 'opacity:0.5;';
       // Show injection status badge
       var injectBadge = '';
@@ -758,7 +757,16 @@ var WorldBook = {
   },
 };
 
-function escapeHtml(s) {
-  if (!s) return '';
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+// escapeHtml() lives in ui.js — one implementation for the whole page.
+// Keep a guarded fallback (worldbook.js can run before ui.js in probe pages).
+if (typeof window.escapeHtml !== 'function') {
+  window.escapeHtml = function(s) {
+    if (s === null || s === undefined) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
 }

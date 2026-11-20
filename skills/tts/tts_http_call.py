@@ -257,7 +257,8 @@ def slugify(text, max_len=20):
 
 
 # ========== GPT-SoVITS HTTP 服务管理 ==========
-TTS_HTTP_PORT = 9880
+# 端口可被 config.yaml 覆盖（START-HERE.bat/.sh 写入 tts_port；默认 9880）
+TTS_HTTP_PORT = int(_cfg.get("tts_port", 9880) or 9880)
 TTS_API_URL = f"http://127.0.0.1:{TTS_HTTP_PORT}/tts"
 
 

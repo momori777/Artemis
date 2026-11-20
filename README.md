@@ -145,7 +145,7 @@ From *Dimension W Lovers!!*. Former student council president and the academy's 
 
 > 🚀 Not a "future" plan anymore — it works today: [Qwen-Drive-1.0-4B](https://huggingface.co/Qwen/Qwen-Drive-1.0-4B)
 
-> 📖 Full design: [`imagination.md`](imagination.md) | Bridge ref: [`skills/cosmos/BRIDGE_REFERENCE.md`](skills/cosmos/BRIDGE_REFERENCE.md)
+> 📖 Full design: [`imagination.md`](skills/cosmos/imagination.md) | Bridge ref: [`skills/cosmos/BRIDGE_REFERENCE.md`](skills/cosmos/BRIDGE_REFERENCE.md)
 
 **NVIDIA Cosmos** (community FP8 quant archived at `skills/cosmos/`) is a World Foundation Model that generates physics-consistent scene videos and understands spatial relationships.
 
@@ -170,14 +170,24 @@ Qwen3.6-35B (Language Mind) ←→ Cosmos 3 Nano / Qwen-Drive-1.0 (Physical Mind
 | Year | GPU | Cosmos Status |
 |------|-----|---------------|
 | 2026 | RTX 5070 (8-12GB) | ❌ Archived, detection ready |
-| 2027-01 | RTX 5070 Ti Super (24 GB) | ✅ Already done | 
+| 2027-01 | RTX 5070 Ti Super (24 GB) | ⏳ Planned | 
 
 ### Current Status
 
 - ✅ Repo archived at `skills/cosmos/`
-- ✅ Bridge design `imagination.md` + `cosmos_check.py` ready
+- ✅ Bridge design [`skills/cosmos/imagination.md`](skills/cosmos/imagination.md) + [`skills/cosmos/BRIDGE_REFERENCE.md`](skills/cosmos/BRIDGE_REFERENCE.md) ready
 - ✅ Qwen ↔ Cosmos dual-mind architecture designed
-- ✅ 2027-01: RTX 5070 Ti Super (24 GB) — already running
+- ⏳ 2027-01: RTX 5070 Ti Super (24 GB) — planned (24 GB VRAM class)
+
+## 🧍 3D Girlfriend — Next Step (ARDY)
+
+The companion is 2D today (Live2D). The next step is a **3D girlfriend whose body moves with the conversation**, built on [ARDY](https://github.com/nv-tlabs/ardy) — NVIDIA Toronto AI Lab, SIGGRAPH 2026. ARDY is an autoregressive diffusion model that turns a **streaming text prompt + kinematic constraints** (root path, waypoints, keyframes, end-effector targets) into continuous human motion, with Core / Unitree G1 / SOMA checkpoints and a Viser browser demo.
+
+- **Why ARDY:** it is built for *interactive* generation — the prompt can change mid-motion and constraints are honoured, which is what "walk over here and sit down while we talk" needs.
+- **Planned wiring:** chat text + emotion state (behavior engine) → ARDY prompt → motion retargeted onto our 3D character in `models3d/` → played by the desktop pet next to the current Live2D mode; TTS timing feeds the replan buffer so gestures stay in sync with the voice.
+- **Status:** research — nothing is wired up yet. The text encoder alone wants ~14 GB VRAM (CPU fallback exists), so this runs through the GPU handoff queue instead of sitting next to llama.cpp.
+
+> 📄 https://github.com/nv-tlabs/ardy · Project page: https://research.nvidia.com/labs/sil/projects/ardy/
 
 ## Features
 
@@ -198,7 +208,7 @@ Qwen3.6-35B (Language Mind) ←→ Cosmos 3 Nano / Qwen-Drive-1.0 (Physical Mind
   - **CCR (Curate-Consolidate-Retrieve)** - Background worker extracts durable facts every 8 turns, writes to mem0 Qdrant
   - **Vector + BM25 Hybrid Search** - Semantic similarity + keyword matching via Qdrant + dual embedding models
   - **Auto-Sync Bridge** - Cron job syncs Qdrant → `_mem0_auto.md` every 30 min, making vector memories searchable by OpenClaw's native `memory_search`
-  - **Per-Character Isolation** - `user_id` scoping in Qdrant; 4 independent memory spaces (sakura / natsume / enola / atori)
+  - **Per-Character Isolation** - `user_id` scoping in Qdrant; 5 independent memory spaces (sakura / shiki_natsume / enola / atori / shifty)
   - **Recall Priority** - Vector long-term memories > handwritten daily notes > SOUL base persona
 
 > See [`skills/behavior-engine/README.md`](skills/behavior-engine/README.md) and [`AGENTS_roleplay_EN.md#behavior-engine`](AGENTS_roleplay_EN.md#behavior-engine).
@@ -237,7 +247,7 @@ See [`models.yaml`](models.yaml) for full details.
 | **LuffyTheFox Qwen3.6-35B-A3B Genesis Hermes Final MTP APEX** (GGUF) | Chat LLM (primary MoE — **6 GB VRAM + 32 GB RAM**, `--cpu-moe`) | 24.9 GB | 120K |
 | **Qwen3.8-27B Ultimate Heretic Uncn Turbo Brilli 50x AGI NEO MTP** (Q4_K_M GGUF) | Chat LLM (dense, tooling — **24 GB VRAM + 32 GB RAM**) | ~15.7 GB | 130K |
 | **Qwen3.6-27B-Fable-MTP** (Q4_K_S GGUF) | Chat LLM (dense, legacy) | 13.5 GB | 150K |
-| **DeepSeek-V4-Pro-Qwen3.5-9B heretic** (Q4_K_M GGUF, uncensored) | Chat LLM (**fits fully in 8 GB VRAM**, `-ngl 99`; 16 GB RAM enough) | ~6.1 GB | **≤ 75K** (KV cache **must** be q4_0) |
+| **DeepSeek-V4-Pro-Qwen3.5-9B heretic** (Q4_K_M GGUF, uncensored) | Chat LLM (**fits fully in 8 GB VRAM**, `-ngl 99`; 16 GB RAM enough) | ~6.1 GB | **≤ 120K** (KV cache **must** be q4_0) |
 | **WAI-Nsfw-Illustrious-17** | ComfyUI generation (default, SDXL/Illustrious) | 6.46 GB | |
 | **miaomiaoHarem_29BBETA10** | ComfyUI generation (backup, anima/qwen 29B + qwen VAE) | 5.44 GB | |
 | **oneObsession_anima29BV1** | ComfyUI generation (anima/qwen 29B + qwen VAE) | 5.44 GB | |
@@ -337,7 +347,7 @@ Both budgets are listed; for MoE models the **RAM** number is usually the bindin
 
 ### Why the root `chat_template.jinja` exists
 
-The project root ships a **fixed Jinja chat template** ([froggeric/Qwen-Fixed-Chat-Templates](https://huggingface.co/froggeric/Qwen-Fixed-Chat-Templates), pinned at **v22.3** in `chat_template.jinja`) that overrides the template baked into the GGUFs. The official Qwen 3.5/3.6/3.8 templates contain engine restrictions, Python-specific Jinja logic, and regressions that break local inference and agent workflows — the most visible one is **overthinking**: the official Qwen 3.8 template hardcodes `xhigh` reasoning depth by default, which can exhaust the token budget on thinking before the model ever answers.
+The project root ships a **fixed Jinja chat template** ([froggeric/Qwen-Fixed-Chat-Templates](https://huggingface.co/froggeric/Qwen-Fixed-Chat-Templates), a pinned copy at `chat_template.jinja`) that overrides the template baked into the GGUFs. The official Qwen 3.5/3.6/3.8 templates contain engine restrictions, Python-specific Jinja logic, and regressions that break local inference and agent workflows — the most visible one is **overthinking**: the official Qwen 3.8 template hardcodes `xhigh` reasoning depth by default, which can exhaust the token budget on thinking before the model ever answers.
 
 One file covers all Qwen 3.5 / 3.6 / 3.8 sizes, so it works unchanged for both local models. Launch plumbing: `config.yaml` → `llama_chat_template: chat_template.jinja` (relative to the project root), and `llama_config.py` resolves it to `--chat-template-file` — nothing hardcoded. 
 
@@ -498,33 +508,36 @@ The system auto-detects GPU VRAM and selects the optimal run mode, no manual con
 
 ```
 <PROJECT_DIR>/                            # OpenClaw workspace root
+├── START-HERE.bat                        # 🚀 Pick LLM/ComfyUI/SoVITS models + ports, then start everything (Windows)
+├── START-HERE.sh                         # 🚀 Same launcher (Linux / macOS / Git-Bash / WSL)
+├── start_here.py                         # Shared implementation used by both launchers
 ├── start.ps1                             # 🚀 One-click launch: llama + headroom + Live2D + Gateway
+├── shiki-start.cmd / shiki-stop.cmd      # Tray daemon start/stop (shiki_daemon.py + shutdown_all.py)
 ├── artemis_headroom_proxy.py             # Headroom proxy (19251): mem0 injection + SmartCrusher + routing
 ├── shiki_daemon.py                       # Daemon (19260/19270): WebChat backend + auto-inject provider
 ├── quick_setup.ps1                       # 🛠 Interactive path config wizard
-├── config.yaml                           # Generated config
-├── download-models.ps1                   # One-click model download (Windows)
-├── download-models.sh                    # One-click model download (Linux/macOS)
-├── setup-llama.ps1                       # Auto-detect HW + configure llama.cpp (Win)
-├── setup-llama.sh                        # Auto-detect HW + configure llama.cpp (Linux/macOS)
-├── setup-openclaw.ps1                    # One-click OpenClaw install + deploy (Win)
-├── setup-openclaw.sh                     # One-click OpenClaw install + deploy (Linux/macOS)
-├── setup-all.ps1                         # 🚀 All-in-One mega script (Windows)
-├── setup-all.sh                          # 🚀 All-in-One mega script (Linux/macOS)
-├── config-qqbot.json                     # QQ Bot config patch
-├── config-telegram.json                  # Telegram Bot config patch
-├── config-patch.json                     # OpenClaw LLM config patch
+├── config.yaml                           # [.gitignore] Generated config (paths, ports, model profiles)
+├── download-models.ps1 / .sh             # One-click model download (12 files, ~72 GB)
+├── setup-llama.ps1 / .sh                 # Auto-detect HW + configure llama.cpp
+├── setup-openclaw.ps1 / .sh              # One-click OpenClaw install + deploy
+├── setup-all.ps1 / .sh                   # 🚀 All-in-One mega script
+├── config-qqbot.json                     # [.gitignore] QQ Bot config patch (generated by setup)
+├── config-telegram.json                  # [.gitignore] Telegram Bot config patch (generated by setup)
+├── config-patch.json                     # [.gitignore] OpenClaw LLM config patch (generated by setup)
 ├── AGENTS.md                             # Agent behavior rules
+├── AGENTS_roleplay_{EN,CN,JA}.md         # Roleplay-focused AGENTS variants
 ├── SOUL.md                               # Character personality
-├── IDENTITY.md                           # Character identity
-├── USER.md                               # User info
+├── IDENTITY.md                           # [generated] active character identity (card importer)
+├── USER.md                               # [generated] user profile (web-chat profile dialog)
 ├── HEARTBEAT.md                          # Heartbeat config
 ├── TOOLS.md                              # Tool quick reference
+├── USAGE.md                              # Usage notes
 ├── models.yaml                           # Model catalog + download links
-├── LLAMA_TUNING.md                       # ⚙️ Handwritten llama.cpp tuning field notes (read before trusting baked-in launch args)
-├── imagination.md                        # 🔮 Cosmos WFM integration vision (future)
+├── LLAMA_TUNING.md                       # ⚙️ Handwritten llama.cpp tuning field notes
+├── STARTUP_CODE.md                       # Copy-paste launch commands per model
 ├── README.md                             # This file
 ├── .gitignore
+├── web-chat/                             # Browser UI: chat, Studio console, character cards, i18n
 ├── live2d/                               # Live2D character model (Cubism 4 Core)
 │   ├── index.html                        # Default (Shiki Natsume)
 │   ├── index_atri.html                   # ATRI variant
@@ -533,31 +546,33 @@ The system auto-detects GPU VRAM and selects the optimal run mode, no manual con
 │   ├── live2dcubismcore.min.js           # Cubism Core 4 (207 KB)
 │   ├── plid-v5-bundle.js                 # pixi-live2d-display v0.5.0 bundle
 │   ├── live2d-bridge.mjs                 # HTTP (19200) + WebSocket (19201) bridge
-│   ├── switch_model.ps1                  # Model switcher (natsume / atri)
+│   ├── switch_model.ps1                  # Model switcher (atri / natsume)
 │   ├── pixi.min.js, pixi-shim.js         # PIXI.js v7 rendering
 │   ├── model/shiki_natsume/              # Natsume model (14 textures, 42 motions, 41 sounds)
-│   └── model/atri/                       # ATRI model (2 textures, 620 voice mp3, 8 motions)
-├── ren_pro_jp/                           # Ren'Py dialog engine (planned)
+│   └── model/atri/                       # ATRI model (2 textures, 16 expressions, 7 motions, 2222 voice mp3)
+├── models3d/                             # 3D character assets (future 3D girlfriend, see ARDY below)
 ├── memory/                               # [.gitignore] Runtime memory
 │   └── role_play/                        # Roleplay conversation logs
 ├── media/                                # [.gitignore] Generated media
-│   ├── audio/                            # TTS voice output
-│   ├── images/                           # ComfyUI image output
+│   ├── qqbot/                            # QQ Bot media staging
 │   └── *.gif                             # README demo GIFs
 ├── docs/
 │   ├── telegram-setup.md                 # Telegram Bot setup guide
-│   └── qqbot-setup.md                    # QQ Bot setup guide
+│   ├── qqbot-setup.md                    # QQ Bot setup guide
+│   ├── cosmos_integration.md             # Cosmos WFM integration notes
+│   └── agent-platform-token-budget.md    # Agent startup token measurements
 └── skills/
     ├── live2d/                           # Live2D control skill
     │   ├── SKILL.md                      # Motion/expression reference + API guide
     │   ├── scripts/start-live2d.ps1      # Live2D launcher
     │   └── media/                        # Shared media output
-    ├── tts/
+    ├── tts/                              # GPT-SoVITS TTS skill
     │   ├── SKILL.md                      # TTS invocation guide
-    │   ├── run_tts.ps1                   # TTS launcher script
-    │   ├── tts_call.py                   # GPT-SoVITS inference
-    │   └── ref_wavs/                     # Reference audio clips
-    ├── comfyui/
+    │   ├── run_tts.ps1                   # Handoff launcher (stop llama → synthesize → restart)
+    │   ├── run_tts_http.ps1              # HTTP path (never stops llama)
+    │   ├── tts_call.py, tts_http_call.py # GPT-SoVITS inference
+    │   └── ref_wavs_{atri,natsume,sakura}/  # Reference audio clips
+    ├── comfyui/                          # ComfyUI image skill
     │   ├── SKILL.md                      # ComfyUI invocation guide
     │   ├── run_comfyui.ps1               # ComfyUI launcher script
     │   ├── comfyui_call.py               # ComfyUI inference
@@ -581,12 +596,19 @@ The system auto-detects GPU VRAM and selects the optimal run mode, no manual con
     │   ├── start.bat                     # Windows launcher
     │   └── app/                          # Source code
     ├── cosmos/                           # 🔮 NVIDIA Cosmos WFM (future hardware)
-    │   ├── BRIDGE_REFERENCE.md           # Cosmos ↔ AI Girlfriend bridge design
-    │   ├── cosmos_check.py               # Hardware VRAM detection script
-    │   ├── cookbooks/                    # Official tutorial examples
-    │   └── README.md                     # Upstream documentation
-    ├── llama-management.md               # VRAM management architecture doc
-    ├── llama-watchdog.ps1                # Llama health check
+    │   ├── README.md                     # Upstream documentation (archived)
+    │   ├── imagination.md                # 🔮 Cosmos ↔ AI Girlfriend integration vision
+    │   ├── BRIDGE_REFERENCE.md           # Bridge API reference
+    │   ├── RELEASE.md                    # Upstream release notes
+    │   └── inference_benchmarks.md       # Upstream benchmark notes
+    ├── strata/                           # Strata engine notes (Qwen3.8-Flash-Next, :8080)
+    ├── sovits/                           # GPT-SoVITS engine + voice weights
+    ├── harem/                            # Character cards (SOUL / IDENTITY per character)
+    ├── headroom/                         # SmartCrusher + CCR + ContentRouter
+    ├── mem0-bridge/                      # mem0 integration scripts
+    ├── llama_debugger/                   # llama.cpp tuning UI + watchdog
+    │   ├── llama-management.md           # VRAM management architecture doc
+    │   └── llama-watchdog.ps1            # Llama health check
     ├── cleanup_orphans.ps1               # Orphan process cleanup
     ├── behavior-engine/                  # 💖 Relationship system (behavior engine)
     │   ├── engine.py                     # State load/save/update/reset
@@ -740,7 +762,7 @@ Full breakdown, optimization levers, and reproduction method: [`docs/agent-platf
 | headroom | Bundled (`skills/headroom/`) | SmartCrusher context compression + ContentRouter + CCR |
 | Python | 3.12+ | Runtime (Sakura + TTS + ComfyUI + Headroom) |
 
-> ✨ **TTS, ComfyUI, and Live2D are fully self-contained.** No external downloads at runtime - all model weights (`skills/sovits/`, `skills/comfyui_core/`), Python scripts, JS libraries (`live2d/pixi.min.js`, `live2d/plid-v5-bundle.js`), and Cubism Core 4 (`live2d/live2dcubismcore.min.js`) are bundled locally.
+> ✨ **TTS, ComfyUI, and Live2D are fully self-contained.** No external downloads at runtime - all model weights (`skills/sovits/`, `deps/ComfyUI/`), Python scripts, JS libraries (`live2d/pixi.min.js`, `live2d/plid-v5-bundle.js`), and Cubism Core 4 (`live2d/live2dcubismcore.min.js`) are bundled locally.
 >
 > 🧠 **Headroom token-saving** - `skills/headroom/` (SmartCrusher + ContentRouter + CCR). Compress large tool outputs in dev scenarios before they hit the context window. See AGENTS.md for API usage.
 
@@ -763,6 +785,10 @@ bash setup-all.sh
 Automated pipeline: environment check → model download → llama.cpp setup → OpenClaw install → Sakura desktop pet → workspace deploy → path check → launch → verify.
 
 > Supports resume from breakpoint. Flags: `--skip-model-download`, `--skip-llama-setup`, `--skip-openclaw-setup`, `--skip-sakura-setup`, `--dry-run`, `--no-start`
+
+### 🚀 Daily Driver: `START-HERE`
+
+After the one-time setup, `START-HERE.bat` (or `.sh` on Linux/macOS) is the normal entry point: it shows the LLM engine/model, the ComfyUI model, the SoVITS voice and the service ports, writes the choice into `config.yaml`, then starts and health-checks the whole stack. `--status`, `--stop` and `--list` cover the everyday cases.
 
 ### Step-by-Step
 
@@ -800,7 +826,7 @@ huggingface-cli login
 bash download-models.sh
 ```
 
-Downloads all 5 model files (~31.7 GB) from HuggingFace with progress reporting and resume support.
+Downloads the model set from HuggingFace with progress reporting and resume support (~72 GB: 3 LLM + 6 ComfyUI + SoVITS + Live2D).
 
 ### 2. Setup llama.cpp
 
@@ -856,7 +882,7 @@ Startup sequence:
 [8/8] Web Chat Daemon     (19260 API + 19270 webchat, --no-llama)
 ```
 
-**Shutdown: `shiki.cmd -Stop`** - gracefully stops all services (llama → live2d → sakura → embedding → comfyui → gateway → cleanup).
+**Shutdown: `shiki-stop.cmd`** (or `start.ps1 -Stop`) - gracefully stops all services (llama → live2d → sakura → embedding → comfyui → gateway → cleanup).
 
 ### 5. Start Live2D Individually
 
@@ -875,12 +901,12 @@ Live2D runs in a frameless Chrome window - place it anywhere on your desktop.
 ```powershell
 # Llama health check (every 10 min)
 schtasks /create /tn "llama-watchdog" `
-  /tr "powershell -File C:\Users\<you>\.openclaw\workspace\skills\llama-watchdog.ps1" `
+  /tr "powershell -File <PROJECT_DIR>\skills\llama_debugger\llama-watchdog.ps1" `
   /sc minute /mo 10
 
 # Orphan process cleanup (hourly)
 schtasks /create /tn "cleanup-orphans" `
-  /tr "powershell -File C:\Users\<you>\.openclaw\workspace\skills\cleanup_orphans.ps1" `
+  /tr "powershell -File <PROJECT_DIR>\skills\cleanup_orphans.ps1" `
   /sc hourly /mo 1
 ```
 
@@ -920,7 +946,7 @@ schtasks /create /tn "cleanup-orphans" `
 | Embedding :9999 | all-MiniLM-L6-v2 + BGE-small-zh-v1.5 (CPU, dual model) |
 | memory_search | OpenClaw native hybrid search (vector+BM25) |
 | mem0_bridge | Qdrant read/write bridge |
-| Qdrant DB | collection: sakura_memories, 4 user_id scopes |
+| Qdrant DB | collection: sakura_memories, 5 user_id scopes |
 | CCR | Extracts facts every 8 turns → Qdrant |
 | SmartCrusher | 24 msg/40K char hard cap |
 | mem0_sync_cron | Every 30min: Qdrant → _mem0_auto.md |
@@ -1023,7 +1049,7 @@ A complete web-based AI girlfriend chat interface, served locally at `http://127
 
 ## ⚠️ Important Notes
 
-- **`chat_template.jinja` must stay at the project root** (`D:\AI_Girlfriend\chat_template.jinja`) and **must not be gitignored**. It is the fixed froggeric v22.3 template referenced by `config.yaml` → `llama_chat_template` and passed via `--chat-template-file`. Deleting it or letting it be gitignored breaks llama launch args (the model falls back to a broken default template). `.gitignore` already has `!chat_template.jinja` to keep it tracked.
+- **`chat_template.jinja` must stay at the project root** (`chat_template.jinja` in the project root) and **must not be gitignored**. It is the fixed froggeric template referenced by `config.yaml` → `llama_chat_template` and passed via `--chat-template-file`. Deleting it or letting it be gitignored breaks llama launch args (the model falls back to a broken default template). `.gitignore` already has `!chat_template.jinja` to keep it tracked.
 - Llama-server is offline for ~60-120s during TTS/ComfyUI inference on 8GB VRAM (Tier 1) - conversation pauses, but Live2D + Artemis Studio keep running. On 12GB+ (Tier 2), no interruption at all
 - Llama-server does not support cross-turn prompt cache reuse (SSM limitation) - use periodic `/reset`
 - **Live2D requires Cubism Core 4** (not 5 or 6) - pixi-live2d-display v0.5.0 is built for Cubism 4 Framework; Core 5+ causes clipping/layer failures. **Core 4 is bundled** in live2d/live2dcubismcore.min.js - no CDN needed.
@@ -1037,6 +1063,7 @@ A complete web-based AI girlfriend chat interface, served locally at `http://127
 - [headroom](https://github.com/chopratejas/headroom) - Inspiration for SmartCrusher context compression + CCR (Curate-Consolidate-Retrieve) memory pipeline
 - [mem0](https://github.com/mem0ai/mem0) - Inspiration for Qdrant vector memory architecture + hybrid search design
 - [NVIDIA Cosmos](https://github.com/NVIDIA/cosmos) - World Foundation Model, [community FP8 quant](https://huggingface.co/benjiaiplayground/Cosmos3-Nano_fp8) archived at `skills/cosmos/`
+- [NVIDIA ARDY](https://github.com/nv-tlabs/ardy) - Interactive human motion generation (planned 3D girlfriend backend)
 
 <p align="center">
   <img src="skills/comfyui/natsume.png" alt="Natsume" width="400">

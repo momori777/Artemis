@@ -9,6 +9,7 @@ Mem0 ↔ Behavior Engine 深度联动
 """
 
 import json
+import os
 import sys
 import io
 from pathlib import Path
@@ -22,8 +23,15 @@ if __name__ == "__main__":
         pass
 
 # ── 路径 ──────────────────────────────────────────────────────
-WORKSPACE = Path(r"C:\Users\TK\.openclaw\workspace")
-GIRLFRIEND_ROOT = Path(r"D:\AI_Girlfriend")
+# 之前这里写死了旧机器/旧盘符的绝对路径（C:\Users\TK\...、D:\AI_Girlfriend），
+# 仓库搬到 E:\AI_Girlfriend 之后所有读写都会指向不存在的目录。改成按本文件位置
+# 推导仓库根，并允许用环境变量覆盖（与 skills/shared/mem0_bridge.py 保持一致）。
+_REPO_ROOT = Path(__file__).resolve().parents[2]  # <repo>/skills/mem0-bridge/<this file>
+GIRLFRIEND_ROOT = Path(os.environ.get("GIRLFRIEND_ROOT", str(_REPO_ROOT)))
+WORKSPACE = Path(os.environ.get(
+    "OPENCLAW_WORKSPACE",
+    Path(os.path.expandvars(r"%USERPROFILE%")) / ".openclaw" / "workspace",
+))
 MEM0_BRIDGE = GIRLFRIEND_ROOT / "skills" / "shared"  # mem0_bridge.py 唯一位置（single source of truth）
 BEHAVIOR_ENGINE = GIRLFRIEND_ROOT / "skills" / "behavior-engine"
 MEMORY_DIR = GIRLFRIEND_ROOT / "memory" / "role_play"

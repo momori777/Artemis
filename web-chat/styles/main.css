@@ -892,6 +892,42 @@ html,body{
   color: var(--accent);
 }
 
+/* ── Memory viewer trigger button ── */
+/* .memory-view-btn / .memory-viz-toggle had no rule at all, so "查看记忆" and
+   "可视化" rendered as unstyled native buttons inside the dark panel. */
+.memory-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  margin-top: 6px;
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: inherit;
+  line-height: 1.3;
+  cursor: pointer;
+  transition: all var(--dur-fast) ease;
+}
+
+.memory-view-btn:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-moderate);
+  color: var(--text-primary);
+}
+
+.memory-view-btn i { font-size: 12px; }
+
+.memory-viz-toggle { margin-top: 0; }
+
+.memory-viz-toggle.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* ── Memory viewer overlay ── */
 #memory-viewer-overlay {
   position: fixed;
@@ -1336,6 +1372,24 @@ html,body{
 }
 
 .btn-secondary:hover{background:var(--bg-elevated);color:var(--text-primary)}
+
+/* Small inline buttons (World Books toolbar, secondary actions inside panels).
+   index.html uses .btn-sm on the world-book toolbar; without a rule the three
+   buttons fell back to the OS default look (white boxes on the dark theme). */
+.btn-sm{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 11px;border-radius:var(--radius-sm);
+  background:var(--bg-surface);color:var(--text-secondary);
+  border:1px solid var(--border-subtle);
+  font-size:12px;font-family:var(--font-sans);
+  line-height:1.3;cursor:pointer;
+  transition:all var(--dur-fast) var(--ease-out-expo);
+}
+.btn-sm:hover{
+  background:var(--bg-elevated);color:var(--text-primary);
+  border-color:var(--border-moderate);
+}
+.btn-sm i{font-size:13px}
 
 /* ================================================================
    Toast
@@ -2285,31 +2339,43 @@ text-align:center;
 #wb-entry-list::-webkit-scrollbar-thumb,
 #worldbook-list::-webkit-scrollbar-thumb { background:var(--border-moderate);border-radius:2px }
 
-.wb-item {
-  display:flex;align-items:center;justify-content:space-between;
-  padding:8px 12px;
+/* World-book entry rows.
+   worldbook.js renders .wb-entry* markup, but these rules were written for an
+   older .wb-item* / .wb-item-name structure that no longer exists anywhere —
+   the entry list therefore rendered as bare stacked text with no card. */
+.wb-entry {
+  padding:10px 12px;
+  margin-bottom:8px;
   background:var(--bg-surface);
   border:1px solid var(--border-subtle);
   border-radius:8px;
-  cursor:pointer;
   transition:all var(--dur-fast);
 }
-.wb-item:hover {
+.wb-entry:hover {
   border-color:var(--border-moderate);
   background:var(--bg-elevated);
 }
-.wb-item-header {
-  display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;
+.wb-entry-header {
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
 }
-.wb-item-name {
-  font-size:13px;color:var(--text-primary);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+.wb-entry-key {
+  font-size:13px;font-weight:600;color:var(--text-primary);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%;
 }
-.wb-item-meta {
+.wb-entry-priority {
+  font-size:10px;font-family:var(--font-mono);
+}
+.wb-entry-content {
+  margin-top:4px;
+  font-size:12px;color:var(--text-secondary);line-height:1.5;
+  white-space:pre-wrap;word-break:break-word;
+}
+.wb-entry-actions {
+  display:flex;align-items:center;gap:4px;margin-top:6px;
+}
+.wb-entry-meta {
+  margin-left:auto;
   font-size:10px;color:var(--text-muted);font-family:var(--font-mono);
-}
-.wb-item-actions {
-  display:flex;gap:4px;flex-shrink:0;margin-left:8px;
 }
 .wb-action-btn {
   width:28px;height:28px;
@@ -2321,6 +2387,7 @@ text-align:center;
 }
 .wb-action-btn:hover { background:var(--bg-overlay);color:var(--text-primary); }
 .wb-delete-btn:hover { background:rgba(212,120,122,0.12);color:var(--error); }
+.wb-toggle-on { color:var(--accent); }
 
 /* Preview area */
 #worldbook-preview {
